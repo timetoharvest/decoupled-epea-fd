@@ -1,6 +1,7 @@
 #ifndef LM_CUT_HEURISTIC_H
 #define LM_CUT_HEURISTIC_H
 
+#include "globals.h"
 #include "heuristic.h"
 #include "priority_queue.h"
 
@@ -111,6 +112,10 @@ class LandmarkCutHeuristic : public Heuristic {
     RelaxedProposition artificial_goal;
     int num_propositions;
     AdaptiveQueue<RelaxedProposition *> priority_queue;
+    // needed for factored search
+    int init_num_ops;
+    int curr_num_ops;
+    
 
     virtual void initialize();
     virtual int compute_heuristic(const State &state);
@@ -136,6 +141,8 @@ class LandmarkCutHeuristic : public Heuristic {
 
     void mark_goal_plateau(RelaxedProposition *subgoal);
     void validate_h_max() const;
+    // needed for factored search
+    void dereference_ops();
 public:
     LandmarkCutHeuristic(const Options &opts);
     virtual ~LandmarkCutHeuristic();

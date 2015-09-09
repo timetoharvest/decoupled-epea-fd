@@ -1,5 +1,6 @@
 #include "relaxation_heuristic.h"
 
+#include "factoring.h"
 #include "globals.h"
 #include "operator.h"
 #include "state.h"
@@ -27,17 +28,20 @@ bool RelaxationHeuristic::dead_ends_are_reliable() const {
 void RelaxationHeuristic::initialize() {
     // Build propositions.
     int prop_id = 0;
-    propositions.resize(g_variable_domain.size());
-    for (int var = 0; var < g_variable_domain.size(); var++) {
-        for (int value = 0; value < g_variable_domain[var]; value++)
-            propositions[var].push_back(Proposition(prop_id++));
-    }
+    
+    if (propositions.empty()){	// added for fork-pruning in AFRA*
+	propositions.resize(g_variable_domain.size());
+	for (int var = 0; var < g_variable_domain.size(); var++) {
+	    for (int value = 0; value < g_variable_domain[var]; value++)
+		propositions[var].push_back(Proposition(prop_id++));
+	}
 
-    // Build goal propositions.
-    for (int i = 0; i < g_goal.size(); i++) {
-        int var = g_goal[i].first, val = g_goal[i].second;
-        propositions[var][val].is_goal = true;
-        goal_propositions.push_back(&propositions[var][val]);
+	// Build goal propositions.
+	for (int i = 0; i < g_goal.size(); i++) {
+	    int var = g_goal[i].first, val = g_goal[i].second;
+	    propositions[var][val].is_goal = true;
+	    goal_propositions.push_back(&propositions[var][val]);
+	}
     }
 
     // Build unary operators for operators and axioms.
@@ -50,28 +54,39 @@ void RelaxationHeuristic::initialize() {
     simplify();
 
     // Cross-reference unary operators.
+    reference_ops();
+}
+
+void RelaxationHeuristic::reference_ops() {
     for (int i = 0; i < unary_operators.size(); i++) {
-        UnaryOperator *op = &unary_operators[i];
-        for (int j = 0; j < op->precondition.size(); j++)
-            op->precondition[j]->precondition_of.push_back(op);
+    UnaryOperator *op = &unary_operators[i];
+    for (int j = 0; j < op->precondition.size(); j++)
+	op->precondition[j]->precondition_of.push_back(op);
     }
 }
 
 void RelaxationHeuristic::build_unary_operators(const Operator &op, int op_no) {
     int base_cost = get_adjusted_cost(op);
-    const vector<Condition> &preconditions = op.get_preconditions();
-    const vector<Effect> &effects = op.get_effects();
-    vector<Proposition *> precondition;
-    for (int i = 0; i < preconditions.size(); i++) {
-        assert(preconditions[i].var >= 0 && preconditions[i].var < g_variable_domain.size());
-        assert(preconditions[i].val >= 0 && preconditions[i].val < g_variable_domain[preconditions[i].var]);
-        precondition.push_back(&propositions[preconditions[i].var][preconditions[i].val]);
+    if (g_use_decoupled_search &&
+        g_factoring->get_search_type() != SAT &&
+        search_type == CENTER &&
+        op.get_affected_factor() != -1){
+        // TODO what to do about this??
+        base_cost = 0;
     }
-    for (int i = 0; i < effects.size(); i++) {
-        assert(effects[i].var >= 0 && effects[i].var < g_variable_domain.size());
-        assert(effects[i].val >= 0 && effects[i].val < g_variable_domain[effects[i].var]);
-        Proposition *effect = &propositions[effects[i].var][effects[i].val];
-        const vector<Condition> &eff_cond = effects[i].conditions;
+    const vector<Condition> &prevail = op.get_preconditions();
+    const vector<Effect> &pre_post = op.get_effects();
+    vector<Proposition *> precondition;
+    for (int i = 0; i < prevail.size(); i++) {
+        assert(prevail[i].var >= 0 && prevail[i].var < g_variable_domain.size());
+        assert(prevail[i].val >= 0 && prevail[i].val < g_variable_domain[prevail[i].var]);
+        precondition.push_back(&propositions[prevail[i].var][prevail[i].val]);
+    }
+    for (int i = 0; i < pre_post.size(); i++) {
+        assert(pre_post[i].var >= 0 && pre_post[i].var < g_variable_domain.size());
+        assert(pre_post[i].val >= 0 && pre_post[i].val < g_variable_domain[pre_post[i].var]);
+        Proposition *effect = &propositions[pre_post[i].var][pre_post[i].val];
+        const vector<Condition> &eff_cond = pre_post[i].cond;
         for (int j = 0; j < eff_cond.size(); j++) {
             assert(eff_cond[j].var >= 0 && eff_cond[j].var < g_variable_domain.size());
             assert(eff_cond[j].val >= 0 && eff_cond[j].val < g_variable_domain[eff_cond[j].var]);

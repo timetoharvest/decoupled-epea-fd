@@ -2,7 +2,9 @@
 
 #include "operator.h"
 #include "option_parser.h"
+#include "per_state_information.h"
 #include "plugin.h"
+#include "price_tag.h"
 #include "state.h"
 
 #include <cassert>
@@ -62,10 +64,38 @@ void AdditiveHeuristic::setup_exploration_queue() {
     }
 }
 
+void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
+    const PriceTag &tag = g_price_tags[state];
+    for (int factor = 0; factor < g_factors.size(); factor++){
+        int number_states = tag.get_number_facts(factor);
+        int id = 0;
+        while (number_states > 0){
+            if (!tag.has_leaf_state(id, factor)){
+                id++;
+                continue;
+            }
+            number_states--;
+            int base_cost = 0;
+            if (search_type == STAR){
+                base_cost = tag.get_info_for_fact(id, factor).cost;
+            }
+            LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+            for (int v = 0; v < g_factors[factor].size(); v++) {
+                int var = g_factors[factor][v];
+                Proposition *effect = &propositions[var][f[var]];
+                enqueue_if_necessary(effect, base_cost, 0);
+            }
+            id++;
+        }
+    }
+}
+
 void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
     for (int var = 0; var < propositions.size(); var++) {
-        Proposition *init_prop = &propositions[var][state[var]];
-        enqueue_if_necessary(init_prop, 0, 0);
+	if (search_type == STD || g_belongs_to_factor[var] == -1){
+	    Proposition *init_prop = &propositions[var][state[var]];
+	    enqueue_if_necessary(init_prop, 0, 0);
+	}
     }
 }
 
@@ -112,7 +142,8 @@ void AdditiveHeuristic::mark_preferred_operators(
                 // If we had no 0-cost operators and axioms to worry
                 // about, this would also be a sufficient condition.
                 const Operator *op = &g_operators[operator_no];
-                if (op->is_applicable(state))
+                if (op->get_affected_factor() == -1 && op->is_applicable(state))
+                    // don't mark leaf ops as preferred
                     set_preferred(op);
             }
         }
@@ -120,7 +151,6 @@ void AdditiveHeuristic::mark_preferred_operators(
 }
 
 int AdditiveHeuristic::compute_add_and_ff(const State &state) {
-    setup_exploration_queue();
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
@@ -135,6 +165,12 @@ int AdditiveHeuristic::compute_add_and_ff(const State &state) {
 }
 
 int AdditiveHeuristic::compute_heuristic(const State &state) {
+    setup_exploration_queue();
+    
+    if (search_type != STD){
+        setup_exploration_queue_decoupled_leaf_states(state);
+    }
+    
     int h = compute_add_and_ff(state);
     if (h != DEAD_END) {
         for (int i = 0; i < goal_propositions.size(); i++)

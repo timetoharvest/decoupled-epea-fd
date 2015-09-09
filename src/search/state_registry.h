@@ -1,8 +1,11 @@
 #ifndef STATE_REGISTRY_H
 #define STATE_REGISTRY_H
 
+#include "factoring.h"
 #include "globals.h"
 #include "int_packer.h"
+#include "leaf_state.h"
+#include "leaf_state_id.h"
 #include "segmented_vector.h"
 #include "state.h"
 #include "state_id.h"
@@ -10,6 +13,7 @@
 
 #include <set>
 #include <ext/hash_set>
+#include <ext/hash_map>
 
 /*
   Overview of classes relevant to storing and working with registered states.
@@ -97,8 +101,12 @@
 */
 
 class PerStateInformationBase;
+    
 
 class StateRegistry {
+    friend class PriceTag;
+    friend class PathPriceTag;
+    
     struct StateIDSemanticHash {
         const SegmentedArrayVector<PackedStateBin> &state_data_pool;
         StateIDSemanticHash(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
@@ -121,7 +129,7 @@ class StateRegistry {
             const PackedStateBin *rhs_data = state_data_pool[rhs.value];
             return std::equal(lhs_data, lhs_data + size, rhs_data);
         }
-    };
+    };    
 
     /*
       Hash set of StateIDs used to detect states that are already registered in
@@ -131,12 +139,39 @@ class StateRegistry {
     typedef __gnu_cxx::hash_set<StateID,
                                 StateIDSemanticHash,
                                 StateIDSemanticEqual> StateIDSet;
+                                
+    // TODO find an appropriate name for this
+    typedef __gnu_cxx::hash_map<size_t, size_t> LeafStateIDMap;
 
     SegmentedArrayVector<PackedStateBin> state_data_pool;
+    
+    std::vector<SegmentedArrayVector<PackedStateBin>* > leaf_factor_data_pool;
+
+    std::vector<LeafStateIDMap> leaf_hash_map;
+    
     StateIDSet registered_states;
+    
     State *cached_initial_state;
+    
+    /*
+      maps the StateID of the base state to the number of different decoupled
+      states that have the same center
+    */
+    LeafStateIDMap state_duplicate_counter;
+
     mutable std::set<PerStateInformationBase *> subscribers;
+    
     StateID insert_id_or_pop_state();
+    
+    LeafStateID insert_id_or_pop_leaf_state(int factor);
+    
+    /*
+      this builds all entire leaf state spaces and stores them
+    */
+    void build_leaf_state_spaces();
+    
+    void store_is_leaf_goal_state(const LeafState &state) const;
+    
 public:
     StateRegistry();
     ~StateRegistry();
@@ -146,6 +181,12 @@ public:
       to a state in this registry. Do not mix IDs from from different registries.
     */
     State lookup_state(StateID id) const;
+    
+    /*
+      Returns the redFact that was registered at the given ID. The ID must refer
+      to a redFact in this registry. Do not mix IDs from from different registries.
+    */
+    LeafState lookup_leaf_state(LeafStateID id) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not
@@ -166,6 +207,15 @@ public:
     size_t size() const {
         return registered_states.size();
     }
+    
+    /*
+     * Returns the number of states registered for the specified leaf factor
+     */
+    size_t size(int factor) const {
+	return leaf_hash_map[factor].size();
+    }
+    
+    int get_max_number_duplicates() const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is

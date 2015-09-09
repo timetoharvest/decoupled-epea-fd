@@ -10,9 +10,28 @@
 using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
-    : cost_type(OperatorCost(opts.get_enum("cost_type"))) {
+    : cost_type(OperatorCost(opts.get_enum("cost_type"))),
+      search_type(SearchType(opts.get_enum("search_type"))){
     heuristic = NOT_INITIALIZED;
 
+    if (g_use_decoupled_search){
+        if (search_type == STD){
+            if (g_factoring->get_search_type() == FDA){
+                search_type = STAR;
+                cout << "set type of heuristic to STAR" << endl;
+            } else {
+                // assume center heuristic
+                search_type = CENTER;
+                cout << "set type of heuristic to CENTER" << endl;
+            }
+        }
+    } else {
+        if (search_type != STD){
+            cout << "running standard search; overwriting non-standard search type option of heuristic" << endl;
+            search_type = STD;
+        }
+    }
+    
     is_unit_cost = true;
     for (size_t i = 0; i < g_operators.size(); ++i) {
         if (get_adjusted_cost(g_operators[i]) != 1) {
@@ -122,11 +141,21 @@ int Heuristic::get_adjusted_cost(const Operator &op) const {
 
 void Heuristic::add_options_to_parser(OptionParser &parser) {
     ::add_cost_type_option_to_parser(parser);
+    vector<string> search_types;
+    search_types.push_back("STD");
+    search_types.push_back("STAR");
+    search_types.push_back("CENTER");
+    parser.add_enum_option(
+        "search_type",
+        search_types,
+        "",
+        "STD");
 }
 
 //this solution to get default values seems not optimal:
 Options Heuristic::default_options() {
     Options opts = Options();
     opts.set<int>("cost_type", 0);
+    opts.set<int>("search_type", 0);
     return opts;
 }

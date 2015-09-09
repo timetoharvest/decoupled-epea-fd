@@ -28,7 +28,7 @@ DOWNWARD_GUROBI_LIBDIR ?=
 ## Set DOWNWARD_LINK_RELEASE_STATICALLY to 0 or 1 (default) to
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
-DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
+DOWNWARD_LINK_RELEASE_STATICALLY ?= 0
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
@@ -46,6 +46,7 @@ HEADERS = \
           enforced_hill_climbing_search.h \
           equivalence_relation.h \
           exact_timer.h \
+          factoring.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
@@ -53,14 +54,19 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
+          leaf_state.h\
+          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
           option_parser.h \
           option_parser_util.h \
           segmented_vector.h \
+          path_price_tag.h\
           per_state_information.h \
           pref_evaluator.h \
+          price_tag.h\
+          pruning.h\
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -92,44 +98,47 @@ HEADERS = \
 ## rebuild after such a change. Deleting the executable and running
 ## "make" to relink is enough; no need to do a complete rebuild.
 
+## Needed for factoring the variables
+HEADERS += ../preprocess/scc.h
+
 HEADERS += additive_heuristic.h
 HEADERS += blind_search_heuristic.h
-HEADERS += cea_heuristic.h
-HEADERS += cg_heuristic.h cg_cache.h
+# HEADERS += cea_heuristic.h
+# HEADERS += cg_heuristic.h cg_cache.h
 HEADERS += ff_heuristic.h
-HEADERS += goal_count_heuristic.h
-HEADERS += hm_heuristic.h
+# HEADERS += goal_count_heuristic.h
+# HEADERS += hm_heuristic.h
 HEADERS += lm_cut_heuristic.h
 HEADERS += max_heuristic.h
 
-HEADERS += merge_and_shrink/abstraction.h \
-           merge_and_shrink/label.h \
-           merge_and_shrink/labels.h \
-           merge_and_shrink/label_reducer.h \
-           merge_and_shrink/merge_and_shrink_heuristic.h \
-           merge_and_shrink/merge_dfp.h \
-           merge_and_shrink/merge_linear.h \
-           merge_and_shrink/merge_strategy.h \
-           merge_and_shrink/shrink_bisimulation.h \
-           merge_and_shrink/shrink_bucket_based.h \
-           merge_and_shrink/shrink_fh.h \
-           merge_and_shrink/shrink_random.h \
-           merge_and_shrink/shrink_strategy.h \
-           merge_and_shrink/variable_order_finder.h \
+# HEADERS += merge_and_shrink/abstraction.h \
+#           merge_and_shrink/label.h \
+#           merge_and_shrink/labels.h \
+#           merge_and_shrink/label_reducer.h \
+#           merge_and_shrink/merge_and_shrink_heuristic.h \
+#           merge_and_shrink/merge_dfp.h \
+#           merge_and_shrink/merge_linear.h \
+#           merge_and_shrink/merge_strategy.h \
+#           merge_and_shrink/shrink_bisimulation.h \
+#           merge_and_shrink/shrink_bucket_based.h \
+#           merge_and_shrink/shrink_fh.h \
+#           merge_and_shrink/shrink_random.h \
+#           merge_and_shrink/shrink_strategy.h \
+#           merge_and_shrink/variable_order_finder.h \
 
-HEADERS += landmarks/exploration.h \
-           landmarks/h_m_landmarks.h \
-           landmarks/lama_ff_synergy.h \
-           landmarks/landmark_cost_assignment.h \
-           landmarks/landmark_count_heuristic.h \
-           landmarks/landmark_status_manager.h \
-           landmarks/landmark_graph_merged.h \
-           landmarks/landmark_graph.h \
-           landmarks/landmark_factory.h \
-           landmarks/landmark_factory_rpg_exhaust.h \
-           landmarks/landmark_factory_rpg_sasp.h \
-           landmarks/landmark_factory_zhu_givan.h \
-           landmarks/util.h \
+# HEADERS += landmarks/exploration.h \
+#           landmarks/h_m_landmarks.h \
+#           landmarks/lama_ff_synergy.h \
+#           landmarks/landmark_cost_assignment.h \
+#           landmarks/landmark_count_heuristic.h \
+#           landmarks/landmark_status_manager.h \
+#           landmarks/landmark_graph_merged.h \
+#           landmarks/landmark_graph.h \
+#           landmarks/landmark_factory.h \
+#           landmarks/landmark_factory_rpg_exhaust.h \
+#           landmarks/landmark_factory_rpg_sasp.h \
+#           landmarks/landmark_factory_zhu_givan.h \
+#           landmarks/util.h \
 
 # HEADERS += learning/AODE.h \
 #            learning/classifier.h \
@@ -143,15 +152,20 @@ HEADERS += landmarks/exploration.h \
 #            learning/state_space_sample.h \
 #            learning/state_vars_feature_extractor.h \
 
-HEADERS += pdbs/canonical_pdbs_heuristic.h \
-           pdbs/dominance_pruner.h \
-           pdbs/match_tree.h \
-           pdbs/max_cliques.h \
-           pdbs/pattern_generation_edelkamp.h \
-           pdbs/pattern_generation_haslum.h \
-           pdbs/pdb_heuristic.h \
-           pdbs/util.h \
-           pdbs/zero_one_pdbs_heuristic.h \
+# HEADERS += pdbs/canonical_pdbs_heuristic.h \
+#            pdbs/dominance_pruner.h \
+#            pdbs/match_tree.h \
+#            pdbs/max_cliques.h \
+#            pdbs/pattern_generation_edelkamp.h \
+#            pdbs/pattern_generation_haslum.h \
+#            pdbs/pdb_heuristic.h \
+#            pdbs/util.h \
+#            pdbs/zero_one_pdbs_heuristic.h \
+
+HEADERS += por/expansion_core.h \
+           por/por_method.h \
+           por/simple_stubborn_sets.h \
+           por/sss_expansion_core.h \
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
@@ -205,6 +219,7 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
+#CXX = g++-4.9
 DEPEND = $(CXX) -MM
 
 ## CXXFLAGS, LDFLAGS, POSTLINKOPT are options for compiler and linker
@@ -265,7 +280,7 @@ POSTLINKOPT =
 
 CXXFLAGS_RELEASE  = -O3 -DNDEBUG -fomit-frame-pointer
 CXXFLAGS_DEBUG    = -O3
-CXXFLAGS_PROFILE  = -O3 -pg
+CXXFLAGS_PROFILE  = -O3 -DNDEBUG -pg
 
 LDFLAGS_RELEASE  =
 LDFLAGS_DEBUG    =

@@ -4,6 +4,8 @@
 #include "state_id.h"
 #include "operator.h"
 
+#include <map>
+
 // For documentation on classes relevant to storing and working with registered
 // states see the file state_registry.h.
 
@@ -17,11 +19,12 @@ struct SearchNodeInfo {
     StateID parent_state_id;
     const Operator *creating_operator;
     int real_g;
+    int leaf_part_g;
 
     SearchNodeInfo()
         : status(NEW), g(-1), h(-1), h_is_dirty(false),
           parent_state_id(StateID::no_state), creating_operator(0),
-          real_g(-1) {
+          real_g(-1), leaf_part_g(-1) {
     }
 };
 

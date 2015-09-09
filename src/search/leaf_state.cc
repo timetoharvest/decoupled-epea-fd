@@ -1,0 +1,41 @@
+#include "leaf_state.h"
+
+#include "state_registry.h"
+
+#include <algorithm>
+#include <cassert>
+
+using namespace std;
+
+
+LeafState::LeafState(const PackedStateBin *buffer_, LeafStateID id_)
+    : id(id_),
+      buffer(buffer_){
+    assert(buffer);
+    assert(id != LeafStateID::no_state);
+}
+
+LeafState::~LeafState() {
+}
+
+int LeafState::operator[](int index) const {
+    assert(g_new_index[index] < g_leaf_variable_domain[id.get_factor()].size());
+    return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
+}
+
+void LeafState::dump_pddl() const {
+    cout << "           ___________" << endl;
+    for (int var = 0; var < g_leaf_variable_domain[id.get_factor()].size(); var++) {
+        //cout << "var " << g_factors[factor][var] << " val " << (*this)[g_factors[factor][var]] << endl;
+        const string &fact_name = g_fact_names[g_factors[id.get_factor()][var]][(*this)[g_factors[id.get_factor()][var]]];
+        if (fact_name != "<none of those>")
+            cout << fact_name << endl;
+    }
+    cout << "           ___________" << endl;
+}
+
+void LeafState::dump_fdr() const {
+    for (size_t i = 0; i < g_leaf_variable_domain[id.get_factor()].size(); ++i){
+        cout << "  #" << i << " [" << g_variable_name[g_factors[id.get_factor()][i]] << "] -> " << (*this)[g_factors[id.get_factor()][i]] << endl;
+    }
+}

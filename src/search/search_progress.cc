@@ -1,5 +1,6 @@
 #include "search_progress.h"
 #include "utilities.h"
+#include "factoring.h"
 
 #include <iostream>
 using namespace std;
@@ -113,6 +114,9 @@ void SearchProgress::print_statistics() const {
     cout << "Evaluations: " << evaluations << endl;
     cout << "Generated " << generated_states << " state(s)." << endl;
     cout << "Dead ends: " << dead_end_states << " state(s)." << endl;
+    if (g_use_decoupled_search){
+        cout << "Decoupled state space size: " << g_decoupled_state_space_size << endl;
+    }
     if (pathmax_corrections > 0) {
         cout << "Pathmax corrections: " << pathmax_corrections << endl;
     }

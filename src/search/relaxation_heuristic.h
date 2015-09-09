@@ -1,6 +1,7 @@
 #ifndef RELAXATION_HEURISTIC_H
 #define RELAXATION_HEURISTIC_H
 
+#include "globals.h"
 #include "heuristic.h"
 
 #include <vector>
@@ -45,12 +46,18 @@ struct Proposition {
 };
 
 class RelaxationHeuristic : public Heuristic {
+    
     void build_unary_operators(const Operator &op, int operator_no);
     void simplify();
+    
 protected:
+    
     std::vector<UnaryOperator> unary_operators;
     std::vector<std::vector<Proposition> > propositions;
     std::vector<Proposition *> goal_propositions;
+    
+
+    void reference_ops();
 
     virtual void initialize();
     virtual int compute_heuristic(const State &state) = 0;

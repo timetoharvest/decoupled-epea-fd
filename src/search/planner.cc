@@ -19,8 +19,16 @@ int main(int argc, const char **argv) {
         exit_with(EXIT_INPUT_ERROR);
     }
 
-    if (string(argv[1]).compare("--help") != 0)
+    if (string(argv[1]).compare("--help") != 0){
+	try {
+	    OptionParser::parse_factored_search(argc, argv);
+	} catch (ArgError &error) {
+	    cerr << error << endl;
+	    OptionParser::usage(argv[0]);
+	    exit_with(EXIT_INPUT_ERROR);
+	}
         read_everything(cin);
+    }
 
     SearchEngine *engine = 0;
 

@@ -45,8 +45,8 @@ protected:
     int last_expanded;
 
     virtual void initialize();
-    virtual SearchStatus step();
-    SearchStatus ehc();
+    virtual int step();
+    int ehc();
     void get_successors(const State &state, vector<const Operator *> &ops);
     void evaluate(const State &parent, const Operator *op, const State &state);
 public:

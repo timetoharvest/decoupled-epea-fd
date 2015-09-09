@@ -26,10 +26,10 @@ class IteratedSearch : public SearchEngine {
 
     SearchEngine *get_search_engine(int engine_config_start_index);
     SearchEngine *create_phase(int p);
-    SearchStatus step_return_value();
+    int step_return_value();
 
     virtual void initialize();
-    virtual SearchStatus step();
+    virtual int step();
 public:
     IteratedSearch(const Options &opts);
     virtual ~IteratedSearch();

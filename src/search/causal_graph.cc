@@ -1,5 +1,6 @@
 #include "causal_graph.h"
 
+#include "globals.h"
 #include "operator.h"
 #include "utilities.h"
 
@@ -116,22 +117,11 @@ struct CausalGraphBuilder {
         const vector<Condition> &preconditions = op.get_preconditions();
         const vector<Effect> &effects = op.get_effects();
 
-        // Handle pre->eff links from preconditions.
+        // Handle pre->eff links from prevail conditions.
         for (size_t i = 0; i < preconditions.size(); ++i) {
             int pre_var = preconditions[i].var;
             for (size_t j = 0; j < effects.size(); ++j) {
                 int eff_var = effects[j].var;
-                if (pre_var != eff_var)
-                    handle_pre_eff_arc(pre_var, eff_var);
-            }
-        }
-
-        // Handle pre->eff links from effect conditions.
-        for (size_t i = 0; i < effects.size(); ++i) {
-            int eff_var = effects[i].var;
-            const vector<Condition> &conditions = effects[i].conditions;
-            for (size_t j = 0; j < conditions.size(); ++j) {
-                int pre_var = conditions[j].var;
                 if (pre_var != eff_var)
                     handle_pre_eff_arc(pre_var, eff_var);
             }

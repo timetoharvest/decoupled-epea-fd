@@ -8,13 +8,15 @@
 
 class StateID {
     friend class StateRegistry;
+    friend class PriceTag;
     friend std::ostream &operator<<(std::ostream &os, StateID id);
     template<typename>
     friend class PerStateInformation;
 
+protected:
     int value;
-    explicit StateID(int value_)
-        : value(value_) {
+    explicit StateID(int value)
+        : value(value) {
     }
 
     // No implementation to prevent default construction

@@ -7,7 +7,6 @@
 #include <iostream>
 #include <vector>
 
-class Operator;
 class StateRegistry;
 
 typedef IntPacker::Bin PackedStateBin;
@@ -16,16 +15,17 @@ typedef IntPacker::Bin PackedStateBin;
 // states see the file state_registry.h.
 class State {
     friend class StateRegistry;
+    friend class PriceTag;
     template <class Entry>
     friend class PerStateInformation;
-    // Values for vars are maintained in a packed state and accessed on demand.
-    const PackedStateBin *buffer;
+    
     // registry isn't a reference because we want to support operator=
     const StateRegistry *registry;
+    
     StateID id;
-    // Only used by the state registry.
-    State(const PackedStateBin *buffer_, const StateRegistry &registry_,
-          StateID id_);
+    
+    // Values for vars are maintained in a packed state and accessed on demand.
+    const PackedStateBin *buffer;
 
     const PackedStateBin *get_packed_buffer() const {
         return buffer;
@@ -37,17 +37,22 @@ class State {
 
     // No implementation to prevent default construction
     State();
+    
+    // Only used by the state registry.
+    State(const PackedStateBin *buffer_, const StateRegistry &registry_,
+          StateID id_);
+    
 public:
-    ~State();
+    virtual ~State();
 
     StateID get_id() const {
         return id;
     }
 
-    int operator[](int index) const;
+    virtual int operator[](int index) const;
 
-    void dump_pddl() const;
-    void dump_fdr() const;
+    virtual void dump_pddl() const;
+    virtual void dump_fdr() const;
 };
 
 #endif

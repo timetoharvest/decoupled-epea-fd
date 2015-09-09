@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <vector>
+
 using namespace std;
 
 AxiomEvaluator::AxiomEvaluator() {
@@ -15,7 +16,7 @@ AxiomEvaluator::AxiomEvaluator() {
     // Initialize rules
     for (int i = 0; i < g_axioms.size(); i++) {
         const Operator &axiom = g_axioms[i];
-        int cond_count = axiom.get_effects()[0].conditions.size();
+        int cond_count = axiom.get_effects()[0].cond.size();
         int eff_var = axiom.get_effects()[0].var;
         int eff_val = axiom.get_effects()[0].val;
         AxiomLiteral *eff_literal = &axiom_literals[eff_var][eff_val];
@@ -24,7 +25,7 @@ AxiomEvaluator::AxiomEvaluator() {
 
     // Cross-reference rules and literals
     for (int i = 0; i < g_axioms.size(); i++) {
-        const vector<Condition> &conditions = g_axioms[i].get_effects()[0].conditions;
+        const vector<Condition> &conditions = g_axioms[i].get_effects()[0].cond;
         for (int j = 0; j < conditions.size(); j++) {
             const Condition &cond = conditions[j];
             axiom_literals[cond.var][cond.val].condition_of.push_back(&rules[i]);

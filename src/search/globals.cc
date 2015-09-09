@@ -3,9 +3,12 @@
 #include "axioms.h"
 #include "causal_graph.h"
 #include "domain_transition_graph.h"
+#include "factoring.h"
 #include "heuristic.h"
 #include "int_packer.h"
 #include "operator.h"
+#include "per_state_information.h"
+#include "price_tag.h"
 #include "rng.h"
 #include "state.h"
 #include "state_registry.h"
@@ -14,17 +17,17 @@
 #include "utilities.h"
 
 #include <cstdlib>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <set>
+#include <sstream>
+#include <stdint.h>
 #include <string>
 #include <vector>
-#include <sstream>
+
 using namespace std;
 
-#include <ext/hash_map>
-using namespace __gnu_cxx;
 
 static const int PRE_FILE_VERSION = 3;
 
@@ -38,10 +41,31 @@ static const int PRE_FILE_VERSION = 3;
 static vector<vector<set<pair<int, int> > > > g_inconsistent_facts;
 
 bool test_goal(const State &state) {
-    for (int i = 0; i < g_goal.size(); i++) {
-        if (state[g_goal[i].first] != g_goal[i].second) {
-            return false;
-        }
+    if (g_use_decoupled_search){
+	for (int i = 0; i < g_goal.size(); i++) {
+	    int var = g_goal[i].first;
+	    int val = g_goal[i].second;
+	    int affected_factor = g_belongs_to_factor[var];
+	    if (affected_factor == -1){
+		if (state[var] != val){
+		    return false;
+		}
+	    }
+	}
+	
+	const PriceTag &leaf_facts = g_price_tags[state];
+	for (int i = 0; i < g_goals_per_factor.size(); i++) {
+	    if (!g_goals_per_factor[i].empty() && leaf_facts.get_goal_cost(i) == -1){
+		return false;
+	    }
+	}
+    
+    } else {
+	for (int i = 0; i < g_goal.size(); i++) {
+	    if (state[g_goal[i].first] != g_goal[i].second){
+		return false;
+	    }
+	}
     }
     return true;
 }
@@ -225,14 +249,14 @@ void read_operators(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; i++)
-        g_operators.push_back(Operator(in, false));
+        g_operators.push_back(Operator(in, false, i));
 }
 
 void read_axioms(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; i++)
-        g_axioms.push_back(Operator(in, true));
+        g_axioms.push_back(Operator(in, true, i));
 
     g_axiom_evaluator = new AxiomEvaluator;
 }
@@ -261,21 +285,61 @@ void read_everything(istream &in) {
     check_magic(in, "begin_CG"); // ignore everything from here
 
     cout << "done reading input! [t=" << g_timer << "]" << endl;
-
+    
     // NOTE: causal graph is computed from the problem specification,
     // so must be built after the problem has been read in.
 
     cout << "building causal graph..." << flush;
     g_causal_graph = new CausalGraph;
     cout << "done! [t=" << g_timer << "]" << endl;
+    
+    // TODO initialize this and similar variables somewhere else
+    g_sum_min_goal_cost = 0;
+    
+    if (g_use_decoupled_search){
+        verify_no_axioms_no_conditional_effects();
+        
+        g_factoring->do_factoring_or_abstain();
+    }
 
-    cout << "packing state variables..." << flush;
     assert(!g_variable_domain.empty());
-    g_state_packer = new IntPacker(g_variable_domain);
-    cout << "Variables: " << g_variable_domain.size() << endl;
+    if (g_use_decoupled_search){
+        
+        vector<int> center_domains;
+        for (int var = 0; var < g_belongs_to_factor.size(); var++){
+            if (g_belongs_to_factor[var] == -1){
+                center_domains.push_back(g_variable_domain[var]);
+            }
+        }
+        // TODO adapt the size based on experiments, max so far about 7500
+        // also take into account center-factoring and new pruning methods!
+        center_domains.push_back(10000);
+        
+        cout << "packing state variables..." << flush;
+        g_state_packer = new IntPacker(center_domains);
+        cout << "Variables: " << g_number_center_vars << endl;
+        g_leaf_factor_packers = vector<IntPacker*>(g_factors.size(), 0);
+        for (int i = 0; i < g_leaf_factor_packers.size(); i++){
+            g_leaf_factor_packers[i] = new IntPacker(g_leaf_variable_domain[i]);
+        }
+    } else {
+	g_state_packer = new IntPacker(g_variable_domain);
+	g_leaf_factor_packers.push_back(new IntPacker(vector<int>(1, 2)));
+	cout << "Variables: " << g_variable_domain.size() << endl;
+    }
+    
     cout << "Bytes per state: "
          << g_state_packer->get_num_bins() *
             g_state_packer->get_bin_size_in_bytes() << endl;
+    
+    if (g_use_decoupled_search){
+	for (int i = 0; i < g_factors.size(); i++){
+	    cout << "Bytes per state of leaf factor " << i << ": "
+		<< g_leaf_factor_packers[i]->get_num_bins() *
+		    g_leaf_factor_packers[i]->get_bin_size_in_bytes() << endl;
+	}
+    }
+    
     cout << "done! [t=" << g_timer << "]" << endl;
 
     // NOTE: state registry stores the sizes of the state, so must be
@@ -325,10 +389,10 @@ void verify_no_axioms() {
 }
 
 static int get_first_conditional_effects_op_id() {
-    for (int i = 0; i < g_operators.size(); ++i) {
-        const vector<Effect> &effects = g_operators[i].get_effects();
-        for (int j = 0; j < effects.size(); ++j) {
-            const vector<Condition> &cond = effects[j].conditions;
+    for (int i = 0; i < g_operators.size(); i++) {
+        const vector<Effect> &pre_post = g_operators[i].get_effects();
+        for (int j = 0; j < pre_post.size(); j++) {
+            const vector<Condition> &cond = pre_post[j].cond;
             if (!cond.empty())
                 return i;
         }
@@ -365,17 +429,45 @@ const State &g_initial_state() {
     return g_state_registry->get_initial_state();
 }
 
+
 bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
 int g_max_action_cost = 0;
+
+int g_decoupled_state_space_size = 0;
+
+Factoring *g_factoring;
+bool g_use_decoupled_search;
+
+int g_inc_g_by;
+
+PerStateInformation<PriceTag> g_price_tags;
+vector<vector<vector<int> > > g_center_successors;
+vector<int> g_belongs_to_factor;
+int g_number_center_vars;
+vector<vector<int> > g_leaf_variable_domain;
+vector<vector<int> > g_factors;
 vector<string> g_variable_name;
 vector<int> g_variable_domain;
+vector<int> g_center_var;
+vector<int> g_new_index;
+
+vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
+vector<vector<StateID> > g_leaf_price_cache;
+vector<vector<int> > g_leaf_state_id_map;
+vector<int> g_curr_leaf_state_max_id;
+
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
 vector<int> g_default_axiom_values;
 IntPacker *g_state_packer;
+vector<IntPacker*> g_leaf_factor_packers;
 vector<int> g_initial_state_data;
 vector<pair<int, int> > g_goal;
+vector<int> g_min_goal_cost;
+int g_sum_min_goal_cost;
+vector<vector<pair<int, int> > > g_goals_per_factor;
+vector<vector<bool> > g_is_leaf_goal_state;
 vector<Operator> g_operators;
 vector<Operator> g_axioms;
 AxiomEvaluator *g_axiom_evaluator;

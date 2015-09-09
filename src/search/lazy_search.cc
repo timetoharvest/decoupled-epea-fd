@@ -23,6 +23,9 @@ LazySearch::LazySearch(const Options &opts)
       current_operator(NULL),
       current_g(0),
       current_real_g(0) {
+    if (g_use_decoupled_search && reopen_closed_nodes){
+        g_factoring->set_reopen_closed_nodes();
+    }
 }
 
 LazySearch::~LazySearch() {
@@ -102,7 +105,7 @@ void LazySearch::generate_successors() {
     vector<const Operator *> operators;
     get_successor_operators(operators);
     search_progress.inc_generated(operators.size());
-
+    
     for (int i = 0; i < operators.size(); i++) {
         int new_g = current_g + get_adjusted_cost(*operators[i]);
         int new_real_g = current_real_g + operators[i]->get_cost();
@@ -117,7 +120,7 @@ void LazySearch::generate_successors() {
     }
 }
 
-SearchStatus LazySearch::fetch_next_state() {
+int LazySearch::fetch_next_state() {
     if (open_list->empty()) {
         cout << "Completely explored state space -- no solution!" << endl;
         return FAILED;
@@ -138,7 +141,7 @@ SearchStatus LazySearch::fetch_next_state() {
     return IN_PROGRESS;
 }
 
-SearchStatus LazySearch::step() {
+int LazySearch::step() {
     // Invariants:
     // - current_state is the next state for which we want to compute the heuristic.
     // - current_predecessor is a permanent pointer to the predecessor of that state.
@@ -149,6 +152,10 @@ SearchStatus LazySearch::step() {
 
     SearchNode node = search_space.get_node(current_state);
     bool reopen = reopen_closed_nodes && (current_g < node.get_g()) && !node.is_dead_end() && !node.is_new();
+    
+    if (g_use_decoupled_search && g_factoring->ignore_current_search_state()){
+        reopen = false;
+    }
 
     if (node.is_new() || reopen) {
         StateID dummy_id = current_predecessor_id;

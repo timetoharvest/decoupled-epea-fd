@@ -1,21 +1,32 @@
-#include "globals.h"
 #include "operator.h"
 
+#include "globals.h"
+#include "factoring.h"
+#include "per_state_information.h"
+#include "price_tag.h"
+
 #include <iostream>
+
 using namespace std;
+
 
 Condition::Condition(istream &in) {
     in >> var >> val;
 }
 
-// TODO if the input file format has been changed, we would need something like this
-// Effect::Effect(istream &in) {
-//    int cond_count;
-//    in >> cond_count;
-//    for (int i = 0; i < cond_count; i++)
-//        cond.push_back(Condition(in));
-//    in >> var >> post;
-//}
+bool Condition::is_applicable(const State &state) const {
+    assert(var >= 0 && var < g_variable_name.size());
+    assert(val >= 0 && val < g_variable_domain[var]);
+    assert(!g_use_decoupled_search || g_belongs_to_factor[var] == -1);
+    return state[var] == val;
+}
+
+bool Condition::is_applicable(const LeafState &state) const {
+    assert(var >= 0 && var < g_variable_name.size());
+    assert(val >= 0 && val < g_variable_domain[var]);
+    assert(g_belongs_to_factor[var] == state.get_id().get_factor());
+    return state[var] == val;
+}
 
 
 void Operator::read_pre_post(istream &in) {
@@ -23,7 +34,7 @@ void Operator::read_pre_post(istream &in) {
     in >> cond_count;
     vector<Condition> conditions;
     conditions.reserve(cond_count);
-    for (int i = 0; i < cond_count; i++)
+    for (int i = 0; i < cond_count; ++i)
         conditions.push_back(Condition(in));
     in >> var >> pre >> post;
     if (pre != -1)
@@ -31,7 +42,7 @@ void Operator::read_pre_post(istream &in) {
     effects.push_back(Effect(var, post, conditions));
 }
 
-Operator::Operator(istream &in, bool axiom) {
+Operator::Operator(istream &in, bool axiom, int index) {
     marked = false;
 
     is_an_axiom = axiom;
@@ -62,21 +73,101 @@ Operator::Operator(istream &in, bool axiom) {
         read_pre_post(in);
         check_magic(in, "end_rule");
     }
-
-    marker1 = marker2 = false;
+    
+    affects_factor = -1;	// -1 => center factor
+    number_pre_factors = 0;
+    
+    this->index = index;
 }
 
 void Condition::dump() const {
-    cout << g_variable_name[var] << ": " << val;
+    cout << g_fact_names[var][val];
 }
 
 void Effect::dump() const {
-    cout << g_variable_name[var] << ":= " << val;
-    if (!conditions.empty()) {
+    cout << " => " << g_fact_names[var][val];
+    if (!cond.empty()) {
         cout << " if";
-        for (int i = 0; i < conditions.size(); i++) {
+        for (int i = 0; i < cond.size(); i++) {
             cout << " ";
-            conditions[i].dump();
+            cond[i].dump();
+        }
+    }
+}
+
+
+bool Operator::is_applicable(const State& state) const {
+    if (g_use_decoupled_search){    // not really efficient, but how to do it better?
+        if (!is_center_applicable(state)){
+            return false;
+        }
+        if (g_factoring->get_profile() == FORK && affects_factor == -1){
+            // in fork topology, center actions don't have leaf preconditions
+            return true;
+        }
+        const PriceTag &price_tag = g_price_tags[state];
+        for (int factor = 0; factor < g_factors.size(); factor++){
+            if (!pre_by_factor[factor + 1].empty()){
+                bool applicable = false;
+                int number_facts = price_tag.get_number_facts(factor);
+                int id = 0;
+                while (number_facts > 0){
+                    if (price_tag.has_leaf_state(id, factor)){
+                        number_facts--;
+                        if (is_applicable(LeafStateID(id, factor))){
+                            applicable = true;
+                            break;
+                        }
+                    }
+                    id++;
+                }
+                if (!applicable){
+                    return false;
+                }
+            }
+        }
+    } else {
+        for (int i = 0; i < preconditions.size(); i++){
+            if (!preconditions[i].is_applicable(state)){
+                return false;
+            }
+        }
+    }        
+    return true;
+}
+
+bool Operator::is_applicable(const LeafStateID &leaf_id) const {
+    int factor = leaf_id.get_factor() + 1;
+    if (pre_by_factor[factor].empty()){
+        return true;
+    }
+    LeafState state = g_state_registry->lookup_leaf_state(leaf_id);
+    for (int i = 0; i < pre_by_factor[factor].size(); i++){
+        if (!pre_by_factor[factor][i]->is_applicable(state)){
+            return false;
+        }
+    }
+    return true;
+}
+    
+void Operator::set_affected_factor(int factor) {
+    affects_factor = factor;
+
+    pre_by_factor.resize(g_factors.size() + 1);    
+    for (int i = 0; i < preconditions.size(); i++){
+        int f = g_belongs_to_factor[preconditions[i].var];
+        pre_by_factor[f + 1].push_back(&preconditions[i]);
+    }
+    
+    eff_by_factor.resize(g_factors.size() + 1);
+    for (int i = 0; i < effects.size(); i++){
+        int f = g_belongs_to_factor[effects[i].var];
+        eff_by_factor[f + 1].push_back(&effects[i]);
+    }
+    
+    for (int i = 1; i < pre_by_factor.size(); i++){
+        if (!pre_by_factor[i].empty()){
+            number_pre_factors++;
         }
     }
 }

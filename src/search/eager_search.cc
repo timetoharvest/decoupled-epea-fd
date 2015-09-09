@@ -7,6 +7,8 @@
 #include "g_evaluator.h"
 #include "sum_evaluator.h"
 #include "plugin.h"
+#include "factoring.h"
+#include "por/por_method.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -19,15 +21,24 @@ EagerSearch::EagerSearch(
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       do_pathmax(opts.get<bool>("pathmax")),
       use_multi_path_dependence(opts.get<bool>("mpd")),
-      open_list(opts.get<OpenList<StateID> *>("open")) {
+      open_list(opts.get<OpenList<StateID> *>("open")),
+      partial_order_reduction_method(opts.get<POR::PORMethod*>("partial_order_reduction")) {
     if (opts.contains("f_eval")) {
         f_evaluator = opts.get<ScalarEvaluator *>("f_eval");
     } else {
         f_evaluator = 0;
     }
+    if (opts.contains("pruning_heuristic")){
+        pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
+    } else {
+        pruning_heuristic = 0;
+    }
     if (opts.contains("preferred")) {
         preferred_operator_heuristics =
             opts.get_list<Heuristic *>("preferred");
+    }
+    if (g_use_decoupled_search && reopen_closed_nodes){
+        g_factoring->set_reopen_closed_nodes();
     }
 }
 
@@ -90,29 +101,51 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
+    
+    partial_order_reduction_method->dump_options();
 }
 
+EagerSearch::~EagerSearch() {
+    // TODO also delete other members?
+    delete partial_order_reduction_method;
+}
 
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
+    partial_order_reduction_method->dump_statistics();
 }
 
-SearchStatus EagerSearch::step() {
+int EagerSearch::step() {
     pair<SearchNode, bool> n = fetch_next_node();
     if (!n.second) {
         return FAILED;
     }
     SearchNode node = n.first;
+    
+    if (g_use_decoupled_search &&
+        g_factoring->get_search_type() == FDA &&
+        node.get_g() + node.get_h() >= bound){
+        cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
+             << ") is greater/equal to cost of best found plan => goal reached [t=" << g_timer << "]" << endl;
+        return SOLVED;
+    }
 
     State s = node.get_state();
+
     if (check_goal_and_set_plan(s))
         return SOLVED;
 
     vector<const Operator *> applicable_ops;
     set<const Operator *> preferred_ops;
-
+    
     g_successor_generator->generate_applicable_ops(s, applicable_ops);
+    
+    // Note that when preferred operators are in use, a preferred
+    // operator will be considered by the preferred operator queues
+    // even when pruned by the POR method.
+    partial_order_reduction_method->prune_operators(s, applicable_ops);
+    
     // This evaluates the expanded state (again) to get preferred ops
     for (int i = 0; i < preferred_operator_heuristics.size(); i++) {
         Heuristic *h = preferred_operator_heuristics[i];
@@ -126,17 +159,24 @@ SearchStatus EagerSearch::step() {
         }
     }
     search_progress.inc_evaluations(preferred_operator_heuristics.size());
-
+    
     for (int i = 0; i < applicable_ops.size(); i++) {
         const Operator *op = applicable_ops[i];
 
-        if ((node.get_real_g() + op->get_cost()) >= bound)
+	// g-value upper bound pruning for factored search => g_sum_min_goal_cost
+        int goal_cost = g_sum_min_goal_cost;
+        if (g_use_decoupled_search && g_factoring->get_profile() != FORK){
+            // because g-value might include some goal cost
+            goal_cost = max(0, goal_cost - node.get_leaf_part_g());
+        }
+        if ((node.get_g() + get_adjusted_cost(*op) + goal_cost) >= bound) {
             continue;
+        }
 
         State succ_state = g_state_registry->get_successor_state(s, *op);
+        
         search_progress.inc_generated();
         bool is_preferred = (preferred_ops.find(op) != preferred_ops.end());
-
         SearchNode succ_node = search_space.get_node(succ_state);
 
         // Previously encountered dead end. Don't re-evaluate.
@@ -159,7 +199,7 @@ SearchStatus EagerSearch::step() {
             if (h_is_dirty && use_multi_path_dependence)
                 succ_node.set_h_dirty();
         }
-
+        
         if (succ_node.is_new()) {
             // We have not seen this state before.
             // Evaluate and create a new node.
@@ -174,7 +214,8 @@ SearchStatus EagerSearch::step() {
             // before having checked that we're not in a dead end. The
             // division of responsibilities is a bit tricky here -- we
             // may want to refactor this later.
-            open_list->evaluate(node.get_g() + get_adjusted_cost(*op), is_preferred);
+	    open_list->evaluate(node.get_g() + get_adjusted_cost(*op) + g_inc_g_by, is_preferred);
+	    
             bool dead_end = open_list->is_dead_end();
             if (dead_end) {
                 succ_node.mark_as_dead_end();
@@ -194,43 +235,78 @@ SearchStatus EagerSearch::step() {
                 }
             }
             succ_node.open(succ_h, node, op);
+            
+            if (!insert_state(succ_node)){
+                // pruning for FDA* / AFRA*
+                continue;
+            }
 
             open_list->insert(succ_state.get_id());
             if (search_progress.check_h_progress(succ_node.get_g())) {
                 reward_progress();
             }
-        } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op)) {
-            // We found a new cheapest path to an open or closed state.
-            if (reopen_closed_nodes) {
-                //TODO:CR - test if we should add a reevaluate flag and if it helps
-                // if we reopen closed nodes, do that
-                if (succ_node.is_closed()) {
-                    /* TODO: Verify that the heuristic is inconsistent.
-                     * Otherwise, this is a bug. This is a serious
-                     * assertion because it can show that a heuristic that
-                     * was thought to be consistent isn't. Therefore, it
-                     * should be present also in release builds, so don't
-                     * use a plain assert. */
-                    //TODO:CR - add a consistent flag to heuristics, and add an assert here based on it
-                    search_progress.inc_reopened();
-                }
-                succ_node.reopen(node, op);
-                heuristics[0]->set_evaluator_value(succ_node.get_h());
-                // TODO: this appears fishy to me. Why is here only heuristic[0]
-                // involved? Is this still feasible in the current version?
-                open_list->evaluate(succ_node.get_g(), is_preferred);
+            
+        } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
+            
+            if (!g_use_decoupled_search || !g_factoring->ignore_current_search_state()){
+                // We found a new cheapest path to an open or closed state.
+                if (reopen_closed_nodes) {
+                    //TODO:CR - test if we should add a reevaluate flag and if it helps
+                    // if we reopen closed nodes, do that
+                    if (succ_node.is_closed()) {
+                        /* TODO: Verify that the heuristic is inconsistent.
+                        * Otherwise, this is a bug. This is a serious
+                        * assertion because it can show that a heuristic that
+                        * was thought to be consistent isn't. Therefore, it
+                        * should be present also in release builds, so don't
+                        * use a plain assert. */
+                        //TODO:CR - add a consistent flag to heuristics, and add an assert here based on it
+                        search_progress.inc_reopened();
+                    }
 
-                open_list->insert(succ_state.get_id());
-            } else {
-                // if we do not reopen closed nodes, we just update the parent pointers
-                // Note that this could cause an incompatibility between
-                // the g-value and the actual path that is traced back
-                succ_node.update_parent(node, op);
+                    succ_node.reopen(node, op);
+                    heuristics[0]->set_evaluator_value(succ_node.get_h());
+                    // TODO: this appears fishy to me. Why is here only heuristic[0]
+                    // involved? Is this still feasible in the current version?
+                    open_list->evaluate(succ_node.get_g(), is_preferred);
+
+                    if (!insert_state(succ_node)){
+                        // pruning for FDA* / AFRA*
+                        continue;
+                    }
+                    
+                    open_list->insert(succ_state.get_id());
+                } else {
+                    // in decoupled eager_greedy search, without this check
+                    // a cheaper path to a dominating state would be updated
+                    // rendering plan construction impossible for leaf states not 
+                    // reachable on the new path
+                    
+                    // if we do not reopen closed nodes, we just update the parent pointers
+                    // Note that this could cause an incompatibility between
+                    // the g-value and the actual path that is traced back
+                    succ_node.update_parent(node, op);
+                }
             }
         }
     }
-
     return IN_PROGRESS;
+}
+
+bool EagerSearch::insert_state(const SearchNode &succ_node) {
+    if (!g_use_decoupled_search || !found_solution()){
+	return true;
+    }
+    if (succ_node.get_g() + succ_node.get_h() >= bound){
+        return false;
+    }
+    // TODO if upper bound pruning is actually pruning a lot of states, runtime decreases
+    // dramatically; in instances where not much states are pruned, (similar number of evaluations)
+    // search time is significantly higher with fork-heuristic upper bound pruning
+    // NOTE overall, it seems to make sense to include the pruning, it reduces evaluations in many
+    // instances and is only detrimental in very few cases
+    // TODO check if there are any states pruned using hmax
+    return true;
 }
 
 pair<SearchNode, bool> EagerSearch::fetch_next_node() {
@@ -244,9 +320,14 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
 
     while (true) {
         if (open_list->empty()) {
-            cout << "Completely explored state space -- no solution!" << endl;
+            if (!found_solution()){     // this happens for FDA* and AFRA* only
+                cout << "Completely explored state space -- no solution! [t=" << g_timer << "]" << endl;
+            } else {
+                cout << "no more states in openlist [t=" << g_timer << "]" << endl;
+            }
             // HACK! HACK! we do this because SearchNode has no default/copy constructor
             SearchNode dummy_node = search_space.get_node(g_initial_state());
+	    
             return make_pair(dummy_node, false);
         }
         vector<int> last_key_removed;
@@ -258,9 +339,31 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
         //      instead of StateIDs
         State s = g_state_registry->lookup_state(id);
         SearchNode node = search_space.get_node(s);
+	//cout << "candidate state:" << endl;
+	//node.dump();
 
-        if (node.is_closed())
+        if (node.is_closed()) {
             continue;
+        }
+        
+        // upper bound pruning for factored search
+        if (g_use_decoupled_search && found_solution()){
+            int goal_cost = g_sum_min_goal_cost;
+            if (g_factoring->get_profile() != FORK){
+                // because g-value might include some goal cost
+                goal_cost = max(0, goal_cost - node.get_leaf_part_g());
+            }
+            if ((node.get_g() + max(goal_cost, node.get_h())) >= bound) {
+                continue;
+            }
+            if (g_factoring->get_search_type() == AFRA && pruning_heuristic != 0){
+                pruning_heuristic->evaluate(s);
+                int fork_h = pruning_heuristic->get_heuristic();
+                if (node.get_g() + fork_h >= bound){
+                    continue;
+                }
+            }
+        }
 
         if (use_multi_path_dependence) {
             assert(last_key_removed.size() == 2);
@@ -382,10 +485,14 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
         "               reopen_closed=true, pathmax=false, progress_evaluator=sum([g(), h]))\n"
         "```\n", true);
     parser.add_option<ScalarEvaluator *>("eval", "evaluator for h-value");
+    parser.add_option<Heuristic*>("pruning_heuristic", "heuristic for upper-bound pruning in anytime decoupled search", "", OptionFlags(false));
     parser.add_option<bool>("pathmax",
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
+    parser.add_option<POR::PORMethod*>("partial_order_reduction", 
+                                       "partial order reduction method",
+                                       "none");
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
@@ -404,6 +511,11 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
         evals.push_back(eval);
         OpenList<StateID> *open = \
             new TieBreakingOpenList<StateID>(evals, false, false);
+        
+        if (opts.contains("pruning_heuristic")){
+            Heuristic* pruning_h = opts.get<Heuristic*>("pruning_heuristic");
+            opts.set("pruning_heuristic", pruning_h);
+        }
 
         opts.set("open", open);
         opts.set("f_eval", f_eval);

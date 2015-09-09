@@ -24,7 +24,9 @@ class Heuristic : public ScalarEvaluator {
     std::vector<const Operator *> preferred_operators;
     bool is_unit_cost;
 protected:
+    enum SearchType{STD, STAR, CENTER};
     OperatorCost cost_type;
+    SearchType search_type;
     enum {DEAD_END = -1};
     virtual void initialize() {}
     virtual int compute_heuristic(const State &state) = 0;

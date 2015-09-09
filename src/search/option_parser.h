@@ -1,6 +1,21 @@
 #ifndef OPTION_PARSER_H
 #define OPTION_PARSER_H
 
+#include "factoring.h"
+#include "globals.h"
+#include "heuristic.h"
+#include "option_parser_util.h"
+#include "por/por_method.h"
+
+#include <algorithm>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <map>
+#include <sstream>
+#include <string>
+#include <vector>
+
 /*
 How to add support for a new type NT to the option parser:
 In this file, tell the parser how to parse NT:
@@ -28,18 +43,6 @@ If NT shall be predefinable:
 */
 
 
-
-#include <vector>
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <limits>
-#include <algorithm>
-#include <map>
-#include <memory>
-#include "option_parser_util.h"
-#include "heuristic.h"
-
 class OptionParser;
 class LandmarkGraph;
 template<class Entry>
@@ -61,18 +64,11 @@ public:
 };
 
 
-// int needs a specialization to allow "infinity".
+//int needs a specialization to allow "infinity" (=numeric_limits<int>::max())
 template <>
 class TokenParser<int> {
 public:
     static inline int parse(OptionParser &p);
-};
-
-// double needs a specialization to allow "infinity".
-template <>
-class TokenParser<double> {
-public:
-    static inline double parse(OptionParser &p);
 };
 
 
@@ -137,6 +133,12 @@ public:
     static inline std::vector<T> parse(OptionParser &p);
 };
 
+template <>
+class TokenParser<POR::PORMethod *> {
+public:
+    static inline POR::PORMethod *parse(OptionParser &p);
+};
+
 
 
 /*The OptionParser stores a parse tree, and a Options.
@@ -146,6 +148,9 @@ and the result is added to the Options.
 class OptionParser {
     static SearchEngine *parse_cmd_line_aux(
         const std::vector<std::string> &args, bool dry_run);
+    
+    static void parse_factored_search_options(std::string options, SEARCH_TYPE search_type);
+    
 public:
     OptionParser(std::string config, bool dr);
     OptionParser(ParseTree pt, bool dr);
@@ -153,6 +158,8 @@ public:
     //this is where input from the commandline goes:
     static SearchEngine *parse_cmd_line(
         int argc, const char **argv, bool dr, bool is_unit_cost);
+    
+    static void parse_factored_search(int argc, const char **argv);
 
     static std::string usage(std::string progname);
 
@@ -318,20 +325,6 @@ int TokenParser<int>::parse(OptionParser &p) {
     }
 }
 
-double TokenParser<double>::parse(OptionParser &p) {
-    ParseTree::iterator pt = p.get_parse_tree()->begin();
-    if (pt->value.compare("infinity") == 0) {
-        return std::numeric_limits<double>::infinity();
-    } else {
-        std::stringstream str_stream(pt->value);
-        double x;
-        if ((str_stream >> x).fail()) {
-            p.error("could not parse double argument " + pt->value);
-        }
-        return x;
-    }
-}
-
 //helper functions for the TokenParser-specializations
 template <class T>
 static T *lookup_in_registry(OptionParser &p) {
@@ -396,6 +389,15 @@ ScalarEvaluator *TokenParser<ScalarEvaluator *>::parse(OptionParser &p) {
 
 SearchEngine *TokenParser<SearchEngine *>::parse(OptionParser &p) {
     return lookup_in_registry<SearchEngine>(p);
+}
+
+POR::PORMethod *TokenParser<POR::PORMethod *>::parse(OptionParser &p) {
+    ParseTree::iterator pt = p.get_parse_tree()->begin();
+    if (Registry<POR::PORMethod *>::instance()->contains(pt->value)) {
+        return Registry<POR::PORMethod *>::instance()->get(pt->value) (p);
+    }
+    p.error("POR method not found");
+    return 0;
 }
 
 MergeStrategy *TokenParser<MergeStrategy *>::parse(OptionParser &p) {

@@ -1,32 +1,54 @@
+#include "successor_generator.h"
+
+#include "factoring.h"
 #include "globals.h"
 #include "operator.h"
+#include "per_state_information.h"
+#include "price_tag.h"
 #include "state.h"
-#include "successor_generator.h"
 #include "utilities.h"
+#include "state_registry.h"
 
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+
+
 using namespace std;
+
 
 class SuccessorGeneratorSwitch : public SuccessorGenerator {
     int switch_var;
     SuccessorGenerator *immediate_ops;
     vector<SuccessorGenerator *> generator_for_value;
     SuccessorGenerator *default_generator;
+    
+    SuccessorGeneratorSwitch(){};
 public:
     SuccessorGeneratorSwitch(istream &in);
     virtual void generate_applicable_ops(const State &curr,
-                                         vector<const Operator *> &ops);
+                                         vector<const Operator *> &ops, bool ignore_leaf_pre);
+    virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
+					 vector<const Operator *> &ops, int affected_factor, bool only_center_ops);
+    virtual int split_ops_center_leaf(int factor);
+    virtual void clear();
     virtual void _dump(string indent);
 };
 
 class SuccessorGeneratorGenerate : public SuccessorGenerator {
-    vector<const Operator *> op;
+    friend class SuccessorGeneratorSwitch;
+    
+    vector<const Operator *> operators;
+    
+    SuccessorGeneratorGenerate(){};
 public:
     SuccessorGeneratorGenerate(istream &in);
     virtual void generate_applicable_ops(const State &curr,
-                                         vector<const Operator *> &ops);
+                                         vector<const Operator *> &ops, bool ignore_leaf_pre);
+    virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
+					 vector<const Operator *> &ops, int affected_factor, bool only_center_ops);
+    virtual int split_ops_center_leaf(int factor);
+    virtual void clear();
     virtual void _dump(string indent);
 };
 
@@ -39,27 +61,145 @@ SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(istream &in) {
 }
 
 void SuccessorGeneratorSwitch::generate_applicable_ops(
-    const State &curr, vector<const Operator *> &ops) {
-    immediate_ops->generate_applicable_ops(curr, ops);
-    generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, ops);
-    default_generator->generate_applicable_ops(curr, ops);
+    const State &curr, vector<const Operator *> &ops, bool ignore_leaf_pre) {
+    
+    if (g_use_decoupled_search && g_factoring->get_profile() != FORK && !ignore_leaf_pre){
+        vector<const Operator*> center_ops;
+        generate_applicable_ops(curr, center_ops, true);
+        
+        vector<int> counter(g_operators.size(), 0);
+
+        const PriceTag &tag = g_price_tags[curr];
+        for (int factor = 0; factor < g_factors.size(); factor++){
+            if (!g_factoring->has_successors(factor)){
+                continue;       // is fork leaf
+            }
+
+            vector<bool> is_applicable_leaf(g_operators.size(), false);
+            int number_states = tag.get_number_facts(factor);
+            int id = 0;
+            while (number_states > 0){
+                if (!tag.has_leaf_state(id, factor)){
+                    id++;
+                    continue;
+                }
+                number_states--;
+                for (int op = 0; op < g_center_successors[factor][id].size(); op++){
+                    int index = g_center_successors[factor][id][op];
+                    if (!is_applicable_leaf[index]){
+                        counter[index]++;
+                        is_applicable_leaf[index] = true;
+                    }
+                }
+                id++;
+            }
+        }
+        vector<bool> added(g_operators.size(), false);
+        for (int i = 0; i < center_ops.size(); i++){
+            int op = center_ops[i]->get_index();
+            if (!added[op] && counter[op] == g_operators[op].get_number_pre_factors()){
+                added[op] = true;
+                ops.push_back(&g_operators[op]);
+            }
+        }
+        return;
+    }
+    immediate_ops->generate_applicable_ops(curr, ops, ignore_leaf_pre);
+    if (!g_use_decoupled_search || g_belongs_to_factor[switch_var] == -1){
+        if (!generator_for_value.empty()){
+            generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, ops, ignore_leaf_pre);
+        }
+    } else if (ignore_leaf_pre){
+        for (int val = 0; val < generator_for_value.size(); val++){
+            generator_for_value[val]->generate_applicable_ops(curr, ops, ignore_leaf_pre);
+        }
+    }
+    default_generator->generate_applicable_ops(curr, ops, ignore_leaf_pre);
+}
+
+void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
+                                                vector<const Operator*> &ops, int affected_factor, 
+                                                bool only_center_ops){
+    // ignores center preconditions
+    immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+    if (g_belongs_to_factor[switch_var] == leaf_state.get_id().get_factor()){
+	generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+    } else {
+        // this finds operators that are preconditioned by center/another leaf factor
+        for (int i = 0; i < generator_for_value.size(); i++){
+            generator_for_value[i]->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+        }
+    }
+    default_generator->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+}
+
+int SuccessorGeneratorSwitch::split_ops_center_leaf(int factor) {
+    int imm_ops = immediate_ops->split_ops_center_leaf(factor);
+    if (imm_ops == 0){
+        immediate_ops->clear();
+    }
+    
+    int def_ops = default_generator->split_ops_center_leaf(factor);
+    if (def_ops == 0){
+        default_generator->clear();
+    }
+    
+    int gfv = 0;
+    for (int i = 0; i < generator_for_value.size(); i++){
+        int tmp = generator_for_value[i]->split_ops_center_leaf(factor);
+        if (tmp == 0){
+            generator_for_value[i]->clear();
+        }
+	gfv += tmp;
+    }
+    if (gfv == 0){
+        for (int i = 0; i < generator_for_value.size(); i++){
+            delete generator_for_value[i];
+        }
+        generator_for_value = vector<SuccessorGenerator*>();
+        
+        if (imm_ops + def_ops > 0){
+            SuccessorGeneratorSwitch* gen = 0;
+            if (imm_ops == 0 && def_ops > 0){
+                gen = dynamic_cast<SuccessorGeneratorSwitch*> (default_generator);
+            } else if (def_ops == 0 && imm_ops > 0){
+                gen = dynamic_cast<SuccessorGeneratorSwitch*> (immediate_ops);
+            }
+            if (gen != 0){
+                // if the respective SG is not of type Switch, dynamic_cast will
+                // return 0
+                immediate_ops = gen->immediate_ops;
+                default_generator = gen->default_generator;
+                generator_for_value = gen->generator_for_value;
+                switch_var = gen->switch_var;
+            }
+        }
+    }
+    return imm_ops + def_ops + gfv;
+}
+
+void SuccessorGeneratorSwitch::clear() {
+    for (int i = 0; i < generator_for_value.size(); i++){
+        assert(generator_for_value[i] != 0);
+        delete generator_for_value[i];
+    }
+    generator_for_value = vector<SuccessorGenerator*>();
+    delete immediate_ops;
+    immediate_ops = new SuccessorGeneratorGenerate();
+    delete default_generator;
+    default_generator = new SuccessorGeneratorGenerate();
 }
 
 void SuccessorGeneratorSwitch::_dump(string indent) {
-    cout << indent << "switch on " << g_variable_name[switch_var] << endl;
+    cout << indent << "switch on " << g_fact_names[switch_var][0] << endl;
     cout << indent << "immediately:" << endl;
     immediate_ops->_dump(indent + "  ");
-    for (int i = 0; i < g_variable_domain[switch_var]; i++) {
-        cout << indent << "case " << i << ":" << endl;
+    for (int i = 0; i < generator_for_value.size(); i++) {
+        cout << indent << "case " << g_fact_names[switch_var][i] << ":" << endl;
         generator_for_value[i]->_dump(indent + "  ");
     }
     cout << indent << "always:" << endl;
     default_generator->_dump(indent + "  ");
-}
-
-void SuccessorGeneratorGenerate::generate_applicable_ops(const State &,
-                                                         vector<const Operator *> &ops) {
-    ops.insert(ops.end(), op.begin(), op.end());
 }
 
 SuccessorGeneratorGenerate::SuccessorGeneratorGenerate(istream &in) {
@@ -68,14 +208,55 @@ SuccessorGeneratorGenerate::SuccessorGeneratorGenerate(istream &in) {
     for (int i = 0; i < count; i++) {
         int op_index;
         in >> op_index;
-        op.push_back(&g_operators[op_index]);
+        operators.push_back(&g_operators[op_index]);
     }
 }
 
+void SuccessorGeneratorGenerate::generate_applicable_ops(const State &,
+                                                         vector<const Operator *> &ops, bool) {
+    ops.insert(ops.end(), operators.begin(), operators.end());
+}
+
+void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const LeafState &,
+							 vector<const Operator*> &ops, 
+                                                         int affected_factor, 
+                                                         bool only_center_ops) {
+    for (int i = 0; i < operators.size(); i++){
+        if (only_center_ops){
+            if (operators[i]->get_affected_factor() == -1 &&
+                (operators[i]->has_preconditions_on_factor(affected_factor)
+                  || !operators[i]->get_effects(affected_factor).empty())){
+                ops.push_back(operators[i]);
+            }
+        } else if (operators[i]->get_affected_factor() == affected_factor){
+            ops.push_back(operators[i]);
+        }
+    }
+}
+
+int SuccessorGeneratorGenerate::split_ops_center_leaf(int factor) {
+    vector<const Operator*> new_ops;
+    for (int i = 0; i < operators.size(); i++){
+	if (operators[i]->get_affected_factor() == factor){
+	    new_ops.push_back(operators[i]);
+#ifdef DEBUG_ACTION_SPLITTING
+	    cout << "added operator to successors of factor " << factor 
+	         << ": " << operators[i]->get_name() << endl;
+#endif
+	}
+    }
+    operators.swap(new_ops);
+    return operators.size();
+}
+
+void SuccessorGeneratorGenerate::clear() {
+    operators = vector<const Operator*>();
+}
+
 void SuccessorGeneratorGenerate::_dump(string indent) {
-    for (int i = 0; i < op.size(); i++) {
+    for (int i = 0; i < operators.size(); i++) {
         cout << indent;
-        op[i]->dump();
+        operators[i]->dump();
     }
 }
 

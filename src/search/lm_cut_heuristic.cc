@@ -3,8 +3,10 @@
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
+#include "per_state_information.h"
 #include "plugin.h"
 #include "state.h"
+#include "price_tag.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -58,27 +60,46 @@ void LandmarkCutHeuristic::initialize() {
     }
     goal_op_eff.push_back(&artificial_goal);
     add_relaxed_operator(goal_op_pre, goal_op_eff, 0, 0);
+    
+    // needed for factored search
+    init_num_ops = relaxed_operators.size();
+    curr_num_ops = init_num_ops;
+    
+    if (search_type != STD){
+        int s = relaxed_operators.size();
+        for (int i = 0; i < g_factors.size(); i++){
+            s += g_state_registry->size(i);
+        }
+        relaxed_operators.reserve(s);
+    }
 
     // Cross-reference relaxed operators.
     for (int i = 0; i < relaxed_operators.size(); i++) {
         RelaxedOperator *op = &relaxed_operators[i];
         for (int j = 0; j < op->precondition.size(); j++)
             op->precondition[j]->precondition_of.push_back(op);
-        for (int j = 0; j < op->effects.size(); j++)
-            op->effects[j]->effect_of.push_back(op);
+        if (search_type == STD) {   // will be referenced later
+            for (int j = 0; j < op->effects.size(); j++)
+                op->effects[j]->effect_of.push_back(op);
+        }
     }
 }
 
 void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
-    const vector<Condition> &op_preconds = op.get_preconditions();
-    const vector<Effect> &op_effects = op.get_effects();
+    const vector<Condition> &precond = op.get_preconditions();
+    const vector<Effect> &effect = op.get_effects();
     vector<RelaxedProposition *> precondition;
     vector<RelaxedProposition *> effects;
-    for (int i = 0; i < op_preconds.size(); i++)
-        precondition.push_back(&propositions[op_preconds[i].var][op_preconds[i].val]);
-    for (int i = 0; i < op_effects.size(); i++)
-        effects.push_back(&propositions[op_effects[i].var][op_effects[i].val]);
-    add_relaxed_operator(precondition, effects, &op, get_adjusted_cost(op));
+    for (int i = 0; i < precond.size(); i++)
+        precondition.push_back(&propositions[precond[i].var][precond[i].val]);
+    for (int i = 0; i < effect.size(); i++) {
+        effects.push_back(&propositions[effect[i].var][effect[i].val]);
+    }
+    int cost = get_adjusted_cost(op);
+    if (search_type == CENTER && op.get_affected_factor() != -1){
+        cost = 0;   // ASDA*/FRA*/SAT => center heuristic
+    }
+    add_relaxed_operator(precondition, effects, &op, cost);
 }
 
 void LandmarkCutHeuristic::add_relaxed_operator(
@@ -105,7 +126,7 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
     artificial_goal.status = UNREACHED;
     artificial_precondition.status = UNREACHED;
 
-    for (int i = 0; i < relaxed_operators.size(); i++) {
+    for (int i = 0; i < curr_num_ops; i++) {
         RelaxedOperator &op = relaxed_operators[i];
         op.unsatisfied_preconditions = op.precondition.size();
         op.h_max_supporter = 0;
@@ -115,8 +136,10 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
 
 void LandmarkCutHeuristic::setup_exploration_queue_state(const State &state) {
     for (int var = 0; var < propositions.size(); var++) {
-        RelaxedProposition *init_prop = &propositions[var][state[var]];
-        enqueue_if_necessary(init_prop, 0);
+	if (search_type == STD || g_belongs_to_factor[var] == -1){
+	    RelaxedProposition *init_prop = &propositions[var][state[var]];
+	    enqueue_if_necessary(init_prop, 0);
+	}
     }
     enqueue_if_necessary(&artificial_precondition, 0);
 }
@@ -210,9 +233,11 @@ void LandmarkCutHeuristic::second_exploration(
     second_exploration_queue.push_back(&artificial_precondition);
 
     for (int var = 0; var < propositions.size(); var++) {
-        RelaxedProposition *init_prop = &propositions[var][state[var]];
-        init_prop->status = BEFORE_GOAL_ZONE;
-        second_exploration_queue.push_back(init_prop);
+	if (search_type == STD || g_belongs_to_factor[var] == -1){
+	    RelaxedProposition *init_prop = &propositions[var][state[var]];
+	    init_prop->status = BEFORE_GOAL_ZONE;
+	    second_exploration_queue.push_back(init_prop);
+	}
     }
 
     while (!second_exploration_queue.empty()) {
@@ -267,7 +292,7 @@ void LandmarkCutHeuristic::validate_h_max() const {
     // Using conditional compilation to avoid complaints about unused
     // variables when using NDEBUG. This whole code does nothing useful
     // when assertions are switched off anyway.
-    for (int i = 0; i < relaxed_operators.size(); i++) {
+    for (int i = 0; i < curr_num_ops; i++) {
         const RelaxedOperator *op = &relaxed_operators[i];
         const vector<RelaxedProposition *> &prec = op->precondition;
         if (op->unsatisfied_preconditions) {
@@ -293,9 +318,70 @@ void LandmarkCutHeuristic::validate_h_max() const {
 #endif
 }
 
+void LandmarkCutHeuristic::dereference_ops() {
+    for (int i = 0; i < propositions.size(); i++){
+        for (int j = 0; j < propositions[i].size(); j++){
+            propositions[i][j].effect_of = vector<RelaxedOperator *>();
+        }
+    }
+    artificial_goal.effect_of = vector<RelaxedOperator *>();
+    artificial_precondition.precondition_of = vector<RelaxedOperator *>();
+}
+
 int LandmarkCutHeuristic::compute_heuristic(const State &state) {
     // TODO: Possibly put back in some kind of preferred operator mechanism.
-    for (int i = 0; i < relaxed_operators.size(); i++) {
+    if (search_type != STD){
+	// add virtual operators for factored search
+        
+        curr_num_ops = init_num_ops;
+	
+	const PriceTag &tag = g_price_tags[state];
+        
+        vector<RelaxedProposition*> precondition(1, &artificial_precondition);
+	for (int factor = 0; factor < g_factors.size(); factor++){
+	    int number_states = tag.get_number_facts(factor);
+            int id = 0;
+	    while (number_states > 0){
+		if (!tag.has_leaf_state(id, factor)){
+                    id++;
+		    continue;
+		}
+		number_states--;
+		int cost = 0;
+		if (search_type == STAR){
+		    cost = tag.get_info_for_fact(id, factor).cost;
+		}
+		const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+		
+		vector<RelaxedProposition*> effects;
+		for (int v = 0; v < g_leaf_variable_domain[factor].size(); v++){
+		    int var = g_factors[factor][v];
+		    effects.push_back(&propositions[var][f[var]]);
+		}
+			// RelaxedOperator's Operator is not used
+		if (curr_num_ops < relaxed_operators.size()){
+                    relaxed_operators[curr_num_ops] = RelaxedOperator(precondition, effects, 0, cost);
+                } else {
+                    relaxed_operators.push_back(RelaxedOperator(precondition, effects, 0, cost));
+                }
+                curr_num_ops++;
+                id++;
+	    }
+	}
+        
+	// Cross-reference relaxed operators.
+	for (int i = 0; i < curr_num_ops; i++) {
+	    RelaxedOperator *op = &relaxed_operators[i];
+            if (i >= init_num_ops) {
+                for (int j = 0; j < op->precondition.size(); j++)
+                    op->precondition[j]->precondition_of.push_back(op);
+            }
+	    for (int j = 0; j < op->effects.size(); j++)
+		op->effects[j]->effect_of.push_back(op);
+	}
+    }
+    
+    for (int i = 0; i < curr_num_ops; i++) {
         RelaxedOperator &op = relaxed_operators[i];
         op.cost = op.base_cost * COST_MULTIPLIER;
     }
@@ -311,8 +397,12 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
     vector<RelaxedProposition *> second_exploration_queue;
     first_exploration(state);
     // validate_h_max();  // too expensive to use even in regular debug mode
-    if (artificial_goal.status == UNREACHED)
+    if (artificial_goal.status == UNREACHED) {
+        if (search_type != STD){
+            dereference_ops();
+        }
         return DEAD_END;
+    }
 
     int num_iterations = 0;
     while (artificial_goal.h_max_cost != 0) {
@@ -379,6 +469,9 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
     }
     //cout << "[" << total_cost << "]" << flush;
     //cout << "**************************" << endl;
+    if (search_type != STD){
+        dereference_ops();
+    }
     return (total_cost + COST_MULTIPLIER - 1) / COST_MULTIPLIER;
 }
 

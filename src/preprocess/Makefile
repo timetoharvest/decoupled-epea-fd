@@ -10,7 +10,7 @@ DOWNWARD_BITWIDTH ?= 32
 ## Set DOWNWARD_LINK_RELEASE_STATICALLY to 0 or 1 (default) to
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
-DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
+DOWNWARD_LINK_RELEASE_STATICALLY ?= 0
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even

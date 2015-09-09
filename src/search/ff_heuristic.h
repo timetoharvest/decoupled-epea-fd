@@ -20,8 +20,11 @@ class FFHeuristic : public AdditiveHeuristic {
     // as a bit vector.
     typedef std::vector<bool> RelaxedPlan;
     RelaxedPlan relaxed_plan;
+    std::vector<std::vector<bool> > relaxed_leaf_plan;
+    std::vector<std::vector<UnaryOperator*> > artificial_leaf_ops;
     void mark_preferred_operators_and_relaxed_plan(
         const State &state, Proposition *goal);
+    void setup_exploration_queue_decoupled_leaf_states(const State &state);
 protected:
     virtual void initialize();
     virtual int compute_heuristic(const State &state);
