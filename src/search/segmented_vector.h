@@ -76,7 +76,7 @@ class SegmentedVector {
 
     // No implementation to forbid copies and assignment
     SegmentedVector(const SegmentedVector<Entry> &);
-    SegmentedVector & operator=(const SegmentedVector<Entry> &);
+    SegmentedVector &operator=(const SegmentedVector<Entry> &);
 public:
     SegmentedVector()
         : the_size(0) {
@@ -89,7 +89,7 @@ public:
 
     ~SegmentedVector() {
         for (size_t i = 0; i < the_size; ++i) {
-            entry_allocator.destroy(&operator[](i));
+            entry_allocator.destroy( &operator[](i));
         }
         for (size_t segment = 0; segment < segments.size(); ++segment) {
             entry_allocator.deallocate(segments[segment], SEGMENT_ELEMENTS);
@@ -150,7 +150,6 @@ public:
 
 template<class Element, class Allocator = std::allocator<Element> >
 class SegmentedArrayVector {
-    
     typedef typename Allocator::template rebind<Element>::other ElementAllocator;
     // TODO: Try to find a good value for SEGMENT_BYTES.
     static const size_t SEGMENT_BYTES = 8192;
@@ -176,15 +175,11 @@ class SegmentedArrayVector {
         Element *new_segment = element_allocator.allocate(elements_per_segment);
         segments.push_back(new_segment);
     }
-    
-    SegmentedArrayVector();
-    
-    SegmentedArrayVector & operator=(const SegmentedArrayVector<Element> &c);
-    
-    SegmentedArrayVector(const SegmentedArrayVector<Element> &c);
-    
+
+    // No implementation to forbid copies and assignment
+    SegmentedArrayVector(const SegmentedArrayVector<Element> &);
+    SegmentedArrayVector &operator=(const SegmentedArrayVector<Element> &);
 public:
-    
     SegmentedArrayVector(size_t elements_per_array_)
         : elements_per_array(elements_per_array_),
           arrays_per_segment(

@@ -4,9 +4,9 @@
 #include <vector>
 #include <ext/hash_map>
 
-class Condition;
-class LandmarkNode;
+struct Condition;
 class Operator;
+class LandmarkNode;
 
 bool _possibly_fires(const std::vector<Condition> &conditions,
                      const std::vector<std::vector<int> > &lvl_var);

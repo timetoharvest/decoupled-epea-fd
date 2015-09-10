@@ -13,7 +13,7 @@ using namespace std;
 namespace POR {
 static inline int get_op_index(const Operator *op) {
     int op_index = op - &*g_operators.begin();
-    assert(op_index >= 0 && op_index < g_operators.size());
+    assert(op_index >= 0 && (size_t) op_index < g_operators.size());
     return op_index;
 }
 
@@ -42,9 +42,9 @@ void ExpansionCore::mark_co_effects() {
     for (size_t op_no = 0; op_no < num_operators; ++op_no) {
         const Operator &op = g_operators[op_no];
         const vector<Effect> &effect = op.get_effects();
-        for (int i = 0; i < effect.size(); ++i) {
+        for (size_t i = 0; i < effect.size(); ++i) {
             int eff1_var = effect[i].var;
-            for (int j = 0; j < effect.size(); ++j) {
+            for (size_t j = 0; j < effect.size(); ++j) {
                 int eff2_var = effect[j].var;
                 if (eff1_var != eff2_var)
                     co_effects_arcs[eff1_var][eff2_var] = true;
@@ -75,7 +75,7 @@ void ExpansionCore::mark_potential_preconditions(const State &state) {
     vector<vector<bool> > marked_dtg_operators(
         num_variables, vector<bool>(num_operators));
 
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         const ExpansionCoreDTG &dtg = dtgs[var_no];
         vector<bool> forward_reachable;
         dtg.forward_reachability_analysis(state[var_no], forward_reachable);
@@ -87,7 +87,7 @@ void ExpansionCore::mark_potential_preconditions(const State &state) {
             if (forward_reachable[value] && backward_reachable[value]) {
                 const vector<ExpansionCoreDTG::Arc> &arcs =
                     dtg.nodes[value].outgoing;
-                for (int i = 0; i < arcs.size(); ++i) {
+                for (size_t i = 0; i < arcs.size(); ++i) {
                     int target_value = arcs[i].target_value;
                     int op_no = arcs[i].operator_no;
                     if (backward_reachable[target_value]) {
@@ -117,17 +117,17 @@ void ExpansionCore::mark_potential_preconditions(const State &state) {
 
         vector<int> satisfied_pre_vars;
 
-        for (int i = 0; i < prevail.size(); ++i) {
+        for (size_t i = 0; i < prevail.size(); ++i) {
             int pre_var = prevail[i].var;
             int pre_value = prevail[i].val;
             if (state[pre_var] == pre_value)
                 satisfied_pre_vars.push_back(pre_var);
         }
 
-        for (int i = 0; i < effect.size(); ++i) {
+        for (size_t i = 0; i < effect.size(); ++i) {
             int post_var = effect[i].var;
             if (marked_dtg_operators[post_var][op_no]) {
-                for (int j = 0; j < satisfied_pre_vars.size(); ++j) {
+                for (size_t j = 0; j < satisfied_pre_vars.size(); ++j) {
                     int pre_var = satisfied_pre_vars[j];
                     if (pre_var != post_var) {
                         mark_pdg_arc(pre_var, post_var);
@@ -157,7 +157,7 @@ void ExpansionCore::mark_potential_dependents(const State &state) {
       once and then reuse it.
     */
     vector<vector<bool> > marked_dtg_nodes(num_variables);
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         vector<bool> &marked_nodes = marked_dtg_nodes[var_no];
         int num_values = g_variable_domain[var_no];
         marked_nodes.resize(num_values, false);
@@ -191,24 +191,24 @@ void ExpansionCore::mark_potential_dependents(const State &state) {
 
         vector<int> pre_vars;
 
-        for (int i = 0; i < preconds.size(); ++i) {
+        for (size_t i = 0; i < preconds.size(); ++i) {
             int pre_var = preconds[i].var;
             int pre_value = preconds[i].val;
             if (marked_dtg_nodes[pre_var][pre_value])
                 pre_vars.push_back(pre_var);
         }
         
-        for (int i = 0; i < effects.size(); ++i) {
+        for (size_t i = 0; i < effects.size(); ++i) {
             int eff_var = effects[i].var;
             int pre_value = -1;
-            for (int j = 0; j < preconds.size(); j++){
+            for (size_t j = 0; j < preconds.size(); j++){
                 if (preconds[j].var == eff_var){
                     pre_value = preconds[j].val;
                     break;
                 }
             }
             if (pre_value == -1 || state[eff_var] == pre_value) {
-                for (int j = 0; j < pre_vars.size(); ++j) {
+                for (size_t j = 0; j < pre_vars.size(); ++j) {
                     int pre_var = pre_vars[j];
                     if (pre_var != eff_var) {
                         mark_pdg_arc(eff_var, pre_var);
@@ -240,11 +240,11 @@ void ExpansionCore::do_pruning(const State &state,
     vector<const Operator *> pruned_ops;
     pruned_ops.reserve(ops.size());
 
-    for (int i = 0; i < ops.size(); ++i) {
+    for (size_t i = 0; i < ops.size(); ++i) {
         const Operator *op = ops[i];
 
         const vector<Effect> &effects = op->get_effects();
-        for (int j = 0; j < effects.size(); ++j) {
+        for (size_t j = 0; j < effects.size(); ++j) {
             int var = effects[j].var;
             if (dependency_closure[var]) {
                 pruned_ops.push_back(op);
@@ -262,7 +262,7 @@ void ExpansionCore::do_pruning(const State &state,
 void ExpansionCore::compute_dependency_closure(
     const State &state, vector<bool> &dependency_closure) const {
     int unsatisfied_goal_var = -1;
-    for (int i = 0; i < g_goal.size(); ++i) {
+    for (size_t i = 0; i < g_goal.size(); ++i) {
         int var = g_goal[i].first;
         int value = g_goal[i].second;
         if (state[var] != value) {
@@ -282,7 +282,7 @@ void ExpansionCore::recurse_dependency_closure(
     if (!closure[var]) {
         closure[var] = true;
         size_t num_variables = g_variable_domain.size();
-        for (int other_var = 0; other_var < num_variables; ++other_var)
+        for (size_t other_var = 0; other_var < num_variables; ++other_var)
             if (pdg_arcs[var][other_var])
                 recurse_dependency_closure(other_var, closure);
     }
@@ -310,7 +310,7 @@ void ExpansionCore::build_dtgs() {
     dtgs.resize(num_variables);
 
     // Step 1: Create the empty DTG nodes.
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         size_t var_size = g_variable_domain[var_no];
         dtgs[var_no].nodes.resize(var_size);
         dtgs[var_no].goal_values.resize(var_size, true);
@@ -318,7 +318,7 @@ void ExpansionCore::build_dtgs() {
 
     // Step 2: Mark goal values in each DTG. Variables that are not in
     //         the goal have previously been set to "all are goals".
-    for (int i = 0; i < g_goal.size(); ++i) {
+    for (size_t i = 0; i < g_goal.size(); ++i) {
         int var_no = g_goal[i].first;
         int goal_value = g_goal[i].second;
         vector<bool> &goal_values = dtgs[var_no].goal_values;
@@ -329,14 +329,14 @@ void ExpansionCore::build_dtgs() {
     }
 
     // Step 3: Add DTG arcs.
-    for (int op_no = 0; op_no < g_operators.size(); ++op_no) {
+    for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         const vector<Condition> &preconds = op.get_preconditions();
         const vector<Effect> &effects = op.get_effects();
-        for (int i = 0; i < effects.size(); ++i) {
+        for (size_t i = 0; i < effects.size(); ++i) {
             int var = effects[i].var;
             int pre_value = -1;
-            for (int j = 0; j < preconds.size(); j++){
+            for (size_t j = 0; j < preconds.size(); j++){
                 if (var == preconds[j].var){
                     pre_value = preconds[j].val;
                     break;
@@ -389,7 +389,7 @@ void ExpansionCoreDTG::backward_relevance_analysis(
     size_t num_values = nodes.size();
     relevant.clear();
     relevant.resize(num_values, false);
-    for (int value = 0; value < num_values; ++value) {
+    for (size_t value = 0; value < num_values; ++value) {
         if (goal_values[value]) {
             recurse_backwards(value, relevant);
         }
@@ -401,7 +401,7 @@ void ExpansionCoreDTG::recurse_forwards(
     if (!reachable[value]) {
         reachable[value] = true;
         const vector<Arc> &outgoing = nodes[value].outgoing;
-        for (int i = 0; i < outgoing.size(); ++i)
+        for (size_t i = 0; i < outgoing.size(); ++i)
             recurse_forwards(outgoing[i].target_value, reachable);
     }
 }
@@ -411,7 +411,7 @@ void ExpansionCoreDTG::recurse_backwards(
     if (!relevant[value]) {
         relevant[value] = true;
         const vector<Arc> &incoming = nodes[value].incoming;
-        for (int i = 0; i < incoming.size(); ++i)
+        for (size_t i = 0; i < incoming.size(); ++i)
             recurse_backwards(incoming[i].target_value, relevant);
     }
 }

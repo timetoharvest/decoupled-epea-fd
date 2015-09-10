@@ -1,18 +1,22 @@
+#include "search_engine.h"
+
+#include "countdown_timer.h"
+#include "globals.h"
+#include "operator_cost.h"
+#include "option_parser.h"
+
 #include <cassert>
 #include <iostream>
 #include <limits>
 using namespace std;
 
-#include "globals.h"
-#include "operator_cost.h"
-#include "option_parser.h"
-#include "search_engine.h"
-#include "timer.h"
 
 SearchEngine::SearchEngine(const Options &opts)
-    : search_space(OperatorCost(opts.get_enum("cost_type"))),
-      cost_type(OperatorCost(opts.get_enum("cost_type"))) {
-    solved = false;
+    : status(IN_PROGRESS),
+      solution_found(false),
+      search_space(OperatorCost(opts.get_enum("cost_type"))),
+      cost_type(OperatorCost(opts.get_enum("cost_type"))),
+      max_time(opts.get<double>("max_time")) {
     if (opts.get<int>("bound") < 0) {
         cerr << "error: negative cost bound " << opts.get<int>("bound") << endl;
         exit_with(EXIT_INPUT_ERROR);
@@ -30,29 +34,39 @@ void SearchEngine::statistics() const {
 }
 
 bool SearchEngine::found_solution() const {
-    return solved;
+    return solution_found;
+}
+
+SearchStatus SearchEngine::get_status() const {
+    return status;
 }
 
 const SearchEngine::Plan &SearchEngine::get_plan() const {
-    assert(solved);
+    assert(solution_found);
     return plan;
 }
 
 void SearchEngine::set_plan(const Plan &p) {
-    solved = true;
+    solution_found = true;
     plan = p;
 }
 
 void SearchEngine::search() {
     initialize();
-    Timer timer;
-    while (step() == IN_PROGRESS)
-        ;
-    
+    CountdownTimer timer(max_time);
+    while (status == IN_PROGRESS) {
+        status = step();
+        if (timer.is_expired()) {
+            cout << "Time limit reached. Abort search." << endl;
+            status = TIMEOUT;
+            break;
+        }
+    }
+
     if (g_use_decoupled_search){
 	cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
     }
-    
+
     cout << "Actual search time: " << timer
          << " [t=" << g_timer << "]" << endl;
 }
@@ -69,7 +83,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 		}
 	    } else {
                 int cost = 0;
-                for (int i = 0; i < plan.size(); i++){
+                for (size_t i = 0; i < plan.size(); i++){
                     cost += get_adjusted_cost(*plan[i]);
                 }
                 if (g_factoring->get_search_type() == AFRA){
@@ -111,14 +125,14 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 
 bool SearchEngine::is_optimal_leaf_plan(const Plan &plan) {
     vector<int> goal_cost(g_factors.size(), 0);
-    for (int i = 0; i < plan.size(); i++){
+    for (size_t i = 0; i < plan.size(); i++){
 	const Operator *op = plan[i];
 	int affected_factor = op->get_affected_factor();
 	if (affected_factor != -1){
 	    goal_cost[affected_factor] += get_adjusted_cost(*op);
 	}
     }
-    for (int i = 0; i < g_min_goal_cost.size(); i++){
+    for (size_t i = 0; i < g_min_goal_cost.size(); i++){
         if (g_goals_per_factor[i].empty()){
             continue;
         }
@@ -146,4 +160,13 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "bound",
         "exclusive depth bound on g-values. Cutoffs are always performed according to "
         "the real cost, regardless of the cost_type parameter", "infinity");
+    parser.add_option<double>(
+        "max_time",
+        "maximum time in seconds the search is allowed to run for. The "
+        "timeout is only checked after each complete search step "
+        "(usually a node expansion), so the actual runtime can be arbitrarily "
+        "longer. Therefore, this parameter should not be used for time-limiting "
+        "experiments. Timed-out searches are treated as failed searches, "
+        "just like incomplete search algorithms that exhaust their search space.",
+        "infinity");
 }

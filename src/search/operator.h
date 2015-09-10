@@ -1,19 +1,24 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
 
+#include "globals.h"
+#include "leaf_state.h"
+#include "state.h"
+#include "utilities.h"
+
 #include <cassert>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "leaf_state.h"
-#include "state.h"
-
 struct Condition {
     int var;
     int val;
     explicit Condition(std::istream &in);
-    Condition(int v, int p) : var(v), val(p) {}
+    Condition(int v, int p) : var(v), val(p) {
+        assert(in_bounds(var, g_variable_name));
+        assert(val >= 0 && val < g_variable_domain[var]);
+    }
 
     bool is_applicable(const State &state) const;
     
@@ -33,13 +38,13 @@ struct Condition {
 struct Effect {
     int var;
     int val;
-    std::vector<Condition> cond;
+    std::vector<Condition> conditions;
     Effect(int var, int val, const std::vector<Condition> &co)
-        : var(var), val(val), cond(co) {}
+        : var(var), val(val), conditions(co) {}
 
     bool does_fire(const State &state) const {
-        for (int i = 0; i < cond.size(); i++){
-            if (!cond[i].is_applicable(state)){
+        for (size_t i = 0; i < conditions.size(); ++i){
+            if (!conditions[i].is_applicable(state)){
                 return false;
             }
         }
@@ -94,7 +99,7 @@ public:
     bool is_applicable(const LeafStateID &leaf_id) const;
     
     bool is_center_applicable(const State &state) const {
-        for (int i = 0; i < pre_by_factor[0].size(); i++){
+        for (size_t i = 0; i < pre_by_factor[0].size(); i++){
             if (!pre_by_factor[0][i]->is_applicable(state)){
                 return false;
             }
@@ -131,7 +136,6 @@ public:
     }
 
     int get_cost() const {return cost; }
-    
 };
 
 #endif

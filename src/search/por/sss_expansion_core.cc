@@ -18,7 +18,7 @@ std::vector<std::vector<FactEC> > operator_effects;
 // Copied from SimpleStubbornSets
 static inline int get_op_index(const Operator *op) {
     int op_index = op - &*g_operators.begin();
-    assert(op_index >= 0 && op_index < g_operators.size());
+    assert(op_index >= 0 && (size_t) op_index < g_operators.size());
     return op_index;
 }
 
@@ -204,7 +204,7 @@ void SSS_ExpansionCore::build_dtgs() {
     dtgs.resize(num_variables);
 
     // Step 1: Create the empty DTG nodes.
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         size_t var_size = g_variable_domain[var_no];
         dtgs[var_no].nodes.resize(var_size);
         dtgs[var_no].goal_values.resize(var_size, true);
@@ -212,7 +212,7 @@ void SSS_ExpansionCore::build_dtgs() {
 
     // Step 2: Mark goal values in each DTG. Variables that are not in
     //         the goal have previously been set to "all are goals".
-    for (int i = 0; i < g_goal.size(); ++i) {
+    for (size_t i = 0; i < g_goal.size(); ++i) {
         int var_no = g_goal[i].first;
         int goal_value = g_goal[i].second;
         vector<bool> &goal_values = dtgs[var_no].goal_values;
@@ -223,14 +223,14 @@ void SSS_ExpansionCore::build_dtgs() {
     }
 
     // Step 3: Add DTG arcs.
-    for (int op_no = 0; op_no < g_operators.size(); ++op_no) {
+    for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         const vector<Effect> &effects = op.get_effects();
         const vector<Condition> &preconds = op.get_preconditions();
-        for (int i = 0; i < effects.size(); ++i) {
+        for (size_t i = 0; i < effects.size(); ++i) {
             int var = effects[i].var;
             int pre_value = -1;
-            for (int j = 0; j < preconds.size(); j++){
+            for (size_t j = 0; j < preconds.size(); j++){
                 if (var == preconds[j].var){
                     pre_value = preconds[j].val;
                     break;
@@ -260,12 +260,12 @@ void SSS_ExpansionCore::build_dtgs() {
 
 void SSS_ExpansionCore::compute_v_precond() {
     v_precond.resize(g_operators.size());
-    for (int op_no = 0; op_no < g_operators.size(); op_no++) {
+    for (size_t op_no = 0; op_no < g_operators.size(); op_no++) {
         v_precond[op_no].resize(g_variable_name.size(), -1);
-        for (int var = 0; var < g_variable_name.size(); var++) {
+        for (size_t var = 0; var < g_variable_name.size(); var++) {
             const vector<Condition> &preconds = g_operators[op_no].get_preconditions();
             for (size_t i = 0; i < preconds.size(); ++i) {
-                int prevar = preconds[i].var;
+                size_t prevar = preconds[i].var;
                 if (prevar == var) {
                     v_precond[op_no][var] = preconds[i].val;
                 }
@@ -276,11 +276,11 @@ void SSS_ExpansionCore::compute_v_precond() {
 
 void SSS_ExpansionCore::build_reachability_map() {
     size_t num_variables = g_variable_domain.size();
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         ExpansionCoreDTG &dtg = dtgs[var_no];
         size_t num_values = dtg.nodes.size();
         reachability_map[var_no].resize(num_values);
-        for (int val = 0; val < num_values; ++val) {
+        for (size_t val = 0; val < num_values; ++val) {
             reachability_map[var_no][val].assign(num_values, false);
         }
         for (int start_value = 0; start_value < g_variable_domain[var_no]; start_value++) {
@@ -297,7 +297,7 @@ void SSS_ExpansionCore::recurse_forwards(int var, int start_value, int current_v
     if (!reachable[current_value]) {
         reachable[current_value] = true;
         const vector<ExpansionCoreDTG::Arc> &outgoing = dtg.nodes[current_value].outgoing;
-        for (int i = 0; i < outgoing.size(); ++i)
+        for (size_t i = 0; i < outgoing.size(); ++i)
             recurse_forwards(var, start_value, outgoing[i].target_value, reachable);
     }
 }
@@ -343,12 +343,12 @@ static inline bool mutex_precond(int op1_no, int op2_no) {
     compute_precondition_facts(op1_no, op1_preconds);
     compute_precondition_facts(op2_no, op2_preconds);
     
-    for (int i = 0; i < op1_preconds.size(); i++) {
+    for (size_t i = 0; i < op1_preconds.size(); i++) {
 	
 	 int var1 = op1_preconds[i].first;
 	 int val1 = op1_preconds[i].second;
 	
-	for (int j = 0; j < op2_preconds.size(); j++) {
+	for (size_t j = 0; j < op2_preconds.size(); j++) {
 	    
 	    int var2 = op2_preconds[j].first;
 	    int val2 = op2_preconds[j].second;
@@ -404,7 +404,7 @@ void SSS_ExpansionCore::compute_achievers() {
     size_t num_variables = g_variable_domain.size();
     achievers.resize(num_variables);
 
-    for (int var_no = 0; var_no < num_variables; ++var_no)
+    for (size_t var_no = 0; var_no < num_variables; ++var_no)
         achievers[var_no].resize(g_variable_domain[var_no]);
 
     for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {

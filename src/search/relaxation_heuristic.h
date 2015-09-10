@@ -1,7 +1,6 @@
 #ifndef RELAXATION_HEURISTIC_H
 #define RELAXATION_HEURISTIC_H
 
-#include "globals.h"
 #include "heuristic.h"
 
 #include <vector>
@@ -9,8 +8,8 @@
 class Operator;
 class State;
 
-class Proposition;
-class UnaryOperator;
+struct Proposition;
+struct UnaryOperator;
 
 struct UnaryOperator {
     int operator_no; // -1 for axioms; index into g_operators otherwise
@@ -46,12 +45,9 @@ struct Proposition {
 };
 
 class RelaxationHeuristic : public Heuristic {
-    
     void build_unary_operators(const Operator &op, int operator_no);
     void simplify();
-    
 protected:
-    
     std::vector<UnaryOperator> unary_operators;
     std::vector<std::vector<Proposition> > propositions;
     std::vector<Proposition *> goal_propositions;

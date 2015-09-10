@@ -1,14 +1,12 @@
 #ifndef SEARCH_SPACE_H
 #define SEARCH_SPACE_H
 
-#include "state.h"
-#include "search_node_info.h"
 #include "operator_cost.h"
 #include "per_state_information.h"
+#include "search_node_info.h"
+#include "state.h"
 
 #include <vector>
-#include <map>
-
 
 class Operator;
 class State;
@@ -58,15 +56,12 @@ public:
 
 
 class SearchSpace {
-    
     PerStateInformation<SearchNodeInfo> search_node_infos;
 
     OperatorCost cost_type;
-   
 public:
     SearchSpace(OperatorCost cost_type_);
     SearchNode get_node(const State &state);
-
     void trace_path(const State &goal_state,
                     std::vector<const Operator *> &path) const;
 

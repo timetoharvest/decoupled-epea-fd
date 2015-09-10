@@ -1,17 +1,18 @@
 #ifndef LAZY_SEARCH_H
 #define LAZY_SEARCH_H
 
-#include <vector>
-
-#include "open_lists/open_list.h"
-#include "search_engine.h"
 #include "state.h"
 #include "scalar_evaluator.h"
-#include "search_space.h"
+#include "search_engine.h"
 #include "search_progress.h"
+#include "search_space.h"
 
-class Heuristic;
+#include "open_lists/open_list.h"
+
+#include <vector>
+
 class Operator;
+class Heuristic;
 class Options;
 
 typedef std::pair<StateID, const Operator *> OpenListEntryLazy;
@@ -36,10 +37,10 @@ protected:
     int current_real_g;
 
     virtual void initialize();
-    virtual int step();
+    virtual SearchStatus step();
 
     void generate_successors();
-    int fetch_next_state();
+    SearchStatus fetch_next_state();
 
     void reward_progress();
 

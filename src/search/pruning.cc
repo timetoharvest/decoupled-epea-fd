@@ -20,7 +20,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     vector<bool> skip_leaf(g_factors.size(), false);
     
     // check number of reachable leaf states
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         if (!g_factoring->has_successors(factor)) {
             // is fork-leaf factor
             
@@ -108,13 +108,13 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
     // compare prices / reachability
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         if (skip_leaf[factor]) { // is fork-leaf
             continue;
         }
         int number_new_states = check.get_number_facts(factor);
         int number_old_states = reference.get_number_facts(factor);
-        int id = 0;
+        size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves

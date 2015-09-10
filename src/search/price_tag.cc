@@ -19,7 +19,7 @@ void PriceTagInfo::dump() const {
 
 
 PriceTag::PriceTag() :
-        number_facts(vector<int>(g_factors.size(), 0)), 
+        number_facts(vector<size_t>(g_factors.size(), 0)), 
         costs(vector<vector<PriceTagInfo> >(g_factors.size())),
         goal_cost(vector<int>(g_factors.size(), -1)) {
 }
@@ -31,7 +31,7 @@ PriceTag::PriceTag(const PriceTag& tag, bool copy_facts) {
         costs = tag.costs;
         goal_cost = tag.goal_cost;
     } else {
-        number_facts = vector<int>(g_factors.size(), 0);
+        number_facts = vector<size_t>(g_factors.size(), 0);
         costs = vector<vector<PriceTagInfo> >(g_factors.size());
         goal_cost = vector<int>(g_factors.size(), -1);
     }
@@ -47,8 +47,8 @@ void PriceTag::reduce_cost_by(int factor, int cost) {
         // if there is a goal state, its cost must be >= cost!
         goal_cost[factor] -= cost;
     }
-    for (int id = 0; id < costs[factor].size(); id++){
-        if (costs[factor][id].cost != INFINITY){
+    for (size_t id = 0; id < costs[factor].size(); id++){
+        if (costs[factor][id].cost != INF){
             costs[factor][id].cost -= cost;
         }
     }
@@ -241,18 +241,18 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
 }
 
 bool PriceTag::add_fact(const LeafStateID &state, int cost) {
-    int factor = state.get_factor();
+    size_t factor = state.get_factor();
     int leaf_id = g_leaf_state_id_map[factor][state.hash()];
     if (leaf_id == -1){ // get new index to prevent facts vector from being sparse
         leaf_id = g_curr_leaf_state_max_id[factor];
         g_leaf_state_id_map[factor][state.hash()] = leaf_id;
         g_curr_leaf_state_max_id[factor]++;
     }
-        
-    if (leaf_id >= costs[factor].size()){
+                    // TODO fix this
+    if (leaf_id >= (int) costs[factor].size()){
         costs[factor].resize(leaf_id + 1);
     }
-    if (costs[factor][leaf_id].cost == INFINITY){
+    if (costs[factor][leaf_id].cost == INF){
         costs[factor][leaf_id] = PriceTagInfo(cost);
         number_facts[factor]++;
         if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
@@ -286,14 +286,14 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
     
     assert(leaf_tags_to_cache.empty());
 
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         
         // skip fork leaves that don't have a goal!
         if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
             continue;
         }
         
-        int number_leaf_states = g_state_registry->size(factor);
+        size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
         cout << "       starting RPG for leaf factor " << factor << endl;
@@ -317,7 +317,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             // TODO for satisficing search, just put reachable to all states!
             // this is not true if the leaf state space is not invertible
             if (number_facts[factor] == 1){
-                int leaf_id = 0;
+                size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
                     if (has_leaf_state(leaf_id, factor)){
@@ -331,8 +331,8 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     int cost_delta = get_info_for_fact(leaf_id, factor).cost;
                     cost_delta -= tag_to_copy.get_info_for_fact(leaf_id, factor).cost;
                     
-                    int number_states = tag_to_copy.get_number_facts(factor) - 1;
-                    for (int fact = 0 ; fact < number_leaf_states; fact++){
+                    size_t number_states = tag_to_copy.get_number_facts(factor) - 1;
+                    for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
                             const PriceTagInfo &t = tag_to_copy.get_info_for_fact(fact, factor);
                             add_fact(LeafStateID(fact, factor), t.cost + cost_delta);
@@ -372,7 +372,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             change = false;
             
             int number_states = number_facts[factor];
-            int id = 0;
+            size_t id = 0;
             while (number_states > 0) {
                 if (has_leaf_state(id, factor)){
                     number_states--;
@@ -387,7 +387,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     
                     assert(id < g_leaf_state_successors[factor].size());
                     
-                    for (int o = 0; o < g_leaf_state_successors[factor][id].size(); o++){
+                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); o++){
                         
                         const Operator *op = g_leaf_state_successors[factor][id][o].first;
                         if (!g_factoring->has_predecessors(factor) || op->is_center_applicable(base_state)){
@@ -426,7 +426,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
     
     vector<SegmentedArrayVector<PackedStateBin>* > &leaf_factor_data_pool = g_state_registry->leaf_factor_data_pool;
 
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
           
         bool has_pre_on_factor = op.has_preconditions_on_factor(factor);
         const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
@@ -438,7 +438,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
             leaf_factor_data_pool[factor]->push_back(predecessor.get_packed_buffer());
             PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
 
-            for (int post = 0; post < eff_on_factor.size(); post++) {
+            for (size_t post = 0; post < eff_on_factor.size(); post++) {
                 int var = g_new_index[eff_on_factor[post]->var];
                 int val = eff_on_factor[post]->val;
                 g_leaf_factor_packers[factor]->set(buffer, var, val);
@@ -490,7 +490,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                         leaf_factor_data_pool[factor]->push_back(state.get_packed_buffer());
                         PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
 
-                        for (int post = 0; post < eff_on_factor.size(); post++) {
+                        for (size_t post = 0; post < eff_on_factor.size(); post++) {
                             int var = g_new_index[eff_on_factor[post]->var];
                             int val = eff_on_factor[post]->val;
                             g_leaf_factor_packers[factor]->set(buffer, var, val);
@@ -520,8 +520,8 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
 
 void PriceTag::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        for (int i = 0; i < leaf_tags_to_cache.size(); i++){
-            int leaf_id = leaf_tags_to_cache[i].first;
+        for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
+            size_t leaf_id = leaf_tags_to_cache[i].first;
             int factor = leaf_tags_to_cache[i].second;
             if (g_leaf_price_cache[factor].size() <= leaf_id){
                 g_leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
@@ -539,19 +539,22 @@ void PriceTag::discard_leaf_price_cache() {
 }
 
 bool PriceTag::has_leaf_state(int id, int factor) const {
-    int leaf_id = g_leaf_state_id_map[factor][id];
-    if (leaf_id >= costs[factor].size() || costs[factor][leaf_id].cost == INFINITY){
+    if (g_leaf_state_id_map[factor][id] == -1){
+        return false;
+    }
+    size_t leaf_id = g_leaf_state_id_map[factor][id];
+    if (leaf_id >= costs[factor].size() || costs[factor][leaf_id].cost == INF){
         return false;
     }
     return true;
 }
 
 const PriceTagInfo& PriceTag::get_info_for_fact(int id, int factor) const {
-    assert(g_leaf_state_id_map[factor][id] < costs[factor].size());
+    assert((size_t) g_leaf_state_id_map[factor][id] < costs[factor].size());
     return costs[factor][g_leaf_state_id_map[factor][id]];
 }
 
-int PriceTag::get_number_facts(int factor) const {
+size_t PriceTag::get_number_facts(int factor) const {
     return number_facts[factor];
 }
 

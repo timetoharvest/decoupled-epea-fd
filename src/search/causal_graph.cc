@@ -69,7 +69,7 @@ void IntRelationBuilder::compute_relation(IntRelation &result) const {
     int range = get_range();
     result.clear();
     result.resize(range);
-    for (size_t i = 0; i < range; ++i) {
+    for (int i = 0; i < range; ++i) {
         result[i].assign(int_sets[i].begin(), int_sets[i].end());
         sort(result[i].begin(), result[i].end());
     }
@@ -122,6 +122,17 @@ struct CausalGraphBuilder {
             int pre_var = preconditions[i].var;
             for (size_t j = 0; j < effects.size(); ++j) {
                 int eff_var = effects[j].var;
+                if (pre_var != eff_var)
+                    handle_pre_eff_arc(pre_var, eff_var);
+            }
+        }
+
+        // Handle pre->eff links from effect conditions.
+        for (size_t i = 0; i < effects.size(); ++i) {
+            int eff_var = effects[i].var;
+            const vector<GlobalCondition> &conditions = effects[i].conditions;
+            for (size_t j = 0; j < conditions.size(); ++j) {
+                int pre_var = conditions[j].var;
                 if (pre_var != eff_var)
                     handle_pre_eff_arc(pre_var, eff_var);
             }

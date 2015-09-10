@@ -2,11 +2,10 @@
 
 #include <cassert>
 
-
 using namespace std;
 
 
-static const size_t BITS_PER_BIN = sizeof(IntPacker::Bin) * 8;
+static const int BITS_PER_BIN = sizeof(IntPacker::Bin) * 8;
 
 
 static IntPacker::Bin get_bit_mask(int from, int to) {
@@ -26,7 +25,7 @@ static IntPacker::Bin get_bit_mask(int from, int to) {
 
 static int get_bit_size_for_range(int range) {
     int num_bits = 0;
-    while ((1U << num_bits) < range)
+    while ((1U << num_bits) < static_cast<unsigned int>(range))
         ++num_bits;
     return num_bits;
 }
@@ -56,12 +55,10 @@ public:
     }
 
     int get(const Bin *buffer) const {
-	//cout << "get var has range " << range << endl;
         return (buffer[bin_index] & read_mask) >> shift;
     }
 
     void set(Bin *buffer, int value) const {
-	//cout << "set var has range " << range << endl;
         assert(value >= 0 && value < range);
         Bin &bin = buffer[bin_index];
         bin = (bin & clear_mask) | (value << shift);
@@ -78,12 +75,10 @@ IntPacker::~IntPacker() {
 }
 
 int IntPacker::get(const Bin *buffer, int var) const {
-    //cout << "############ INTPACKER var " << var << " = " << var_infos[var].get(buffer) << endl;
     return var_infos[var].get(buffer);
 }
 
 void IntPacker::set(Bin *buffer, int var, int value) const {
-    //cout << "############ INTPACKER set var " << var << " to " << value << endl;
     var_infos[var].set(buffer, value);
 }
 

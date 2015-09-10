@@ -13,9 +13,8 @@
 
 class Operator;
 class State;
-
-class RelaxedProposition;
-class RelaxedOperator;
+struct RelaxedProposition;
+struct RelaxedOperator;
 
 class Options;
 /* TODO: Check the impact of using unary relaxed operators instead of
@@ -112,9 +111,9 @@ class LandmarkCutHeuristic : public Heuristic {
     RelaxedProposition artificial_goal;
     int num_propositions;
     AdaptiveQueue<RelaxedProposition *> priority_queue;
-    // needed for factored search
-    int init_num_ops;
-    int curr_num_ops;
+    // needed for decoupled search
+    size_t init_num_ops;
+    size_t curr_num_ops;
     
 
     virtual void initialize();
@@ -141,7 +140,7 @@ class LandmarkCutHeuristic : public Heuristic {
 
     void mark_goal_plateau(RelaxedProposition *subgoal);
     void validate_h_max() const;
-    // needed for factored search
+    // needed for decoupled search
     void dereference_ops();
 public:
     LandmarkCutHeuristic(const Options &opts);
@@ -150,7 +149,7 @@ public:
 
 inline void RelaxedOperator::update_h_max_supporter() {
     assert(!unsatisfied_preconditions);
-    for (int i = 0; i < precondition.size(); i++)
+    for (size_t i = 0; i < precondition.size(); ++i)
         if (precondition[i]->h_max_cost > h_max_supporter->h_max_cost)
             h_max_supporter = precondition[i];
     h_max_supporter_cost = h_max_supporter->h_max_cost;

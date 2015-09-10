@@ -41,7 +41,7 @@ std::vector<std::vector<Fact> > op_effects;
 
 static inline int get_op_index(const Operator *op) {
     int op_index = op - &*g_operators.begin();
-    assert(op_index >= 0 && op_index < g_operators.size());
+    assert(op_index >= 0 && (size_t) op_index < g_operators.size());
     return op_index;
 }
 
@@ -98,12 +98,12 @@ static inline bool can_conflict(int op1_no, int op2_no) {
 
 static inline bool mutex_precond(int op1_no, int op2_no) {
 
-    for (int i = 0; i < op_preconds[op1_no].size(); i++) {
+    for (size_t i = 0; i < op_preconds[op1_no].size(); i++) {
 
 	 int var1 = op_preconds[op1_no][i].var;
 	 int val1 = op_preconds[op1_no][i].val;
 	
-	for (int j = 0; j < op_preconds[op2_no].size(); j++) {
+	for (size_t j = 0; j < op_preconds[op2_no].size(); j++) {
 	    
 	    int var2 = op_preconds[op2_no][j].var;
 	    int val2 = op_preconds[op2_no][j].val;
@@ -120,7 +120,7 @@ static inline bool mutex_precond(int op1_no, int op2_no) {
 static inline bool preserved(pair<pair<int, int>, pair<int, int> >& disj, pair<pair<int, int>, pair<int, int> >& C, int op_no) {
 
     // check if op_no is applicable in a state satisfying C
-    for (int i = 0; i < op_preconds[op_no].size(); i++) {
+    for (size_t i = 0; i < op_preconds[op_no].size(); i++) {
 	int var = op_preconds[op_no][i].var;
 	int val = op_preconds[op_no][i].val;
 	
@@ -130,14 +130,14 @@ static inline bool preserved(pair<pair<int, int>, pair<int, int> >& disj, pair<p
     }
 
     // o applicable in C; check if o can possibly negate disj
-    for (int i = 0; i < op_effects[op_no].size(); i++) {
+    for (size_t i = 0; i < op_effects[op_no].size(); i++) {
 	int eff_var = op_effects[op_no][i].var;
 	int eff_val = op_effects[op_no][i].val;
 	
 	bool OK = false;
 	if (disj.first.first == eff_var && disj.first.second != eff_val) {
 	    // o negates first literal => second literal must become true or be true and not become false
-	    for (int j = 0; j < op_effects[op_no].size() && !OK; j++) {
+	    for (size_t j = 0; j < op_effects[op_no].size() && !OK; j++) {
 		int eff_var2 = op_effects[op_no][j].var;
 		int eff_val2 = op_effects[op_no][j].val;
 		
@@ -152,7 +152,7 @@ static inline bool preserved(pair<pair<int, int>, pair<int, int> >& disj, pair<p
 
 		    //second literal true in C => check that o does not falsify it
 		    bool falsifies = false;
-		    for (int j = 0; j < op_effects.size() && !falsifies; j++) {
+		    for (size_t j = 0; j < op_effects.size() && !falsifies; j++) {
 			int eff_var2 = op_effects[op_no][j].var;
 			int eff_val2 = op_effects[op_no][j].val;
 			if (eff_var2 == disj.second.first && eff_val2 != disj.second.second) {
@@ -171,7 +171,7 @@ static inline bool preserved(pair<pair<int, int>, pair<int, int> >& disj, pair<p
 	
 	if (disj.second.first == eff_var && disj.second.second != eff_val) {
 	    // o negates second literal => first literal must become true or be true and not become false
-	    for (int j = 0; j < op_effects[op_no].size() && !OK; j++) {
+	    for (size_t j = 0; j < op_effects[op_no].size() && !OK; j++) {
 		int eff_var2 = op_effects[op_no][j].var;
 		int eff_val2 = op_effects[op_no][j].val;
 		
@@ -186,7 +186,7 @@ static inline bool preserved(pair<pair<int, int>, pair<int, int> >& disj, pair<p
 
 		    //first literal true in C => check that o does not falsify it
 		    bool falsifies = false;
-		    for (int j = 0; j < op_effects.size() && !falsifies; j++) {
+		    for (size_t j = 0; j < op_effects.size() && !falsifies; j++) {
 			int eff_var2 = op_effects[op_no][j].var;
 			int eff_val2 = op_effects[op_no][j].val;
 			if (eff_var2 == disj.first.first && eff_val2 != disj.first.second) {
@@ -233,7 +233,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_small_dynamic(const Sta
         int goal_value = g_goal[i].second;
         if (state[goal_var] != goal_value) {
 	    const vector<int> &op_nos = achievers[goal_var][goal_value];
-	    if (number == -1 || op_nos.size() < number) {
+	    if (number == -1 || (int) op_nos.size() < number) {// TODO fix this
 		number = op_nos.size();
 		best_goal_var = goal_var;
 		best_goal_val = goal_value;
@@ -290,18 +290,18 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
         return make_pair(-1, -1);
     }
     const PriceTag &tag = g_price_tags[state];
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && tag.get_goal_cost(factor) == -1){
             vector<pair<int, int> > min_unsatisfied_goals = g_goals_per_factor[factor];
             int number_facts = tag.get_number_facts(factor);
-            int id = 0;
+            size_t id = 0;
             while (number_facts > 0){
                 if (tag.has_leaf_state(id, factor)){
                    number_facts--;
                    LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                    vector<pair<int, int> > curr_unsatisfied_goals;
-                   for (int g = 0; g < g_goals_per_factor[factor].size(); g++){
+                   for (size_t g = 0; g < g_goals_per_factor[factor].size(); g++){
                        int var = g_goals_per_factor[factor][g].first;
                        int val = g_goals_per_factor[factor][g].second;
                        if (s[var] != val){
@@ -388,9 +388,9 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_most_hitting(const Stat
 		// for each achiever, count the number of
 		// additional achieved unsatisfied goal facts
 		int counter = 0;
-		for (int j = 0; j < op_nos.size(); j++) {
-		    for (int k = 0; k < op_effects[op_nos[j]].size(); k++) {
-			for (int l = 0; l < g_goal.size(); l++) {
+		for (size_t j = 0; j < op_nos.size(); j++) {
+		    for (size_t k = 0; k < op_effects[op_nos[j]].size(); k++) {
+			for (size_t l = 0; l < g_goal.size(); l++) {
 			    if (op_effects[op_nos[j]][k].var == g_goal[l].first && 
 				op_effects[op_nos[j]][k].val == g_goal[l].second &&
 				state[g_goal[l].first] != g_goal[l].second &&
@@ -526,7 +526,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         
         const PriceTag &tag = g_price_tags[state];
         int number_states = tag.get_number_facts(factor);
-        int id = 0;
+        size_t id = 0;
         while (number_states > 0){
             if (tag.has_leaf_state(id, factor)){
                 number_states--;
@@ -630,7 +630,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_laarman(const S
     int best_var = -1;
     int best_val = -1;
     
-    for (int i = 0; i < precondition_facts.size() && lowest_cost != 0; i++) {
+    for (size_t i = 0; i < precondition_facts.size() && lowest_cost != 0; i++) {
 	
 	int var = precondition_facts[i].first;
 	int value = precondition_facts[i].second;
@@ -638,7 +638,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_laarman(const S
 	int cost = 0;
 	if (state[var] != value) {
 	    const vector<int> &op_nos = achievers[var][value];
-	    for (int k = 0; k < op_nos.size(); k++) {
+	    for (size_t k = 0; k < op_nos.size(); k++) {
 		if (!stubborn[op_nos[k]]) {
 		    const Operator& op = g_operators[op_nos[k]];
 		    
@@ -675,7 +675,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_small_dynamic(c
     int best_var = -1;
     int best_val = -1;
     
-    for (int i = 0; i < precondition_facts.size(); i++) {
+    for (size_t i = 0; i < precondition_facts.size(); i++) {
 	
 	int var = precondition_facts[i].first;
 	int value = precondition_facts[i].second;
@@ -684,7 +684,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_small_dynamic(c
 	    const vector<int> &op_nos = achievers[var][value];
 	    
 	    int counter = 0;
-	    for (int k = 0; k < op_nos.size(); k++) {
+	    for (size_t k = 0; k < op_nos.size(); k++) {
 		if (!stubborn[op_nos[k]])
 		    counter++;
 	    }
@@ -709,7 +709,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_random_dynamic(
     int best_var = -1;
     int best_val = -1;
     
-    for (int i = 0; i < precondition_facts.size(); i++) {
+    for (size_t i = 0; i < precondition_facts.size(); i++) {
 	
 	int var = precondition_facts[i].first;
 	int value = precondition_facts[i].second;
@@ -740,7 +740,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_most_hitting(co
     int best_var = -1;
     int best_val = -1;
     
-    for (int i = 0; i < precondition_facts.size(); i++) {
+    for (size_t i = 0; i < precondition_facts.size(); i++) {
 	
 	int var = precondition_facts[i].first;
 	int value = precondition_facts[i].second;
@@ -749,10 +749,10 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_most_hitting(co
 	    const vector<int> &op_nos = achievers[var][value];
 
 	    int counter = 0;
-	    for (int k = 0; k < op_nos.size(); k++) {
+	    for (size_t k = 0; k < op_nos.size(); k++) {
 		if (!stubborn[op_nos[k]]) {
-		    for (int a = 0; a < op_effects[op_nos[k]].size(); a++) {
-			for (int l = 0; l < precondition_facts.size(); l++) {
+		    for (size_t a = 0; a < op_effects[op_nos[k]].size(); a++) {
+			for (size_t l = 0; l < precondition_facts.size(); l++) {
 			    if (op_effects[op_nos[k]][a].var == precondition_facts[l].first && 
 				op_effects[op_nos[k]][a].val == precondition_facts[l].second &&
 				state[precondition_facts[l].first] != precondition_facts[l].second &&
@@ -866,7 +866,7 @@ static bool compare_entries(pair<pair<int, int>, int> p1, pair<pair<int, int>, i
 
 void SimpleStubbornSets::compute_static_precondition_orderings() {
     
-    for (int i = 0; i < g_operators.size(); i++) {
+    for (size_t i = 0; i < g_operators.size(); i++) {
 	
 	Operator* op = &g_operators[i];
         const vector<Condition> &preconds = op->get_preconditions();
@@ -897,7 +897,7 @@ void SimpleStubbornSets::compute_static_goal_ordering() {
     
     list<pair<pair<int, int>, int> > prioritized_facts;
     
-    for (int i = 0; i < g_goal.size(); i++) {
+    for (size_t i = 0; i < g_goal.size(); i++) {
 	const vector<int> &op_nos = achievers[g_goal[i].first][g_goal[i].second];
 	
 	// cout << "goal fact: " << op_nos.size() << " achievers" << endl;
@@ -924,7 +924,7 @@ void SimpleStubbornSets::compute_static_variable_ordering() {
 
     // list<pair<int, int> > prioritized_achievers;
 
-    for (int i = 0; i < g_variable_domain.size(); i++) {
+    for (size_t i = 0; i < g_variable_domain.size(); i++) {
 	int num_achievers = 0;
 	for (int j = 0; j < g_variable_domain[i]; j++) {
 	    num_achievers += achievers[i][j].size();
@@ -946,9 +946,9 @@ void SimpleStubbornSets::compute_random_static_variable_ordering() {
 
     // compute random variable ordering 
 
-    int number_of_vars = g_variable_domain.size();
+    size_t number_of_vars = g_variable_domain.size();
 
-    for (int i = 0; i < number_of_vars; i++) {
+    for (size_t i = 0; i < number_of_vars; i++) {
 	int random_number = g_rng.next(number_of_vars);
 	
 	global_variable_ordering[i] = random_number;
@@ -1064,7 +1064,7 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     }
     
     if (precond_choice == 6) {
-	for (int i = 0; i < g_operators.size(); i++)
+	for (size_t i = 0; i < g_operators.size(); i++)
 	    last_variables[&(g_operators[i])] = -1;
     }    
 
@@ -1132,7 +1132,7 @@ void SimpleStubbornSets::compute_interference_relation() {
 void SimpleStubbornSets::compute_achievers() {
     size_t num_variables = g_variable_domain.size();
     achievers.resize(num_variables);
-    for (int var_no = 0; var_no < num_variables; ++var_no)
+    for (size_t var_no = 0; var_no < num_variables; ++var_no)
         achievers[var_no].resize(g_variable_domain[var_no]);
 
     for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {
@@ -1256,7 +1256,7 @@ void SimpleStubbornSets::build_dtgs() {
     dtgs.resize(num_variables);
 
     // Step 1: Create the empty DTG nodes.
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         size_t var_size = g_variable_domain[var_no];
         dtgs[var_no].nodes.resize(var_size);
         dtgs[var_no].goal_values.resize(var_size, true);
@@ -1264,7 +1264,7 @@ void SimpleStubbornSets::build_dtgs() {
 
     // Step 2: Mark goal values in each DTG. Variables that are not in
     //         the goal have previously been set to "all are goals".
-    for (int i = 0; i < g_goal.size(); ++i) {
+    for (size_t i = 0; i < g_goal.size(); ++i) {
         int var_no = g_goal[i].first;
         int goal_value = g_goal[i].second;
         vector<bool> &goal_values = dtgs[var_no].goal_values;
@@ -1275,14 +1275,14 @@ void SimpleStubbornSets::build_dtgs() {
     }
 
     // Step 3: Add DTG arcs.
-    for (int op_no = 0; op_no < g_operators.size(); ++op_no) {
+    for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         const vector<Effect> &effects = op.get_effects();
         const vector<Condition> &preconds = op.get_preconditions();
-        for (int i = 0; i < effects.size(); ++i) {
+        for (size_t i = 0; i < effects.size(); ++i) {
             int var = effects[i].var;
             int pre_value = -1;
-            for (int j = 0; j < preconds.size(); j++){
+            for (size_t j = 0; j < preconds.size(); j++){
                 if (var == preconds[j].var){
                     pre_value = preconds[j].val;
                     break;
@@ -1315,11 +1315,11 @@ void SimpleStubbornSets::build_reachability_map() {
     cout << "Building reachability map ";
 
     size_t num_variables = g_variable_domain.size();
-    for (int var_no = 0; var_no < num_variables; ++var_no) {
+    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
         ExpansionCoreDTG &dtg = dtgs[var_no];
         size_t num_values = dtg.nodes.size();
         reachability_map[var_no].resize(num_values);
-        for (int val = 0; val < num_values; ++val) {
+        for (size_t val = 0; val < num_values; ++val) {
             reachability_map[var_no][val].assign(num_values, false);
         }
         for (int start_value = 0; start_value < g_variable_domain[var_no]; start_value++) {
@@ -1338,7 +1338,7 @@ void SimpleStubbornSets::recurse_forwards(int var, int start_value, int current_
     if (!reachable[current_value]) {
         reachable[current_value] = true;
         const vector<ExpansionCoreDTG::Arc> &outgoing = dtg.nodes[current_value].outgoing;
-        for (int i = 0; i < outgoing.size(); ++i)
+        for (size_t i = 0; i < outgoing.size(); ++i)
             recurse_forwards(var, start_value, outgoing[i].target_value, reachable);
     }
 }

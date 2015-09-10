@@ -12,7 +12,7 @@ protected:
     // parameters
     int goal_depth_estimate;
     int max_num_probes;
-    int min_training_set_size;
+    size_t min_training_set_size;
     bool add_every_state;
 
     int expanded;

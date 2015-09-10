@@ -19,13 +19,13 @@ LeafState::~LeafState() {
 }
 
 int LeafState::operator[](int index) const {
-    assert(g_new_index[index] < g_leaf_variable_domain[id.get_factor()].size());
+    assert((size_t) g_new_index[index] < g_leaf_variable_domain[id.get_factor()].size());
     return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
 }
 
 void LeafState::dump_pddl() const {
     cout << "           ___________" << endl;
-    for (int var = 0; var < g_leaf_variable_domain[id.get_factor()].size(); var++) {
+    for (size_t var = 0; var < g_leaf_variable_domain[id.get_factor()].size(); var++) {
         //cout << "var " << g_factors[factor][var] << " val " << (*this)[g_factors[factor][var]] << endl;
         const string &fact_name = g_fact_names[g_factors[id.get_factor()][var]][(*this)[g_factors[id.get_factor()][var]]];
         if (fact_name != "<none of those>")

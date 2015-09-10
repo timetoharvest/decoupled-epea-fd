@@ -8,13 +8,13 @@
 #include <vector>
 
 
-const int INFINITY = -1;
+const int INF = -1;
 
 // TODO create a new struct for satisficing => 0/1
 struct PriceTagInfo {
     int cost;
     
-    PriceTagInfo() : cost(INFINITY) {}
+    PriceTagInfo() : cost(INF) {}
     
     PriceTagInfo(int cost)
             : cost(cost) {}
@@ -30,7 +30,7 @@ class PriceTag {
     
 protected:
     
-    std::vector<int> number_facts;
+    std::vector<size_t> number_facts;
     
     std::vector<std::vector<PriceTagInfo> > costs;
     
@@ -78,7 +78,7 @@ public:
     
     virtual const PriceTagInfo &get_info_for_fact(int id, int factor) const;
     
-    int get_number_facts(int factor) const;
+    size_t get_number_facts(int factor) const;
     
     int get_goal_cost(int factor) const;
     

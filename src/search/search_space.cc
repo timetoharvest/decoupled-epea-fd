@@ -3,15 +3,16 @@
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
+#include "path_price_tag.h"
 #include "price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
-#include "path_price_tag.h"
 
 #include <cassert>
 #include <limits>
 
 using namespace std;
+using namespace __gnu_cxx;
 
 
 SearchNode::SearchNode(StateID state_id_, SearchNodeInfo &info_,
@@ -149,7 +150,6 @@ void SearchNode::dump() const {
     }
 }
 
-
 SearchSpace::SearchSpace(OperatorCost cost_type_)
     : cost_type(cost_type_) {
     if (g_use_decoupled_search){
@@ -207,12 +207,12 @@ void SearchSpace::trace_path(const State &goal_state,
         // reconstruct leaf paths
         vector<PathPriceTag> price_tags(states.size());
         
-        for (int factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); factor++){
             price_tags[0].add_fact(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
         }
         price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
         
-        for (int i = 1; i < states.size(); i++){
+        for (size_t i = 1; i < states.size(); i++){
             PathPriceTag &tag = price_tags[i];
             
             if (g_factoring->get_profile() != FORK){
@@ -238,20 +238,20 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<set<int> > marked_leaf_states(g_factors.size());       
         
         // mark leaf goal states
-        for (int factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); factor++){
             if (!g_goals_per_factor[factor].empty()){
                 int min_cost = numeric_limits<int>::max();
                 int best_leaf_state_id = -1;
                 
                 // TODO probably iterate over leaf states in that tag as usual?
-                for (int id = 0; id < g_is_leaf_goal_state[factor].size(); id++){
+                for (size_t id = 0; id < g_is_leaf_goal_state[factor].size(); id++){
                     if (g_is_leaf_goal_state[factor][id] && price_tags[0].has_leaf_state(id, factor)){
                         int new_cost = price_tags[0].get_info_for_fact(id, factor).cost;
                         if (min_cost > new_cost){
                             min_cost = new_cost;
                             best_leaf_state_id = id;
                         }
-                    }                        
+                    }
                 }
 
                 marked_leaf_states[factor].insert(best_leaf_state_id);
@@ -275,7 +275,7 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<int> best_center_supporter(g_factors.size());
         
         // go through center path and fill in leaf actions
-        for (int step = 0; step < price_tags.size(); step++){
+        for (size_t step = 0; step < price_tags.size(); step++){
         
             const Operator *op = 0;
             if (step < path.size()){
@@ -286,7 +286,7 @@ void SearchSpace::trace_path(const State &goal_state,
             vector<vector<pair<int, int> > > leaf_pre_by_factor;
             if (g_factoring->get_profile() != FORK && step < path.size()){
                 leaf_pre_by_factor.resize(g_factors.size());
-                for (int pre = 0; pre < op->get_preconditions().size(); pre++){
+                for (size_t pre = 0; pre < op->get_preconditions().size(); pre++){
                     const Condition &prev = op->get_preconditions()[pre];
                     int factor = g_belongs_to_factor[prev.var];
                     if (factor != -1){
@@ -303,8 +303,8 @@ void SearchSpace::trace_path(const State &goal_state,
             cout << "current root state: " << current_state.get_id() << endl;
             current_state.dump_pddl();
             const PriceTag &r = g_price_tags[current_state];
-            for (int factor = 0; factor < g_factors.size(); factor++){
-                for (int i = 0; i < g_state_registry->size(factor); i++){
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                for (size_t i = 0; i < g_state_registry->size(factor); ++i){
                     if (r.has_leaf_state(i, factor)){
                         g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
                     }
@@ -314,14 +314,14 @@ void SearchSpace::trace_path(const State &goal_state,
 #endif      
             
             // iterate over leaf factors
-            for (int factor = 0; factor < g_factors.size(); factor++){
+            for (size_t factor = 0; factor < g_factors.size(); factor++){
                 
                 bool change = true;
                 while (change){
                     change = false;
 
                     int number_states = price_tags[step].get_number_facts(factor);
-                    int id = 0;
+                    size_t id = 0;
                     while (number_states > 0){          // iterate over all new leaf states
                         if (price_tags[step].has_leaf_state(id, factor)){
                             number_states--;
@@ -409,7 +409,7 @@ void SearchSpace::trace_path(const State &goal_state,
                             number_states--;
                             bool fulfills_pre = true;
                             LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                            for (int pre = 0; pre < leaf_pre_by_factor[factor].size(); pre++){
+                            for (size_t pre = 0; pre < leaf_pre_by_factor[factor].size(); pre++){
                                 int var = leaf_pre_by_factor[factor][pre].first;
                                 int val = leaf_pre_by_factor[factor][pre].second;
                                 if (leaf_state[var] != val){
@@ -441,7 +441,7 @@ void SearchSpace::trace_path(const State &goal_state,
         }
         
 #ifndef NDEBUG
-        for (int i = 0; i < g_factors.size(); i++){
+        for (size_t i = 0; i < g_factors.size(); ++i){
             assert(marked_leaf_states[i].empty());
         }
 #endif
@@ -472,7 +472,7 @@ void SearchSpace::dump() const {
 
 void SearchSpace::statistics() const {
     cout << "Number of registered states: " << g_state_registry->size() << endl;
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         cout << "Number of registered leaf states in factor " << factor << ": " << g_state_registry->size(factor) << endl;
     }
 }
