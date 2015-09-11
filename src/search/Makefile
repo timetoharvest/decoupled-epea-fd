@@ -220,7 +220,6 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-CXX = g++-4.9
 DEPEND = $(CXX) -MM
 
 ## CXXFLAGS, LDFLAGS, POSTLINKOPT are options for compiler and linker
@@ -238,7 +237,8 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-CXXFLAGS += -std=c++11 -Wall -Wextra -pedantic -Wno-deprecated -Werror
+# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc 4.4.
+CXXFLAGS += -std=c++0x -Wall -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -253,7 +253,12 @@ endif
 ## 64-bit, but in some cases we do; e.g. we did for the IPC.) See
 ## http://stackoverflow.com/questions/4643197/missing-include-bits-cconfig-h-when-cross-compiling-64-bit-program-on-32-bit.
 ifeq ($(DOWNWARD_OS), linux) # workarounds only valid for Linux...
+    HAVE_GCC_4_4 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.4\.\\\))
     HAVE_GCC_4_5 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.5\.\\\))
+
+    ifdef HAVE_GCC_4_4
+        CXXFLAGS += -I/usr/include/c++/4.4/i686-linux-gnu
+    endif
 
     ifdef HAVE_GCC_4_5
         CXXFLAGS += -I/usr/include/c++/4.5/i686-linux-gnu
