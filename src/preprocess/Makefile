@@ -10,7 +10,7 @@ DOWNWARD_BITWIDTH ?= 32
 ## Set DOWNWARD_LINK_RELEASE_STATICALLY to 0 or 1 (default) to
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
-DOWNWARD_LINK_RELEASE_STATICALLY ?= 0
+DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
@@ -103,6 +103,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
+# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc 4.4.
 CXXFLAGS += -std=c++0x -Wall -Wextra -pedantic -Wno-sign-compare -Wno-deprecated -Werror
 
 ## The following lines contain workarounds for bugs when
@@ -111,7 +112,12 @@ CXXFLAGS += -std=c++0x -Wall -Wextra -pedantic -Wno-sign-compare -Wno-deprecated
 ## 64-bit, but in some cases we do; e.g. we did for the IPC.) See
 ## http://stackoverflow.com/questions/4643197/missing-include-bits-cconfig-h-when-cross-compiling-64-bit-program-on-32-bit.
 ifeq ($(DOWNWARD_OS), linux) # workarounds only valid for Linux...
+    HAVE_GCC_4_4 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.4\.\\\))
     HAVE_GCC_4_5 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.5\.\\\))
+
+    ifdef HAVE_GCC_4_4
+        CXXFLAGS += -I/usr/include/c++/4.4/i686-linux-gnu
+    endif
 
     ifdef HAVE_GCC_4_5
         CXXFLAGS += -I/usr/include/c++/4.5/i686-linux-gnu
