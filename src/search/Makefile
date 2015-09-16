@@ -238,7 +238,7 @@ CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
 # Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc 4.4.
-CXXFLAGS += -std=c++0x -Wall -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
