@@ -67,7 +67,7 @@ void LandmarkCutHeuristic::initialize() {
     
     if (search_type != STD){
         int s = relaxed_operators.size();
-        for (size_t i = 0; i < g_factors.size(); i++){
+        for (size_t i = 0; i < g_factors.size(); ++i){
             s += g_state_registry->size(i);
         }
         relaxed_operators.reserve(s);
@@ -116,7 +116,7 @@ void LandmarkCutHeuristic::add_relaxed_operator(
 void LandmarkCutHeuristic::setup_exploration_queue() {
     priority_queue.clear();
 
-    for (size_t var = 0; var < propositions.size(); var++) {
+    for (size_t var = 0; var < propositions.size(); ++var) {
         for (size_t value = 0; value < propositions[var].size(); value++) {
             RelaxedProposition &prop = propositions[var][value];
             prop.status = UNREACHED;
@@ -281,7 +281,7 @@ void LandmarkCutHeuristic::mark_goal_plateau(RelaxedProposition *subgoal) {
     if (subgoal && subgoal->status != GOAL_ZONE) {
         subgoal->status = GOAL_ZONE;
         const vector<RelaxedOperator *> &effect_of = subgoal->effect_of;
-        for (size_t i = 0; i < effect_of.size(); i++)
+        for (size_t i = 0; i < effect_of.size(); ++i)
             if (effect_of[i]->cost == 0)
                 mark_goal_plateau(effect_of[i]->h_max_supporter);
     }
@@ -319,8 +319,8 @@ void LandmarkCutHeuristic::validate_h_max() const {
 }
 
 void LandmarkCutHeuristic::dereference_ops() {
-    for (size_t i = 0; i < propositions.size(); i++){
-        for (size_t j = 0; j < propositions[i].size(); j++){
+    for (size_t i = 0; i < propositions.size(); ++i){
+        for (size_t j = 0; j < propositions[i].size(); ++j){
             propositions[i][j].effect_of = vector<RelaxedOperator *>();
         }
     }
@@ -342,43 +342,43 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
 	    int number_states = tag.get_number_facts(factor);
             int id = 0;
 	    while (number_states > 0){
-		if (!tag.has_leaf_state(id, factor)){
-                    id++;
-		    continue;
+		if (tag.has_leaf_state(id, factor)){
+                    --number_states;
+                    int cost = 0;
+                    if (search_type == STAR){
+                        cost = tag.get_info_for_fact(id, factor).cost;
+                    }
+                    const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    
+                    vector<RelaxedProposition*> effects;
+                    for (size_t v = 0; v < g_leaf_variable_domain[factor].size(); ++v){
+                        int var = g_factors[factor][v];
+                        effects.push_back(&propositions[var][f[var]]);
+                    }
+                            // RelaxedOperator's Operator is not used
+                    if (curr_num_ops < relaxed_operators.size()){
+                        relaxed_operators[curr_num_ops] = RelaxedOperator(precondition, effects, 0, cost);
+                    } else {
+                        relaxed_operators.push_back(RelaxedOperator(precondition, effects, 0, cost));
+                    }
+                    ++curr_num_ops;
 		}
-		number_states--;
-		int cost = 0;
-		if (search_type == STAR){
-		    cost = tag.get_info_for_fact(id, factor).cost;
-		}
-		const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-		
-		vector<RelaxedProposition*> effects;
-		for (size_t v = 0; v < g_leaf_variable_domain[factor].size(); v++){
-		    int var = g_factors[factor][v];
-		    effects.push_back(&propositions[var][f[var]]);
-		}
-			// RelaxedOperator's Operator is not used
-		if (curr_num_ops < relaxed_operators.size()){
-                    relaxed_operators[curr_num_ops] = RelaxedOperator(precondition, effects, 0, cost);
-                } else {
-                    relaxed_operators.push_back(RelaxedOperator(precondition, effects, 0, cost));
-                }
-                curr_num_ops++;
-                id++;
+                ++id;
 	    }
 	}
         
 	// Cross-reference relaxed operators.
-	for (size_t i = 0; i < curr_num_ops; i++) {
+	for (size_t i = 0; i < curr_num_ops; ++i) {
 	    RelaxedOperator *op = &relaxed_operators[i];
             if (i >= init_num_ops) {
-                for (size_t j = 0; j < op->precondition.size(); j++)
+                for (size_t j = 0; j < op->precondition.size(); ++j){
                     op->precondition[j]->precondition_of.push_back(op);
+                }
             }
-	    for (size_t j = 0; j < op->effects.size(); j++)
-		op->effects[j]->effect_of.push_back(op);
-	}
+            for (size_t j = 0; j < op->effects.size(); ++j){
+                op->effects[j]->effect_of.push_back(op);
+            }
+        }
     }
     
     for (size_t i = 0; i < curr_num_ops; ++i) {
