@@ -28,7 +28,7 @@ EagerSearch::EagerSearch(
     } else {
         f_evaluator = 0;
     }
-    if (opts.contains("pruning_heuristic")){
+    if (g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
     } else {
         pruning_heuristic = 0;
