@@ -15,6 +15,7 @@
 #include <boost/any.hpp>
 
 
+class Factoring;
 class MergeStrategy;
 class ShrinkStrategy;
 class LandmarkGraph;
@@ -25,6 +26,7 @@ class SearchEngine;
 class OptionParser;
 template<class Entry>
 class OpenList;
+class Pruning;
 
 
 struct ParseNode {
@@ -208,6 +210,13 @@ struct TypeNamer<std::string> {
 };
 
 template <>
+struct TypeNamer<Factoring *> {
+    static std::string name() {
+        return "Factoring";
+    }
+};
+
+template <>
 struct TypeNamer<Heuristic *> {
     static std::string name() {
         return "Heuristic";
@@ -239,6 +248,13 @@ template <>
 struct TypeNamer<ParseTree> {
     static std::string name() {
         return "ParseTree (this just means the input is parsed at a later point. The real type is probably a search engine.)";
+    }
+};
+
+template <>
+struct TypeNamer<Pruning *> {
+    static std::string name() {
+        return "Pruning";
     }
 };
 

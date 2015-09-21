@@ -13,7 +13,7 @@
 
 // TODO think about weaker factoring constraints than those of the CG.
 // e.g. in ParcPrinter, there is a perfect inverted fork, that is not present
-// in the CG because of a single action that has (and can only) be executed once
+// in the CG because of a single action that has to (and can only) be executed once
 // to "initialize the printer"
 
 enum PROFILE {
@@ -25,13 +25,13 @@ enum PROFILE {
     OPENSTACKS, // domain dependant factoring
     TPP_CONSTRAINED, // domain dependant factoring
     INV_TPP_CONSTRAINED, // domain dependant factoring
-    INCI_ARCS
+    INC_ARCS
 };
 
 enum SEARCH_TYPE {
     FRA,        // stop if leaf plan not optimal
-    AFRA,       // anytime search
-    FDA,        // fork-decoupled search
+    ASDA,       // anytime search
+    SDA,        // fork-decoupled search
     SAT         // satisficing search
 };
 
@@ -71,8 +71,10 @@ public:
     }
 };
 
-class SearchSpace;
+class OptionParser;
+class Options;
 class Pruning;
+class SearchSpace;
 
 class Factoring {
     
@@ -116,7 +118,7 @@ protected:
     
     void exit_error(std::string message, int exit_code) const;
     
-    Factoring(SEARCH_TYPE search_type, Pruning *pruning);
+    Factoring(const Options &ops);
     
 public:
     
@@ -182,9 +184,9 @@ public:
         reopen_closed_nodes = true;
     }
     
+    static void add_options_to_parser(OptionParser &parser);
+    
 };
-
-Factoring* produce_factoring(SEARCH_TYPE search_type, PROFILE type, Pruning *pruning);
 
 #endif
  

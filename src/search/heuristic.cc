@@ -1,5 +1,6 @@
 #include "heuristic.h"
 
+#include "factoring.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "operator_cost.h"
@@ -17,7 +18,7 @@ Heuristic::Heuristic(const Options &opts)
 
     if (g_use_decoupled_search){
         if (search_type == STD){
-            if (g_factoring->get_search_type() == FDA){
+            if (g_factoring->get_search_type() == SDA){
                 search_type = STAR;
                 cout << "set type of heuristic to STAR" << endl;
             } else {

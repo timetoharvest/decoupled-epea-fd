@@ -22,7 +22,7 @@ int main(int argc, const char **argv) {
 
     if (string(argv[1]).compare("--help") != 0){
 	try {
-	    OptionParser::parse_factored_search(argc, argv);
+	    OptionParser::parse_decoupled_search(argc, argv);
 	} catch (ArgError &error) {
 	    cerr << error << endl;
 	    OptionParser::usage(argv[0]);

@@ -3,6 +3,8 @@
 #include "causal_graph.h"
 #include "globals.h"
 #include "operator.h"
+#include "option_parser.h"
+#include "plugin.h"
 #include "pruning.h"
 #include "../preprocess/scc.h"
 #include "successor_generator.h"
@@ -33,11 +35,23 @@ void InteractionGraph::add_dependency(int from, int to) {
     }
 }
 
-Factoring::Factoring(SEARCH_TYPE search_type, Pruning *pruning) {
-    max_leaf_size = std::numeric_limits<unsigned int>::max();
-    this->pruning = pruning;
-    this->search_type = search_type;
-    reopen_closed_nodes = false;
+Factoring::Factoring(const Options &opts) : 
+            reopen_closed_nodes(false),
+            search_type(SEARCH_TYPE(opts.get_enum("search_type"))),
+            max_leaf_size(opts.get<int>("max_leaf_size")) {
+    switch(search_type){
+        case FRA : cout << "performing Fork-Root A* search" << endl; break;
+        case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
+        case SDA : cout << "performing Star Decoupled A* search" << endl; break;
+        case SAT : cout << "performing decoupled satisficing search" << endl; break;
+    }
+    cout << "maximum leaf factor size " << max_leaf_size << endl;
+    if (opts.contains("pruning")){
+        pruning = opts.get<Pruning*>("pruning");
+    } else {
+        pruning = new BasicPruning();
+        cout << "using default pruning method: BasicPruning" << endl;
+    }
 }
 
 
@@ -45,9 +59,10 @@ class XShapeFactoring : public Factoring {
     
 public:
     
-    XShapeFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    XShapeFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = X_SHAPE;
+        cout << "using X-shape factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -58,9 +73,10 @@ class CenterFactoring : public Factoring {
     
 public:
     
-    CenterFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    CenterFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = CENTER;
+        cout << "using random 2-factor factoring profile" << endl;
     };
   
     virtual FactoredVars get_factoring();
@@ -71,9 +87,10 @@ class InvForkFactoring : public Factoring {
   
 public:
     
-    InvForkFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    InvForkFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = I_FORK;
+        cout << "using inverted-fork factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -84,9 +101,10 @@ class ForkFactoring : public Factoring {
     
 public:
     
-    ForkFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    ForkFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = FORK;
+        cout << "using fork factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -97,9 +115,10 @@ class IncidentArcsFactoring : public Factoring {
   
 public:
     
-    IncidentArcsFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
-        profile = INCI_ARCS;
+    IncidentArcsFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = INC_ARCS;
+        cout << "using incident-arcs factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -110,9 +129,10 @@ class SokobanFactoring : public Factoring {
   
 public:
     
-    SokobanFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    SokobanFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = SOKOBAN;
+        cout << "using sokoban factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -123,9 +143,10 @@ class OpenstacksFactoring : public Factoring {
   
 public:
     
-    OpenstacksFactoring(SEARCH_TYPE search_type, Pruning *pruning)
-            : Factoring(search_type, pruning) {
+    OpenstacksFactoring(const Options &opts)
+            : Factoring(opts) {
         profile = OPENSTACKS;
+        cout << "using openstacks factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -138,9 +159,10 @@ class TPPConstrainedFactoring : public Factoring {
   
 public:
     
-    TPPConstrainedFactoring(SEARCH_TYPE search_type, Pruning *pruning, bool inverted = false)
-            : Factoring(search_type, pruning), inverted(inverted) {
+    TPPConstrainedFactoring(const Options &opts)
+            : Factoring(opts), inverted(opts.get<bool>("inverted")) {
         profile = OPENSTACKS;
+        cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -1163,24 +1185,78 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
 }
 
 
-
-Factoring* produce_factoring(SEARCH_TYPE search_type, PROFILE type, Pruning *pruning) {
-    switch (type){
-        case CENTER : return new CenterFactoring(search_type, pruning);
-        case FORK : return new ForkFactoring(search_type, pruning);
-        case I_FORK : return new InvForkFactoring(search_type, pruning);
-        case X_SHAPE : return new XShapeFactoring(search_type, pruning);
-	case SOKOBAN : return new SokobanFactoring(search_type, pruning);
-	case OPENSTACKS : return new OpenstacksFactoring(search_type, pruning);
-	case INCI_ARCS : return new IncidentArcsFactoring(search_type, pruning);
-        case TPP_CONSTRAINED : return new TPPConstrainedFactoring(search_type, pruning);
-        case INV_TPP_CONSTRAINED : return new TPPConstrainedFactoring(search_type, pruning, true);
-        
-        default : 
-            cout << "ERROR: unknown factoring type" << endl;
-            exit(EXIT_INPUT_ERROR);
-    }
+void Factoring::add_options_to_parser(OptionParser &parser) {
+    // TODO add docu
+    parser.add_option<Pruning*>(
+        "pruning", 
+        "TODO", 
+        "",
+        OptionFlags(false));
+    vector<string> search_types;
+    search_types.push_back("fra");
+    search_types.push_back("asda");
+    search_types.push_back("sda");
+    search_types.push_back("sat");
+    parser.add_enum_option(
+        "search_type",
+        search_types,
+        "TODO",
+        "sda",
+        vector<string>(),
+        OptionFlags(false));
+    parser.add_option<int>(
+        "max_leaf_size",
+        "TODO",
+        "infinity");
 }
 
+static Factoring *_parse_fork(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
 
+    Options opts = parser.parse();
+
+    ForkFactoring *factoring = 0;
+    if (!parser.dry_run()) {        
+        factoring = new ForkFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Factoring *_parse_ifork(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    Options opts = parser.parse();
+
+    InvForkFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new InvForkFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Factoring *_parse_xshape(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    Options opts = parser.parse();
+
+    XShapeFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new XShapeFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Plugin<Factoring> _plugin_fork("fork", _parse_fork);
+static Plugin<Factoring> _plugin_ifork("ifork", _parse_ifork);
+static Plugin<Factoring> _plugin_xshape("xshape", _parse_xshape);
+// static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
+// static Plugin<Factoring> _plugin_rand("rand", _parse_rand);
+// static Plugin<Factoring> _plugin_sokoban("sokoban", _parse_sokoban);
+// static Plugin<Factoring> _plugin_tpp_const("tpp_const", _parse_tpp_const);
+// static Plugin<Factoring> _plugin_itpp_const("itpp_const", _parse_itpp_const);
+// static Plugin<Factoring> _plugin_openstacks("openstacks", _parse_openstacks);
 

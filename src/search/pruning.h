@@ -1,6 +1,7 @@
 #ifndef PRUNING_H
 #define PRUNING_H
 
+class Options;
 class PriceTag;
 
 enum DOMINATION {
@@ -23,6 +24,8 @@ class BasicPruning : public Pruning {
 public:
     
     BasicPruning() {}
+    
+    BasicPruning(const Options&);
     
     virtual DOMINATION check_dominance(const PriceTag& check, const PriceTag& reference, DOMINATION needed = NONE) const;
     

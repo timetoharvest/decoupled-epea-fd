@@ -124,7 +124,7 @@ SearchStatus EagerSearch::step() {
     SearchNode node = n.first;
     
     if (g_use_decoupled_search &&
-        g_factoring->get_search_type() == FDA &&
+        g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
              << ") is greater/equal to cost of best found plan => goal reached [t=" << g_timer << "]" << endl;
@@ -354,7 +354,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             if ((node.get_g() + max(goal_cost, node.get_h())) >= bound) {
                 continue;
             }
-            if (g_factoring->get_search_type() == AFRA && pruning_heuristic != 0){
+            if (g_factoring->get_search_type() == ASDA && pruning_heuristic != 0){
                 pruning_heuristic->evaluate(s);
                 int fork_h = pruning_heuristic->get_heuristic();
                 if (node.get_g() + fork_h >= bound){
@@ -513,11 +513,6 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
         evals.push_back(eval);
         OpenList<StateID> *open = \
             new TieBreakingOpenList<StateID>(evals, false, false);
-        
-        if (opts.contains("pruning_heuristic")){
-            Heuristic* pruning_h = opts.get<Heuristic*>("pruning_heuristic");
-            opts.set("pruning_heuristic", pruning_h);
-        }
 
         opts.set("open", open);
         opts.set("f_eval", f_eval);

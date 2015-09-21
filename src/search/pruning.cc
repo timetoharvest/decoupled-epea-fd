@@ -1,12 +1,15 @@
 #include "pruning.h"
 
+#include "plugin.h"
 #include "price_tag.h"
 #include "state_registry.h"
 
 
 using namespace std;
 
-
+BasicPruning::BasicPruning (const Options&) {
+    cout << "using BasicPruning method" << endl;
+}
 
 DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed) const {
     
@@ -176,3 +179,18 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     }
     return NONE;
 }
+
+
+static Pruning *_parse_basic(OptionParser &parser) {
+    Options opts = parser.parse();
+
+    BasicPruning *pruning = 0;
+    if (!parser.dry_run()) {
+        pruning = new BasicPruning(opts);
+    }
+
+    return pruning;
+}
+
+static Plugin<Pruning> _plugin("basic", _parse_basic);
+
