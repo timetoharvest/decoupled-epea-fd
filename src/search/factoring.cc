@@ -371,7 +371,7 @@ void Factoring::do_factoring_or_abstain() {
     
     print_factoring();
     
-//     exit(EXIT_UNSOLVED_INCOMPLETE); // TODO remove this after testing
+    exit(EXIT_UNSOLVED_INCOMPLETE); // TODO remove this after testing
 }
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
