@@ -94,9 +94,11 @@ protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
     
-    unsigned int max_leaf_size;
+    size_t max_leaf_size;
     
     PROFILE profile;
+    
+    bool leaves_only;   // TODO remove this after testing
     
     mutable InteractionGraph interaction_graph;
     
@@ -104,11 +106,13 @@ protected:
     
     virtual FactoredVars get_factoring() = 0;
     
-    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
-    
     FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
     
     FactoredVars get_connected_components(std::vector<int> variables) const;
+    
+    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
+    
+    FactoredVars get_fork_maximize_mobility(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
     
     std::vector<bool> get_frozen_leaves(FactoredVars components) const;
     
