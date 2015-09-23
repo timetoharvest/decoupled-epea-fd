@@ -379,7 +379,7 @@ void Factoring::do_factoring_or_abstain() {
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
-    int min_number_x_leaves = 2;
+    size_t min_number_x_leaves = 2;
     
     FactoredVars best_factoring;
     if (maximize_mobility){
