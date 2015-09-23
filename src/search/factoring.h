@@ -96,6 +96,8 @@ protected:
     
     size_t max_leaf_size;
     
+    size_t min_number_leaves;
+    
     PROFILE profile;
     
     bool leaves_only;   // TODO remove this after testing

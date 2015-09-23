@@ -48,6 +48,7 @@ Factoring::Factoring(const Options &opts) :
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
     } else {
+        // TODO probably change command line to -1 => no bound
         max_leaf_size = numeric_limits<size_t>::max();
     }
     cout << "maximum leaf factor size " << max_leaf_size << endl;
@@ -93,6 +94,7 @@ public:
             profile = FORK;
             cout << "using fork factoring profile" << endl;
         }
+        min_number_leaves = 2;
     };
     
     virtual FactoredVars get_factoring();
@@ -111,6 +113,7 @@ public:
             : Factoring(opts), maximize_mobility(opts.get<bool>("maximize_mobility")) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
+        min_number_leaves = 2;
     };
     
     virtual FactoredVars get_factoring();
@@ -371,7 +374,7 @@ void Factoring::do_factoring_or_abstain() {
     
     print_factoring();
     
-    exit(EXIT_UNSOLVED_INCOMPLETE); // TODO remove this after testing
+//     exit(EXIT_UNSOLVED_INCOMPLETE); // TODO remove this after testing
 }
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
@@ -440,7 +443,7 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     
     cout << "added " << added << " roots" << endl;
     
-    if (best_factoring.size() <= 1){
+    if (best_factoring.size() < min_number_leaves){
         
         if (maximize_mobility){
             best_factoring = get_fork_maximize_mobility(vector<int>(), true);
@@ -448,7 +451,7 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
             best_factoring = get_fork_maximize_leaves(vector<int>(), true);
         }
         
-	if (best_factoring.size() <= 1){
+	if (best_factoring.size() < min_number_leaves){
 	    // abstain if no or only a single leaf factor was found
             stringstream message;
             message << "factored search completely disabled, " << best_factoring.size()
@@ -547,7 +550,7 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
         factoring = get_fork_maximize_leaves(vector<int>(), inverted);
     }
 
-    if (factoring.size() <= 1){
+    if (factoring.size() < min_number_leaves){
         // abstain if no or only a single leaf factor was found
         stringstream message;
         if (inverted){
@@ -770,9 +773,7 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             current_size *= g_variable_domain[var];
-            if (current_size > max_leaf_size){
-                break;
-            }
+
             //cout << "successors:" << endl;
             size_t bound = g_causal_graph->get_successors(var).size();
             if (inverted){
@@ -803,7 +804,7 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
         }
         cout << "=========      end SCC; has size " << current_size;
 #endif
-        if (current_size <= max_leaf_size){
+        if (max_leaf_size == 0 || current_size <= max_leaf_size){
             canditate_sccs.insert(make_pair(current_size, make_pair(vector<int>(sccs[i].begin(), sccs[i].end()), succ_pred_sccs)));
 #ifdef DEBUG_FACTORING
             cout << endl;
@@ -863,17 +864,17 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
                     for (set<int>::iterator succ_it = succ_pred_sccs.begin(); succ_it != succ_pred_sccs.end(); ++succ_it){
                         set<int> successor = current_factoring[*succ_it];
                         for (set<int>::iterator succ_pred_vars = successor.begin(); succ_pred_vars != successor.end(); ++succ_pred_vars){
-                            if (current_size > max_leaf_size){
+                            if (max_leaf_size != 0 && current_size > max_leaf_size){
                                 break;
                             }
                             current_size *= g_variable_domain[*succ_pred_vars];
                         }
-                        if (current_size > max_leaf_size){
+                        if (max_leaf_size != 0 && current_size > max_leaf_size){
                             break;
                         }
                     }
                     
-                    if (current_size <= max_leaf_size){
+                    if (max_leaf_size == 0 || current_size <= max_leaf_size){
 
                         set<int> &new_factor = current_factoring[*succ_pred_sccs.begin()];
                         set<int> factors_to_remove = set<int>();
@@ -1239,10 +1240,10 @@ Factoring::FactoredVars Factoring::get_fork_maximize_mobility(vector<int> used_v
                     new_mobility *= mob;
                 }
 #ifdef DEBUG_FACTORING
-                cout << "new factoring would have mobility " << new_mobility << endl;
+                cout << "new factoring would have mobility " << new_mobility << " and " << sccs.size() << " leaf factors" << endl;
 #endif
                 
-                if (new_mobility > successor_mobility){
+                if (new_mobility > successor_mobility && sccs.size() > min_number_leaves){
 #ifdef DEBUG_FACTORING
                     cout << "better than current best successor factoring => replace" << endl;
 #endif                    
