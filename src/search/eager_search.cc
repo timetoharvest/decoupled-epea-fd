@@ -21,12 +21,16 @@ EagerSearch::EagerSearch(
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       do_pathmax(opts.get<bool>("pathmax")),
       use_multi_path_dependence(opts.get<bool>("mpd")),
-      open_list(opts.get<OpenList<StateID> *>("open")),
-      partial_order_reduction_method(opts.get<POR::PORMethod*>("partial_order_reduction")) {
+      open_list(opts.get<OpenList<StateID> *>("open")) {
     if (opts.contains("f_eval")) {
         f_evaluator = opts.get<ScalarEvaluator *>("f_eval");
     } else {
         f_evaluator = 0;
+    }
+    if (opts.contains("partial_order_reduction")){
+        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
+    } else {
+        partial_order_reduction_method = 0;
     }
     if (g_use_decoupled_search && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
@@ -143,7 +147,9 @@ SearchStatus EagerSearch::step() {
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
     // even when pruned by the POR method.
-    partial_order_reduction_method->prune_operators(s, applicable_ops);
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->prune_operators(s, applicable_ops);
+    }
 
     // This evaluates the expanded state (again) to get preferred ops
     for (size_t i = 0; i < preferred_operator_heuristics.size(); ++i) {
