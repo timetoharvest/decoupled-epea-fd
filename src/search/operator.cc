@@ -114,7 +114,7 @@ bool Operator::is_applicable(const State& state) const {
             return true;
         }
         const PriceTag &price_tag = g_price_tags[state];
-        for (size_t factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (has_precondition_on_factor(factor)){
                 bool applicable = false;
                 int number_facts = price_tag.get_number_facts(factor);
@@ -135,7 +135,7 @@ bool Operator::is_applicable(const State& state) const {
             }
         }
     } else {
-        for (size_t i = 0; i < preconditions.size(); i++){
+        for (size_t i = 0; i < preconditions.size(); ++i){
             if (!preconditions[i].is_applicable(state)){
                 return false;
             }
