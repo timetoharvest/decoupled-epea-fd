@@ -690,15 +690,16 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
     }
     
     if (leaves_only){   // TODO remove this again after testing
-        uint64_t current_size = 1;
-        for (size_t i = 0; i < sccs.size(); ++i){            
+        for (size_t i = 0; i < sccs.size(); ++i){
             set<int> succ_pred_sccs;
-            current_size = 1;
+            uint64_t current_size = 1;
             bool is_leaf = true;
             
             for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
                 int var = *it;
-                current_size *= g_variable_domain[var];
+                if (current_size <= max_leaf_size){
+                    current_size *= g_variable_domain[var];
+                }
 
                 size_t bound = g_causal_graph->get_successors(var).size();
                 if (inverted){
@@ -774,7 +775,9 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
         current_size = 1;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
-            current_size *= g_variable_domain[var];
+            if (current_size <= max_leaf_size){
+                current_size *= g_variable_domain[var];
+            }
 
             //cout << "successors:" << endl;
             size_t bound = g_causal_graph->get_successors(var).size();
@@ -1053,7 +1056,9 @@ Factoring::FactoredVars Factoring::get_fork_maximize_mobility(vector<int> used_v
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             vars_to_sccs[var] = i;
-            current_size *= g_variable_domain[var];
+            if (current_size <= max_leaf_size){
+                current_size *= g_variable_domain[var];
+            }
 
             size_t bound = g_causal_graph->get_successors(var).size();
             if (inverted){
