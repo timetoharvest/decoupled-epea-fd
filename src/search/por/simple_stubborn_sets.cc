@@ -547,7 +547,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
             if (min_number_pre.empty()){
                 break;
             }
-            id++;
+            ++id;
         }
         if (!min_number_pre.empty()){
             return min_number_pre.front();

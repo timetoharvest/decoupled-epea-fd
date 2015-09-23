@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -58,15 +59,14 @@ class Operator {
     bool is_an_axiom;
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
-    std::vector<std::vector<const Condition*> > pre_by_factor;
-    std::vector<std::vector<const Effect*> > eff_by_factor;
+    std::map<int, std::vector<const Condition*> > pre_by_factor;
+    std::map<int, std::vector<const Effect*> > eff_by_factor;
     std::string name;
     int cost;
 
-    // the following three are only needed for decoupled search
+    // the following two are only needed for decoupled search
     int affects_factor;
-    // number of leaf factors that this center (!) op is preconditioned by
-    size_t number_pre_factors;
+
     size_t index;
 
     mutable bool marked; // Used for short-term marking of preferred operators
@@ -87,25 +87,15 @@ public:
         return effects;
     }
 
-    const std::vector<const Condition*> &get_preconditions(int factor) const {
-        return pre_by_factor[factor + 1];
-    }
-    const std::vector<const Effect*> &get_effects(int factor) const {
-        return eff_by_factor[factor + 1];
-    }
-
+    const std::vector<const Condition*> &get_preconditions(int factor) const;
+    
+    const std::vector<const Effect*> &get_effects(int factor) const;
+    
     bool is_applicable(const State &state) const;
     
     bool is_applicable(const LeafStateID &leaf_id) const;
     
-    bool is_center_applicable(const State &state) const {
-        for (size_t i = 0; i < pre_by_factor[0].size(); i++){
-            if (!pre_by_factor[0][i]->is_applicable(state)){
-                return false;
-            }
-        }
-        return true;
-    }
+    bool is_center_applicable(const State &state) const;
 
     bool is_marked() const {
         return marked;
@@ -127,12 +117,15 @@ public:
         return affects_factor;
     }
     
-    bool has_preconditions_on_factor(int factor) const {
-        return !pre_by_factor[factor + 1].empty();
+    bool has_precondition_on_factor(int factor) const {
+        return pre_by_factor.find(factor) != pre_by_factor.end();
     }
     
     int get_number_pre_factors() const {
-        return number_pre_factors;
+        if (has_precondition_on_factor(-1)){
+            return pre_by_factor.size() - 2;
+        }
+        return pre_by_factor.size() - 1;
     }
 
     int get_cost() const {return cost; }

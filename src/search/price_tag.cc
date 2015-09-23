@@ -428,7 +428,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
           
-        bool has_pre_on_factor = op.has_preconditions_on_factor(factor);
+        bool has_pre_on_factor = op.has_precondition_on_factor(factor);
         const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
         
         if (eff_on_factor.size() == g_factors[factor].size()){

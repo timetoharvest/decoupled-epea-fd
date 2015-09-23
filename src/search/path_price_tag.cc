@@ -194,7 +194,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Oper
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
           
-        bool has_pre_on_factor = op.has_preconditions_on_factor(factor);
+        bool has_pre_on_factor = op.has_precondition_on_factor(factor);
         const vector<const Effect*> &post_per_factor = op.get_effects(factor);
         
         if (has_pre_on_factor && post_per_factor.size() == g_factors[factor].size()){

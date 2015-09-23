@@ -184,10 +184,10 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             }
         }
     } else {
-        for (size_t i = 0; i < op.get_effects(-1).size(); i++){
-            const Effect *effect = op.get_effects(-1)[i];
+        const vector<const Effect*> &effects = op.get_effects(-1);
+        for (size_t i = 0; i < effects.size(); i++){
             // no need to check does_fire here, because no conditional effects allowed
-            g_state_packer->set(buffer, g_new_index[effect->var], effect->val);
+            g_state_packer->set(buffer, g_new_index[effects[i]->var], effects[i]->val);
         }
     }
     
@@ -375,7 +375,7 @@ void StateRegistry::build_leaf_state_spaces() {
                         }
                         g_center_successors[factor][i].reserve(center_ops.size());
                         for (size_t op = 0; op < center_ops.size(); op++){
-                            if (center_ops[op]->has_preconditions_on_factor(factor)){
+                            if (center_ops[op]->has_precondition_on_factor(factor)){
                                 g_center_successors[factor][i].push_back(center_ops[op]->get_index());
                             }
                         }

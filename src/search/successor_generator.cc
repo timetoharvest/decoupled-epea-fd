@@ -218,7 +218,7 @@ void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const Lea
     for (size_t i = 0; i < operators.size(); ++i){
         if (only_center_ops){
             if (operators[i]->get_affected_factor() == -1 &&
-                (operators[i]->has_preconditions_on_factor(affected_factor)
+                (operators[i]->has_precondition_on_factor(affected_factor)
                   || !operators[i]->get_effects(affected_factor).empty())){
                 ops.push_back(operators[i]);
             }
