@@ -105,8 +105,9 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    
-    partial_order_reduction_method->dump_options();
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->dump_options();
+    }
 }
 
 EagerSearch::~EagerSearch() {
