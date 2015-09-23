@@ -113,7 +113,7 @@ public:
             : Factoring(opts), maximize_mobility(opts.get<bool>("maximize_mobility")) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
-        min_number_leaves = 2;
+        min_number_leaves = 1;
     };
     
     virtual FactoredVars get_factoring();
@@ -379,6 +379,8 @@ void Factoring::do_factoring_or_abstain() {
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
+    int min_number_x_leaves = 2;
+    
     FactoredVars best_factoring;
     if (maximize_mobility){
         best_factoring = get_fork_maximize_mobility();
@@ -443,7 +445,7 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     
     cout << "added " << added << " roots" << endl;
     
-    if (best_factoring.size() < min_number_leaves){
+    if (best_factoring.size() < min_number_x_leaves){
         
         if (maximize_mobility){
             best_factoring = get_fork_maximize_mobility(vector<int>(), true);
@@ -451,7 +453,7 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
             best_factoring = get_fork_maximize_leaves(vector<int>(), true);
         }
         
-	if (best_factoring.size() < min_number_leaves){
+	if (best_factoring.size() < min_number_x_leaves){
 	    // abstain if no or only a single leaf factor was found
             stringstream message;
             message << "factored search completely disabled, " << best_factoring.size()
