@@ -100,8 +100,6 @@ protected:
     
     PROFILE profile;
     
-    bool leaves_only;   // TODO remove this after testing
-    
     mutable InteractionGraph interaction_graph;
     
     mutable double begin_factoring_timestamp;
