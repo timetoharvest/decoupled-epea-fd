@@ -118,7 +118,9 @@ EagerSearch::~EagerSearch() {
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
-    partial_order_reduction_method->dump_statistics();
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->dump_statistics();
+    }
 }
 
 SearchStatus EagerSearch::step() {
