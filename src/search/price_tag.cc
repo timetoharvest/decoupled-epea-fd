@@ -280,6 +280,8 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                                 int g_value,
                                 const State &predecessor) {
     
+    // TODO for satisficing search, build leaf state spaces incrementally again, not at once on startup
+    
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
