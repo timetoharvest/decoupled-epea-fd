@@ -1,5 +1,5 @@
-## Variables prefixed with "DOWNWARD_" are used to configure the 
-## build. They can be changed on the command line or set as 
+## Variables prefixed with "DOWNWARD_" are used to configure the
+## build. They can be changed on the command line or set as
 ## environment variables.
 
 ## By default, build in 32-bit mode. Use DOWNWARD_BITWIDTH=64
@@ -16,7 +16,7 @@ DOWNWARD_USE_LP ?= 0
 DOWNWARD_COIN_ROOT ?= /opt/coin
 
 ## To use an LP solver through OSI, set the following variables
-## to paths for the solver's "include" and "lib" directories. 
+## to paths for the solver's "include" and "lib" directories.
 DOWNWARD_CLP_INCDIR ?= $(DOWNWARD_COIN_ROOT)/include/coin
 DOWNWARD_CLP_LIBDIR ?= $(DOWNWARD_COIN_ROOT)/lib
 DOWNWARD_CPLEX_INCDIR ?= /opt/ibm/ILOG/CPLEX_Studio1251/cplex/include/ilcplex
@@ -28,7 +28,7 @@ DOWNWARD_GUROBI_LIBDIR ?=
 ## Set DOWNWARD_LINK_RELEASE_STATICALLY to 0 or 1 (default) to
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
-DOWNWARD_LINK_RELEASE_STATICALLY ?= 0
+DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
@@ -41,6 +41,7 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
+          countdown_timer.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -80,6 +81,7 @@ HEADERS = \
           sum_evaluator.h \
           timer.h \
           utilities.h \
+          variable_order_finder.h \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
@@ -103,42 +105,41 @@ HEADERS += ../preprocess/scc.h
 
 HEADERS += additive_heuristic.h
 HEADERS += blind_search_heuristic.h
-# HEADERS += cea_heuristic.h
-# HEADERS += cg_heuristic.h cg_cache.h
+HEADERS += cea_heuristic.h
+HEADERS += cg_heuristic.h cg_cache.h
 HEADERS += ff_heuristic.h
-# HEADERS += goal_count_heuristic.h
-# HEADERS += hm_heuristic.h
+HEADERS += goal_count_heuristic.h
+HEADERS += hm_heuristic.h
 HEADERS += lm_cut_heuristic.h
 HEADERS += max_heuristic.h
 
-# HEADERS += merge_and_shrink/abstraction.h \
-#           merge_and_shrink/label.h \
-#           merge_and_shrink/labels.h \
-#           merge_and_shrink/label_reducer.h \
-#           merge_and_shrink/merge_and_shrink_heuristic.h \
-#           merge_and_shrink/merge_dfp.h \
-#           merge_and_shrink/merge_linear.h \
-#           merge_and_shrink/merge_strategy.h \
-#           merge_and_shrink/shrink_bisimulation.h \
-#           merge_and_shrink/shrink_bucket_based.h \
-#           merge_and_shrink/shrink_fh.h \
-#           merge_and_shrink/shrink_random.h \
-#           merge_and_shrink/shrink_strategy.h \
-#           merge_and_shrink/variable_order_finder.h \
-
+# HEADERS += merge_and_shrink/label.h \
+#            merge_and_shrink/labels.h \
+#            merge_and_shrink/label_reducer.h \
+#            merge_and_shrink/merge_and_shrink_heuristic.h \
+#            merge_and_shrink/merge_dfp.h \
+#            merge_and_shrink/merge_linear.h \
+#            merge_and_shrink/merge_strategy.h \
+#            merge_and_shrink/shrink_bisimulation.h \
+#            merge_and_shrink/shrink_bucket_based.h \
+#            merge_and_shrink/shrink_fh.h \
+#            merge_and_shrink/shrink_random.h \
+#            merge_and_shrink/shrink_strategy.h \
+#            merge_and_shrink/transition_system.h \
+# 
 # HEADERS += landmarks/exploration.h \
-#           landmarks/h_m_landmarks.h \
-#           landmarks/lama_ff_synergy.h \
-#           landmarks/landmark_cost_assignment.h \
-#           landmarks/landmark_count_heuristic.h \
-#           landmarks/landmark_status_manager.h \
-#           landmarks/landmark_graph_merged.h \
-#           landmarks/landmark_graph.h \
-#           landmarks/landmark_factory.h \
-#           landmarks/landmark_factory_rpg_exhaust.h \
-#           landmarks/landmark_factory_rpg_sasp.h \
-#           landmarks/landmark_factory_zhu_givan.h \
-#           landmarks/util.h \
+#            landmarks/h_m_landmarks.h \
+#            landmarks/lama_ff_synergy.h \
+#            landmarks/landmark_cost_assignment.h \
+#            landmarks/landmark_count_heuristic.h \
+#            landmarks/landmark_status_manager.h \
+#            landmarks/landmark_graph_merged.h \
+#            landmarks/landmark_graph.h \
+#            landmarks/landmark_factory.h \
+#            landmarks/landmark_factory_rpg_exhaust.h \
+#            landmarks/landmark_factory_rpg_sasp.h \
+#            landmarks/landmark_factory_zhu_givan.h \
+#            landmarks/util.h \
 
 # HEADERS += learning/AODE.h \
 #            learning/classifier.h \
@@ -191,7 +192,7 @@ ifeq ($(DOWNWARD_OS), auto)
         DOWNWARD_OS=windows
     else ifeq ($(UNAME_O), Msys)
         DOWNWARD_OS=windows
-    else ifeq ($(OS), auto)
+    else ifeq ($(DOWNWARD_OS), auto)
         $(warning OS detection failed -- setting to Linux and hoping for the best!)
         DOWNWARD_OS=linux
     endif
@@ -219,7 +220,6 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-#CXX = g++-4.9
 DEPEND = $(CXX) -MM
 
 ## CXXFLAGS, LDFLAGS, POSTLINKOPT are options for compiler and linker
@@ -231,13 +231,14 @@ ifeq ($(DOWNWARD_BITWIDTH), 32)
 else ifeq ($(DOWNWARD_BITWIDTH), 64)
     BITWIDTHOPT = -m64
 else ifneq ($(DOWNWARD_BITWIDTH), native)
-    $(error Bad value for BITWIDTH)
+    $(error Bad value for DOWNWARD_BITWIDTH)
 endif
 
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-CXXFLAGS += -Wall -W -Wno-sign-compare -Wno-deprecated -ansi -pedantic -Werror
+# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc 4.4.
+CXXFLAGS += -Wall -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -280,7 +281,7 @@ POSTLINKOPT =
 
 CXXFLAGS_RELEASE  = -O3 -DNDEBUG -fomit-frame-pointer
 CXXFLAGS_DEBUG    = -O3
-CXXFLAGS_PROFILE  = -O3 -DNDEBUG -pg
+CXXFLAGS_PROFILE  = -O3 -pg
 
 LDFLAGS_RELEASE  =
 LDFLAGS_DEBUG    =

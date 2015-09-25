@@ -44,15 +44,15 @@ void HSPMaxHeuristic::initialize() {
 void HSPMaxHeuristic::setup_exploration_queue() {
     queue.clear();
 
-    for (int var = 0; var < propositions.size(); var++) {
-        for (int value = 0; value < propositions[var].size(); value++) {
+    for (size_t var = 0; var < propositions.size(); ++var) {
+        for (size_t value = 0; value < propositions[var].size(); ++value) {
             Proposition &prop = propositions[var][value];
             prop.cost = -1;
         }
     }
 
     // Deal with operators and axioms without preconditions.
-    for (int i = 0; i < unary_operators.size(); i++) {
+    for (size_t i = 0; i < unary_operators.size(); ++i) {
         UnaryOperator &op = unary_operators[i];
         op.unsatisfied_preconditions = op.precondition.size();
         op.cost = op.base_cost; // will be increased by precondition costs
@@ -64,7 +64,7 @@ void HSPMaxHeuristic::setup_exploration_queue() {
 }
 
 void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
-    for (int var = 0; var < propositions.size(); var++) {
+    for (size_t var = 0; var < propositions.size(); ++var) {
 	if (search_type == STD || g_belongs_to_factor[var] == -1){
 	    Proposition *init_prop = &propositions[var][state[var]];
 	    enqueue_if_necessary(init_prop, 0);
@@ -86,9 +86,9 @@ void HSPMaxHeuristic::relaxed_exploration() {
             return;
         const vector<UnaryOperator *> &triggered_operators =
             prop->precondition_of;
-        for (int i = 0; i < triggered_operators.size(); i++) {
+        for (size_t i = 0; i < triggered_operators.size(); ++i) {
             UnaryOperator *unary_op = triggered_operators[i];
-            unary_op->unsatisfied_preconditions--;
+            --unary_op->unsatisfied_preconditions;
             unary_op->cost = max(unary_op->cost,
                                  unary_op->base_cost + prop_cost);
             assert(unary_op->unsatisfied_preconditions >= 0);
@@ -104,24 +104,22 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
 
     if (search_type != STD){
         const PriceTag &tag = g_price_tags[state];
-	for (int factor = 0; factor < g_factors.size(); factor++){
-	    int number_states = tag.get_number_facts(factor);
-            int id = 0;
+	for (size_t factor = 0; factor < g_factors.size(); factor++){
+	    size_t number_states = tag.get_number_facts(factor);
+            size_t id = 0;
 	    while (number_states > 0){
-		if (!tag.has_leaf_state(id, factor)){
-                    id++;
-		    continue;
-		}
-		number_states--;
-		int base_cost = 0;
-		if (search_type == STAR){
-		    base_cost = tag.get_info_for_fact(id, factor).cost;
-		}
-		const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-		for (int v = 0; v < g_factors[factor].size(); v++) {
-		    int var = g_factors[factor][v];
-		    Proposition *effect = &propositions[var][f[var]];
-		    enqueue_if_necessary(effect, base_cost);
+		if (tag.has_leaf_state(id, factor)){
+                    number_states--;
+                    int base_cost = 0;
+                    if (search_type == STAR){
+                        base_cost = tag.get_info_for_fact(id, factor).cost;
+                    }
+                    const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    for (size_t v = 0; v < g_factors[factor].size(); v++) {
+                        int var = g_factors[factor][v];
+                        Proposition *effect = &propositions[var][f[var]];
+                        enqueue_if_necessary(effect, base_cost);
+                    }
 		}
 		id++;
 	    }
@@ -132,13 +130,14 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     relaxed_exploration();
 
     int total_cost = 0;
-    for (int i = 0; i < goal_propositions.size(); i++) {
+    for (size_t i = 0; i < goal_propositions.size(); ++i) {
         int prop_cost = goal_propositions[i]->cost;
         if (prop_cost == -1) {
             return DEAD_END;
         }
         total_cost = max(total_cost, prop_cost);
     }
+
     return total_cost;
 }
 

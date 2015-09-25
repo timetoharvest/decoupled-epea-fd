@@ -8,12 +8,12 @@
 using namespace std;
 
 class CGHeuristic;
-class State;
 class Operator;
+class State;
 
-class ValueNode;
-class ValueTransition;
-class ValueTransitionLabel;
+struct ValueNode;
+struct ValueTransition;
+struct ValueTransitionLabel;
 class DomainTransitionGraph;
 
 // Note: We do not use references but pointers to refer to the "parents" of
@@ -82,9 +82,9 @@ class ContextEnhancedAdditiveHeuristic;
 class DomainTransitionGraph {
     friend class CGHeuristic;
     friend class cea_heuristic::ContextEnhancedAdditiveHeuristic;
-    friend class ValueNode;
-    friend class ValueTransition;
-    friend class LocalAssignment;
+    friend struct ValueNode;
+    friend struct ValueTransition;
+    friend struct LocalAssignment;
 
     int var;
     bool is_axiom;

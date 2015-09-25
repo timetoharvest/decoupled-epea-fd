@@ -7,7 +7,6 @@
 #include "plugin.h"
 #include "price_tag.h"
 #include "state.h"
-#include "state_registry.h"
 
 #include <cassert>
 #include <vector>
@@ -35,15 +34,15 @@ void FFHeuristic::initialize() {
     
     if (search_type == STAR){
         relaxed_leaf_plan.resize(g_factors.size());
-        for (int factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); factor++){
             relaxed_leaf_plan[factor] = vector<bool>(g_state_registry->size(factor), false);
         }
         artificial_leaf_ops.resize(g_factors.size());
         int counter = -1;
-        for (int factor = 0; factor < g_factors.size(); factor++){
-            for (int fact = 0; fact < g_state_registry->size(factor); fact++){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
                 artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
-                counter--;
+                --counter;
             }
         }
     }
@@ -63,14 +62,14 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     int factor = 0;
                     int size;
                     while (op_no >= (size = artificial_leaf_ops[factor].size())){
-                        factor++;
+                        ++factor;
                         op_no -= size;
                     }
                     relaxed_leaf_plan[factor][op_no] = true;
                     return;
                 }
             }
-            for (int i = 0; i < unary_op->precondition.size(); i++)
+            for (size_t i = 0; i < unary_op->precondition.size(); ++i)
                 mark_preferred_operators_and_relaxed_plan(
                     state, unary_op->precondition[i]);
             int operator_no = unary_op->operator_no;
@@ -96,26 +95,24 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
     const PriceTag &tag = g_price_tags[state];
-    for (int factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
         int number_states = tag.get_number_facts(factor);
-        int id = 0;
+        size_t id = 0;
         while (number_states > 0){
-            if (!tag.has_leaf_state(id, factor)){
-                id++;
-                continue;
-            }
-            number_states--;
-            int base_cost = 0;
-            UnaryOperator *op = 0;
-            if (search_type == STAR){
-                op = artificial_leaf_ops[factor][id];
-                base_cost = tag.get_info_for_fact(id, factor).cost;
-            }
-            LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-            for (int v = 0; v < g_factors[factor].size(); v++) {
-                int var = g_factors[factor][v];
-                Proposition *effect = &propositions[var][f[var]];
-                enqueue_if_necessary(effect, base_cost, op);
+            if (tag.has_leaf_state(id, factor)){
+                number_states--;
+                int base_cost = 0;
+                UnaryOperator *op = 0;
+                if (search_type == STAR){
+                    op = artificial_leaf_ops[factor][id];
+                    base_cost = tag.get_info_for_fact(id, factor).cost;
+                }
+                LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                for (size_t v = 0; v < g_factors[factor].size(); ++v) {
+                    int var = g_factors[factor][v];
+                    Proposition *effect = &propositions[var][f[var]];
+                    enqueue_if_necessary(effect, base_cost, op);
+                }
             }
             id++;
         }
@@ -134,11 +131,11 @@ int FFHeuristic::compute_heuristic(const State &state) {
         return h_add;
 
     // Collecting the relaxed plan also sets the preferred operators.
-    for (int i = 0; i < goal_propositions.size(); i++)
+    for (size_t i = 0; i < goal_propositions.size(); ++i)
         mark_preferred_operators_and_relaxed_plan(state, goal_propositions[i]);
 
     int h_ff = 0;
-    for (int op_no = 0; op_no < relaxed_plan.size(); op_no++) {
+    for (size_t op_no = 0; op_no < relaxed_plan.size(); ++op_no) {
         if (relaxed_plan[op_no]) {
             relaxed_plan[op_no] = false; // Clean up for next computation.
             h_ff += get_adjusted_cost(g_operators[op_no]);
@@ -147,8 +144,8 @@ int FFHeuristic::compute_heuristic(const State &state) {
     int leaf_goal_cost = 0;
     if (search_type == STAR){
         const PriceTag &tag = g_price_tags[state];
-        for (int factor = 0; factor < artificial_leaf_ops.size(); factor++){
-            for (int fact = 0; fact < artificial_leaf_ops[factor].size(); fact++){
+        for (size_t factor = 0; factor < artificial_leaf_ops.size(); ++factor){
+            for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
                 if (relaxed_leaf_plan[factor][fact]){
                     relaxed_leaf_plan[factor][fact] = false;
                     assert(tag.get_info_for_fact(fact, factor).cost > 0);

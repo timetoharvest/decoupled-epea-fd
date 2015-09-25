@@ -1,5 +1,5 @@
-## Variables prefixed with "DOWNWARD_" are used to configure the 
-## build. They can be changed on the command line or set as 
+## Variables prefixed with "DOWNWARD_" are used to configure the
+## build. They can be changed on the command line or set as
 ## environment variables.
 
 ## By default, build in 32-bit mode. Use DOWNWARD_BITWIDTH=64
@@ -10,7 +10,7 @@ DOWNWARD_BITWIDTH ?= 32
 ## Set DOWNWARD_LINK_RELEASE_STATICALLY to 0 or 1 (default) to
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
-DOWNWARD_LINK_RELEASE_STATICALLY ?= 0
+DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
@@ -86,9 +86,7 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-
-CXX     = g++
-DEPEND = g++ -MM
+DEPEND = $(CXX) -MM
 
 ## CXXFLAGS, LDFLAGS, POSTLINKOPT are options for compiler and linker
 ## that are used for all three targets (release, debug, and profile).
@@ -105,7 +103,8 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-CXXFLAGS += -Wall -W -Wno-sign-compare -Wno-deprecated -ansi -pedantic -Werror
+# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc 4.4.
+CXXFLAGS += -std=c++0x -Wall -Wextra -pedantic -Wno-sign-compare -Wno-deprecated -Werror
 
 ## The following lines contain workarounds for bugs when
 ## cross-compiling to 64 bit on 32-bit systems using gcc 4.4 or gcc

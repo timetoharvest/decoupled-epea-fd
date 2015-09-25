@@ -13,9 +13,8 @@ class StateID {
     template<typename>
     friend class PerStateInformation;
 
-protected:
-    int value;
-    explicit StateID(int value)
+    size_t value;
+    explicit StateID(size_t value)
         : value(value) {
     }
 

@@ -6,24 +6,18 @@
 #include "price_tag.h"
 
 #include <iostream>
-
 using namespace std;
-
 
 Condition::Condition(istream &in) {
     in >> var >> val;
 }
 
 bool Condition::is_applicable(const State &state) const {
-    assert(var >= 0 && var < g_variable_name.size());
-    assert(val >= 0 && val < g_variable_domain[var]);
     assert(!g_use_decoupled_search || g_belongs_to_factor[var] == -1);
     return state[var] == val;
 }
 
 bool Condition::is_applicable(const LeafState &state) const {
-    assert(var >= 0 && var < g_variable_name.size());
-    assert(val >= 0 && val < g_variable_domain[var]);
     assert(g_belongs_to_factor[var] == state.get_id().get_factor());
     return state[var] == val;
 }
@@ -52,10 +46,10 @@ Operator::Operator(istream &in, bool axiom, int index) {
         getline(in, name);
         int count;
         in >> count;
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; ++i)
             preconditions.push_back(Condition(in));
         in >> count;
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; ++i)
             read_pre_post(in);
 
         int op_cost;
@@ -86,11 +80,11 @@ void Condition::dump() const {
 
 void Effect::dump() const {
     cout << " => " << g_fact_names[var][val];
-    if (!cond.empty()) {
+    if (!conditions.empty()) {
         cout << " if";
-        for (int i = 0; i < cond.size(); i++) {
+        for (size_t i = 0; i < conditions.size(); ++i) {
             cout << " ";
-            cond[i].dump();
+            conditions[i].dump();
         }
     }
 }
@@ -106,7 +100,7 @@ bool Operator::is_applicable(const State& state) const {
             return true;
         }
         const PriceTag &price_tag = g_price_tags[state];
-        for (int factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); factor++){
             if (!pre_by_factor[factor + 1].empty()){
                 bool applicable = false;
                 int number_facts = price_tag.get_number_facts(factor);
@@ -127,7 +121,7 @@ bool Operator::is_applicable(const State& state) const {
             }
         }
     } else {
-        for (int i = 0; i < preconditions.size(); i++){
+        for (size_t i = 0; i < preconditions.size(); i++){
             if (!preconditions[i].is_applicable(state)){
                 return false;
             }
@@ -142,7 +136,7 @@ bool Operator::is_applicable(const LeafStateID &leaf_id) const {
         return true;
     }
     LeafState state = g_state_registry->lookup_leaf_state(leaf_id);
-    for (int i = 0; i < pre_by_factor[factor].size(); i++){
+    for (size_t i = 0; i < pre_by_factor[factor].size(); i++){
         if (!pre_by_factor[factor][i]->is_applicable(state)){
             return false;
         }
@@ -154,18 +148,18 @@ void Operator::set_affected_factor(int factor) {
     affects_factor = factor;
 
     pre_by_factor.resize(g_factors.size() + 1);    
-    for (int i = 0; i < preconditions.size(); i++){
+    for (size_t i = 0; i < preconditions.size(); i++){
         int f = g_belongs_to_factor[preconditions[i].var];
         pre_by_factor[f + 1].push_back(&preconditions[i]);
     }
     
     eff_by_factor.resize(g_factors.size() + 1);
-    for (int i = 0; i < effects.size(); i++){
+    for (size_t i = 0; i < effects.size(); i++){
         int f = g_belongs_to_factor[effects[i].var];
         eff_by_factor[f + 1].push_back(&effects[i]);
     }
     
-    for (int i = 1; i < pre_by_factor.size(); i++){
+    for (size_t i = 1; i < pre_by_factor.size(); i++){
         if (!pre_by_factor[i].empty()){
             number_pre_factors++;
         }
@@ -174,12 +168,12 @@ void Operator::set_affected_factor(int factor) {
 
 void Operator::dump() const {
     cout << name << ":";
-    for (int i = 0; i < preconditions.size(); i++) {
+    for (size_t i = 0; i < preconditions.size(); ++i) {
         cout << " [";
         preconditions[i].dump();
         cout << "]";
     }
-    for (int i = 0; i < effects.size(); i++) {
+    for (size_t i = 0; i < effects.size(); ++i) {
         cout << " [";
         effects[i].dump();
         cout << "]";

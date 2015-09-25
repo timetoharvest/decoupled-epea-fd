@@ -1,15 +1,16 @@
 #include "cea_heuristic.h"
 
 #include "domain_transition_graph.h"
-#include "globals.h"
 #include "operator.h"
+#include "state.h"
+#include "globals.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "state.h"
 
 #include <cassert>
 #include <limits>
 #include <vector>
+
 using namespace std;
 
 
@@ -395,7 +396,7 @@ void ContextEnhancedAdditiveHeuristic::initialize() {
     goal_node = &goal_problem->nodes[1];
 
     local_problem_index.resize(num_variables);
-    for (size_t var_no = 0; var_no < num_variables; ++var_no) {
+    for (int var_no = 0; var_no < num_variables; ++var_no) {
         int num_values = g_variable_domain[var_no];
         local_problem_index[var_no].resize(num_values, 0);
     }

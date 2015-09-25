@@ -3,18 +3,19 @@
 
 #include <vector>
 
-#include "open_lists/open_list.h"
-#include "search_engine.h"
-#include "search_space.h"
-#include "state.h"
-#include "timer.h"
 #include "evaluator.h"
+#include "state.h"
+#include "search_engine.h"
 #include "search_progress.h"
+#include "search_space.h"
+#include "timer.h"
 
-class Heuristic;
+#include "open_lists/open_list.h"
+
 class Operator;
-class ScalarEvaluator;
+class Heuristic;
 class Options;
+class ScalarEvaluator;
 
 namespace POR {
 class PORMethod;
@@ -37,9 +38,8 @@ protected: // TODO: Remove this hack (added for POR integration)
     bool insert_state(const SearchNode &succ_node);
 
 protected:
-    int step();
+    SearchStatus step();
     std::pair<SearchNode, bool> fetch_next_node();
-    bool check_goal(const SearchNode &node);
     void update_jump_statistic(const SearchNode &node);
     void print_heuristic_values(const std::vector<int> &values) const;
     void reward_progress();

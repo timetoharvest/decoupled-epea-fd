@@ -1,4 +1,5 @@
 #include "heuristic.h"
+
 #include "operator.h"
 #include "option_parser.h"
 #include "operator_cost.h"
@@ -31,14 +32,6 @@ Heuristic::Heuristic(const Options &opts)
             search_type = STD;
         }
     }
-    
-    is_unit_cost = true;
-    for (size_t i = 0; i < g_operators.size(); ++i) {
-        if (get_adjusted_cost(g_operators[i]) != 1) {
-            is_unit_cost = false;
-            break;
-        }
-    }
 }
 
 Heuristic::~Heuristic() {
@@ -56,7 +49,7 @@ void Heuristic::evaluate(const State &state) {
         initialize();
     preferred_operators.clear();
     heuristic = compute_heuristic(state);
-    for (int i = 0; i < preferred_operators.size(); i++)
+    for (size_t i = 0; i < preferred_operators.size(); ++i)
         preferred_operators[i]->unmark();
     assert(heuristic == DEAD_END || heuristic >= 0);
 
@@ -70,7 +63,7 @@ void Heuristic::evaluate(const State &state) {
 
 #ifndef NDEBUG
     if (heuristic != DEAD_END) {
-        for (int i = 0; i < preferred_operators.size(); i++)
+        for (size_t i = 0; i < preferred_operators.size(); ++i)
             assert(preferred_operators[i]->is_applicable(state));
     }
 #endif

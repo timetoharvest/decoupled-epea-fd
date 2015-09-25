@@ -1,17 +1,19 @@
 #ifndef ENFORCED_HILL_CLIMBING_SEARCH_H
 #define ENFORCED_HILL_CLIMBING_SEARCH_H
 
-#include "search_engine.h"
-#include "globals.h"
-#include "search_space.h"
-#include "search_node_info.h"
-#include "operator.h"
-#include "state.h"
-#include "open_lists/open_list.h"
 #include "g_evaluator.h"
+#include "globals.h"
+#include "operator.h"
+#include "search_engine.h"
+#include "search_node_info.h"
 #include "search_progress.h"
-#include <vector>
+#include "search_space.h"
+#include "state.h"
+
+#include "open_lists/open_list.h"
+
 #include <map>
+#include <vector>
 
 using namespace std;
 
@@ -45,8 +47,8 @@ protected:
     int last_expanded;
 
     virtual void initialize();
-    virtual int step();
-    int ehc();
+    virtual SearchStatus step();
+    SearchStatus ehc();
     void get_successors(const State &state, vector<const Operator *> &ops);
     void evaluate(const State &parent, const Operator *op, const State &state);
 public:

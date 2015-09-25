@@ -63,7 +63,6 @@ public:
     bool lm_admissible;
     bool lm_optimal;
     bool use_action_landmarks;
-    int lm_type;
     std::vector<const Operator *> lama_preferred_operators;
     std::vector<const Operator *> ff_preferred_operators;
     bool initialized;
