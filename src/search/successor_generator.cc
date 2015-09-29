@@ -25,7 +25,7 @@ public:
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre);
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
-					 vector<const Operator *> &ops, int affected_factor, bool only_center_ops);
+					 vector<const Operator *> &ops, bool only_center_ops);
     virtual int split_ops_center_leaf(int factor);
     virtual void clear();
     virtual void _dump(string indent);
@@ -42,7 +42,7 @@ public:
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre);
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
-					 vector<const Operator *> &ops, int affected_factor, bool only_center_ops);
+					 vector<const Operator *> &ops, bool only_center_ops);
     virtual int split_ops_center_leaf(int factor);
     virtual void clear();
     virtual void _dump(string indent);
@@ -112,19 +112,18 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
 }
 
 void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
-                                                vector<const Operator*> &ops, int affected_factor, 
-                                                bool only_center_ops){
+                                                vector<const Operator*> &ops, bool only_center_ops){
     // ignores center preconditions
-    immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+    immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
     if (g_belongs_to_factor[switch_var] == leaf_state.get_id().get_factor()){
-	generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+	generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
     } else {
         // this finds operators that are preconditioned by center/another leaf factor
         for (size_t i = 0; i < generator_for_value.size(); i++){
-            generator_for_value[i]->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+            generator_for_value[i]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
         }
     }
-    default_generator->generate_applicable_ops_ignore_others(leaf_state, ops, affected_factor, only_center_ops);
+    default_generator->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
 }
 
 int SuccessorGeneratorSwitch::split_ops_center_leaf(int factor) {
@@ -211,18 +210,18 @@ void SuccessorGeneratorGenerate::generate_applicable_ops(const State &,
     ops.insert(ops.end(), operators.begin(), operators.end());
 }
 
-void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const LeafState &,
+void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const LeafState &state,
 							 vector<const Operator*> &ops, 
-                                                         int affected_factor, 
                                                          bool only_center_ops) {
+    int factor = state.get_id().get_factor();
     for (size_t i = 0; i < operators.size(); ++i){
         if (only_center_ops){
             if (operators[i]->get_affected_factor() == -1 &&
-                (operators[i]->has_precondition_on_factor(affected_factor)
-                  || !operators[i]->get_effects(affected_factor).empty())){
+                (operators[i]->has_precondition_on_factor(factor)
+                  || !operators[i]->get_effects(factor).empty())){
                 ops.push_back(operators[i]);
             }
-        } else if (operators[i]->get_affected_factor() == affected_factor){
+        } else if (operators[i]->get_affected_factor() == factor){
             ops.push_back(operators[i]);
         }
     }
