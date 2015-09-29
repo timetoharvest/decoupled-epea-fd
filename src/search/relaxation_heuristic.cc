@@ -40,6 +40,15 @@ void RelaxationHeuristic::initialize() {
         propositions[var][val].is_goal = true;
         goal_propositions.push_back(&propositions[var][val]);
     }
+    if (g_use_decoupled_search){
+        for (size_t i = 0; i < g_factors.size(); ++i){
+            for (size_t j = 0; j < g_goals_per_factor[i].size(); ++j){
+                int var = g_goals_per_factor[i][j].first, val = g_goals_per_factor[i][j].second;
+                propositions[var][val].is_goal = true;
+                goal_propositions.push_back(&propositions[var][val]);
+            }
+        }
+    }
 
     // Build unary operators for operators and axioms.
     for (size_t i = 0; i < g_operators.size(); ++i)

@@ -53,10 +53,32 @@ void LandmarkCutHeuristic::initialize() {
 
     // Build artificial goal proposition and operator.
     vector<RelaxedProposition *> goal_op_pre, goal_op_eff;
-    for (size_t i = 0; i < g_goal.size(); ++i) {
-        int var = g_goal[i].first, val = g_goal[i].second;
-        RelaxedProposition *goal_prop = &propositions[var][val];
-        goal_op_pre.push_back(goal_prop);
+    if (g_use_decoupled_search){
+        // this is to keep the goal variable order
+        
+        vector<pair<int, int> > goal(g_variable_domain.size(), pair<int, int>(-1, -1));
+        for (size_t i = 0; i < g_goal.size(); ++i) {
+            goal[g_goal[i].first] = g_goal[i];
+        }
+        for (size_t i = 0; i < g_factors.size(); ++i){
+            for (size_t j = 0; j < g_goals_per_factor[i].size(); ++j){
+                goal[g_goals_per_factor[i][j].first] = g_goals_per_factor[i][j];
+            }
+        }
+        for (size_t i = 0; i < goal.size(); ++i) {
+            int var = goal[i].first;
+            if (var != -1){
+                int val = goal[i].second;
+                RelaxedProposition *goal_prop = &propositions[var][val];
+                goal_op_pre.push_back(goal_prop);
+            }
+        }
+    } else {
+        for (size_t i = 0; i < g_goal.size(); ++i) {
+            int var = g_goal[i].first, val = g_goal[i].second;
+            RelaxedProposition *goal_prop = &propositions[var][val];
+            goal_op_pre.push_back(goal_prop);
+        }
     }
     goal_op_eff.push_back(&artificial_goal);
     add_relaxed_operator(goal_op_pre, goal_op_eff, 0, 0);
@@ -117,7 +139,7 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
     priority_queue.clear();
 
     for (size_t var = 0; var < propositions.size(); ++var) {
-        for (size_t value = 0; value < propositions[var].size(); value++) {
+        for (size_t value = 0; value < propositions[var].size(); ++value) {
             RelaxedProposition &prop = propositions[var][value];
             prop.status = UNREACHED;
         }

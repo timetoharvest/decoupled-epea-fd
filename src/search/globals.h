@@ -99,6 +99,7 @@ extern std::vector<int> g_initial_state_data;
 //      in g_state_registry. This is only a short-term solution. In the
 //      medium term, we should get rid of the global registry.
 extern const State &g_initial_state();
+// in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
 // contains the locally minimal goal cost per factor
 extern std::vector<int> g_min_goal_cost;

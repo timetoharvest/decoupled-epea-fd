@@ -300,16 +300,28 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     // TODO check if each factor contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
     g_goals_per_factor = vector<vector<pair<int, int> > >(g_factors.size());
-    for (size_t g = 0; g < g_goal.size(); g++){
+    vector<int> indeces_to_remove;
+    for (size_t g = 0; g < g_goal.size(); ++g){
         int affected_factor = g_belongs_to_factor[g_goal[g].first];
         if (affected_factor != -1){
             g_goals_per_factor[affected_factor].push_back(g_goal[g]);
-#ifdef DEBUG_SEARCH
+            indeces_to_remove.push_back(g);
+#ifdef DEBUG_FACTORING
             cout << "added fact to goal of factor " << affected_factor << endl;
             cout << g_fact_names[g_goal[g].first][g_goal[g].second] << endl;
 #endif
         }
     }
+    vector<pair<int, int> >::iterator it = g_goal.begin();
+    for (int i = indeces_to_remove.size() - 1; i >= 0; --i){
+        g_goal.erase(it + indeces_to_remove[i]);
+    }
+#ifdef DEBUG_FACTORING
+    cout << "center goals:" << endl;
+    for (size_t i = 0; i < g_goal.size(); ++i){
+        cout << g_fact_names[g_goal[i].first][g_goal[i].second] << endl;
+    }
+#endif
 }
 
 void Factoring::print_factoring() const {
