@@ -549,7 +549,6 @@ size_t StateRegistry::get_max_number_duplicates() const {
 }
 
 void StateRegistry::output_decoupled_state_space_size() const {
-    Timer t;
     size_t dec_size_1 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
     size_t dec_size_2 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size_3 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
@@ -565,7 +564,6 @@ void StateRegistry::output_decoupled_state_space_size() const {
     cout << "decoupled state space size (1) " << dec_size_1 << endl;
     cout << "decoupled state space size (2) " << dec_size_2 << endl;
     cout << "decoupled state space size (3) " << dec_size_3 << endl;
-    cout << "time to compute DSSS: " << t << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
