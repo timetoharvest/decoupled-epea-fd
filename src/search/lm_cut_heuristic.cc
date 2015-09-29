@@ -5,16 +5,16 @@
 #include "option_parser.h"
 #include "per_state_information.h"
 #include "plugin.h"
-#include "state.h"
 #include "price_tag.h"
+#include "state.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <vector>
-using namespace std;
 
+using namespace std;
 
 
 // construction and destruction
