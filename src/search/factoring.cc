@@ -35,7 +35,7 @@ void InteractionGraph::add_dependency(int from, int to) {
     }
 }
 
-Factoring::Factoring(const Options &opts) : 
+Factoring::Factoring(const Options &opts) :
             reopen_closed_nodes(false),
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
@@ -46,11 +46,14 @@ Factoring::Factoring(const Options &opts) :
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
-        cout << "maximum leaf factor size " << max_leaf_size << endl;
+        if (max_leaf_size == 0){
+            cout << "no bound on leaf factor size" << endl;
+            // TODO probably change command line to -1 => no bound
+        } else {
+            cout << "maximum leaf factor size " << max_leaf_size << endl;
+        }
     } else {
-        // TODO probably change command line to -1 => no bound
         max_leaf_size = numeric_limits<size_t>::max();
-        cout << "no bound on leaf factor size" << endl;
     }
     if (opts.contains("pruning")){
         pruning = opts.get<Pruning*>("pruning");
@@ -345,30 +348,21 @@ void Factoring::print_factoring() const {
 void Factoring::exit_error(string message, int exit_code) const {
     cout << "Error while factoring planning task!" << endl;
     cout << message << endl;
-    double factoring_time = g_timer() - begin_factoring_timestamp;
-    if (factoring_time < 0.001){
-        factoring_time = 0;
-    }
-    cout << "factoring time " << factoring_time << "s" << endl;
     exit(exit_code);
 }
 
 void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
-    begin_factoring_timestamp = g_timer();    
+    Timer t;
     
     FactoredVars best_factoring = get_factoring();
+    
+    cout << "factoring time " << t << endl;
     
     if (best_factoring.empty()){
         exit_error("No factoring found!", EXIT_UNSOLVED_INCOMPLETE);
     }
-    
-    double factoring_time = g_timer() - begin_factoring_timestamp;
-    if (factoring_time < 0.001){
-        factoring_time = 0;
-    }
-    cout << "factoring time " << factoring_time << "s" << endl;
     
     apply_factoring(best_factoring);    
     
@@ -417,7 +411,7 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     int added = 0;
     
     // eliminate leaf -> leaf connections
-    for (size_t i = 0; i < inv_fork.size(); i++){
+    for (size_t i = 0; i < inv_fork.size(); ++i){
         bool is_connected = false;
         for (set<int>::iterator var = inv_fork[i].begin(); var != inv_fork[i].end(); ++var){
             vector<int> successors = g_causal_graph->get_successors(*var);
@@ -451,13 +445,11 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
             best_factoring = get_fork_maximize_leaves(vector<int>(), true);
         }
         
-	if (best_factoring.size() < min_number_x_leaves){
-	    // abstain if no or only a single leaf factor was found
-            stringstream message;
-            message << "factored search completely disabled, " << best_factoring.size()
-                    << " leaf factor(s) found" << endl << "abstaining from solving the task";
-            exit_error(message.str(), EXIT_UNSOLVED_INCOMPLETE);
-	}
+        cout << "found inv-fork factoring with " << best_factoring.size() << " leaves" << endl;
+        
+        if (best_factoring.size() < min_number_x_leaves){
+            return FactoredVars();
+        }
     }
     
     return best_factoring;
@@ -551,14 +543,7 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
     }
 
     if (factoring.size() < min_number_leaves){
-        // abstain if no or only a single leaf factor was found
-        stringstream message;
-        if (inverted){
-            message << "inverted ";
-        }
-        message << "fork-decoupled search completely disabled, " << factoring.size()
-                << " leaf factor(s) found" << endl << "abstaining from solving the task";
-        exit_error(message.str(), EXIT_UNSOLVED_INCOMPLETE);
+        return FactoredVars();
     }
 
     return factoring;
@@ -646,11 +631,7 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
     }
     
     if (best_factoring.size() < min_number_leaves){
-        // abstain if no or only a single leaf factor was found
-        stringstream message;
-        message << "factored search completely disabled, " << best_factoring.size()
-                << " leaf factor(s) found" << endl << "abstaining from solving the task";
-        exit_error(message.str(), EXIT_UNSOLVED_INCOMPLETE);
+        return FactoredVars();
     }
     
 #ifdef DEBUG_FACTORING

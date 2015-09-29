@@ -102,8 +102,6 @@ protected:
     
     mutable InteractionGraph interaction_graph;
     
-    mutable double begin_factoring_timestamp;
-    
     virtual FactoredVars get_factoring() = 0;
     
     FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
