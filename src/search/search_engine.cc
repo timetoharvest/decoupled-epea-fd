@@ -63,10 +63,6 @@ void SearchEngine::search() {
         }
     }
 
-    if (g_use_decoupled_search){
-	cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
-    }
-
     cout << "Actual search time: " << timer
          << " [t=" << g_timer << "]" << endl;
 }
