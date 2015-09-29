@@ -432,8 +432,6 @@ bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
 int g_max_action_cost = 0;
 
-int g_decoupled_state_space_size = 0;
-
 Factoring *g_factoring;
 bool g_use_decoupled_search;
 
@@ -453,7 +451,7 @@ vector<int> g_new_index;
 vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
 vector<vector<StateID> > g_leaf_price_cache;
 vector<vector<int> > g_leaf_state_id_map;
-vector<int> g_curr_leaf_state_max_id;
+vector<size_t> g_curr_leaf_state_max_id;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
