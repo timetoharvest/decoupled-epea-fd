@@ -188,15 +188,12 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     g_new_index = vector<int>(g_variable_domain.size());
     interaction_graph = InteractionGraph(factoring.size());
     g_factors.resize(factoring.size());
-    g_leaf_variable_domain.resize(factoring.size());
     
     for (size_t i = 0; i < factoring.size(); i++){
         vector<int> variables(factoring[i].begin(), factoring[i].end());              
-        g_leaf_variable_domain[i] = vector<int>(variables.size());
-        for (size_t j = 0; j < variables.size(); j++){
+        for (size_t j = 0; j < variables.size(); ++j){
             g_belongs_to_factor[variables[j]] = i;
             g_new_index[variables[j]] = j;
-            g_leaf_variable_domain[i][j] = g_variable_domain[variables[j]];
         }
         g_factors[i] = variables;
     }
@@ -207,10 +204,10 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     
     g_number_center_vars = 0;
     
-    for (size_t i = 0; i < g_variable_domain.size(); i++){
+    for (size_t i = 0; i < g_variable_domain.size(); ++i){
         int affected_factor = g_belongs_to_factor[i];
         if (affected_factor == -1){
-            g_number_center_vars++;
+            ++g_number_center_vars;
             g_center_var.push_back(i);
             g_new_index[i] = g_center_var.size() - 1;
 #ifdef DEBUG_FACTORING
@@ -224,18 +221,18 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     vector<int> num_ops_per_factor(g_factors.size());
 #endif
     bool is_fork_factoring = true;
-    for (size_t i = 0; i < g_operators.size(); i++){
+    for (size_t i = 0; i < g_operators.size(); ++i){
         Operator &op = g_operators[i];
         
         set<int> pre_factors;
         set<int> eff_factors;
 
-        for (size_t prev = 0; prev < op.get_preconditions().size(); prev++){
+        for (size_t prev = 0; prev < op.get_preconditions().size(); ++prev){
             const Condition &prevail = op.get_preconditions()[prev];
             pre_factors.insert(g_belongs_to_factor[prevail.var]);
         }
         
-        for (size_t post = 0; post < op.get_effects().size(); post++){
+        for (size_t post = 0; post < op.get_effects().size(); ++post){
             const Effect &prepost = op.get_effects()[post];
             eff_factors.insert(g_belongs_to_factor[prepost.var]);
         }
