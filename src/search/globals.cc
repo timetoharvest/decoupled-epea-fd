@@ -310,7 +310,7 @@ void read_everything(istream &in) {
         
         cout << "packing state variables..." << flush;
         g_state_packer = new IntPacker(center_domains);
-        cout << "Variables: " << g_number_center_vars << endl;
+        cout << "Variables: " << g_center_vars.size() << endl;
         g_leaf_factor_packers = vector<IntPacker*>(g_factors.size(), 0);
         for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
             g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
@@ -434,13 +434,12 @@ int g_inc_g_by;
 PerStateInformation<PriceTag> g_price_tags;
 
 vector<int> g_belongs_to_factor;
-size_t g_number_center_vars;
 vector<vector<int> > g_factors;
 
 vector<string> g_variable_name;
 vector<int> g_variable_domain;
 
-vector<int> g_center_var;
+vector<int> g_center_vars;
 vector<int> g_new_index;
 
 vector<vector<vector<int> > > g_center_successors;

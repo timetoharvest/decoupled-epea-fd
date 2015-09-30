@@ -68,7 +68,6 @@ extern int g_inc_g_by;
 extern PerStateInformation<PriceTag> g_price_tags;
 
 extern std::vector<int> g_belongs_to_factor;
-extern size_t g_number_center_vars;
 extern std::vector<std::vector<int> > g_factors;
 
 extern std::vector<std::string> g_variable_name;
@@ -76,14 +75,13 @@ extern std::vector<int> g_variable_domain;
 
 // the following two map the variable position in g_leaf_variable_domain
 // to the corresponding index in g_variable_domain
-extern std::vector<int> g_center_var;   // TODO need this?
+extern std::vector<int> g_center_vars;
 extern std::vector<int> g_new_index;
 
 extern std::vector<std::vector<std::vector<int> > > g_center_successors;
-
 extern std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
+// TODO put this as a static field to PriceTag
 extern std::vector<std::vector<StateID> > g_leaf_price_cache;
-// TODO put these as a static field to PriceTag + the above?
 extern std::vector<std::vector<int> > g_leaf_state_id_map;
 extern std::vector<size_t> g_curr_leaf_state_max_id;
 

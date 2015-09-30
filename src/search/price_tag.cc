@@ -91,7 +91,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         state_data_pool.push_back(base_state.get_packed_buffer());
         PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
         
-        g_state_packer->set(buffer, g_number_center_vars, dup);
+        g_state_packer->set(buffer, g_center_vars.size(), dup);
         
         StateID id = g_state_registry->insert_id_or_pop_state();
         State s = g_state_registry->lookup_state(id);

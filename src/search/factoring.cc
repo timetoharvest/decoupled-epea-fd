@@ -202,14 +202,11 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     cout << "center factor:" << endl;
 #endif
     
-    g_number_center_vars = 0;
-    
     for (size_t i = 0; i < g_variable_domain.size(); ++i){
         int affected_factor = g_belongs_to_factor[i];
         if (affected_factor == -1){
-            ++g_number_center_vars;
-            g_center_var.push_back(i);
-            g_new_index[i] = g_center_var.size() - 1;
+            g_center_vars.push_back(i);
+            g_new_index[i] = g_center_vars.size() - 1;
 #ifdef DEBUG_FACTORING
             cout << "   variable " << i << " :" << g_fact_names[i][0] << endl;
 #endif
@@ -324,7 +321,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 void Factoring::print_factoring() const {
     cout << "number leaf factors: " << g_factors.size() << endl;
     
-    cout << g_number_center_vars << " variables in center factor" << endl;
+    cout << g_center_vars.size() << " variables in center factor" << endl;
     
     for (size_t i = 0; i < g_factors.size(); i++) {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;

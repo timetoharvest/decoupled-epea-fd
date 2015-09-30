@@ -107,7 +107,7 @@ const State &StateRegistry::get_initial_state() {
         }
         
         if (g_use_decoupled_search){
-            g_state_packer->set(center_buffer, g_number_center_vars, 0);
+            g_state_packer->set(center_buffer, g_center_vars.size(), 0);
         } else {
             g_axiom_evaluator->evaluate(center_buffer);
         }
@@ -191,9 +191,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     
     vector<int> values;
     if (g_use_decoupled_search){
-        g_state_packer->set(buffer, g_number_center_vars, 0);
+        g_state_packer->set(buffer, g_center_vars.size(), 0);
         
-        values.resize(g_number_center_vars);
+        values.resize(g_center_vars.size());
         for (size_t i = 0; i < values.size(); i++){
             values[i] = g_state_packer->get(buffer, i);
         }
@@ -237,7 +237,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             for (size_t i = 0; i < values.size(); i++){
                 g_state_packer->set(buffer, i, values[i]);
             }
-            g_state_packer->set(buffer, g_number_center_vars, new_dup_counter);
+            g_state_packer->set(buffer, g_center_vars.size(), new_dup_counter);
             
             int base_state_id = id.hash();
             
@@ -549,9 +549,9 @@ size_t StateRegistry::get_max_number_duplicates() const {
 }
 
 void StateRegistry::output_decoupled_state_space_size() const {
-    size_t dec_size_1 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
-    size_t dec_size_2 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
-    size_t dec_size_3 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
+    size_t dec_size_1 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
+    size_t dec_size_2 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    size_t dec_size_3 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
     for (size_t i = 0; i < size(); ++i){
         const PriceTag &tag = g_price_tags[lookup_state(StateID(i))];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -561,9 +561,9 @@ void StateRegistry::output_decoupled_state_space_size() const {
             dec_size_3 += size(factor);
         }
     }
-    cout << "decoupled state space size (1) " << dec_size_1 << endl;
-    cout << "decoupled state space size (2) " << dec_size_2 << endl;
-    cout << "decoupled state space size (3) " << dec_size_3 << endl;
+    cout << "decoupled state space size [1] " << dec_size_1 << endl;
+    cout << "decoupled state space size [2] " << dec_size_2 << endl;
+    cout << "decoupled state space size [3] " << dec_size_3 << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
