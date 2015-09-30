@@ -18,6 +18,8 @@ void PriceTagInfo::dump() const {
 }
 
 
+vector<vector<StateID> > PriceTag::leaf_price_cache;
+
 PriceTag::PriceTag() :
         number_facts(vector<size_t>(g_factors.size(), 0)), 
         costs(vector<vector<PriceTagInfo> >(g_factors.size())),
@@ -316,8 +318,6 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            // TODO for satisficing search, just put reachable to all states!
-            // this is not true if the leaf state space is not invertible
             if (number_facts[factor] == 1){
                 size_t leaf_id = 0;
                 for (;;){
@@ -325,10 +325,10 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     if (has_leaf_state(leaf_id, factor)){
                         break;
                     }
-                    leaf_id++;
+                    ++leaf_id;
                 }
-                if (g_leaf_price_cache[factor].size() > leaf_id && g_leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const PriceTag &tag_to_copy = g_price_tags[g_state_registry->lookup_state(g_leaf_price_cache[factor][leaf_id])];
+                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
+                    const PriceTag &tag_to_copy = g_price_tags[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
                     int cost_delta = get_info_for_fact(leaf_id, factor).cost;
                     cost_delta -= tag_to_copy.get_info_for_fact(leaf_id, factor).cost;
@@ -525,10 +525,10 @@ void PriceTag::cache_leaf_price_tags(const State &state) {
         for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
             size_t leaf_id = leaf_tags_to_cache[i].first;
             int factor = leaf_tags_to_cache[i].second;
-            if (g_leaf_price_cache[factor].size() <= leaf_id){
-                g_leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
+            if (leaf_price_cache[factor].size() <= leaf_id){
+                leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
-            g_leaf_price_cache[factor][leaf_id] = state.get_id();
+            leaf_price_cache[factor][leaf_id] = state.get_id();
         }
         vector<pair<int, int> >().swap(leaf_tags_to_cache);
     }
@@ -563,3 +563,14 @@ size_t PriceTag::get_number_facts(int factor) const {
 int PriceTag::get_goal_cost(int factor) const {
     return goal_cost[factor];
 }
+
+void PriceTag::initialize_leaf_cache() {
+    // initialize cache if at least one inv-fork leaf present
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_factoring->has_predecessors(factor)){
+            leaf_price_cache = vector<vector<StateID> >(g_factors.size());
+            break;
+        }
+    }
+}
+

@@ -10,6 +10,7 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
+#include "price_tag.h"
 
 #include <iostream>
 #include <limits>
@@ -283,13 +284,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     
     g_is_leaf_goal_state.resize(g_factors.size());
     
-    if (profile != FORK){
-        // TODO this is actually only needed if there is at least one
-        // inverted-fork leaf
-        g_leaf_price_cache.resize(g_factors.size());
-    }
+    PriceTag::initialize_leaf_cache();
     
-
     // setup g_goals_per_factor
     // TODO check if each factor contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!

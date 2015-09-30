@@ -80,8 +80,6 @@ extern std::vector<int> g_new_index;
 
 extern std::vector<std::vector<std::vector<int> > > g_center_successors;
 extern std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
-// TODO put this as a static field to PriceTag
-extern std::vector<std::vector<StateID> > g_leaf_price_cache;
 extern std::vector<std::vector<int> > g_leaf_state_id_map;
 extern std::vector<size_t> g_curr_leaf_state_max_id;
 

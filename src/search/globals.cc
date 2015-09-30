@@ -279,8 +279,6 @@ void read_everything(istream &in) {
     g_causal_graph = new CausalGraph;
     cout << "done! [t=" << g_timer << "]" << endl;
     
-    // TODO initialize this and similar variables somewhere else
-    g_sum_min_goal_cost = 0;
     
     if (g_use_decoupled_search){
         verify_no_axioms_no_conditional_effects();
@@ -445,7 +443,6 @@ vector<int> g_new_index;
 vector<vector<vector<int> > > g_center_successors;
 
 vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
-vector<vector<StateID> > g_leaf_price_cache;
 vector<vector<int> > g_leaf_state_id_map;
 vector<size_t> g_curr_leaf_state_max_id;
 
@@ -459,7 +456,7 @@ vector<int> g_initial_state_data;
 
 vector<pair<int, int> > g_goal;
 vector<int> g_min_goal_cost;
-int g_sum_min_goal_cost;
+int g_sum_min_goal_cost = 0;
 vector<vector<pair<int, int> > > g_goals_per_factor;
 vector<vector<bool> > g_is_leaf_goal_state;
 

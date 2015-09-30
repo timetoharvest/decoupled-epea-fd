@@ -30,6 +30,8 @@ class PriceTag {
     
 protected:
     
+    static std::vector<std::vector<StateID> > leaf_price_cache;
+    
     std::vector<size_t> number_facts;
     
     std::vector<std::vector<PriceTagInfo> > costs;
@@ -81,6 +83,8 @@ public:
     size_t get_number_facts(int factor) const;
     
     int get_goal_cost(int factor) const;
+    
+    static void initialize_leaf_cache();
     
 };
 
