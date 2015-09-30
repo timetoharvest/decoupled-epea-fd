@@ -24,10 +24,9 @@
 #include <string>
 #include <vector>
 #include <sstream>
+
 using namespace std;
 
-#include <ext/hash_map>
-using namespace __gnu_cxx;
 
 static const int PRE_FILE_VERSION = 3;
 
@@ -41,19 +40,13 @@ static const int PRE_FILE_VERSION = 3;
 static vector<vector<set<pair<int, int> > > > g_inconsistent_facts;
 
 bool test_goal(const State &state) {
+    for (size_t i = 0; i < g_goal.size(); ++i) {
+        assert(!g_use_decoupled_search || g_belongs_to_factor[g_goal[i].first] == -1);
+        if (state[g_goal[i].first] != g_goal[i].second){
+            return false;
+        }
+    }
     if (g_use_decoupled_search){
-	for (size_t i = 0; i < g_goal.size(); ++i) {
-            // TODO seperate center goals and only iterate over those
-	    size_t var = g_goal[i].first;
-	    int val = g_goal[i].second;
-	    int affected_factor = g_belongs_to_factor[var];
-	    if (affected_factor == -1){
-		if (state[var] != val){
-		    return false;
-		}
-	    }
-	}
-	
 	const PriceTag &leaf_facts = g_price_tags[state];
 	for (size_t i = 0; i < g_goals_per_factor.size(); ++i) {
 	    if (!g_goals_per_factor[i].empty() && leaf_facts.get_goal_cost(i) == -1){
@@ -61,12 +54,6 @@ bool test_goal(const State &state) {
 	    }
 	}
     
-    } else {
-	for (size_t i = 0; i < g_goal.size(); ++i) {
-	    if (state[g_goal[i].first] != g_goal[i].second){
-		return false;
-	    }
-	}
     }
     return true;
 }
@@ -432,8 +419,6 @@ bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
 int g_max_action_cost = 0;
 
-int g_decoupled_state_space_size = 0;
-
 Factoring *g_factoring;
 bool g_use_decoupled_search;
 
@@ -453,7 +438,7 @@ vector<int> g_new_index;
 vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
 vector<vector<StateID> > g_leaf_price_cache;
 vector<vector<int> > g_leaf_state_id_map;
-vector<int> g_curr_leaf_state_max_id;
+vector<size_t> g_curr_leaf_state_max_id;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;

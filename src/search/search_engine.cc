@@ -63,10 +63,6 @@ void SearchEngine::search() {
         }
     }
 
-    if (g_use_decoupled_search){
-	cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
-    }
-
     cout << "Actual search time: " << timer
          << " [t=" << g_timer << "]" << endl;
 }
@@ -86,7 +82,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 for (size_t i = 0; i < plan.size(); i++){
                     cost += get_adjusted_cost(*plan[i]);
                 }
-                if (g_factoring->get_search_type() == AFRA){
+                if (g_factoring->get_search_type() == ASDA){
                     if (!is_optimal_leaf_plan(plan) || (!this->plan.empty() && bound < cost)){
                         if (this->plan.empty() || bound > cost){
                             bound = cost;
@@ -97,7 +93,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                         
                         return false;
                     }
-                } else if (g_factoring->get_search_type() == FDA){
+                } else if (g_factoring->get_search_type() == SDA){
                     cout << "found a plan of cost " << cost;
                     
                     if (!found_solution()){

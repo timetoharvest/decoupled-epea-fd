@@ -18,8 +18,7 @@ public:
     // only used for precomputing leaf factor goal cost; does not respect preconditions from center/other leaves
     // this is called on the original SuccessorGenerator
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state,
-                                         std::vector<const Operator *> &ops, int affected_factor,
-                                         bool only_center_ops = false) = 0;
+                                         std::vector<const Operator *> &ops, bool only_center_ops = false) = 0;
                                          
     // split up general SG into separate ones for each factor
     // returns the number of remaining operators in this SuccessorGenerator

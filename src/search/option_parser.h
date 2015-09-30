@@ -1,7 +1,6 @@
 #ifndef OPTION_PARSER_H
 #define OPTION_PARSER_H
 
-#include "factoring.h"
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
@@ -42,11 +41,12 @@ If NT shall be predefinable:
   should add an explanation to OptionParser::usage().
 */
 
-
+class Factoring;
 class OptionParser;
 class LandmarkGraph;
 template<class Entry>
 class OpenList;
+class Pruning;
 class SearchEngine;
 class MergeStrategy;
 class ShrinkStrategy;
@@ -129,6 +129,18 @@ public:
 };
 
 template <>
+class TokenParser<Factoring *> {
+public:
+    static inline Factoring *parse(OptionParser &p);
+};
+
+template <>
+class TokenParser<Pruning *> {
+public:
+    static inline Pruning *parse(OptionParser &p);
+};
+
+template <>
 class TokenParser<ShrinkStrategy *> {
 public:
     static inline ShrinkStrategy *parse(OptionParser &p);
@@ -155,8 +167,6 @@ class OptionParser {
     static SearchEngine *parse_cmd_line_aux(
         const std::vector<std::string> &args, bool dry_run);
     
-    static void parse_factored_search_options(std::string options, SEARCH_TYPE search_type);
-    
 public:
     OptionParser(std::string config, bool dr);
     OptionParser(ParseTree pt, bool dr);
@@ -165,7 +175,7 @@ public:
     static SearchEngine *parse_cmd_line(
         int argc, const char **argv, bool dr, bool is_unit_cost);
     
-    static void parse_factored_search(int argc, const char **argv);
+    static void parse_decoupled_search(int argc, const char **argv);
 
     static std::string usage(std::string progname);
 
@@ -427,9 +437,16 @@ ShrinkStrategy *TokenParser<ShrinkStrategy *>::parse(OptionParser &p) {
     return lookup_in_registry<ShrinkStrategy>(p);
 }
 
-
 Synergy *TokenParser<Synergy *>::parse(OptionParser &p) {
     return lookup_in_registry<Synergy>(p);
+}
+
+Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
+    return lookup_in_registry<Factoring>(p);
+}
+
+Pruning *TokenParser<Pruning *>::parse(OptionParser &p) {
+    return lookup_in_registry<Pruning>(p);
 }
 
 ParseTree TokenParser<ParseTree>::parse(OptionParser &p) {

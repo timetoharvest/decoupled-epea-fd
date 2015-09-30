@@ -129,6 +129,31 @@ class StateRegistry {
             return std::equal(lhs_data, lhs_data + size, rhs_data);
         }
     };
+    
+    struct LeafStateIDSemanticHash {
+        const std::vector<SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        LeafStateIDSemanticHash(const std::vector<SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+            : data_pool(state_data_pool_) {
+        }
+        size_t operator() (LeafStateID id) const {
+            return ::hash_number_sequence((*data_pool[id.factor])[id.hash()], g_leaf_factor_packers[id.factor]->get_num_bins());
+        }
+    };
+
+    struct LeafStateIDSemanticEqual {
+        const std::vector<SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        LeafStateIDSemanticEqual(const std::vector<SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+            : data_pool(state_data_pool_) {
+        }
+
+        size_t operator() (LeafStateID lhs, LeafStateID rhs) const {
+            assert(lhs.factor == rhs.factor);
+            size_t size = g_leaf_factor_packers[lhs.factor]->get_num_bins();
+            const PackedStateBin *lhs_data = (*data_pool[lhs.factor])[lhs.value];
+            const PackedStateBin *rhs_data = (*data_pool[rhs.factor])[rhs.value];
+            return std::equal(lhs_data, lhs_data + size, rhs_data);
+        }
+    };
 
     /*
       Hash set of StateIDs used to detect states that are already registered in
@@ -139,16 +164,20 @@ class StateRegistry {
                                 StateIDSemanticHash,
                                 StateIDSemanticEqual> StateIDSet;
                                 
-    // TODO find an appropriate name for this
-    typedef __gnu_cxx::hash_map<size_t, size_t> LeafStateIDMap;
+    typedef __gnu_cxx::hash_set<LeafStateID,
+                            LeafStateIDSemanticHash,
+                            LeafStateIDSemanticEqual> LeafFactorIDSet;
+                            
+    typedef __gnu_cxx::hash_map<size_t, size_t> DupCounterTable;
+                            
 
     SegmentedArrayVector<PackedStateBin> state_data_pool;
     
     std::vector<SegmentedArrayVector<PackedStateBin>* > leaf_factor_data_pool;
 
-    std::vector<LeafStateIDMap> leaf_hash_map;
-    
     StateIDSet registered_states;
+    
+    std::vector<LeafFactorIDSet> registered_leaf_states;
     
     State *cached_initial_state;
     
@@ -156,7 +185,7 @@ class StateRegistry {
       maps the StateID of the base state to the number of different decoupled
       states that have the same center
     */
-    LeafStateIDMap state_duplicate_counter;
+    DupCounterTable state_duplicate_counter;
 
     mutable std::set<PerStateInformationBase *> subscribers;
     
@@ -211,10 +240,12 @@ public:
      * Returns the number of states registered for the specified leaf factor
      */
     size_t size(int factor) const {
-	return leaf_hash_map[factor].size();
+	return registered_leaf_states[factor].size();
     }
     
     size_t get_max_number_duplicates() const;
+    
+    void output_decoupled_state_space_size() const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is

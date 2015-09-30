@@ -21,14 +21,18 @@ EagerSearch::EagerSearch(
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       do_pathmax(opts.get<bool>("pathmax")),
       use_multi_path_dependence(opts.get<bool>("mpd")),
-      open_list(opts.get<OpenList<StateID> *>("open")),
-      partial_order_reduction_method(opts.get<POR::PORMethod*>("partial_order_reduction")) {
+      open_list(opts.get<OpenList<StateID> *>("open")) {
     if (opts.contains("f_eval")) {
         f_evaluator = opts.get<ScalarEvaluator *>("f_eval");
     } else {
         f_evaluator = 0;
     }
-    if (opts.contains("pruning_heuristic")){
+    if (opts.contains("partial_order_reduction")){
+        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
+    } else {
+        partial_order_reduction_method = 0;
+    }
+    if (g_use_decoupled_search && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
     } else {
         pruning_heuristic = 0;
@@ -101,8 +105,9 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    
-    partial_order_reduction_method->dump_options();
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->dump_options();
+    }
 }
 
 EagerSearch::~EagerSearch() {
@@ -113,7 +118,9 @@ EagerSearch::~EagerSearch() {
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
-    partial_order_reduction_method->dump_statistics();
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->dump_statistics();
+    }
 }
 
 SearchStatus EagerSearch::step() {
@@ -124,7 +131,7 @@ SearchStatus EagerSearch::step() {
     SearchNode node = n.first;
     
     if (g_use_decoupled_search &&
-        g_factoring->get_search_type() == FDA &&
+        g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
              << ") is greater/equal to cost of best found plan => goal reached [t=" << g_timer << "]" << endl;
@@ -143,7 +150,9 @@ SearchStatus EagerSearch::step() {
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
     // even when pruned by the POR method.
-    partial_order_reduction_method->prune_operators(s, applicable_ops);
+    if (partial_order_reduction_method != 0){
+        partial_order_reduction_method->prune_operators(s, applicable_ops);
+    }
 
     // This evaluates the expanded state (again) to get preferred ops
     for (size_t i = 0; i < preferred_operator_heuristics.size(); ++i) {
@@ -354,7 +363,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             if ((node.get_g() + max(goal_cost, node.get_h())) >= bound) {
                 continue;
             }
-            if (g_factoring->get_search_type() == AFRA && pruning_heuristic != 0){
+            if (g_factoring->get_search_type() == ASDA && pruning_heuristic != 0){
                 pruning_heuristic->evaluate(s);
                 int fork_h = pruning_heuristic->get_heuristic();
                 if (node.get_g() + fork_h >= bound){
@@ -513,11 +522,6 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
         evals.push_back(eval);
         OpenList<StateID> *open = \
             new TieBreakingOpenList<StateID>(evals, false, false);
-        
-        if (opts.contains("pruning_heuristic")){
-            Heuristic* pruning_h = opts.get<Heuristic*>("pruning_heuristic");
-            opts.set("pruning_heuristic", pruning_h);
-        }
 
         opts.set("open", open);
         opts.set("f_eval", f_eval);

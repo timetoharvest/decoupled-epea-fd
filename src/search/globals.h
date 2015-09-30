@@ -7,12 +7,12 @@
 
 #ifndef NDEBUG
 //#define DEBUG_SEARCH    // general debugging
-// #define DEBUG_FACTORING
+#define DEBUG_FACTORING
 // #define DEBUG_PLAN_EXTRACTION
 //#define DEBUG_SUCCESSOR_GENERATION
 // #define DEBUG_NEW_SG
 //#define DEBUG_ACTION_SPLITTING        // factoring of operators in SuccessorGenerator
-//#define DEBUG_PRECOMPUTE_GOAL_COST
+// #define DEBUG_PRECOMPUTE_GOAL_COST
 // #define DEBUG_POR
 #endif
 
@@ -56,8 +56,6 @@ extern bool g_use_metric;
 extern int g_min_action_cost;
 extern int g_max_action_cost;
 
-extern int g_decoupled_state_space_size;
-
 extern Factoring *g_factoring;
 extern bool g_use_decoupled_search;
 
@@ -85,7 +83,7 @@ extern std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateI
 extern std::vector<std::vector<StateID> > g_leaf_price_cache;
 // TODO put this as a static field to PriceTag
 extern std::vector<std::vector<int> > g_leaf_state_id_map;
-extern std::vector<int> g_curr_leaf_state_max_id;
+extern std::vector<size_t> g_curr_leaf_state_max_id;
 
 extern std::vector<std::vector<std::string> > g_fact_names;
 extern std::vector<int> g_axiom_layers;
@@ -101,6 +99,7 @@ extern std::vector<int> g_initial_state_data;
 //      in g_state_registry. This is only a short-term solution. In the
 //      medium term, we should get rid of the global registry.
 extern const State &g_initial_state();
+// in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
 // contains the locally minimal goal cost per factor
 extern std::vector<int> g_min_goal_cost;

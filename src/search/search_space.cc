@@ -475,4 +475,8 @@ void SearchSpace::statistics() const {
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         cout << "Number of registered leaf states in factor " << factor << ": " << g_state_registry->size(factor) << endl;
     }
+    if (g_use_decoupled_search){
+        g_state_registry->output_decoupled_state_space_size();
+        cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
+    }
 }

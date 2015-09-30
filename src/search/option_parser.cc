@@ -194,7 +194,7 @@ SearchEngine *OptionParser::parse_cmd_line(
     return parse_cmd_line_aux(args, dry_run);
 }
 
-void OptionParser::parse_factored_search(int argc, const char** argv) {
+void OptionParser::parse_decoupled_search(int argc, const char** argv) {
     g_use_decoupled_search = false;
     for (int i = 0; i < argc; i++){
 	string arg = argv[i];
@@ -204,124 +204,14 @@ void OptionParser::parse_factored_search(int argc, const char** argv) {
 	    if (i == argc - 1){
 		throw ArgError("missing argument after --decoupling");
 	    }
-	    arg = argv[i+1];
 	    
-	    if (arg.find("fra") == 0){
-		cout << "performing fork-root A* search" << endl;
-		parse_factored_search_options(arg.substr(3), FRA);
-	    } else if (arg.find("asda") == 0){
-		cout << "performing anytime star-decoupled A* search" << endl;
-                parse_factored_search_options(arg.substr(4), AFRA);
-	    } else if (arg.find("sda") == 0){
-		cout << "performing star-decoupled A* search" << endl;
-                parse_factored_search_options(arg.substr(3), FDA);
-	    } else if (arg.find("sat") == 0){
-		cout << "performing decoupled satisficing search" << endl;
-                parse_factored_search_options(arg.substr(3), SAT);
-	    } else {
-		throw ArgError("Unknown option for decoupled search: " + arg);
-	    }
+            OptionParser dry(argv[i+1], true); // dry run
+            dry.start_parsing<Factoring *>();
+            
+            OptionParser p(argv[i+1], false);
+            g_factoring = p.start_parsing<Factoring *>();
 	}
     }
-}
-
-void OptionParser::parse_factored_search_options(string options, SEARCH_TYPE search_type) {
-    //remove newlines/tabs/whitespaces so they don't mess anything up:
-    options.erase(std::remove(options.begin(), options.end(), '\n'), options.end());
-    options.erase(std::remove(options.begin(), options.end(), '\t'), options.end());
-    options.erase(std::remove(options.begin(), options.end(), ' '), options.end());
-    
-    PROFILE factoring = X_SHAPE; // default factoring
-    Pruning *pruning = new BasicPruning();
-    
-    if (options.empty() || options.compare("()") == 0){
-        cout << "using default target profile: X-shape" << endl;
-        cout << "using basic pruning method" << endl;
-            
-        g_factoring = produce_factoring(search_type, factoring, pruning);
-        
-        return;
-    }
-    
-    if (options.substr(0, 1).compare("(") != 0 || options.substr(options.size()-1).compare(")") != 0){
-        throw ArgError("Invalid option for decoupled search (paranthesis missing?): " + options);
-    }
-    options = options.substr(1, options.length() - 2);
-    
-    string::size_type pos = -1;
-    
-    bool set_profile = false;
-    bool set_pruning = false;
-
-    do {
-        string::size_type pos2 = options.find_first_of(",", ++pos);
-        string option = options.substr(pos);
-        if (pos2 != string::npos) {
-            option = option.substr(0, pos2 - pos);
-        }
-
-        if (option.find("profile=") == 0){
-            set_profile = true;
-            string fact = option.substr(8, pos2 - pos - 8);
-            if (fact.find("fork") == 0){
-                factoring = FORK;
-                cout << "using fork factoring" << endl;
-            } else if (fact.find("center") == 0){
-                factoring = CENTER;
-                cout << "using center factoring" << endl;
-            } else if (fact.find("inv_fork") == 0){
-                factoring = I_FORK;
-                cout << "using inverted-fork factoring" << endl;
-            } else if (fact.find("x_shape") == 0){
-                factoring = X_SHAPE;
-                cout << "using X-shape factoring" << endl;
-            } else if (fact.find("sokoban") == 0){
-                factoring = SOKOBAN;
-                cout << "using sokoban factoring" << endl;
-            } else if (fact.find("openstacks") == 0){
-                factoring = OPENSTACKS;
-                cout << "using openstacks factoring" << endl;
-            } else if (fact.find("incident_arcs") == 0){
-                factoring = INCI_ARCS;
-                cout << "using incident arcs factoring" << endl;
-            } else if (fact.find("tpp") == 0){
-                factoring = TPP_CONSTRAINED;
-                cout << "using tpp resource constrained factoring" << endl;
-            } else if (fact.find("itpp") == 0){
-                factoring = INV_TPP_CONSTRAINED;
-                cout << "using tpp resource constrained factoring" << endl;
-            } else {
-                throw ArgError("Unknown value for target profile: " + fact);
-            }
-        } else if (option.find("pruning=") == 0) {
-            set_pruning = true;
-            string fact = option.substr(8, pos2 - pos - 8);
-            if (fact.find("basic") == 0) {
-                cout << "using basic pruning method" << endl;
-            } else if (fact.find("frontier") == 0) {
-                //g_pruning_type = COST_FRONTIER;
-                cout << "Using cost frontier dominance pruning" << endl;
-                
-                cout << "uncomment this again! (optionparser.cc)" << endl;
-                exit(EXIT_CRITICAL_ERROR);
-            } else {
-                throw ArgError("Unknown value for pruning method: " + fact);
-            }
-        } else {
-            throw ArgError("Unknown option for factored search: " + option);
-        }
-
-        pos = pos2;
-    } while (pos != string::npos);
-    
-    if (!set_profile){
-        cout << "using default target profile: X-shape" << endl;
-    }
-    if (!set_pruning){
-        cout << "using basic pruning method" << endl;
-    }
-        
-    g_factoring = produce_factoring(search_type, factoring, pruning);
 }
 
 SearchEngine *OptionParser::parse_cmd_line_aux(
@@ -388,7 +278,7 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             ++i;
             g_plan_filename = args[i];
         } else if (arg.compare("--decoupling") == 0) {
-            // factored search settings have to be read in seperately in parse_factored_search()
+            // decoupled search settings have to be read in seperately in parse_factored_search()
             // because factoring needs to be done within the read_everything function
 	    ++i;
         } else {
