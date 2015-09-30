@@ -186,6 +186,10 @@ public:
         reopen_closed_nodes = true;
     }
     
+    bool has_packed_states(int factor) const {
+        return g_factors[factor].size() > 1;
+    }
+    
     static void add_options_to_parser(OptionParser &parser);
     
 };
