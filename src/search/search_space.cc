@@ -163,11 +163,6 @@ SearchNode SearchSpace::get_node(const State &state) {
 
 void SearchSpace::trace_path(const State &goal_state,
                              vector<const Operator *> &path) const {
-                                 
-    // TODO if in optimal planning, abort building plan once intermediate cost
-    // is higher/equal than current best plan
-    // it's probably not worth the effort, when collecting the actions, main
-    // work is done, anyway
 
     State current_state = goal_state;
     
@@ -207,7 +202,7 @@ void SearchSpace::trace_path(const State &goal_state,
         // reconstruct leaf paths
         vector<PathPriceTag> price_tags(states.size());
         
-        for (size_t factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
             price_tags[0].add_fact(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
         }
         price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
@@ -300,12 +295,14 @@ void SearchSpace::trace_path(const State &goal_state,
             
             
 #ifdef DEBUG_PLAN_EXTRACTION
-            cout << "current root state: " << current_state.get_id() << endl;
-            current_state.dump_pddl();
-            const PriceTag &r = g_price_tags[current_state];
+            cout << "current root state: " << states[step] << endl;
+            g_state_registry->lookup_state(states[step]).dump_pddl();
             for (size_t factor = 0; factor < g_factors.size(); ++factor){
                 for (size_t i = 0; i < g_state_registry->size(factor); ++i){
-                    if (r.has_leaf_state(i, factor)){
+                    if (price_tags[step].has_leaf_state(i, factor)){
+                        if (price_tags[step].get_path_info_for_fact(i, factor).is_new){
+                            cout << "is new:" << endl;
+                        }
                         g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
                     }
                 }
@@ -314,7 +311,7 @@ void SearchSpace::trace_path(const State &goal_state,
 #endif      
             
             // iterate over leaf factors
-            for (size_t factor = 0; factor < g_factors.size(); factor++){
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
                 
                 bool change = true;
                 while (change){
@@ -342,10 +339,14 @@ void SearchSpace::trace_path(const State &goal_state,
                                     g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
                                     cout << "added op to plan: ";
                                     if (g_factoring->get_profile() == FORK){
-                                        cout << fact.best_supporter->get_name() << endl;
-                                        cout << "marked predecessor: " << fact.predecessor << endl;
-                                        g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
+                                        if (fact.best_supporter != 0){
+                                            cout << fact.best_supporter->get_name() << endl;
+                                            cout << "marked predecessor: " << fact.predecessor << endl;
+                                            g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
+                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
+                                        } else {
+                                            cout << "is init state" << endl;
+                                        }
                                     } else if (fact.best_supporter == 0) {
                                         if (fact.predecessor != LeafStateID::no_state){
                                             cout << "no-op (affects center)" << endl;
@@ -436,6 +437,9 @@ void SearchSpace::trace_path(const State &goal_state,
             
             if (step < path.size()){
                 decoupled_plan.push_back(path[step]);
+#ifdef DEBUG_PLAN_EXTRACTION
+                cout << "added root op: " << decoupled_plan.back()->get_name() << endl;
+#endif
             }
             
         }
