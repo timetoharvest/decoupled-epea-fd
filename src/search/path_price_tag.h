@@ -32,11 +32,11 @@ class PathPriceTag : public PriceTag {
     virtual bool add_fact(const LeafStateID &fact, int cost, const Operator *bs, 
                   const LeafStateID &predecessor);
     
+    PathPriceTag(const PathPriceTag *tag);
+    
 public:
     
-    PathPriceTag();
-    
-    PathPriceTag(const PathPriceTag& tag, bool copy_facts);
+    PathPriceTag(){};
       
     const PathPriceTagInfo &get_path_info_for_fact(int id, int factor) const;
     

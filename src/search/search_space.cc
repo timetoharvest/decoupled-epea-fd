@@ -200,7 +200,7 @@ void SearchSpace::trace_path(const State &goal_state,
         reverse(states.begin(), states.end());
         
         // reconstruct leaf paths
-        vector<PathPriceTag> price_tags(states.size());
+        vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
         
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             price_tags[0].add_fact(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
@@ -213,7 +213,7 @@ void SearchSpace::trace_path(const State &goal_state,
             if (g_factoring->get_profile() != FORK){
                 tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
             } else {
-                tag = PathPriceTag(price_tags[i - 1], true);
+                tag = PathPriceTag(&price_tags[i - 1]);
             }
             tag.update_price_tags(g_state_registry->lookup_state(states[i]));
         }
@@ -263,8 +263,6 @@ void SearchSpace::trace_path(const State &goal_state,
 #endif
         
         vector<const Operator*> decoupled_plan;
-        
-        
         
         vector<set<int> > center_preconditions(g_factors.size());
         vector<int> best_center_supporter(g_factors.size());

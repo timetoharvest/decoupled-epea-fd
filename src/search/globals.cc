@@ -440,9 +440,8 @@ vector<int> g_variable_domain;
 vector<int> g_center_vars;
 vector<int> g_new_index;
 
-vector<vector<vector<int> > > g_center_successors;
-
-vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
+vector<vector<vector<size_t> > > g_center_successors;
+vector<vector<vector<pair<const Operator*, size_t> > > > g_leaf_state_successors;
 vector<vector<int> > g_leaf_state_id_map;
 vector<size_t> g_curr_leaf_state_max_id;
 

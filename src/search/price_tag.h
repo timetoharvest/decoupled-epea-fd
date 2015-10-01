@@ -30,6 +30,8 @@ class PriceTag {
     
 protected:
     
+    PriceTag(const PriceTag *tag);
+    
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
     std::vector<size_t> number_facts;
@@ -72,9 +74,7 @@ protected:
     
 public:
     
-    PriceTag();
-
-    PriceTag(const PriceTag &tag, bool copy_facts = true);
+    PriceTag(){};
     
     bool has_leaf_state(int id, int factor) const;
     

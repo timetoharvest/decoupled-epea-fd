@@ -9,8 +9,6 @@
 class LeafStateID {
     friend class StateRegistry;
     friend std::ostream &operator<<(std::ostream &os, LeafStateID id);
-    template<typename>
-    friend class PerStateInformation;
    
     int value;
     

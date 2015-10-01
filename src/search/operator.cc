@@ -23,6 +23,9 @@ bool Condition::is_applicable(const LeafState &state) const {
 }
 
 
+const vector<const Condition*> Operator::empty_pre;
+const vector<const Effect*> Operator::empty_eff;
+
 void Operator::read_pre_post(istream &in) {
     int cond_count, var, pre, post;
     in >> cond_count;
@@ -89,17 +92,17 @@ void Effect::dump() const {
 }
 
 
-const std::vector<const Condition*> &Operator::get_preconditions(int factor) const {
+const vector<const Condition*> &Operator::get_preconditions(int factor) const {
     map<int, vector<const Condition*> >::const_iterator it = pre_by_factor.find(factor);
     if (it == pre_by_factor.end()){
-        return pre_by_factor.find(-2)->second;
+        return empty_pre;
     }
     return it->second;
 }
-const std::vector<const Effect*> &Operator::get_effects(int factor) const {
+const vector<const Effect*> &Operator::get_effects(int factor) const {
     map<int, vector<const Effect*> >::const_iterator it = eff_by_factor.find(factor);
     if (it == eff_by_factor.end()){
-        return eff_by_factor.find(-2)->second;
+        return empty_eff;
     }
     return it->second;
 }
@@ -115,19 +118,19 @@ bool Operator::is_applicable(const State& state) const {
         }
         const PriceTag &price_tag = g_price_tags[state];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (has_precondition_on_factor(factor)){
+            if (has_precondition_on(factor)){
                 bool applicable = false;
                 int number_facts = price_tag.get_number_facts(factor);
-                int id = 0;
+                size_t id = 0;
                 while (number_facts > 0){
                     if (price_tag.has_leaf_state(id, factor)){
-                        number_facts--;
+                        --number_facts;
                         if (is_applicable(LeafStateID(id, factor))){
                             applicable = true;
                             break;
                         }
                     }
-                    id++;
+                    ++id;
                 }
                 if (!applicable){
                     return false;
@@ -145,11 +148,10 @@ bool Operator::is_applicable(const State& state) const {
 }
 
 bool Operator::is_applicable(const LeafStateID &leaf_id) const {
-    int factor = leaf_id.get_factor();
-    if (!has_precondition_on_factor(factor)){
+    const vector<const Condition*> &preconditions = get_preconditions(leaf_id.get_factor());
+    if (preconditions.empty()){
         return true;
     }
-    const vector<const Condition*> &preconditions = get_preconditions(factor);
     LeafState state = g_state_registry->lookup_leaf_state(leaf_id);
     for (size_t i = 0; i < preconditions.size(); ++i){
         if (!preconditions[i]->is_applicable(state)){
@@ -172,7 +174,6 @@ bool Operator::is_center_applicable(const State &state) const {
 void Operator::set_affected_factor(int factor) {
     affects_factor = factor;
 
-    pre_by_factor.insert(make_pair(-2, vector<const Condition*>()));    // HACK
     for (size_t i = 0; i < preconditions.size(); ++i){
         int f = g_belongs_to_factor[preconditions[i].var];
         if (pre_by_factor.find(f) == pre_by_factor.end()){
@@ -181,7 +182,6 @@ void Operator::set_affected_factor(int factor) {
         pre_by_factor[f].push_back(&preconditions[i]);
     }
     
-    eff_by_factor.insert(make_pair(-2, vector<const Effect*>()));       // HACK
     for (size_t i = 0; i < effects.size(); ++i){
         int f = g_belongs_to_factor[effects[i].var];
         if (eff_by_factor.find(f) == eff_by_factor.end()){

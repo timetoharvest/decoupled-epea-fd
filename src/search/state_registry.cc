@@ -118,7 +118,7 @@ const State &StateRegistry::get_initial_state() {
         
         if (g_use_decoupled_search){
             
-            PriceTag init_state_tag;
+            PriceTag init_state_tag(0);
             
             for (size_t i = 0; i < g_factors.size(); ++i){
                 init_state_tag.add_fact(LeafStateID(0, i), 0);
@@ -203,7 +203,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     
     if (g_use_decoupled_search){
         State s = lookup_state(id);
-        PriceTag new_price_tag;
+        PriceTag new_price_tag(0);
         
         int old_dup_counter = -1;
         DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
@@ -217,7 +217,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         if (g_factoring->get_profile() != FORK){
             new_price_tag.apply_center_op_to_leaves(old_tag, op);
         } else {                
-            new_price_tag = PriceTag(old_tag, true);
+            new_price_tag = PriceTag(old_tag);
         }
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
@@ -296,7 +296,7 @@ void StateRegistry::build_leaf_state_spaces() {
     g_leaf_state_id_map.resize(g_factors.size(), vector<int>(1, -1));
     g_curr_leaf_state_max_id.resize(g_factors.size(), 0);
     
-    PriceTag goal_price_tag;
+    PriceTag goal_price_tag(0);
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         leaf_factor_data_pool[factor]->push_back(leaf_buffers[factor]);
@@ -365,7 +365,7 @@ void StateRegistry::build_leaf_state_spaces() {
                         }
                         g_center_successors[factor][id].reserve(center_ops.size());
                         for (size_t op = 0; op < center_ops.size(); ++op){
-                            if (center_ops[op]->has_precondition_on_factor(factor)){
+                            if (center_ops[op]->has_precondition_on(factor)){
                                 g_center_successors[factor][id].push_back(center_ops[op]->get_index());
                             }
                         }
@@ -443,7 +443,7 @@ void StateRegistry::build_leaf_state_spaces() {
                         // is that actually true? what about finding a globally cheaper goal state behind a goal?
                         
                         if (!is_center_op && first_time_seen){
-                            g_leaf_state_successors[factor][id].push_back(make_pair(op, lid));
+                            g_leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
                         }
                     }
                 }

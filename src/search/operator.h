@@ -61,6 +61,9 @@ class Operator {
     std::vector<Effect> effects;     // var, val, effect conditions
     std::map<int, std::vector<const Condition*> > pre_by_factor;
     std::map<int, std::vector<const Effect*> > eff_by_factor;
+    const static std::vector<const Condition*> empty_pre;// HACK
+    const static std::vector<const Effect*> empty_eff;// HACK
+    
     std::string name;
     int cost;
 
@@ -117,15 +120,15 @@ public:
         return affects_factor;
     }
     
-    bool has_precondition_on_factor(int factor) const {
+    bool has_precondition_on(int factor) const {
         return pre_by_factor.find(factor) != pre_by_factor.end();
     }
     
     int get_number_pre_factors() const {
-        if (has_precondition_on_factor(-1)){
-            return pre_by_factor.size() - 2;
+        if (has_precondition_on(-1)){
+            return pre_by_factor.size() - 1;
         }
-        return pre_by_factor.size() - 1;
+        return pre_by_factor.size();
     }
 
     int get_cost() const {return cost; }

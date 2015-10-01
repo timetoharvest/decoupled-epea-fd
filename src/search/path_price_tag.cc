@@ -22,18 +22,17 @@ void PathPriceTagInfo::dump() const {
     }
 }
 
-
-PathPriceTag::PathPriceTag() :
-        paths(vector<vector<PathPriceTagInfo> >(g_factors.size())) {
-}
-
-PathPriceTag::PathPriceTag(const PathPriceTag &tag, bool copy_facts) {
-    // TODO remove flag?
-    if (copy_facts){
-        number_facts = tag.number_facts;
-        goal_cost = tag.goal_cost;
-        costs = tag.costs;
-        paths = tag.paths;
+PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
+    if (tag == 0){
+        number_facts = vector<size_t>(g_factors.size(), 0);
+        costs = vector<vector<PriceTagInfo> >(g_factors.size());
+        goal_cost = vector<int>(g_factors.size(), -1);
+        paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
+    } else {
+        number_facts = tag->number_facts;
+        goal_cost = tag->goal_cost;
+        costs = tag->costs;
+        paths = tag->paths;
         for (size_t factor = 0; factor < costs.size(); factor++){
             for (size_t state = 0; state < costs[factor].size(); state++){
                 if (costs[factor][state].cost != INF){
@@ -41,11 +40,6 @@ PathPriceTag::PathPriceTag(const PathPriceTag &tag, bool copy_facts) {
                 }
             }
         }
-    } else {
-        number_facts = vector<size_t>(g_factors.size());
-        goal_cost = vector<int>(g_factors.size(), -1);
-        costs = vector<vector<PriceTagInfo> >(g_factors.size());
-        paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
     }
 }
 
@@ -54,7 +48,7 @@ bool PathPriceTag::add_fact(const LeafStateID &state, int cost, const Operator* 
                         const LeafStateID &predecessor) {
     size_t factor = state.get_factor();
     size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
-
+    
     if (leaf_id >= costs[factor].size()){
         costs[factor].resize(leaf_id + 1);
         paths[factor].resize(leaf_id + 1);
@@ -118,16 +112,24 @@ void PathPriceTag::update_price_tags(const State &base_state) {
         
         vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
         
+        bool is_ifork_leaf = !g_factoring->has_predecessors(factor);
+        
         bool change = true;
 
         while (change) {
             
             // if in satisficing search => stop once a goal is reachable for fork-leaves
             // or if all leaf states are achieved
-            if (g_factoring->get_search_type() == SAT){
-                bool stop = !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0;
+            if (!g_factoring->has_successors(factor)){
+                // in satisficing search => stop once a goal is reachable for fork-leaves
+                // or if all leaf states are reached
+                bool stop = g_factoring->get_search_type() == SAT && get_goal_cost(factor) >= 0;
+                stop |= g_factoring->get_search_type() == SAT && number_facts[factor] == number_leaf_states;
                 
-                stop |= number_facts[factor] == number_leaf_states;
+                // in optimal search, stop once a fork-leaf can reach its goal on
+                // the cheapest path => cannot possibly do any better
+                stop |= get_goal_cost(factor) == g_min_goal_cost[factor];
+                
                 if (stop){
                     break;
                 }
@@ -153,12 +155,11 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     
                     assert(id < g_leaf_state_successors[factor].size());
                     
-                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); o++){
-                        
+                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                         const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                        if (!g_factoring->has_predecessors(factor) || op->is_center_applicable(base_state)){
-                            LeafStateID state = g_leaf_state_successors[factor][id][o].second;
-                            change |= add_fact(state, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor);
+                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                            change |= add_fact(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor),
+                                               cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor);
                         }
 
                     }
@@ -189,7 +190,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Oper
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
           
-        bool has_pre_on_factor = op.has_precondition_on_factor(factor);
+        bool has_pre_on_factor = op.has_precondition_on(factor);
         const vector<const Effect*> &post_per_factor = op.get_effects(factor);
         
         if (has_pre_on_factor && post_per_factor.size() == g_factors[factor].size()){
@@ -219,20 +220,19 @@ void PathPriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Oper
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
                 --number_states;
-                bool satisfies_pre = !has_pre_on_factor;
-                if (!satisfies_pre){
-                    satisfies_pre = find(g_center_successors[factor][id].begin(), g_center_successors[factor][id].end(), op.get_index()) != g_center_successors[factor][id].end();
-                }
-                if (satisfies_pre){
-                    const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                
+                LeafStateID lid(id, factor);
+                
+                if (op.is_applicable(lid)){
                     if (g_factoring->get_search_type() != SAT){
                         min_price = min(min_price, old_tag.get_info_for_fact(id, factor).cost);
                         assert(min_price != -1);
                     }
                             
                     if (post_per_factor.empty()){
-                        add_fact(state.get_id(), old_tag.get_info_for_fact(id, factor).cost, 0, state.get_id());
+                        add_fact(lid, old_tag.get_info_for_fact(id, factor).cost, 0, lid);
                     } else {
+                        const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                         leaf_factor_data_pool[factor]->push_back(state.get_packed_buffer());
                         PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
 
@@ -244,7 +244,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Oper
 
                         LeafStateID succ_id = g_state_registry->insert_id_or_pop_leaf_state(factor);
             
-                        add_fact(succ_id, old_tag.get_info_for_fact(id, factor).cost, 0, state.get_id());
+                        add_fact(succ_id, old_tag.get_info_for_fact(id, factor).cost, 0, lid);
                     }
                 }
             }
