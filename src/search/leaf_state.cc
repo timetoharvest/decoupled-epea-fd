@@ -11,7 +11,7 @@ using namespace std;
 LeafState::LeafState(const PackedStateBin *buffer_, LeafStateID id_)
     : id(id_),
       buffer(buffer_){
-    assert(buffer || !g_factoring->has_packed_states(id.get_factor()));
+    assert(buffer);
     assert(id != LeafStateID::no_state);
 }
 
@@ -20,10 +20,6 @@ LeafState::~LeafState() {
 
 int LeafState::operator[](int index) const {
     assert((size_t) g_new_index[index] < g_factors[id.get_factor()].size());
-    if (buffer == 0){
-        // leaf state is not packed
-        return id.hash();
-    }
     return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
 }
 
