@@ -6,8 +6,8 @@
 #include <vector>
 
 #ifndef NDEBUG
-//#define DEBUG_SEARCH    // general debugging
-#define DEBUG_FACTORING
+// #define DEBUG_SEARCH    // general debugging
+// #define DEBUG_FACTORING
 // #define DEBUG_PLAN_EXTRACTION
 //#define DEBUG_SUCCESSOR_GENERATION
 // #define DEBUG_NEW_SG
@@ -88,7 +88,6 @@ extern std::vector<int> g_axiom_layers;
 extern std::vector<int> g_default_axiom_values;
 
 extern IntPacker *g_state_packer;
-// TODO how about using a simple int/short/byte/.. if a leaf consists of a single variable?
 extern std::vector<IntPacker*> g_leaf_factor_packers;
 
 // This vector holds the initial values *before* the axioms have been evaluated.
