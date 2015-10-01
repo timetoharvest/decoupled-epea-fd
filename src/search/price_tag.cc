@@ -26,7 +26,7 @@ PriceTag::PriceTag() :
         goal_cost(vector<int>(g_factors.size(), -1)) {
 }
 
-PriceTag::PriceTag(const PriceTag& tag, bool copy_facts) {
+PriceTag::PriceTag(const PriceTag &tag, bool copy_facts) {
     // TODO remove the flag? and make constructor private?
     if (copy_facts){
         number_facts = tag.number_facts;
@@ -248,7 +248,7 @@ bool PriceTag::add_fact(const LeafStateID &state, int cost) {
     if (leaf_id == -1){ // get new index to prevent facts vector from being sparse
         leaf_id = g_curr_leaf_state_max_id[factor];
         g_leaf_state_id_map[factor][state.hash()] = leaf_id;
-        g_curr_leaf_state_max_id[factor]++;
+        ++g_curr_leaf_state_max_id[factor];
     }
                     // TODO fix this
     if (leaf_id >= (int) costs[factor].size()){
@@ -381,7 +381,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                 
                     int cost = get_info_for_fact(id, factor).cost;
                     if (best_prices[id] <= cost){
-                        id++;
+                        ++id;
                         continue;
                     }
                     
@@ -399,7 +399,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 
                     }
                 }
-                id++;
+                ++id;
             }
         }
         
@@ -446,20 +446,20 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                 g_leaf_factor_packers[factor]->set(buffer, var, val);
             }
             
-            LeafStateID succ_state = g_state_registry->insert_id_or_pop_leaf_state(factor);
+            LeafStateID succ_state = g_state_registry->insert_id_or_pop_leaf_state(factor);            
             
             add_fact(succ_state, 0);
             
             if (has_pre_on_factor && g_factoring->get_search_type() != SAT){
                 int min_price = numeric_limits<int>::max();
                 int number_states = old_tag.get_number_facts(factor);
-                int id = 0;
+                size_t id = 0;
                 while (number_states > 0 && min_price > 0) {
                     if (old_tag.has_leaf_state(id, factor)){
-                        number_states--;
+                        --number_states;
                         min_price = min(min_price, old_tag.get_info_for_fact(id, factor).cost);
                     }
-                    id++;
+                    ++id;
                 }
                 assert(min_price != -1);
                 g_inc_g_by += min_price;
@@ -472,10 +472,10 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
 
         // check which leaf states satisfy center precondition and apply effects
         int number_states = old_tag.get_number_facts(factor);
-        int id = 0;
+        size_t id = 0;
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
-                number_states--;
+                --number_states;
                 bool satisfies_pre = !has_pre_on_factor;
                 if (!satisfies_pre){
                     satisfies_pre = find(g_center_successors[factor][id].begin(), g_center_successors[factor][id].end(), op.get_index()) != g_center_successors[factor][id].end();
@@ -492,19 +492,19 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                         leaf_factor_data_pool[factor]->push_back(state.get_packed_buffer());
                         PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
 
-                        for (size_t post = 0; post < eff_on_factor.size(); post++) {
+                        for (size_t post = 0; post < eff_on_factor.size(); ++post) {
                             int var = g_new_index[eff_on_factor[post]->var];
                             int val = eff_on_factor[post]->val;
                             g_leaf_factor_packers[factor]->set(buffer, var, val);
                         }
-
+                        
                         LeafStateID succ_id = g_state_registry->insert_id_or_pop_leaf_state(factor);
             
                         add_fact(succ_id, old_tag.get_info_for_fact(id, factor).cost);
                     }
                 }
             }
-            id++;
+            ++id;
         }
 
         if (g_factoring->get_search_type() != SAT && min_price > 0){
