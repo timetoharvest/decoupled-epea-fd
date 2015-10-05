@@ -971,7 +971,7 @@ Factoring::FactoredVars Factoring::get_fork_maximize_mobility(vector<int> used_v
                 cout << "new factoring would have mobility " << new_mobility << " and " << sccs.size() << " leaf factors" << endl;
 #endif
                 
-                if (new_mobility > successor_mobility && sccs.size() > min_number_leaves){
+                if (new_mobility > successor_mobility && sccs.size() >= min_number_leaves){
 #ifdef DEBUG_FACTORING
                     cout << "better than current best successor factoring => replace" << endl;
 #endif                    
