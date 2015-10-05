@@ -64,14 +64,14 @@ void AdditiveHeuristic::setup_exploration_queue() {
     }
 }
 
-void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
+void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
     const PriceTag &tag = g_price_tags[state];
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         int number_states = tag.get_number_facts(factor);
-        int id = 0;
+        size_t id = 0;
         while (number_states > 0){
             if (tag.has_leaf_state(id, factor)){
-		number_states--;
+		--number_states;
 		int base_cost = 0;
 		if (search_type == STAR){
 		    base_cost = tag.get_info_for_fact(id, factor).cost;
