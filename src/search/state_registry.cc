@@ -503,7 +503,7 @@ void StateRegistry::build_leaf_state_spaces() {
             g_sum_min_goal_cost += g_min_goal_cost[factor];
         }
         if (g_goals_per_factor[factor].empty()){
-            cout << "factor " << factor << " does not have any goal" << endl;
+            cout << "factor " << factor << " does not have a goal" << endl;
         } else {
             cout << "min goal cost of factor " << factor << " : " << g_min_goal_cost[factor] << endl;
         }
