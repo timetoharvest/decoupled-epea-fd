@@ -90,6 +90,10 @@ class Factoring {
     
     SEARCH_TYPE search_type;
     
+    size_t max_precompute_state_space_size;
+    
+    mutable std::vector<bool> precompute_leaf_state_space;
+    
 protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
@@ -184,6 +188,10 @@ public:
     
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
+    }
+    
+    bool precompute_state_space(int factor) const {
+        return precompute_leaf_state_space[factor];
     }
     
     static void add_options_to_parser(OptionParser &parser);

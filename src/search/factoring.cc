@@ -63,6 +63,7 @@ Factoring::Factoring(const Options &opts) :
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
+    max_precompute_state_space_size = 1000000;
 }
 
 class CenterFactoring : public Factoring {
@@ -323,6 +324,8 @@ void Factoring::print_factoring() const {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;
     }
     
+    precompute_leaf_state_space.resize(g_factors.size(), true);
+    
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
@@ -330,6 +333,9 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_factors[i].size(); j++){
             f_size *= g_variable_domain[g_factors[i][j]];
+            if (search_type != ASDA && f_size > max_precompute_state_space_size){
+                precompute_leaf_state_space[i] = false;
+            }
         }
         avg_size += f_size;
         min_size = min(min_size, f_size);
