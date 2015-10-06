@@ -39,7 +39,7 @@ void FFHeuristic::initialize() {
         }
         artificial_leaf_ops.resize(g_factors.size());
         int counter = -1;
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
             for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
                 artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
                 --counter;
@@ -100,7 +100,7 @@ void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& sta
         size_t id = 0;
         while (number_states > 0){
             if (tag.has_leaf_state(id, factor)){
-                number_states--;
+                --number_states;
                 int base_cost = 0;
                 UnaryOperator *op = 0;
                 if (search_type == STAR){
@@ -114,7 +114,7 @@ void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& sta
                     enqueue_if_necessary(effect, base_cost, op);
                 }
             }
-            id++;
+            ++id;
         }
     }
 }
@@ -148,7 +148,7 @@ int FFHeuristic::compute_heuristic(const State &state) {
             for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
                 if (relaxed_leaf_plan[factor][fact]){
                     relaxed_leaf_plan[factor][fact] = false;
-                    assert(tag.get_info_for_fact(fact, factor).cost > 0);
+                    assert(tag.get_info_for_fact(fact, factor).cost >= 0);
                     leaf_goal_cost += tag.get_info_for_fact(fact, factor).cost;
                 }
             }
