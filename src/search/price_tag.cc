@@ -5,6 +5,7 @@
 #include "pruning.h"
 #include "search_space.h"
 #include "state_registry.h"
+#include "successor_generator.h"
 #include "utilities.h"
 
 #include <limits>
@@ -382,15 +383,84 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     
                     best_prices[id] = cost;
                     
-                    assert(id < g_leaf_state_successors[factor].size());
+                    assert(id < g_leaf_state_successors[factor].size() || !g_factoring->precompute_state_space(factor));
                     
-                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){        
-                        const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                            change |= add_fact(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
-                                               cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                    if (g_leaf_state_successors[factor].size() > id){
+                        for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){        
+                            const Operator *op = g_leaf_state_successors[factor][id][o].first;
+                            if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                                change |= add_fact(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
+                                                cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                            }
+
+                        }
+                    } else {
+                        SegmentedArrayVector<PackedStateBin> *leaf_factor_data_pool = g_state_registry->leaf_factor_data_pool[factor];
+                      
+                        const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));     
+                        
+                        vector<const Operator*> applicable_ops;
+                        
+                        if (g_factoring->has_successors(factor)){       // is non-fork leaf
+                            vector<const Operator*> center_ops;
+                            g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
+                            
+                            // store center ops whose preconditions are satisfied by predecessor
+                            if (id >= g_center_successors[factor].size()){
+                                g_center_successors[factor].resize(id+1);
+                            }
+                            g_center_successors[factor][id].reserve(center_ops.size());
+                            for (size_t op = 0; op < center_ops.size(); ++op){
+                                if (center_ops[op]->has_precondition_on(factor)){
+                                    g_center_successors[factor][id].push_back(center_ops[op]->get_index());
+                                }
+                            }
+                            g_center_successors[factor][id].swap(g_center_successors[factor][id]);
+                            if (g_factoring->has_predecessors(factor)){
+                                // no need to apply center ops if none of them changes this leaf factor
+                                applicable_ops.swap(center_ops);
+                            }
                         }
 
+                        g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                        
+                        g_leaf_state_successors[factor].resize(id + 1);
+
+                        // apply all applicable_ops to predecessor and store the outcome          
+                        for (size_t j = 0; j < applicable_ops.size(); ++j){
+                            const Operator *op = applicable_ops[j];
+
+                            const vector<const Effect*> &effects = op->get_effects(factor);
+                            if (!effects.empty()){
+                                bool is_center_op = op->get_affected_factor() == -1;
+                                
+                                leaf_factor_data_pool->push_back(predecessor.get_packed_buffer());
+                                PackedStateBin *buffer = (*leaf_factor_data_pool)[leaf_factor_data_pool->size() - 1];
+
+                                for (size_t k = 0; k < effects.size(); ++k) {
+                                    g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[k]->var], effects[k]->val);
+                                }
+                                LeafStateID lid = g_state_registry->insert_id_or_pop_leaf_state(factor);
+                                
+                                g_state_registry->store_is_leaf_goal_state(g_state_registry->lookup_leaf_state(lid));
+                                
+                                if (lid.hash() >= best_prices.size()){
+                                    best_prices.resize(lid.hash() + 1, numeric_limits<int>::max());
+                                }
+                                
+                                if (lid.hash() >= g_leaf_state_id_map[factor].size()){
+                                    g_leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                                }
+                                
+                                if (op->is_center_applicable(base_state)){
+                                    change |= add_fact(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                                }
+
+                                if (!is_center_op){
+                                    g_leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+                                }
+                            }
+                        }
                     }
                 }
                 ++id;
@@ -463,6 +533,8 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
         }
         
         int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
+        
+        // TODO make a special case handling for 1-variable leaves
 
         // check which leaf states satisfy center precondition and apply effects
         int number_states = old_tag.get_number_facts(factor);

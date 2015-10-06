@@ -308,6 +308,10 @@ void StateRegistry::build_leaf_state_spaces() {
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         
+        if (!g_factoring->precompute_state_space(factor)){
+            continue;
+        }
+        
         if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
             // skip fork-leaf factor without a goal
             continue;
@@ -474,8 +478,16 @@ void StateRegistry::build_leaf_state_spaces() {
     cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_factors.size()) << endl;
     cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
     
-    g_min_goal_cost = vector<int>(g_factors.size(), -1);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    // TODO need to split anyway
+    bool split_sg = true;
+    
+    g_min_goal_cost = vector<int>(g_factors.size(), numeric_limits<int>::max());
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_factoring->precompute_state_space(factor)){
+            cout << "min goal cost of factor " << factor << " not computed" << endl;
+            split_sg = false;
+            continue;
+        }
 	g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
         
 	if (g_min_goal_cost[factor] == -1){
@@ -497,10 +509,12 @@ void StateRegistry::build_leaf_state_spaces() {
         }
     }
     
-    // TODO find a better place where to call this
-    g_successor_generator->split_ops_center_leaf(-1);
+    if (split_sg){
+        // TODO find a better place where to call this
+        g_successor_generator->split_ops_center_leaf(-1);
+    }
     
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         g_leaf_state_id_map[factor] = vector<int>(size(factor), -1);
         g_curr_leaf_state_max_id[factor] = 0;
     }
