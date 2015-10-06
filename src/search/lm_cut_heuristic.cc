@@ -391,6 +391,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
             int number_states = tag.get_number_facts(factor);
             size_t id = 0;
             while (number_states > 0){
@@ -403,15 +404,17 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                         assert(cost >= 0);
                     }
                     
-                    if (id >= relaxed_leaf_operators[factor].size()){
-                        const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                
-                        vector<RelaxedProposition*> effects;
-                        for (size_t v = 0; v < g_factors[factor].size(); ++v){
-                            int var = g_factors[factor][v];
-                            effects.push_back(&propositions[var][f[var]]);
+                    if (id >= relaxed_leaf_operators[factor].size()){                        
+                        for (size_t i = relaxed_leaf_operators[factor].size(); i <= id; ++i){
+                            const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(i, factor));
+                    
+                            vector<RelaxedProposition*> effects;
+                            for (size_t v = 0; v < g_factors[factor].size(); ++v){
+                                int var = g_factors[factor][v];
+                                effects.push_back(&propositions[var][f[var]]);
+                            }
+                            relaxed_leaf_operators[factor].push_back(RelaxedOperator(precondition, effects, 0, cost));
                         }
-                        relaxed_leaf_operators[factor].push_back(RelaxedOperator(precondition, effects, 0, cost));                        
                     } else {
                         relaxed_leaf_operators[factor][id].base_cost = cost;
                     }
