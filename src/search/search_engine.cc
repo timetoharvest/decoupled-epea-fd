@@ -121,21 +121,18 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 
 bool SearchEngine::is_optimal_leaf_plan(const Plan &plan) {
     vector<int> goal_cost(g_factors.size(), 0);
-    for (size_t i = 0; i < plan.size(); i++){
-	const Operator *op = plan[i];
-	int affected_factor = op->get_affected_factor();
-	if (affected_factor != -1){
-	    goal_cost[affected_factor] += get_adjusted_cost(*op);
-	}
-    }
-    for (size_t i = 0; i < g_min_goal_cost.size(); i++){
-        if (g_goals_per_factor[i].empty()){
-            continue;
+    for (size_t i = 0; i < plan.size(); ++i){
+        const Operator *op = plan[i];
+        int affected_factor = op->get_affected_factor();
+        if (affected_factor != -1){
+            goal_cost[affected_factor] += get_adjusted_cost(*op);
         }
+    }
+    for (size_t i = 0; i < g_min_goal_cost.size(); ++i){
         assert(goal_cost[i] != 0 || g_min_goal_cost[i] == 0);
-	if (goal_cost[i] > g_min_goal_cost[i]){
-	    return false;
-	}
+        if (goal_cost[i] > g_min_goal_cost[i]){
+            return false;
+        }
     }
     return true;
 }
