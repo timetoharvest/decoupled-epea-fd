@@ -144,7 +144,9 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     --number_states;
                 
                     int cost = get_info_for_fact(id, factor).cost;
-                    if (best_prices[id] <= cost){
+                    if (best_prices[id] <= cost || (!g_leaf_state_successors[factor][id].empty() &&
+                                                    g_leaf_state_successors[factor][id][0].first == 0)){
+                                                    // leaf state is a "dead-end" or successors have not been computed
                         ++id;
                         continue;
                     }

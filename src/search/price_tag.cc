@@ -369,15 +369,15 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             
             change = false;
             
-            int number_states = number_facts[factor];
+            size_t number_states = 0;
             size_t id = 0;
-            while (number_states > 0) {
+            while (number_states < number_facts[factor]) {
                 if (has_leaf_state(id, factor)){
-                    --number_states;
+                    ++number_states;
                 
                     int cost = get_info_for_fact(id, factor).cost;
                     if (best_prices[id] <= cost){
-                        ++id;
+                        id = (id + 1) % g_state_registry->size(factor);
                         continue;
                     }
                     
@@ -385,14 +385,19 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     
                     assert(id < g_leaf_state_successors[factor].size() || !g_factoring->precompute_state_space(factor));
                     
-                    if (g_leaf_state_successors[factor].size() > id){
-                        for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){        
+                    if (g_factoring->precompute_state_space(factor) ||
+                        (g_leaf_state_successors[factor].size() > id && !g_leaf_state_successors[factor][id].empty())){
+                        if (!g_factoring->precompute_state_space(factor) && g_leaf_state_successors[factor][id][0].first == 0){
+                            // is "dead-end" leaf state
+                            id = (id + 1) % g_state_registry->size(factor);
+                            continue;
+                        }
+                        for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
                                 change |= add_fact(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                             }
-
                         }
                     } else {
                         SegmentedArrayVector<PackedStateBin> *leaf_factor_data_pool = g_state_registry->leaf_factor_data_pool[factor];
@@ -424,7 +429,14 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 
                         g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
                         
-                        g_leaf_state_successors[factor].resize(id + 1);
+                        if (g_leaf_state_successors[factor].size() <= id){
+                            g_leaf_state_successors[factor].resize(id + 1);
+                        }
+                        
+                        if (applicable_ops.empty()){
+                            // to mark "dead end" leaf states
+                            g_leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
+                        }
 
                         // apply all applicable_ops to predecessor and store the outcome          
                         for (size_t j = 0; j < applicable_ops.size(); ++j){
@@ -463,7 +475,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                         }
                     }
                 }
-                ++id;
+                id = (id + 1) % g_state_registry->size(factor);
             }
         }
         
