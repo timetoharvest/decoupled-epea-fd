@@ -118,7 +118,6 @@ public:
             : Factoring(opts), maximize_mobility(opts.get<bool>("maximize_mobility")) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
-        min_number_leaves = 1;
     };
     
     virtual FactoredVars get_factoring();
