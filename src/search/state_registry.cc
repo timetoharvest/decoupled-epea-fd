@@ -163,6 +163,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     predecessor.dump_pddl();
     const PriceTag &r = g_price_tags[predecessor];
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        cout << "#states in leaf factor " << factor << ": " << r.get_number_facts(factor) << endl;
         for (size_t i = 0; i < size(factor); ++i){
             if (r.has_leaf_state(i, factor)){
                 lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
@@ -263,6 +264,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         s.dump_pddl();
         const PriceTag &r = g_price_tags[s];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            cout << "#states in leaf factor " << factor << ": " << r.get_number_facts(factor) << endl;
             for (size_t i = 0; i < size(factor); ++i){
                 if (r.has_leaf_state(i, factor)){
                     lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
