@@ -353,6 +353,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             if (!g_factoring->has_successors(factor)){
                 // in satisficing search => stop once a goal is reachable for fork-leaves
                 // or if all leaf states are reached
+                // TODO the second case cannot happen anyway? fork leaves without goal are completely ignored!
                 bool stop = g_factoring->get_search_type() == SAT && get_goal_cost(factor) >= 0;
                 stop |= g_factoring->get_search_type() == SAT && number_facts[factor] == number_leaf_states
                                                               && g_factoring->precompute_state_space(factor);
