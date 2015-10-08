@@ -353,10 +353,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             if (!g_factoring->has_successors(factor)){
                 // in satisficing search => stop once a goal is reachable for fork-leaves
                 // or if all leaf states are reached
-                // TODO the second case cannot happen anyway? fork leaves without goal are completely ignored!
                 bool stop = g_factoring->get_search_type() == SAT && get_goal_cost(factor) >= 0;
-                stop |= g_factoring->get_search_type() == SAT && number_facts[factor] == number_leaf_states
-                                                              && g_factoring->precompute_state_space(factor);
                 
                 // in optimal search, stop once a fork-leaf can reach its goal on
                 // the cheapest path => cannot possibly do any better
@@ -369,15 +366,15 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             
             change = false;
             
-            size_t number_states = 0;
+            int number_states = number_facts[factor];
             size_t id = 0;
-            while (number_states < number_facts[factor]) {
+            while (number_states > 0) {
                 if (has_leaf_state(id, factor)){
-                    ++number_states;
+                    --number_states;
                 
                     int cost = get_info_for_fact(id, factor).cost;
                     if (best_prices[id] <= cost){
-                        id = (id + 1) % g_state_registry->size(factor);
+                        ++id;
                         continue;
                     }
                     
@@ -389,7 +386,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                         (g_leaf_state_successors[factor].size() > id && !g_leaf_state_successors[factor][id].empty())){
                         if (!g_factoring->precompute_state_space(factor) && g_leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
-                            id = (id + 1) % g_state_registry->size(factor);
+                            ++id;
                             continue;
                         }
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
@@ -475,7 +472,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                         }
                     }
                 }
-                id = (id + 1) % g_state_registry->size(factor);
+                ++id;
             }
         }
         
