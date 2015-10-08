@@ -424,7 +424,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             }
                         }
 
-                        g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
                         
                         if (g_leaf_state_successors[factor].size() <= id){
                             g_leaf_state_successors[factor].resize(id + 1);

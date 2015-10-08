@@ -7,7 +7,7 @@
 
 #ifndef NDEBUG
 // #define DEBUG_SEARCH    // general debugging
-// #define DEBUG_FACTORING
+#define DEBUG_FACTORING
 // #define DEBUG_PLAN_EXTRACTION
 //#define DEBUG_SUCCESSOR_GENERATION
 // #define DEBUG_NEW_SG
@@ -110,6 +110,7 @@ extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;
 extern AxiomEvaluator *g_axiom_evaluator;
 extern SuccessorGenerator *g_successor_generator;
+extern std::vector<SuccessorGenerator*> g_leaf_successor_generators;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
 extern CausalGraph *g_causal_graph;
 extern Timer g_timer;

@@ -12,6 +12,8 @@ class SuccessorGenerator {
 public:
     virtual ~SuccessorGenerator() {}
     
+    virtual SuccessorGenerator *copy() const = 0;
+    
     // standard function used for branching in search
     virtual void generate_applicable_ops(const State &curr,
                                          std::vector<const Operator *> &ops, bool ignore_leaf_pre = false) = 0;
