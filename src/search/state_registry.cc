@@ -77,8 +77,6 @@ LeafStateID StateRegistry::insert_id_or_pop_leaf_state(int factor) {
     return *result.first;
 }
 
-
-
 State StateRegistry::lookup_state(StateID id) const {
     return State(state_data_pool[id.value], *this, id);
 }
@@ -107,7 +105,7 @@ const State &StateRegistry::get_initial_state() {
         }
         
         if (g_use_decoupled_search){
-            g_state_packer->set(center_buffer, g_number_center_vars, 0);
+            g_state_packer->set(center_buffer, g_center_vars.size(), 0);
         } else {
             g_axiom_evaluator->evaluate(center_buffer);
         }
@@ -120,7 +118,7 @@ const State &StateRegistry::get_initial_state() {
         
         if (g_use_decoupled_search){
             
-            PriceTag init_state_tag;
+            PriceTag init_state_tag(0);
             
             for (size_t i = 0; i < g_factors.size(); ++i){
                 init_state_tag.add_fact(LeafStateID(0, i), 0);
@@ -164,8 +162,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     cout << "################ applying " << op.get_name() << " in state " << predecessor.get_id() << endl;
     predecessor.dump_pddl();
     const PriceTag &r = g_price_tags[predecessor];
-    for (int factor = 0; factor < g_factors.size(); factor++){
-        for (int i = 0; i < size(factor); i++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        cout << "#states in leaf factor " << factor << ": " << r.get_number_facts(factor) << endl;
+        for (size_t i = 0; i < size(factor); ++i){
             if (r.has_leaf_state(i, factor)){
                 lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
             }
@@ -184,16 +183,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     } else {
         const vector<const Effect*> &effects = op.get_effects(-1);
         for (size_t i = 0; i < effects.size(); i++){
-            // no need to check does_fire here, because no conditional effects allowed
+            // no need to check does_fire here, because no conditional effects allowed (yet)
             g_state_packer->set(buffer, g_new_index[effects[i]->var], effects[i]->val);
         }
     }
     
     vector<int> values;
     if (g_use_decoupled_search){
-        g_state_packer->set(buffer, g_number_center_vars, 0);
+        g_state_packer->set(buffer, g_center_vars.size(), 0);
         
-        values.resize(g_number_center_vars);
+        values.resize(g_center_vars.size());
         for (size_t i = 0; i < values.size(); i++){
             values[i] = g_state_packer->get(buffer, i);
         }
@@ -205,7 +204,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     
     if (g_use_decoupled_search){
         State s = lookup_state(id);
-        PriceTag new_price_tag;
+        PriceTag new_price_tag(0);
         
         int old_dup_counter = -1;
         DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
@@ -219,7 +218,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         if (g_factoring->get_profile() != FORK){
             new_price_tag.apply_center_op_to_leaves(old_tag, op);
         } else {                
-            new_price_tag = PriceTag(old_tag, true);
+            new_price_tag = PriceTag(old_tag);
         }
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
@@ -237,7 +236,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             for (size_t i = 0; i < values.size(); i++){
                 g_state_packer->set(buffer, i, values[i]);
             }
-            g_state_packer->set(buffer, g_number_center_vars, new_dup_counter);
+            g_state_packer->set(buffer, g_center_vars.size(), new_dup_counter);
             
             int base_state_id = id.hash();
             
@@ -264,8 +263,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         cout << "created state " << id << endl;
         s.dump_pddl();
         const PriceTag &r = g_price_tags[s];
-        for (int factor = 0; factor < g_factors.size(); factor++){
-            for (int i = 0; i < size(factor); i++){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            cout << "#states in leaf factor " << factor << ": " << r.get_number_facts(factor) << endl;
+            for (size_t i = 0; i < size(factor); ++i){
                 if (r.has_leaf_state(i, factor)){
                     lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
                 }
@@ -298,17 +298,21 @@ void StateRegistry::build_leaf_state_spaces() {
     g_leaf_state_id_map.resize(g_factors.size(), vector<int>(1, -1));
     g_curr_leaf_state_max_id.resize(g_factors.size(), 0);
     
-    PriceTag goal_price_tag;
+    PriceTag goal_price_tag(0);
     
-    for (size_t i = 0; i < g_factors.size(); ++i){
-        leaf_factor_data_pool[i]->push_back(leaf_buffers[i]);
-        delete[] leaf_buffers[i];
-        LeafStateID id = insert_id_or_pop_leaf_state(i);
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        leaf_factor_data_pool[factor]->push_back(leaf_buffers[factor]);
+        delete[] leaf_buffers[factor];
+        LeafStateID id = insert_id_or_pop_leaf_state(factor);
         store_is_leaf_goal_state(lookup_leaf_state(id));
         goal_price_tag.add_fact(id, 0);
     }
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        
+        if (!g_factoring->precompute_state_space(factor)){
+            continue;
+        }
         
         if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
             // skip fork-leaf factor without a goal
@@ -318,10 +322,10 @@ void StateRegistry::build_leaf_state_spaces() {
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
 	cout << "	starting RPG for leaf factor " << factor << endl;
         int number_states = goal_price_tag.get_number_facts(factor);
-        size_t id = 0;
+        size_t i = 0;
 	while (number_states > 0){
-	    if (goal_price_tag.has_leaf_state(id, factor)){
-		lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+	    if (goal_price_tag.has_leaf_state(i, factor)){
+		lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
 	    }
 	}
 #endif
@@ -333,25 +337,25 @@ void StateRegistry::build_leaf_state_spaces() {
 
             change = false;
 
-	    for (size_t i = 0; i < size(factor); ++i){
-		if (!goal_price_tag.has_leaf_state(i, factor)){
+	    for (size_t id = 0; id < size(factor); ++id){
+		if (!goal_price_tag.has_leaf_state(id, factor)){
 		    continue;
 		}
-                int cost = goal_price_tag.get_info_for_fact(i, factor).cost;
-		if (i < best_prices.size()){
-                    if (cost > best_prices[i]
-                        || (g_factoring->get_search_type() == SAT && best_prices[i] != numeric_limits<int>::max())){
+                int cost = goal_price_tag.get_info_for_fact(id, factor).cost;
+		if (id < best_prices.size()){
+                    if (cost > best_prices[id]
+                        || (g_factoring->get_search_type() == SAT && best_prices[id] != numeric_limits<int>::max())){
                         continue;
                     }
                 }
 		
-		LeafState predecessor = lookup_leaf_state(LeafStateID(i, factor));
+		const LeafState predecessor = lookup_leaf_state(LeafStateID(id, factor));
                 
-                if (i >= best_prices.size()){
-                    best_prices.resize(i + 1, numeric_limits<int>::max());
+                if (id >= best_prices.size()){
+                    best_prices.resize(id + 1, numeric_limits<int>::max());
                 }
-                bool first_time_seen = best_prices[i] == numeric_limits<int>::max();
-                best_prices[i] = cost;
+                bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
+                best_prices[id] = cost;
                 
                 
                 vector<const Operator*> applicable_ops;
@@ -362,25 +366,25 @@ void StateRegistry::build_leaf_state_spaces() {
                         g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
                         
                         // store center ops whose preconditions are satisfied by predecessor
-                        if (i >= g_center_successors[factor].size()){
-                            g_center_successors[factor].resize(i+1);
+                        if (id >= g_center_successors[factor].size()){
+                            g_center_successors[factor].resize(id+1);
                         }
-                        g_center_successors[factor][i].reserve(center_ops.size());
+                        g_center_successors[factor][id].reserve(center_ops.size());
                         for (size_t op = 0; op < center_ops.size(); ++op){
-                            if (center_ops[op]->has_precondition_on_factor(factor)){
-                                g_center_successors[factor][i].push_back(center_ops[op]->get_index());
+                            if (center_ops[op]->has_precondition_on(factor)){
+                                g_center_successors[factor][id].push_back(center_ops[op]->get_index());
                             }
                         }
-                        g_center_successors[factor][i].swap(g_center_successors[factor][i]);
+                        g_center_successors[factor][id].swap(g_center_successors[factor][id]);
                         if (g_factoring->has_predecessors(factor)){
                             // no need to apply center ops if none of them changes this leaf factor
                             applicable_ops.swap(center_ops);
                         }
                     } else if (g_factoring->has_predecessors(factor)){
                         // no need to apply center ops if none of them changes this leaf factor
-                        applicable_ops.resize(g_center_successors[factor][i].size());
-                        for (size_t o = 0; o < g_center_successors[factor][i].size(); ++o){
-                            applicable_ops[o] = &g_operators[g_center_successors[factor][i][o]];
+                        applicable_ops.resize(g_center_successors[factor][id].size());
+                        for (size_t o = 0; o < g_center_successors[factor][id].size(); ++o){
+                            applicable_ops[o] = &g_operators[g_center_successors[factor][id][o]];
                         }
                     }
                 }
@@ -389,9 +393,9 @@ void StateRegistry::build_leaf_state_spaces() {
                     g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
                 } else {
                     size_t old_size = applicable_ops.size();
-                    applicable_ops.resize(applicable_ops.size() + g_leaf_state_successors[factor][i].size());
-                    for (size_t o = 0; o < g_leaf_state_successors[factor][i].size(); ++o){
-                        applicable_ops[old_size + o] = g_leaf_state_successors[factor][i][o].first;
+                    applicable_ops.resize(applicable_ops.size() + g_leaf_state_successors[factor][id].size());
+                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
+                        applicable_ops[old_size + o] = g_leaf_state_successors[factor][id][o].first;
                     }
                 }
                 
@@ -400,58 +404,53 @@ void StateRegistry::build_leaf_state_spaces() {
 		cout << "	generated " << applicable_ops.size() << " applicable operators" << endl;
 #endif
                 
-                if (i >= g_leaf_state_successors[factor].size()) {
-                    g_leaf_state_successors[factor].resize(i + 1);
+                if (id >= g_leaf_state_successors[factor].size()) {
+                    g_leaf_state_successors[factor].resize(id + 1);
                 }
 
                 // apply all applicable_ops to predecessor and store the outcome          
                 for (size_t j = 0; j < applicable_ops.size(); ++j){
                     const Operator *op = applicable_ops[j];
-                    
-                    bool is_center_op = op->get_affected_factor() == -1;
-                
-                    leaf_factor_data_pool[factor]->push_back(predecessor.get_packed_buffer());
-                    PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
+
+                    if (!op->get_effects(factor).empty()){                        
+                        bool is_center_op = op->get_affected_factor() == -1;
+                        
+                        leaf_factor_data_pool[factor]->push_back(predecessor.get_packed_buffer());
+                        PackedStateBin *buffer = (*leaf_factor_data_pool[factor])[leaf_factor_data_pool[factor]->size() - 1];
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-                    cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
-                    predecessor.dump_pddl();
+                        cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
+                        predecessor.dump_pddl();
 #endif
-                    bool changed_state = false;
-                    const vector<const Effect*> &effects = op->get_effects(factor);
-                    for (size_t k = 0; k < effects.size(); ++k) {
-                        changed_state = true;
-                        g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[k]->var], effects[k]->val);
-                    }
-
-                    if (changed_state){
-                        LeafStateID id = insert_id_or_pop_leaf_state(factor);
+                        const vector<const Effect*> &effects = op->get_effects(factor);
+                        for (size_t k = 0; k < effects.size(); ++k) {
+                            g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[k]->var], effects[k]->val);
+                        }
+                        LeafStateID lid = insert_id_or_pop_leaf_state(factor);                        
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-                        cout << "created leaf state " << id << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
-                        lookup_leaf_state(id).dump_pddl();
+                        cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
+                        lookup_leaf_state(lid).dump_pddl();
 #endif
                         int op_cost = 0;
                         if (!is_center_op){
                             op_cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
                         }
                         
-                        store_is_leaf_goal_state(lookup_leaf_state(id));
+                        store_is_leaf_goal_state(lookup_leaf_state(lid));
                         
-                        if (id.hash() >= g_leaf_state_id_map[factor].size()){
-                            g_leaf_state_id_map[factor].resize(id.hash() + 1, -1);
+                        if (lid.hash() >= g_leaf_state_id_map[factor].size()){
+                            g_leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
                         }
                         
-                        change |= goal_price_tag.add_fact(id, cost + op_cost);
+                        change |= goal_price_tag.add_fact(lid, cost + op_cost);
                         
                         // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
                         // that here, i.e. e.g. the goal states of fork leaves dont need successors
                         // is that actually true? what about finding a globally cheaper goal state behind a goal?
                         
                         if (!is_center_op && first_time_seen){
-                            g_leaf_state_successors[factor][i].push_back(make_pair(op, id));
+                            g_leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
                         }
-                    } else {
-                        leaf_factor_data_pool[factor]->pop_back();
                     }
                 }
 	    }
@@ -481,8 +480,13 @@ void StateRegistry::build_leaf_state_spaces() {
     cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_factors.size()) << endl;
     cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
     
-    g_min_goal_cost = vector<int>(g_factors.size(), -1);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    
+    g_min_goal_cost = vector<int>(g_factors.size(), numeric_limits<int>::max());
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_factoring->precompute_state_space(factor)){
+            cout << "min goal cost of factor " << factor << " not computed" << endl;
+            continue;
+        }
 	g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
         
 	if (g_min_goal_cost[factor] == -1){
@@ -498,16 +502,22 @@ void StateRegistry::build_leaf_state_spaces() {
             g_sum_min_goal_cost += g_min_goal_cost[factor];
         }
         if (g_goals_per_factor[factor].empty()){
-            cout << "factor " << factor << " does not have any goal" << endl;
+            cout << "factor " << factor << " does not have a goal" << endl;
         } else {
             cout << "min goal cost of factor " << factor << " : " << g_min_goal_cost[factor] << endl;
         }
     }
     
-    // TODO find a better place where to call this
+    g_leaf_successor_generators.resize(g_factors.size());
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_factoring->precompute_state_space(factor)){
+            g_leaf_successor_generators[factor] = g_successor_generator->copy();
+            g_leaf_successor_generators[factor]->split_ops_center_leaf(factor);
+        }
+    }
     g_successor_generator->split_ops_center_leaf(-1);
     
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         g_leaf_state_id_map[factor] = vector<int>(size(factor), -1);
         g_curr_leaf_state_max_id[factor] = 0;
     }
@@ -549,9 +559,9 @@ size_t StateRegistry::get_max_number_duplicates() const {
 }
 
 void StateRegistry::output_decoupled_state_space_size() const {
-    size_t dec_size_1 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
-    size_t dec_size_2 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
-    size_t dec_size_3 = g_number_center_vars * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
+    size_t dec_size_1 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
+    size_t dec_size_2 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    size_t dec_size_3 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
     for (size_t i = 0; i < size(); ++i){
         const PriceTag &tag = g_price_tags[lookup_state(StateID(i))];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -561,9 +571,9 @@ void StateRegistry::output_decoupled_state_space_size() const {
             dec_size_3 += size(factor);
         }
     }
-    cout << "decoupled state space size (1) " << dec_size_1 << endl;
-    cout << "decoupled state space size (2) " << dec_size_2 << endl;
-    cout << "decoupled state space size (3) " << dec_size_3 << endl;
+    cout << "decoupled state space size [1] " << dec_size_1 << endl;
+    cout << "decoupled state space size [2] " << dec_size_2 << endl;
+    cout << "decoupled state space size [3] " << dec_size_3 << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {

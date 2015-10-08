@@ -10,6 +10,7 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
+#include "price_tag.h"
 
 #include <iostream>
 #include <limits>
@@ -62,6 +63,7 @@ Factoring::Factoring(const Options &opts) :
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
+    max_precompute_state_space_size = 1000000;
 }
 
 class CenterFactoring : public Factoring {
@@ -116,7 +118,6 @@ public:
             : Factoring(opts), maximize_mobility(opts.get<bool>("maximize_mobility")) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
-        min_number_leaves = 1;
     };
     
     virtual FactoredVars get_factoring();
@@ -188,15 +189,12 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     g_new_index = vector<int>(g_variable_domain.size());
     interaction_graph = InteractionGraph(factoring.size());
     g_factors.resize(factoring.size());
-    g_leaf_variable_domain.resize(factoring.size());
     
     for (size_t i = 0; i < factoring.size(); i++){
         vector<int> variables(factoring[i].begin(), factoring[i].end());              
-        g_leaf_variable_domain[i] = vector<int>(variables.size());
-        for (size_t j = 0; j < variables.size(); j++){
+        for (size_t j = 0; j < variables.size(); ++j){
             g_belongs_to_factor[variables[j]] = i;
             g_new_index[variables[j]] = j;
-            g_leaf_variable_domain[i][j] = g_variable_domain[variables[j]];
         }
         g_factors[i] = variables;
     }
@@ -205,14 +203,11 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     cout << "center factor:" << endl;
 #endif
     
-    g_number_center_vars = 0;
-    
-    for (size_t i = 0; i < g_variable_domain.size(); i++){
+    for (size_t i = 0; i < g_variable_domain.size(); ++i){
         int affected_factor = g_belongs_to_factor[i];
         if (affected_factor == -1){
-            g_number_center_vars++;
-            g_center_var.push_back(i);
-            g_new_index[i] = g_center_var.size() - 1;
+            g_center_vars.push_back(i);
+            g_new_index[i] = g_center_vars.size() - 1;
 #ifdef DEBUG_FACTORING
             cout << "   variable " << i << " :" << g_fact_names[i][0] << endl;
 #endif
@@ -224,18 +219,18 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     vector<int> num_ops_per_factor(g_factors.size());
 #endif
     bool is_fork_factoring = true;
-    for (size_t i = 0; i < g_operators.size(); i++){
+    for (size_t i = 0; i < g_operators.size(); ++i){
         Operator &op = g_operators[i];
         
         set<int> pre_factors;
         set<int> eff_factors;
 
-        for (size_t prev = 0; prev < op.get_preconditions().size(); prev++){
+        for (size_t prev = 0; prev < op.get_preconditions().size(); ++prev){
             const Condition &prevail = op.get_preconditions()[prev];
             pre_factors.insert(g_belongs_to_factor[prevail.var]);
         }
         
-        for (size_t post = 0; post < op.get_effects().size(); post++){
+        for (size_t post = 0; post < op.get_effects().size(); ++post){
             const Effect &prepost = op.get_effects()[post];
             eff_factors.insert(g_belongs_to_factor[prepost.var]);
         }
@@ -289,13 +284,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     
     g_is_leaf_goal_state.resize(g_factors.size());
     
-    if (profile != FORK){
-        // TODO this is actually only needed if there is at least one
-        // inverted-fork leaf
-        g_leaf_price_cache.resize(g_factors.size());
-    }
+    PriceTag::initialize_leaf_cache();
     
-
     // setup g_goals_per_factor
     // TODO check if each factor contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
@@ -327,11 +317,13 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 void Factoring::print_factoring() const {
     cout << "number leaf factors: " << g_factors.size() << endl;
     
-    cout << g_number_center_vars << " variables in center factor" << endl;
+    cout << g_center_vars.size() << " variables in center factor" << endl;
     
     for (size_t i = 0; i < g_factors.size(); i++) {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;
     }
+    
+    precompute_leaf_state_space.resize(g_factors.size(), true);
     
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
@@ -340,6 +332,9 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_factors[i].size(); j++){
             f_size *= g_variable_domain[g_factors[i][j]];
+            if (search_type != ASDA && f_size > max_precompute_state_space_size){
+                precompute_leaf_state_space[i] = false;
+            }
         }
         avg_size += f_size;
         min_size = min(min_size, f_size);

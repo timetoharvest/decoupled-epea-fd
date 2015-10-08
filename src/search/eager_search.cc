@@ -139,8 +139,9 @@ SearchStatus EagerSearch::step() {
     }
 
     State s = node.get_state();
-    if (check_goal_and_set_plan(s))
+    if (check_goal_and_set_plan(s)){
         return SOLVED;
+    }
 
     vector<const Operator *> applicable_ops;
     set<const Operator *> preferred_ops;

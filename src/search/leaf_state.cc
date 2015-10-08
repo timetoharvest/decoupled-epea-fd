@@ -19,13 +19,13 @@ LeafState::~LeafState() {
 }
 
 int LeafState::operator[](int index) const {
-    assert((size_t) g_new_index[index] < g_leaf_variable_domain[id.get_factor()].size());
+    assert((size_t) g_new_index[index] < g_factors[id.get_factor()].size());
     return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
 }
 
 void LeafState::dump_pddl() const {
     cout << "           ___________" << endl;
-    for (size_t var = 0; var < g_leaf_variable_domain[id.get_factor()].size(); var++) {
+    for (size_t var = 0; var < g_factors[id.get_factor()].size(); var++) {
         //cout << "var " << g_factors[factor][var] << " val " << (*this)[g_factors[factor][var]] << endl;
         const string &fact_name = g_fact_names[g_factors[id.get_factor()][var]][(*this)[g_factors[id.get_factor()][var]]];
         if (fact_name != "<none of those>")
@@ -35,7 +35,7 @@ void LeafState::dump_pddl() const {
 }
 
 void LeafState::dump_fdr() const {
-    for (size_t i = 0; i < g_leaf_variable_domain[id.get_factor()].size(); ++i){
+    for (size_t i = 0; i < g_factors[id.get_factor()].size(); ++i){
         cout << "  #" << i << " [" << g_variable_name[g_factors[id.get_factor()][i]] << "] -> " << (*this)[g_factors[id.get_factor()][i]] << endl;
     }
 }

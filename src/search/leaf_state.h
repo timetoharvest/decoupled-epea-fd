@@ -13,8 +13,6 @@ class LeafState {
     friend class StateRegistry;
     friend class PriceTag;
     friend class PathPriceTag;
-    template <class Entry>
-    friend class PerStateInformation;
     
     LeafStateID id;
     

@@ -86,7 +86,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check.get_number_facts(factor) < g_state_registry->size(factor)){
+        if (check.get_number_facts(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
             all_leaves_max_size = false;
         }
     }

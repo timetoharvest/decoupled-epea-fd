@@ -20,8 +20,11 @@ class SuccessorGeneratorSwitch : public SuccessorGenerator {
     SuccessorGenerator *default_generator;
     
     SuccessorGeneratorSwitch(){};
+    SuccessorGeneratorSwitch(const SuccessorGeneratorSwitch &sg);
 public:
     SuccessorGeneratorSwitch(istream &in);
+    virtual SuccessorGenerator *copy() const;
+    
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre);
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
@@ -37,8 +40,11 @@ class SuccessorGeneratorGenerate : public SuccessorGenerator {
     vector<const Operator *> operators;
     
     SuccessorGeneratorGenerate(){};
+    SuccessorGeneratorGenerate(const SuccessorGeneratorGenerate &sg);
 public:
     SuccessorGeneratorGenerate(istream &in);
+    virtual SuccessorGenerator *copy() const;
+    
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre);
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
@@ -54,6 +60,19 @@ SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(istream &in) {
     for (int i = 0; i < g_variable_domain[switch_var]; ++i)
         generator_for_value.push_back(read_successor_generator(in));
     default_generator = read_successor_generator(in);
+}
+
+SuccessorGenerator* SuccessorGeneratorSwitch::copy() const {
+    return new SuccessorGeneratorSwitch(*this);
+}
+
+SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(const SuccessorGeneratorSwitch &sg) :
+                                                switch_var(sg.switch_var){
+    immediate_ops = sg.immediate_ops->copy();
+    default_generator = sg.default_generator->copy();
+    for (size_t i = 0; i < sg.generator_for_value.size(); ++i){
+        generator_for_value.push_back(sg.generator_for_value[i]->copy());
+    }
 }
 
 void SuccessorGeneratorSwitch::generate_applicable_ops(
@@ -116,7 +135,14 @@ void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafS
     // ignores center preconditions
     immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
     if (g_belongs_to_factor[switch_var] == leaf_state.get_id().get_factor()){
-	generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
+        if (!generator_for_value.empty()){
+            generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
+        }
+#ifndef NDEBUG
+        else {
+            assert(!g_factoring->precompute_state_space(leaf_state.get_id().get_factor()));
+        }
+#endif
     } else {
         // this finds operators that are preconditioned by center/another leaf factor
         for (size_t i = 0; i < generator_for_value.size(); i++){
@@ -205,19 +231,27 @@ SuccessorGeneratorGenerate::SuccessorGeneratorGenerate(istream &in) {
     }
 }
 
+SuccessorGeneratorGenerate::SuccessorGeneratorGenerate(const SuccessorGeneratorGenerate& sg) :
+          operators(sg.operators) {
+}
+
+SuccessorGenerator* SuccessorGeneratorGenerate::copy() const {
+    return new SuccessorGeneratorGenerate(*this);
+}
+
 void SuccessorGeneratorGenerate::generate_applicable_ops(const State &,
                                                          vector<const Operator *> &ops, bool) {
     ops.insert(ops.end(), operators.begin(), operators.end());
 }
 
 void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const LeafState &state,
-							 vector<const Operator*> &ops, 
+                                                         vector<const Operator*> &ops, 
                                                          bool only_center_ops) {
     int factor = state.get_id().get_factor();
     for (size_t i = 0; i < operators.size(); ++i){
         if (only_center_ops){
             if (operators[i]->get_affected_factor() == -1 &&
-                (operators[i]->has_precondition_on_factor(factor)
+                (operators[i]->has_precondition_on(factor)
                   || !operators[i]->get_effects(factor).empty())){
                 ops.push_back(operators[i]);
             }

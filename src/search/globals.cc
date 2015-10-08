@@ -279,8 +279,6 @@ void read_everything(istream &in) {
     g_causal_graph = new CausalGraph;
     cout << "done! [t=" << g_timer << "]" << endl;
     
-    // TODO initialize this and similar variables somewhere else
-    g_sum_min_goal_cost = 0;
     
     if (g_use_decoupled_search){
         verify_no_axioms_no_conditional_effects();
@@ -292,9 +290,16 @@ void read_everything(istream &in) {
     if (g_use_decoupled_search){
         
         vector<int> center_domains;
+        vector<vector<int> > leaf_domains(g_factors.size());
         for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
-            if (g_belongs_to_factor[var] == -1){
+            int factor = g_belongs_to_factor[var];
+            if (factor == -1){
                 center_domains.push_back(g_variable_domain[var]);
+            } else {
+                if (leaf_domains[factor].empty()){
+                    leaf_domains[factor].resize(g_factors[factor].size(), -1);
+                }
+                leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
             }
         }
         // TODO adapt the size based on experiments, max so far about 7500
@@ -303,10 +308,10 @@ void read_everything(istream &in) {
         
         cout << "packing state variables..." << flush;
         g_state_packer = new IntPacker(center_domains);
-        cout << "Variables: " << g_number_center_vars << endl;
+        cout << "Variables: " << g_center_vars.size() << endl;
         g_leaf_factor_packers = vector<IntPacker*>(g_factors.size(), 0);
         for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
-            g_leaf_factor_packers[i] = new IntPacker(g_leaf_variable_domain[i]);
+            g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
         }
     } else {
 	g_state_packer = new IntPacker(g_variable_domain);
@@ -425,18 +430,18 @@ bool g_use_decoupled_search;
 int g_inc_g_by;
 
 PerStateInformation<PriceTag> g_price_tags;
-vector<vector<vector<int> > > g_center_successors;
+
 vector<int> g_belongs_to_factor;
-size_t g_number_center_vars;
-vector<vector<int> > g_leaf_variable_domain;
 vector<vector<int> > g_factors;
+
 vector<string> g_variable_name;
 vector<int> g_variable_domain;
-vector<int> g_center_var;
+
+vector<int> g_center_vars;
 vector<int> g_new_index;
 
-vector<vector<vector<pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
-vector<vector<StateID> > g_leaf_price_cache;
+vector<vector<vector<size_t> > > g_center_successors;
+vector<vector<vector<pair<const Operator*, size_t> > > > g_leaf_state_successors;
 vector<vector<int> > g_leaf_state_id_map;
 vector<size_t> g_curr_leaf_state_max_id;
 
@@ -445,16 +450,20 @@ vector<int> g_axiom_layers;
 vector<int> g_default_axiom_values;
 IntPacker *g_state_packer;
 vector<IntPacker*> g_leaf_factor_packers;
+
 vector<int> g_initial_state_data;
+
 vector<pair<int, int> > g_goal;
 vector<int> g_min_goal_cost;
-int g_sum_min_goal_cost;
+int g_sum_min_goal_cost = 0;
 vector<vector<pair<int, int> > > g_goals_per_factor;
 vector<vector<bool> > g_is_leaf_goal_state;
+
 vector<Operator> g_operators;
 vector<Operator> g_axioms;
 AxiomEvaluator *g_axiom_evaluator;
 SuccessorGenerator *g_successor_generator;
+vector<SuccessorGenerator*> g_leaf_successor_generators;
 vector<DomainTransitionGraph *> g_transition_graphs;
 CausalGraph *g_causal_graph;
 

@@ -6,7 +6,7 @@
 #include <vector>
 
 #ifndef NDEBUG
-//#define DEBUG_SEARCH    // general debugging
+// #define DEBUG_SEARCH    // general debugging
 #define DEBUG_FACTORING
 // #define DEBUG_PLAN_EXTRACTION
 //#define DEBUG_SUCCESSOR_GENERATION
@@ -66,22 +66,20 @@ extern bool g_use_decoupled_search;
 extern int g_inc_g_by;
 
 extern PerStateInformation<PriceTag> g_price_tags;
-extern std::vector<std::vector<std::vector<int> > > g_center_successors;
+
 extern std::vector<int> g_belongs_to_factor;
-extern size_t g_number_center_vars;
-extern std::vector<std::vector<int> > g_leaf_variable_domain;
 extern std::vector<std::vector<int> > g_factors;
+
 extern std::vector<std::string> g_variable_name;
 extern std::vector<int> g_variable_domain;
 
 // the following two map the variable position in g_leaf_variable_domain
 // to the corresponding index in g_variable_domain
-extern std::vector<int> g_center_var;
+extern std::vector<int> g_center_vars;
 extern std::vector<int> g_new_index;
 
-extern std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateID> > > > g_leaf_state_successors;
-extern std::vector<std::vector<StateID> > g_leaf_price_cache;
-// TODO put this as a static field to PriceTag
+extern std::vector<std::vector<std::vector<size_t> > > g_center_successors;
+extern std::vector<std::vector<std::vector<std::pair<const Operator*, size_t> > > > g_leaf_state_successors;
 extern std::vector<std::vector<int> > g_leaf_state_id_map;
 extern std::vector<size_t> g_curr_leaf_state_max_id;
 
@@ -90,8 +88,8 @@ extern std::vector<int> g_axiom_layers;
 extern std::vector<int> g_default_axiom_values;
 
 extern IntPacker *g_state_packer;
-// TODO how about using a simple int/short/byte/.. if a leaf consists of a single variable?
 extern std::vector<IntPacker*> g_leaf_factor_packers;
+
 // This vector holds the initial values *before* the axioms have been evaluated.
 // Use the state registry to obtain the real initial state.
 extern std::vector<int> g_initial_state_data;
@@ -99,6 +97,7 @@ extern std::vector<int> g_initial_state_data;
 //      in g_state_registry. This is only a short-term solution. In the
 //      medium term, we should get rid of the global registry.
 extern const State &g_initial_state();
+
 // in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
 // contains the locally minimal goal cost per factor
@@ -111,6 +110,7 @@ extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;
 extern AxiomEvaluator *g_axiom_evaluator;
 extern SuccessorGenerator *g_successor_generator;
+extern std::vector<SuccessorGenerator*> g_leaf_successor_generators;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
 extern CausalGraph *g_causal_graph;
 extern Timer g_timer;
