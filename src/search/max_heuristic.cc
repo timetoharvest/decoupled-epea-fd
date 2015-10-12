@@ -105,14 +105,14 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     if (search_type != STD){
         const PriceTag &tag = g_price_tags[state];
 	for (size_t factor = 0; factor < g_factors.size(); factor++){
-	    int number_states = tag.get_number_facts(factor);
+	    int number_states = tag.get_number_states(factor);
             size_t id = 0;
 	    while (number_states > 0){
 		if (tag.has_leaf_state(id, factor)){
                     --number_states;
                     int base_cost = 0;
                     if (search_type == STAR){
-                        base_cost = tag.get_info_for_fact(id, factor).cost;
+                        base_cost = tag.get_cost_of_state(id, factor);
                     }
                     const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                     for (size_t v = 0; v < g_factors[factor].size(); v++) {

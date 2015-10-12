@@ -79,14 +79,14 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                 all_goals_reached = false;
             }
         }
-        if (reference.get_number_facts(factor) > check.get_number_facts(factor)){
+        if (reference.get_number_states(factor) > check.get_number_states(factor)){
             new_is_smaller = true;
             sizes_equal = false;
-        } else if (reference.get_number_facts(factor) < check.get_number_facts(factor)){
+        } else if (reference.get_number_states(factor) < check.get_number_states(factor)){
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check.get_number_facts(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+        if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
             all_leaves_max_size = false;
         }
     }
@@ -115,8 +115,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
         if (skip_leaf[factor]) { // is fork-leaf
             continue;
         }
-        int number_new_states = check.get_number_facts(factor);
-        int number_old_states = reference.get_number_facts(factor);
+        int number_new_states = check.get_number_states(factor);
+        int number_old_states = reference.get_number_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
@@ -127,8 +127,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                 if (reference.has_leaf_state(id, factor)){
                     number_old_states--;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference.get_info_for_fact(id, factor).cost;
-                        int new_cost = check.get_info_for_fact(id, factor).cost;
+                        int old_cost = reference.get_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
                         
                         if (old_cost > new_cost){
                             dominated = false;

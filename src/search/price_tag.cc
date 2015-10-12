@@ -13,23 +13,25 @@
 
 using namespace std;
 
-void PriceTagInfo::dump() const {
-    cout << "PriceTagInfo" << endl;
-    cout << "cost = " << cost << endl;
-}
-
 
 vector<vector<StateID> > PriceTag::leaf_price_cache;
+
+vector<pair<int, int> > PriceTag::leaf_tags_to_cache;
 
 
 PriceTag::PriceTag(const PriceTag *tag) {
     if (tag == 0){
         number_facts = vector<size_t>(g_factors.size(), 0);
-        costs = vector<vector<PriceTagInfo> >(g_factors.size());
-        goal_cost = vector<int>(g_factors.size(), -1);
+        if (g_factoring->get_search_type() != SAT){
+            costs = vector<vector<int> >(g_factors.size());
+        } else {
+            reachable = vector<vector<bool> >(g_factors.size());
+        }
+        goal_cost = vector<int>(g_factors.size(), INF);
     } else {
         number_facts = tag->number_facts;
         costs = tag->costs;
+        reachable = tag->reachable;
         goal_cost = tag->goal_cost;
     }
 }
@@ -39,13 +41,13 @@ bool PriceTag::contains_goal(const LeafStateID &fact) const {
 }
 
 void PriceTag::reduce_cost_by(int factor, int cost) {
-    if (goal_cost[factor] != -1){
+    if (goal_cost[factor] != INF){
         // if there is a goal state, its cost must be >= cost!
         goal_cost[factor] -= cost;
     }
-    for (size_t id = 0; id < costs[factor].size(); id++){
-        if (costs[factor][id].cost != INF){
-            costs[factor][id].cost -= cost;
+    for (size_t id = 0; id < costs[factor].size(); ++id){
+        if (costs[factor][id] != INF){
+            costs[factor][id] -= cost;
         }
     }
 }
@@ -236,7 +238,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     }
 }
 
-bool PriceTag::add_fact(const LeafStateID &state, int cost) {
+bool PriceTag::add_state(const LeafStateID &state, int cost) {
     size_t factor = state.get_factor();
     int leaf_id = g_leaf_state_id_map[factor][state.hash()];
     if (leaf_id == -1){ // get new index to prevent facts vector from being sparse
@@ -244,25 +246,39 @@ bool PriceTag::add_fact(const LeafStateID &state, int cost) {
         g_leaf_state_id_map[factor][state.hash()] = leaf_id;
         ++g_curr_leaf_state_max_id[factor];
     }
-                    // TODO fix this
-    if (leaf_id >= (int) costs[factor].size()){
-        costs[factor].resize(leaf_id + 1);
-    }
-    if (costs[factor][leaf_id].cost == INF){
-        costs[factor][leaf_id] = PriceTagInfo(cost);
-        number_facts[factor]++;
-        if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
-            if (goal_cost[factor] == -1 || goal_cost[factor] > cost){
-                goal_cost[factor] = cost;
-            }
+
+    if (g_factoring->get_search_type() != SAT){
+        if (leaf_id >= (int) costs[factor].size()){
+            costs[factor].resize(leaf_id + 1, INF);
         }
-        return true;
-    } else if (g_factoring->get_search_type() != SAT){
-        if (costs[factor][leaf_id].cost > cost){
-            costs[factor][leaf_id] = PriceTagInfo(cost);
+        if (costs[factor][leaf_id] == INF){
+            costs[factor][leaf_id] = cost;
+            number_facts[factor]++;
+            if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
+                if (goal_cost[factor] == INF || goal_cost[factor] > cost){
+                    goal_cost[factor] = cost;
+                }
+            }
+            return true;
+        } else if (costs[factor][leaf_id] > cost){
+            costs[factor][leaf_id] = cost;
             if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
                 if (goal_cost[factor] > cost){
                     goal_cost[factor] = cost;
+                }
+            }
+            return true;
+        }
+    } else {
+        if (leaf_id >= (int) reachable[factor].size()){
+            reachable[factor].resize(leaf_id + 1, 0);
+        }
+        if (!reachable[factor][leaf_id]){
+            reachable[factor][leaf_id] = true;
+            number_facts[factor]++;
+            if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
+                if (goal_cost[factor] == INF){
+                    goal_cost[factor] = g_min_action_cost;
                 }
             }
             return true;
@@ -324,14 +340,14 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const PriceTag &tag_to_copy = g_price_tags[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = get_info_for_fact(leaf_id, factor).cost;
-                    cost_delta -= tag_to_copy.get_info_for_fact(leaf_id, factor).cost;
+                    int cost_delta = get_cost_of_state(leaf_id, factor);
+                    cost_delta -= tag_to_copy.get_cost_of_state(leaf_id, factor);
                     
-                    size_t number_states = tag_to_copy.get_number_facts(factor) - 1;
+                    size_t number_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
-                            const PriceTagInfo &t = tag_to_copy.get_info_for_fact(fact, factor);
-                            add_fact(LeafStateID(fact, factor), t.cost + cost_delta);
+                            int cost = tag_to_copy.get_cost_of_state(fact, factor);
+                            add_state(LeafStateID(fact, factor), cost + cost_delta);
                             if (--number_states == 0){
                                 break;
                             }
@@ -372,7 +388,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                 if (has_leaf_state(id, factor)){
                     --number_states;
                 
-                    int cost = get_info_for_fact(id, factor).cost;
+                    int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
                         ++id;
                         continue;
@@ -392,7 +408,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                change |= add_fact(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
+                                change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                             }
                         }
@@ -462,7 +478,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                                 }
                                 
                                 if (op->is_center_applicable(base_state)){
-                                    change |= add_fact(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                                    change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                                 }
 
                                 if (!is_center_op){
@@ -510,7 +526,11 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
             // op does not affect leaf at all => copy everything
             
             number_facts[factor] = old_tag.number_facts[factor];
-            costs[factor] = old_tag.costs[factor];
+            if (g_factoring->get_search_type() != SAT){
+                costs[factor] = old_tag.costs[factor];
+            } else {
+                reachable[factor] = old_tag.reachable[factor];
+            }
             goal_cost[factor] = old_tag.goal_cost[factor];
         }
         
@@ -531,15 +551,15 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
             
             LeafStateID succ_state = g_state_registry->insert_id_or_pop_leaf_state(factor);            
             
-            add_fact(succ_state, 0);
+            add_state(succ_state, 0);
             
             if (has_pre_on_factor && g_factoring->get_search_type() != SAT){
-                int number_states = old_tag.get_number_facts(factor);
+                int number_states = old_tag.get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0 && min_price > 0) {
                     if (old_tag.has_leaf_state(id, factor)){
                         --number_states;
-                        min_price = min(min_price, old_tag.get_info_for_fact(id, factor).cost);
+                        min_price = min(min_price, old_tag.get_cost_of_state(id, factor));
                     }
                     ++id;
                 }
@@ -573,17 +593,17 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                     eff_id = pre_id;
                 }
                 
-                int cost = old_tag.get_info_for_fact(pre_id.hash(), factor).cost;
+                int cost = old_tag.get_cost_of_state(pre_id.hash(), factor);
                 
                 min_price = min(min_price, cost);
                 
-                add_fact(eff_id, cost);
+                add_state(eff_id, cost);
                 
                 
 	    } else {
                 // check which leaf states satisfy center precondition and apply effects
                 
-                int number_states = old_tag.get_number_facts(factor);
+                int number_states = old_tag.get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0) {
                     if (old_tag.has_leaf_state(id, factor)){
@@ -593,12 +613,12 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                         
                         if (!has_pre_on_factor || op.is_applicable(lid)){
                             
-                            int cost = old_tag.get_info_for_fact(id, factor).cost;
+                            int cost = old_tag.get_cost_of_state(id, factor);
                             
                             min_price = min(min_price, cost);
                                     
                             if (eff_on_factor.empty()){
-                                add_fact(lid, cost);
+                                add_state(lid, cost);
                             } else {
                                 const LeafState state = g_state_registry->lookup_leaf_state(lid);
                                 leaf_factor_data_pool[factor]->push_back(state.get_packed_buffer());
@@ -612,7 +632,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                                 
                                 LeafStateID succ_id = g_state_registry->insert_id_or_pop_leaf_state(factor);
                     
-                                add_fact(succ_id, cost);
+                                add_state(succ_id, cost);
                             }
                         }
                     }
@@ -659,18 +679,22 @@ bool PriceTag::has_leaf_state(int id, int factor) const {
         return false;
     }
     size_t leaf_id = g_leaf_state_id_map[factor][id];
-    if (leaf_id >= costs[factor].size() || costs[factor][leaf_id].cost == INF){
-        return false;
+    if (g_factoring->get_search_type() != SAT){
+        return leaf_id < costs[factor].size() && costs[factor][leaf_id] != INF;
     }
-    return true;
+    return leaf_id < reachable[factor].size() && reachable[factor][leaf_id];
 }
 
-const PriceTagInfo& PriceTag::get_info_for_fact(int id, int factor) const {
-    assert((size_t) g_leaf_state_id_map[factor][id] < costs[factor].size());
+int PriceTag::get_cost_of_state(int id, int factor) const {
+    assert(g_factoring->get_search_type() == SAT || (size_t) g_leaf_state_id_map[factor][id] < costs[factor].size());
+    assert(g_factoring->get_search_type() != SAT || (size_t) g_leaf_state_id_map[factor][id] < reachable[factor].size());
+    if (g_factoring->get_search_type() == SAT){
+        return reachable[factor][g_leaf_state_id_map[factor][id]] ? g_min_action_cost : INF;
+    }
     return costs[factor][g_leaf_state_id_map[factor][id]];
 }
 
-size_t PriceTag::get_number_facts(int factor) const {
+size_t PriceTag::get_number_states(int factor) const {
     return number_facts[factor];
 }
 

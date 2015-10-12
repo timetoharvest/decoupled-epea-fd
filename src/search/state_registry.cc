@@ -121,7 +121,7 @@ const State &StateRegistry::get_initial_state() {
             PriceTag init_state_tag(0);
             
             for (size_t i = 0; i < g_factors.size(); ++i){
-                init_state_tag.add_fact(LeafStateID(0, i), 0);
+                init_state_tag.add_state(LeafStateID(0, i), 0);
             }
             
 #ifdef DEBUG_SEARCH
@@ -305,7 +305,7 @@ void StateRegistry::build_leaf_state_spaces() {
         delete[] leaf_buffers[factor];
         LeafStateID id = insert_id_or_pop_leaf_state(factor);
         store_is_leaf_goal_state(lookup_leaf_state(id));
-        goal_price_tag.add_fact(id, 0);
+        goal_price_tag.add_state(id, 0);
     }
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -341,7 +341,7 @@ void StateRegistry::build_leaf_state_spaces() {
 		if (!goal_price_tag.has_leaf_state(id, factor)){
 		    continue;
 		}
-                int cost = goal_price_tag.get_info_for_fact(id, factor).cost;
+                int cost = goal_price_tag.get_cost_of_state(id, factor);
 		if (id < best_prices.size()){
                     if (cost > best_prices[id]
                         || (g_factoring->get_search_type() == SAT && best_prices[id] != numeric_limits<int>::max())){
@@ -442,7 +442,7 @@ void StateRegistry::build_leaf_state_spaces() {
                             g_leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
                         }
                         
-                        change |= goal_price_tag.add_fact(lid, cost + op_cost);
+                        change |= goal_price_tag.add_state(lid, cost + op_cost);
                         
                         // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
                         // that here, i.e. e.g. the goal states of fork leaves dont need successors
@@ -565,7 +565,7 @@ void StateRegistry::output_decoupled_state_space_size() const {
     for (size_t i = 0; i < size(); ++i){
         const PriceTag &tag = g_price_tags[lookup_state(StateID(i))];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            size_t number_states = tag.get_number_facts(factor);
+            size_t number_states = tag.get_number_states(factor);
             dec_size_1 += g_factors[factor].size() * number_states;
             dec_size_2 += number_states;
             dec_size_3 += size(factor);

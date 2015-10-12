@@ -392,7 +392,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
-            int number_states = tag.get_number_facts(factor);
+            int number_states = tag.get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
                 if (tag.has_leaf_state(id, factor)){
@@ -400,7 +400,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                     
                     int cost = 0;
                     if (search_type == STAR){
-                        cost = tag.get_info_for_fact(id, factor).cost;
+                        cost = tag.get_cost_of_state(id, factor);
                         assert(cost >= 0);
                     }
                     

@@ -91,7 +91,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
             }
 
             vector<bool> is_applicable_leaf(g_operators.size(), false);
-            int number_states = tag.get_number_facts(factor);
+            size_t number_states = tag.get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
                 if (tag.has_leaf_state(id, factor)){
