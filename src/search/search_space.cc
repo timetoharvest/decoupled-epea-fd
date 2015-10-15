@@ -428,7 +428,7 @@ void SearchSpace::trace_path(const State &goal_state,
                                 }
                             }
                         }
-                        id++;
+                        ++id;
                     }
                     
                     assert(best_predecessor != LeafStateID::no_state);
