@@ -204,7 +204,6 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     
     if (g_use_decoupled_search){
         State s = lookup_state(id);
-        PriceTag new_price_tag(0);
         
         int old_dup_counter = -1;
         DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
@@ -214,11 +213,12 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         
         g_factoring->set_ignore_current_state(false);
         
-        const PriceTag &old_tag = g_price_tags[predecessor];
+        PriceTag new_price_tag;
         if (g_factoring->get_profile() != FORK){
-            new_price_tag.apply_center_op_to_leaves(old_tag, op);
+            new_price_tag = PriceTag(0);
+            new_price_tag.apply_center_op_to_leaves(g_price_tags[predecessor], op);
         } else {                
-            new_price_tag = PriceTag(old_tag);
+            new_price_tag = PriceTag(&g_price_tags[predecessor]);
         }
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
@@ -238,7 +238,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             }
             g_state_packer->set(buffer, g_center_vars.size(), new_dup_counter);
             
-            int base_state_id = id.hash();
+            size_t base_state_id = id.hash();
             
             id = insert_id_or_pop_state();
             s = lookup_state(id);
