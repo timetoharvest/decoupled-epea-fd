@@ -240,15 +240,14 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
 
 bool PriceTag::add_state(const LeafStateID &state, int cost) {
     size_t factor = state.get_factor();
-    int leaf_id = g_leaf_state_id_map[factor][state.hash()];
-    if (leaf_id == -1){ // get new index to prevent facts vector from being sparse
-        leaf_id = g_curr_leaf_state_max_id[factor];
-        g_leaf_state_id_map[factor][state.hash()] = leaf_id;
+    if (g_leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
+        g_leaf_state_id_map[factor][state.hash()] = g_curr_leaf_state_max_id[factor];
         ++g_curr_leaf_state_max_id[factor];
     }
+    size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
 
     if (g_factoring->get_search_type() != SAT){
-        if (leaf_id >= (int) costs[factor].size()){
+        if (leaf_id >= costs[factor].size()){
             costs[factor].resize(leaf_id + 1, INF);
         }
         if (costs[factor][leaf_id] == INF){
@@ -270,12 +269,12 @@ bool PriceTag::add_state(const LeafStateID &state, int cost) {
             return true;
         }
     } else {
-        if (leaf_id >= (int) reachable[factor].size()){
-            reachable[factor].resize(leaf_id + 1, 0);
+        if (leaf_id >= reachable[factor].size()){
+            reachable[factor].resize(leaf_id + 1, false);
         }
         if (!reachable[factor][leaf_id]){
             reachable[factor][leaf_id] = true;
-            number_facts[factor]++;
+            ++number_facts[factor];
             if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
                 if (goal_cost[factor] == INF){
                     goal_cost[factor] = g_min_action_cost;
@@ -679,10 +678,10 @@ bool PriceTag::has_leaf_state(int id, int factor) const {
         return false;
     }
     size_t leaf_id = g_leaf_state_id_map[factor][id];
-    if (g_factoring->get_search_type() != SAT){
-        return leaf_id < costs[factor].size() && costs[factor][leaf_id] != INF;
+    if (g_factoring->get_search_type() == SAT){
+        return leaf_id < reachable[factor].size() && reachable[factor][leaf_id];
     }
-    return leaf_id < reachable[factor].size() && reachable[factor][leaf_id];
+    return leaf_id < costs[factor].size() && costs[factor][leaf_id] != INF;
 }
 
 int PriceTag::get_cost_of_state(int id, int factor) const {
