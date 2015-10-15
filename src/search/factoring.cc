@@ -323,7 +323,7 @@ void Factoring::print_factoring() const {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;
     }
     
-    precompute_leaf_state_space.resize(g_factors.size(), search_type != SAT);
+    precompute_leaf_state_space.resize(g_factors.size(), true);
     
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
