@@ -27,7 +27,8 @@ protected:
     std::vector<size_t> number_facts;
     
     std::vector<std::vector<int> > costs;
-    
+    // TODO somehow get rid of the second vector
+    // what about having a PriceTag interface + 2 inheriting subclasses?
     std::vector<std::vector<bool> > reachable;
     
     // stores the current minimal goal cost per factor
