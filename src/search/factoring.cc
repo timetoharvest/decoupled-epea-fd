@@ -319,7 +319,7 @@ void Factoring::print_factoring() const {
     
     cout << g_center_vars.size() << " variables in center factor" << endl;
     
-    for (size_t i = 0; i < g_factors.size(); i++) {
+    for (size_t i = 0; i < g_factors.size(); ++i) {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;
     }
     
