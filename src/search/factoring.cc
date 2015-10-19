@@ -63,7 +63,7 @@ Factoring::Factoring(const Options &opts) :
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
-    max_precompute_state_space_size = 1000000;
+    max_precompute_state_space_size = opts.get<int>("build_state_space_size");
 }
 
 class CenterFactoring : public Factoring {
@@ -328,9 +328,9 @@ void Factoring::print_factoring() const {
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
-    for (size_t i = 0; i < g_factors.size(); i++){
+    for (size_t i = 0; i < g_factors.size(); ++i){
         uint64_t f_size = 1;
-        for (size_t j = 0; j < g_factors[i].size(); j++){
+        for (size_t j = 0; j < g_factors[i].size(); ++j){
             f_size *= g_variable_domain[g_factors[i][j]];
             if (search_type != ASDA && f_size > max_precompute_state_space_size){
                 precompute_leaf_state_space[i] = false;
@@ -1322,6 +1322,10 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "TODO",
         "",
         OptionFlags(false));
+    parser.add_option<int>(
+        "build_state_space_size",
+        "TODO",
+        "100000");
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser& parser) {
