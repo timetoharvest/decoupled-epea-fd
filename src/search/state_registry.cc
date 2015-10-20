@@ -485,11 +485,12 @@ void StateRegistry::build_leaf_state_spaces() {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (!g_factoring->precompute_state_space(factor)){
             cout << "min goal cost of factor " << factor << " not computed" << endl;
+            g_min_goal_cost[factor] = 0;
             continue;
         }
-	g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
+        g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
         
-	if (g_min_goal_cost[factor] == -1){
+        if (g_min_goal_cost[factor] == -1){
             if (!g_goals_per_factor[factor].empty()){
                 cout << "There is a goal that cannot be achieved in factor " << factor << endl;
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
