@@ -131,11 +131,15 @@ void PathPriceTag::update_price_tags(const State &base_state) {
             
             change = false;
             
-            int number_states = number_facts[factor];
+            size_t number_states = 0;
             size_t id = 0;
-            while (number_states > 0) {
+            while (number_states < number_facts[factor]) {
+                if (id >= g_state_registry->size(factor)){
+                    change = true;
+                    break;
+                }
                 if (has_leaf_state(id, factor)){
-                    --number_states;
+                    ++number_states;
                 
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost || (!g_leaf_state_successors[factor][id].empty() &&

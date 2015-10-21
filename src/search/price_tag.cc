@@ -252,7 +252,7 @@ bool PriceTag::add_state(const LeafStateID &state, int cost) {
         }
         if (costs[factor][leaf_id] == INF){
             costs[factor][leaf_id] = cost;
-            number_facts[factor]++;
+            ++number_facts[factor];
             if (!g_goals_per_factor[factor].empty() && contains_goal(state)){
                 if (goal_cost[factor] == INF || goal_cost[factor] > cost){
                     goal_cost[factor] = cost;
@@ -381,11 +381,15 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
             
             change = false;
             
-            int number_states = number_facts[factor];
+            size_t number_states = 0;
             size_t id = 0;
-            while (number_states > 0) {
+            while (number_states < number_facts[factor]) {
+                if (id >= g_state_registry->size(factor)){
+                    change = true;
+                    break;
+                }
                 if (has_leaf_state(id, factor)){
-                    --number_states;
+                    ++number_states;
                 
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
