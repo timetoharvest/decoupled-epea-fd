@@ -120,7 +120,7 @@ bool Operator::is_applicable(const State& state) const {
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (has_precondition_on(factor)){
                 bool applicable = false;
-                int number_states = price_tag.get_number_states(factor);
+                size_t number_states = price_tag.get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0){
                     if (price_tag.has_leaf_state(id, factor)){
