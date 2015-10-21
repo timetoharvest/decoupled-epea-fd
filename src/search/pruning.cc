@@ -23,7 +23,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     vector<bool> skip_leaf(g_factors.size(), false);
     
     // check number of reachable leaf states
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (!g_factoring->has_successors(factor)) {
             // is fork-leaf factor
             
