@@ -111,8 +111,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
     // compare prices / reachability
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
-        if (skip_leaf[factor]) { // is fork-leaf
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
         int number_new_states = check.get_number_states(factor);
