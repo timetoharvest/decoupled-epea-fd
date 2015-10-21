@@ -332,7 +332,7 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_factors[i].size(); ++j){
             f_size *= g_variable_domain[g_factors[i][j]];
-            if (search_type != ASDA && f_size > max_precompute_state_space_size){
+            if (search_type == SAT && f_size > max_precompute_state_space_size){
                 precompute_leaf_state_space[i] = false;
             }
         }
@@ -1325,7 +1325,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>(
         "build_state_space_size",
         "TODO",
-        "100000");
+        "10000");
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser& parser) {
