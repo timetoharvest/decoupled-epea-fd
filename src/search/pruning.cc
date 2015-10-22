@@ -18,7 +18,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     bool new_is_smaller = false;
     bool all_leaves_max_size = g_factoring->get_profile() != FORK &&
                                g_factoring->get_search_type() == SAT;
-    bool all_goals_reached = g_factoring->get_profile() == FORK;
+    bool all_goals_reached = g_factoring->get_profile() == FORK &&
+                             g_factoring->get_search_type() == SAT;
     
     vector<bool> skip_leaf(g_factors.size(), false);
     
