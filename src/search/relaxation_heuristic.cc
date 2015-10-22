@@ -67,17 +67,15 @@ void RelaxationHeuristic::reference_ops() {
     for (size_t i = 0; i < unary_operators.size(); ++i) {
     UnaryOperator *op = &unary_operators[i];
     for (size_t j = 0; j < op->precondition.size(); ++j)
-	op->precondition[j]->precondition_of.push_back(op);
+        op->precondition[j]->precondition_of.push_back(op);
     }
 }
 
 void RelaxationHeuristic::build_unary_operators(const Operator &op, int op_no) {
     int base_cost = get_adjusted_cost(op);
     if (g_use_decoupled_search &&
-        g_factoring->get_search_type() != SAT &&
         search_type == CENTER &&
         op.get_affected_factor() != -1){
-        // TODO what to do about this??
         base_cost = 0;
     }
     const vector<Condition> &preconditions = op.get_preconditions();
