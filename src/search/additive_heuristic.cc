@@ -90,10 +90,10 @@ void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const Stat
 
 void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (search_type == STD || g_belongs_to_factor[var] == -1){
-	    Proposition *init_prop = &propositions[var][state[var]];
-	    enqueue_if_necessary(init_prop, 0, 0);
-	}
+        if (search_type == STD || g_belongs_to_factor[var] == -1){
+            Proposition *init_prop = &propositions[var][state[var]];
+            enqueue_if_necessary(init_prop, 0, 0);
+        }
     }
 }
 
