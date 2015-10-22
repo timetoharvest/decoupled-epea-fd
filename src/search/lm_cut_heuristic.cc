@@ -97,13 +97,12 @@ void LandmarkCutHeuristic::initialize() {
     }
     
     if (g_use_decoupled_search){
-        number_center_pre_eff.resize(propositions.size());
+        number_center_effs.resize(propositions.size());
         for (size_t i = 0; i < propositions.size(); ++i){
-            number_center_pre_eff[i].reserve(propositions[i].size());
+            number_center_effs[i].reserve(propositions[i].size());
             for (size_t j = 0; j < propositions[i].size(); ++j){
-                size_t num_pre = propositions[i][j].precondition_of.size();
                 size_t num_eff = propositions[i][j].effect_of.size();
-                number_center_pre_eff[i].push_back(make_pair(num_pre, num_eff));
+                number_center_effs[i].push_back(num_eff);
             }
         }
         num_art_center_pre_pre = artificial_precondition.precondition_of.size();
@@ -373,7 +372,8 @@ void LandmarkCutHeuristic::validate_h_max() const {
 void LandmarkCutHeuristic::dereference_ops() {
     for (size_t i = 0; i < propositions.size(); ++i){
         for (size_t j = 0; j < propositions[i].size(); ++j){
-            propositions[i][j].effect_of.resize(number_center_pre_eff[i][j].second);
+            // only precondition of new leaf ops is artificial_precondition
+            propositions[i][j].effect_of.resize(number_center_effs[i][j]);
         }
     }
     artificial_goal.effect_of.resize(num_art_center_goal_eff);;

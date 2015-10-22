@@ -113,7 +113,7 @@ class LandmarkCutHeuristic : public Heuristic {
     AdaptiveQueue<RelaxedProposition *> priority_queue;
     // needed for decoupled search
     std::vector<std::vector<RelaxedOperator> > relaxed_leaf_operators;
-    std::vector<std::vector<std::pair<size_t, size_t> > > number_center_pre_eff;
+    std::vector<std::vector<size_t> > number_center_effs;
     size_t num_art_center_pre_pre;
     size_t num_art_center_goal_eff;
     
