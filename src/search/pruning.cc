@@ -24,7 +24,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     
     // check number of reachable leaf states
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->has_successors(factor)) {
+        if (!g_factoring->has_successors(factor) && g_factoring->stop_when_goal_reached()) {
             // is fork-leaf factor
             
             // NOTE: for both optimal and satisficing search, if one of the two compared

@@ -365,7 +365,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 
         while (change) {
             
-            if (!g_factoring->has_successors(factor)){
+            if (!g_factoring->has_successors(factor) && g_factoring->stop_when_goal_reached()){
                 // in satisficing search => stop once a goal is reachable for fork-leaves
                 // or if all leaf states are reached
                 bool stop = g_factoring->get_search_type() == SAT && get_goal_cost(factor) >= 0;

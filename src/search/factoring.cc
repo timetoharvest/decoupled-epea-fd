@@ -64,6 +64,7 @@ Factoring::Factoring(const Options &opts) :
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
+    stop_on_goal = opts.get<bool>("stop_when_goal_reached");
 }
 
 class CenterFactoring : public Factoring {
@@ -1326,6 +1327,10 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "build_state_space_size",
         "TODO",
         "10000");
+    parser.add_option<bool>(
+        "stop_when_goal_reached",
+        "TODO",
+        "false");
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser& parser) {
