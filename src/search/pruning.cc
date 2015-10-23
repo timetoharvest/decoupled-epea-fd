@@ -19,66 +19,36 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     bool all_leaves_max_size = g_factoring->get_profile() != FORK &&
                                g_factoring->get_search_type() == SAT;
     bool all_goals_reached = g_factoring->get_profile() == FORK &&
-                             g_factoring->stop_when_goal_reached();
+                             g_factoring->get_search_type() == SAT;
     
     vector<bool> skip_leaf(g_factors.size(), false);
     
     // check number of reachable leaf states
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->has_successors(factor) && g_factoring->stop_when_goal_reached()) {
-            // is fork-leaf factor
-            
-            // NOTE: for both optimal and satisficing search, if one of the two compared
-            // pricetags has a/the optimal goal, nothing can be said about dominance.
-            if (g_factoring->get_search_type() == SAT){
-                // in satisficing search, updating PriceTags stops if a goal 
-                // is reached in fork leaves. thus cannot compare number of states 
-                // in this case
-                if (check.get_goal_cost(factor) >= 0){
-                    if (reference.get_goal_cost(factor) >= 0){
-                        // don't care about size/reachability
-                    } else {
-                        all_goals_reached = false;
-                        new_is_larger = true;
-                        new_is_smaller = true;
-                        sizes_equal = false;
-                    }
-                    skip_leaf[factor] = true;
-                    continue;
-                } else if (reference.get_goal_cost(factor) >= 0){
+        if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
+            // in satisficing search, updating PriceTags stops if a goal 
+            // is reached in fork leaves. thus cannot compare number of states 
+            // in this case
+            if (check.get_goal_cost(factor) >= 0){
+                if (reference.get_goal_cost(factor) >= 0){
+                    // don't care about size/reachability
+                } else {
                     all_goals_reached = false;
-                    new_is_smaller = true;
                     new_is_larger = true;
-                    sizes_equal = false;
-                    skip_leaf[factor] = true;
-                    continue;
-                }
-                all_goals_reached = false;
-            } else {
-                // if a fork-leaf factor can reach its goal on a minimum cost path
-                // there is nothing that could possibly be improved, no matter
-                // which leaf states are reachable by which cost
-                if (check.get_goal_cost(factor) == g_min_goal_cost[factor]){
-                    if (reference.get_goal_cost(factor) == g_min_goal_cost[factor]){
-                        // don't care about size/costs
-                    } else {
-                        all_goals_reached = false;
-                        new_is_larger = true;
-                        new_is_smaller = true;
-                        sizes_equal = false;
-                    }
-                    skip_leaf[factor] = true;
-                    continue;
-                } else if (reference.get_goal_cost(factor) == g_min_goal_cost[factor]){
-                    all_goals_reached = false;
                     new_is_smaller = true;
-                    new_is_larger = true;
                     sizes_equal = false;
-                    skip_leaf[factor] = true;
-                    continue;
                 }
+                skip_leaf[factor] = true;
+                continue;
+            } else if (reference.get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
+                new_is_smaller = true;
+                new_is_larger = true;
+                sizes_equal = false;
+                skip_leaf[factor] = true;
+                continue;
             }
+            all_goals_reached = false;
         }
         if (reference.get_number_states(factor) > check.get_number_states(factor)){
             new_is_smaller = true;
@@ -101,6 +71,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     }
     
     if (all_goals_reached){
+        // this is only relevant in satisficing fork-decoupled search when the center
+        // has not reached its goal yet, but all leaves do.
         return EQUAL;
     }
     
@@ -116,20 +88,22 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
-        int number_new_states = check.get_number_states(factor);
-        int number_old_states = reference.get_number_states(factor);
+        size_t number_new_states = check.get_number_states(factor);
+        size_t number_old_states = reference.get_number_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
             if (check.has_leaf_state(id, factor)){
-                number_new_states--;
+                --number_new_states;
                 if (reference.has_leaf_state(id, factor)){
-                    number_old_states--;
+                    --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
                         int old_cost = reference.get_cost_of_state(id, factor);
                         int new_cost = check.get_cost_of_state(id, factor);
+                        assert(old_cost != -1);
+                        assert(new_cost != -1);
                         
                         if (old_cost > new_cost){
                             dominated = false;
@@ -141,7 +115,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                     dominated = false;
                 }                
             } else if (reference.has_leaf_state(id, factor)){
-                number_old_states--;
+                --number_old_states;
                 dominates = false;
             }
             if (!dominated && !dominates){
@@ -150,16 +124,14 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                 return NONE;
             } else if (!dominates && needed == DOMINATES){
                 return NONE;
-            } else if (number_new_states == 0 &&
-                       number_old_states > 0){
+            } else if (number_new_states == 0 && number_old_states > 0){
                 dominates = false;
                 break;
-            } else if (number_old_states == 0 &&
-                       number_new_states > 0){
+            } else if (number_old_states == 0 && number_new_states > 0){
                 dominated = false;
                 break;
             }
-            id++;
+            ++id;
         }
     }
     if (dominated && dominates){

@@ -80,8 +80,6 @@ class Factoring {
     
     mutable bool ignore_current_state;
     
-    mutable bool stop_on_goal;
-    
     bool reopen_closed_nodes;
     
     mutable OperatorCost cost_type;
@@ -197,10 +195,6 @@ public:
      */
     bool precompute_state_space(int factor) const {
         return precompute_leaf_state_space[factor];
-    }
-    
-    bool stop_when_goal_reached() const {
-        return stop_on_goal;
     }
     
     static void add_options_to_parser(OptionParser &parser);

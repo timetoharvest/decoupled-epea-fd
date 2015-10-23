@@ -113,20 +113,9 @@ void PathPriceTag::update_price_tags(const State &base_state) {
 
         while (change) {
             
-            // if in satisficing search => stop once a goal is reachable for fork-leaves
-            // or if all leaf states are achieved
-            if (!g_factoring->has_successors(factor) && g_factoring->stop_when_goal_reached()){
-                // in satisficing search => stop once a goal is reachable for fork-leaves
-                // or if all leaf states are reached
-                bool stop = g_factoring->get_search_type() == SAT && get_goal_cost(factor) >= 0;
-                
-                // in optimal search, stop once a fork-leaf can reach its goal on
-                // the cheapest path => cannot possibly do any better
-                stop |= get_goal_cost(factor) == g_min_goal_cost[factor];
-                
-                if (stop){
-                    break;
-                }
+            if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
+                // in satisficing search => stop once a goal is reachable in fork-leaves
+                break;
             }
             
             change = false;
