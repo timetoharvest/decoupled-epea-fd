@@ -30,7 +30,6 @@ protected:
     std::vector<std::vector<int> > costs;
     // TODO somehow get rid of the second vector
     // what about having a PriceTag interface + 2 inheriting subclasses?
-    // TODO do something about the crappy vector<bool>!
     std::vector<boost::dynamic_bitset<> > reachable;
     
     // stores the current minimal goal cost per factor
