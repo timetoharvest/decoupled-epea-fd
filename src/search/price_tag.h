@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "leaf_state.h"
 #include "leaf_state_id.h"
+#include "ext/boost/dynamic_bitset.hpp"
 
 #include <vector>
 
@@ -29,7 +30,8 @@ protected:
     std::vector<std::vector<int> > costs;
     // TODO somehow get rid of the second vector
     // what about having a PriceTag interface + 2 inheriting subclasses?
-    std::vector<std::vector<bool> > reachable;
+    // TODO do something about the crappy vector<bool>!
+    std::vector<boost::dynamic_bitset<> > reachable;
     
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;

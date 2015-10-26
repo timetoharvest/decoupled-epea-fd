@@ -1,23 +1,19 @@
 # /* **************************************************************************
 #  *                                                                          *
-#  *     (C) Copyright Paul Mensonides 2002.
-#  *     Distributed under the Boost Software License, Version 1.0. (See
-#  *     accompanying file LICENSE_1_0.txt or copy at
-#  *     http://www.boost.org/LICENSE_1_0.txt)
+#  *     (C) Copyright Paul Mensonides 2002.  Permission to copy, use,        *
+#  *     modify, sell, and distribute this software is granted provided       *
+#  *     this copyright notice appears in all copies.  This software is       *
+#  *     provided "as is" without express or implied warranty, and with       *
+#  *     no claim at to its suitability for any purpose.                      *
 #  *                                                                          *
 #  ************************************************************************** */
 #
 # /* See http://www.boost.org for most recent version. */
 #
-# include <boost/preprocessor/config/config.hpp>
-#
-# if BOOST_PP_CONFIG_FLAGS() & BOOST_PP_CONFIG_DMC()
-#     include <boost/preprocessor/detail/dmc/auto_rec.hpp>
-# else
-#
 # ifndef BOOST_PREPROCESSOR_DETAIL_AUTO_REC_HPP
 # define BOOST_PREPROCESSOR_DETAIL_AUTO_REC_HPP
 #
+# //include <boost/preprocessor/config/config.hpp>
 # include <boost/preprocessor/control/iif.hpp>
 #
 # /* BOOST_PP_AUTO_REC */
@@ -289,5 +285,4 @@
 #                            define BOOST_PP_NODE_253(p) BOOST_PP_IIF(p(253), 253, 254)
 #                            define BOOST_PP_NODE_255(p) BOOST_PP_IIF(p(255), 255, 256)
 #
-# endif
 # endif

@@ -28,7 +28,7 @@ PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
         if (g_factoring->get_search_type() != SAT){
             costs = vector<vector<int> >(g_factors.size());
         } else {
-            reachable = vector<vector<bool> >(g_factors.size());
+            reachable = vector<boost::dynamic_bitset<> >(g_factors.size());
         }
         goal_cost = vector<int>(g_factors.size(), INF);
         paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
