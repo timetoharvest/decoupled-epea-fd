@@ -4,6 +4,7 @@
 #include "operator.h"
 #include "operator_cost.h"
 #include "state_registry.h"
+#include "successor_generator.h"
 
 #include <limits>
 #include <iostream>
@@ -113,16 +114,17 @@ void PathPriceTag::update_price_tags(const State &base_state) {
 
         while (change) {
             
-            if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
-                // in satisficing search => stop once a goal is reachable in fork-leaves
-                break;
-            }
-            
             change = false;
             
             size_t number_states = 0;
             size_t id = 0;
             while (number_states < number_facts[factor]) {
+                
+                if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
+                    // in satisficing search => stop once a goal is reachable in fork-leaves
+                    change = false;
+                    break;
+                }
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
@@ -131,26 +133,57 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     ++number_states;
                 
                     int cost = get_cost_of_state(id, factor);
-                    if (best_prices[id] <= cost || (!g_leaf_state_successors[factor][id].empty() &&
-                                                    g_leaf_state_successors[factor][id][0].first == 0)){
-                                                    // leaf state is a "dead-end" or successors have not been computed
+                    if (best_prices[id] <= cost){
                         ++id;
                         continue;
                     }
                     
                     best_prices[id] = cost;
 
-                    LeafStateID predecessor = LeafStateID(id, factor);
+                    LeafStateID predecessor_id = LeafStateID(id, factor);
                     
-                    assert(id < g_leaf_state_successors[factor].size());
+                    assert(!g_factoring->precompute_state_space(factor) || id < g_leaf_state_successors[factor].size());
                     
-                    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                            change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor),
-                                               cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor);
+                    if (g_factoring->precompute_state_space(factor)){
+                        for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
+                            const Operator *op = g_leaf_state_successors[factor][id][o].first;
+                            if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                                change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor),
+                                                cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
+                            }
+
+                        }
+                    } else {
+                        SegmentedArrayVector<PackedStateBin> *leaf_factor_data_pool = g_state_registry->leaf_factor_data_pool[factor];
+                      
+                        const LeafState predecessor = g_state_registry->lookup_leaf_state(predecessor_id);
+                        
+                        vector<const Operator*> applicable_ops;
+                        
+                        if (g_factoring->has_successors(factor) && g_factoring->has_predecessors(factor)){
+                            // there exist center ops that change this leaf factor
+                            g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops, true);
                         }
 
+                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+
+                        // apply all applicable_ops to predecessor and store the outcome          
+                        for (size_t j = 0; j < applicable_ops.size(); ++j){
+                            const Operator *op = applicable_ops[j];
+
+                            const vector<const Effect*> &effects = op->get_effects(factor);
+                            if (!effects.empty() && op->is_center_applicable(base_state)){
+                                leaf_factor_data_pool->push_back(predecessor.get_packed_buffer());
+                                PackedStateBin *buffer = (*leaf_factor_data_pool)[leaf_factor_data_pool->size() - 1];
+
+                                for (size_t k = 0; k < effects.size(); ++k) {
+                                    g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[k]->var], effects[k]->val);
+                                }
+                                LeafStateID lid = g_state_registry->insert_id_or_pop_leaf_state(factor);
+                                
+                                change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
+                            }
+                        }
                     }
                 }
                 ++id;
