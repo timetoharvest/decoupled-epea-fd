@@ -173,19 +173,17 @@ void SearchSpace::trace_path(const State &goal_state,
     for (;;) {          // backtrace solution path
         const SearchNodeInfo &info = search_node_infos[current_state];
         const Operator *op = info.creating_operator;
-	
+        
+        if (g_use_decoupled_search){
+            states.push_back(current_state.get_id());
+        }
+
         if (op == 0) {  // reached initial state => done
             assert(info.parent_state_id == StateID::no_state);
-            if (g_use_decoupled_search){
-                states.push_back(current_state.get_id());
-            }
             break;
         }
 
         path.push_back(op);
-        if (g_use_decoupled_search){
-            states.push_back(current_state.get_id());
-        }
         current_state = g_state_registry->lookup_state(info.parent_state_id);
     }
     
