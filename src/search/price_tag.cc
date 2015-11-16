@@ -58,8 +58,15 @@ void PriceTag::reduce_cost_by(int factor, int cost) {
 
 int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
     
-#ifdef DEBUG_SEARCH
-    cout << "start checking duplicates" << endl;
+#ifdef DEBUG_PRUNING
+    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+            }
+        }
+    }
 #endif
     
     vector<size_t> predecessors;
@@ -85,7 +92,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     for (int dup = 0; dup <= curr_number_duplicates; dup++){
         // check the price tags of all equal center states
         
-#ifdef DEBUG_SEARCH
+#ifdef DEBUG_PRUNING
         cout << "current dup counter " << dup << endl;
 #endif
 
@@ -98,10 +105,16 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         StateID id = g_state_registry->insert_id_or_pop_state();
         State s = g_state_registry->lookup_state(id);
         
-#ifdef DEBUG_SEARCH         
-        cout << "center state " << s.get_id() << endl;
-        cout << "center state g value " << search_space->get_node(s).get_g() << " h = " << search_space->get_node(s).get_h() << endl;
-#endif        
+#ifdef DEBUG_PRUNING         
+        cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+                if (g_price_tags[s].has_leaf_state(id, factor)){
+                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+                }
+            }
+        }
+#endif
         
         if (!g_factoring->are_closed_nodes_reopened()){
             // in greedy search, close nodes that are dominated by this one as cannot
@@ -199,6 +212,9 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
             int old_g = search_space->get_node(s).get_g();
         
             if (g_value + g_inc_g_by < old_g){
+#ifdef DEBUG_PRUNING
+                cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
+#endif
                 // new state has a lower g-value and may only replace an
                 // existing state if it dominates the existing one
                 // => if the new one does not dominate the old state, need
@@ -207,8 +223,14 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 DOMINATION res = g_factoring->get_pruning()->check_dominance(*this, g_price_tags[s], DOMINATES);
                 
                 if (res == EQUAL){
+#ifdef DEBUG_PRUNING
+                    cout << "new state is equal to old one" << endl;
+#endif
                     return dup;
                 } else if (res == DOMINATES){
+#ifdef DEBUG_PRUNING
+                    cout << "new state dominates old one" << endl;
+#endif
                     if (find(predecessors.begin(), predecessors.end(), id.hash()) != predecessors.end()){
                         // must not replace a dominated state that is not on path to this state
                         continue;
@@ -218,6 +240,9 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 }
                 
             } else {
+#ifdef DEBUG_PRUNING
+                cout << "old g is lower: " << (g_value + g_inc_g_by) << " > " << old_g << endl;
+#endif
                 // new state has a higher/equal g-value than the existing one and can
                 // be marked as duplicate if it is subsumed.
                 // if it is not subsumed, it must be considered a new state
@@ -226,6 +251,9 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 
                 if (res == EQUAL || res == DOMINATED){
                     // new state is dominated by existing one
+#ifdef DEBUG_PRUNING
+                    cout << "new state is equal to/dominated by old one" << endl;
+#endif
                     return dup;
                 }
             }

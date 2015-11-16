@@ -135,17 +135,17 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
         }
     }
     if (dominated && dominates){
-#ifdef DEBUG_SEARCH
+#ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif          
         return EQUAL;
     } else if (dominated){
-#ifdef DEBUG_SEARCH
+#ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif          
         return DOMINATED;
     } else if (dominates){
-#ifdef DEBUG_SEARCH
+#ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif          
         return DOMINATES;
