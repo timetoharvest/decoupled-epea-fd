@@ -11,19 +11,20 @@
 
 class StateRegistry;
 
-const int INF = -1;
-
 class PriceTag {
     friend class StateRegistry;
     
 protected:
     
-    PriceTag(const PriceTag *tag);
+    static const int INF;
+    
+    static const size_t MAX_LEAF_SPACE_STORE;
     
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
     // first is id, second is leaf factor
     static std::vector<std::pair<int, int> > leaf_tags_to_cache;
+    
     
     std::vector<size_t> number_facts;
     
@@ -34,6 +35,8 @@ protected:
     
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
+    
+    PriceTag(const PriceTag *tag);
     
     bool contains_goal(const LeafStateID &fact) const;
     
