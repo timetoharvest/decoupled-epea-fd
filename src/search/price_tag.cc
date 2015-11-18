@@ -497,8 +497,6 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                                 }
                                 LeafStateID lid = g_state_registry->insert_id_or_pop_leaf_state(factor);
                                 
-                                g_state_registry->store_is_leaf_goal_state(g_state_registry->lookup_leaf_state(lid));
-                                
                                 if (lid.hash() >= best_prices.size()){
                                     best_prices.resize(lid.hash() + 1, numeric_limits<int>::max());
                                 }

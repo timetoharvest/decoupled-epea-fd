@@ -69,9 +69,11 @@ LeafStateID StateRegistry::insert_id_or_pop_leaf_state(int factor) {
     */
     LeafStateID id(leaf_factor_data_pool[factor]->size() - 1, factor);
     pair<LeafFactorIDSet::iterator, bool> result = registered_leaf_states[factor].insert(id);
-    bool is_new_entry = result.second;
-    if (!is_new_entry) {
+    if (!result.second) {
+        // is known leaf state
         leaf_factor_data_pool[factor]->pop_back();
+    } else {
+        store_is_leaf_goal_state(lookup_leaf_state(*result.first));
     }
     assert(registered_leaf_states[factor].size() == leaf_factor_data_pool[factor]->size());
     return *result.first;
@@ -305,7 +307,6 @@ void StateRegistry::build_leaf_state_spaces() {
         leaf_factor_data_pool[factor]->push_back(leaf_buffers[factor]);
         delete[] leaf_buffers[factor];
         LeafStateID id = insert_id_or_pop_leaf_state(factor);
-        store_is_leaf_goal_state(lookup_leaf_state(id));
         goal_price_tag.add_state(id, 0);
     }
     
@@ -437,8 +438,6 @@ void StateRegistry::build_leaf_state_spaces() {
                             op_cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
                         }
                         
-                        store_is_leaf_goal_state(lookup_leaf_state(lid));
-                        
                         if (lid.hash() >= g_leaf_state_id_map[factor].size()){
                             g_leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
                         }
@@ -530,13 +529,8 @@ void StateRegistry::build_leaf_state_spaces() {
 }
 
 void StateRegistry::store_is_leaf_goal_state(const LeafState &state) const {
-    // TODO somehow circumvent that for non-goal states, this is checked over and over again
     int factor = state.get_id().get_factor();
     if (!g_goals_per_factor[factor].empty()){
-        size_t id = state.get_id().hash();
-        if (g_is_leaf_goal_state[factor].size() > id && g_is_leaf_goal_state[factor][id]){
-            return;
-        }
         bool is_goal = true;
         for (size_t g = 0; g < g_goals_per_factor[factor].size(); ++g){
             int var = g_goals_per_factor[factor][g].first;
@@ -546,10 +540,8 @@ void StateRegistry::store_is_leaf_goal_state(const LeafState &state) const {
                 break;
             }
         }
-        if (g_is_leaf_goal_state[factor].size() <= id){
-            g_is_leaf_goal_state[factor].resize(id + 1, false);
-        }
-        g_is_leaf_goal_state[factor][id] = is_goal;
+        assert(g_is_leaf_goal_state[factor].size() == state.get_id().hash());
+        g_is_leaf_goal_state[factor].push_back(is_goal);
     }
 }
 
