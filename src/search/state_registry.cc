@@ -277,6 +277,8 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
 }
 
 void StateRegistry::build_leaf_state_spaces() {
+    
+    // TODO probably move this to PriceTag
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "+++++++++++++++ STARTING RPG for calculation of minimal goal cost" << endl;
@@ -528,14 +530,15 @@ void StateRegistry::build_leaf_state_spaces() {
 }
 
 void StateRegistry::store_is_leaf_goal_state(const LeafState &state) const {
+    // TODO somehow circumvent that for non-goal states, this is checked over and over again
     int factor = state.get_id().get_factor();
-    size_t id = state.get_id().hash();
     if (!g_goals_per_factor[factor].empty()){
+        size_t id = state.get_id().hash();
         if (g_is_leaf_goal_state[factor].size() > id && g_is_leaf_goal_state[factor][id]){
             return;
         }
         bool is_goal = true;
-        for (size_t g = 0; g < g_goals_per_factor[factor].size(); g++){
+        for (size_t g = 0; g < g_goals_per_factor[factor].size(); ++g){
             int var = g_goals_per_factor[factor][g].first;
             int val = g_goals_per_factor[factor][g].second;
             if (state[var] != val){
