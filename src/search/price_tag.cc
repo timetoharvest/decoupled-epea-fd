@@ -476,13 +476,10 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 
                         g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
                         
-                        if (id < MAX_LEAF_SPACE_STORE){
+                        bool fits_store = id < MAX_LEAF_SPACE_STORE;
+                        if (fits_store){
                             if (g_leaf_state_successors[factor].size() <= id){
                                 g_leaf_state_successors[factor].resize(id + 1);
-                            }
-                            if (applicable_ops.empty()){
-                                // to mark "dead end" leaf states
-                                g_leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
                             }
                         }
 
@@ -491,7 +488,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             const Operator *op = applicable_ops[j];
 
                             const vector<const Effect*> &effects = op->get_effects(factor);
-                            if (!effects.empty()){
+                            if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
                                 leaf_factor_data_pool->push_back(predecessor.get_packed_buffer());
                                 PackedStateBin *buffer = (*leaf_factor_data_pool)[leaf_factor_data_pool->size() - 1];
 
@@ -510,14 +507,18 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                                     g_leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
                                 }
                                 
-                                if(op->is_center_applicable(base_state)){
+                                if(!fits_store || op->is_center_applicable(base_state)){
                                     change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                                 }
                                 
-                                if (op->get_affected_factor() != -1 && id < MAX_LEAF_SPACE_STORE){
+                                if (op->get_affected_factor() != -1 && fits_store){
                                     g_leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
                                 }
                             }
+                        }
+                        if (fits_store && g_leaf_state_successors[factor][id].empty()){
+                            // to mark "dead end" leaf states
+                            g_leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
                         }
                     }
                 }
