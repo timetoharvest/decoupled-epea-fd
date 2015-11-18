@@ -23,6 +23,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
     
     vector<bool> skip_leaf(g_factors.size(), false);
     
+    // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
+    
     // check number of reachable leaf states
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
