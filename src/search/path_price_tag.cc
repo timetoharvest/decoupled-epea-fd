@@ -145,6 +145,11 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     assert(!g_factoring->precompute_state_space(factor) || id < g_leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
                     
                     if (g_factoring->precompute_state_space(factor) || id < g_leaf_state_successors[factor].size()){
+                        if (!g_factoring->precompute_state_space(factor) && g_leaf_state_successors[factor][id][0].first == 0){
+                            // is "dead-end" leaf state
+                            ++id;
+                            continue;
+                        }
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
