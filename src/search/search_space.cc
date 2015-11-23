@@ -475,10 +475,28 @@ void SearchSpace::dump() const {
 
 void SearchSpace::statistics() const {
     cout << "Number of registered states: " << g_state_registry->size() << endl;
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
-        cout << "Number of registered leaf states in factor " << factor << ": " << g_state_registry->size(factor) << endl;
-    }
+    
     if (g_use_decoupled_search){
+        size_t min_leaf_factor_size = numeric_limits<int>::max();
+        double avg_leaf_factor_size = 0;
+        size_t max_leaf_factor_size = 0;
+        size_t tmp;
+        bool precomputed_state_spaces = true;
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            tmp = g_state_registry->size(factor);
+            min_leaf_factor_size = min(min_leaf_factor_size, tmp);
+            avg_leaf_factor_size += tmp;
+            max_leaf_factor_size = max(max_leaf_factor_size, tmp);
+            if (!g_factoring->precompute_state_space(factor)){
+                precomputed_state_spaces = false;
+            }
+            cout << "Number of registered leaf states in factor " << factor << ": " << tmp << endl;
+        }
+        if (!precomputed_state_spaces){
+            cout << "min reachable leaf factor size "  << min_leaf_factor_size << endl;
+            cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_factors.size()) << endl;
+            cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
+        }
         g_state_registry->output_decoupled_state_space_size();
         cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
     }

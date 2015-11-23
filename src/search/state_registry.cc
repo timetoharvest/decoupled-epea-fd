@@ -470,15 +470,24 @@ void StateRegistry::build_leaf_state_spaces() {
     double avg_leaf_factor_size = 0;
     size_t max_leaf_factor_size = 0;
     size_t tmp;
-    for (size_t i = 0; i < g_factors.size(); ++i){
-        tmp = size(i);
-        min_leaf_factor_size = min(min_leaf_factor_size, tmp);
-        avg_leaf_factor_size += tmp;
-        max_leaf_factor_size = max(max_leaf_factor_size, tmp);
+    bool built_all_state_spaces = true;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (g_factoring->precompute_state_space(factor)){
+            tmp = size(factor);
+            min_leaf_factor_size = min(min_leaf_factor_size, tmp);
+            avg_leaf_factor_size += tmp;
+            max_leaf_factor_size = max(max_leaf_factor_size, tmp);
+        } else {
+            built_all_state_spaces = false;
+        }
     }
-    cout << "min reachable leaf factor size "  << min_leaf_factor_size << endl;
-    cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_factors.size()) << endl;
-    cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
+    if (min_leaf_factor_size != numeric_limits<int>::max()){
+        cout << "min reachable leaf factor size "  << min_leaf_factor_size << endl;
+    }
+    if (built_all_state_spaces){
+        cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_factors.size()) << endl;
+        cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
+    }
     
     
     g_min_goal_cost = vector<int>(g_factors.size(), numeric_limits<int>::max());
