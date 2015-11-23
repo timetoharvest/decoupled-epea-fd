@@ -97,13 +97,12 @@ void LandmarkCutHeuristic::initialize() {
     }
     
     if (g_use_decoupled_search){
-        number_center_pre_eff.resize(propositions.size());
+        number_center_effs.resize(propositions.size());
         for (size_t i = 0; i < propositions.size(); ++i){
-            number_center_pre_eff[i].reserve(propositions[i].size());
+            number_center_effs[i].reserve(propositions[i].size());
             for (size_t j = 0; j < propositions[i].size(); ++j){
-                size_t num_pre = propositions[i][j].precondition_of.size();
                 size_t num_eff = propositions[i][j].effect_of.size();
-                number_center_pre_eff[i].push_back(make_pair(num_pre, num_eff));
+                number_center_effs[i].push_back(num_eff);
             }
         }
         num_art_center_pre_pre = artificial_precondition.precondition_of.size();
@@ -373,7 +372,8 @@ void LandmarkCutHeuristic::validate_h_max() const {
 void LandmarkCutHeuristic::dereference_ops() {
     for (size_t i = 0; i < propositions.size(); ++i){
         for (size_t j = 0; j < propositions[i].size(); ++j){
-            propositions[i][j].effect_of.resize(number_center_pre_eff[i][j].second);
+            // only precondition of new leaf ops is artificial_precondition
+            propositions[i][j].effect_of.resize(number_center_effs[i][j]);
         }
     }
     artificial_goal.effect_of.resize(num_art_center_goal_eff);;
@@ -392,7 +392,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
-            int number_states = tag.get_number_facts(factor);
+            int number_states = tag.get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
                 if (tag.has_leaf_state(id, factor)){
@@ -400,7 +400,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                     
                     int cost = 0;
                     if (search_type == STAR){
-                        cost = tag.get_info_for_fact(id, factor).cost;
+                        cost = tag.get_cost_of_state(id, factor);
                         assert(cost >= 0);
                     }
                     

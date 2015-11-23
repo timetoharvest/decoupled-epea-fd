@@ -29,7 +29,7 @@ class PathPriceTag : public PriceTag {
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    virtual bool add_fact(const LeafStateID &fact, int cost, const Operator *bs, 
+    bool add_state(const LeafStateID &fact, int cost, const Operator *bs, 
                   const LeafStateID &predecessor);
     
     PathPriceTag(const PathPriceTag *tag);

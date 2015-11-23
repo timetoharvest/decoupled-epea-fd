@@ -28,7 +28,7 @@ public:
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre);
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
-					 vector<const Operator *> &ops, bool only_center_ops);
+                                         vector<const Operator *> &ops, bool only_center_ops);
     virtual int split_ops_center_leaf(int factor);
     virtual void clear();
     virtual void _dump(string indent);
@@ -91,15 +91,15 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
             }
 
             vector<bool> is_applicable_leaf(g_operators.size(), false);
-            int number_states = tag.get_number_facts(factor);
+            size_t number_states = tag.get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
                 if (tag.has_leaf_state(id, factor)){
-                    number_states--;
+                    --number_states;
                     for (size_t op = 0; op < g_center_successors[factor][id].size(); ++op){
                         int index = g_center_successors[factor][id][op];
                         if (!is_applicable_leaf[index]){
-                            counter[index]++;
+                            ++counter[index];
                             is_applicable_leaf[index] = true;
                         }
                     }

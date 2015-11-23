@@ -4,23 +4,9 @@
 #include "globals.h"
 #include "leaf_state.h"
 #include "leaf_state_id.h"
+#include "ext/boost/dynamic_bitset.hpp"
 
 #include <vector>
-
-
-const int INF = -1;
-
-// TODO create a new struct for satisficing => 0/1
-struct PriceTagInfo {
-    int cost;
-    
-    PriceTagInfo() : cost(INF) {}
-    
-    PriceTagInfo(int cost)
-            : cost(cost) {}
-        
-    void dump() const;    
-};
 
 
 class StateRegistry;
@@ -30,19 +16,27 @@ class PriceTag {
     
 protected:
     
-    PriceTag(const PriceTag *tag);
+    static const int INF;
+    
+    static const size_t MAX_LEAF_SPACE_STORE;
     
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
+    // first is id, second is leaf factor
+    static std::vector<std::pair<int, int> > leaf_tags_to_cache;
+    
+    
     std::vector<size_t> number_facts;
     
-    std::vector<std::vector<PriceTagInfo> > costs;
+    std::vector<std::vector<int> > costs;
+    // TODO somehow get rid of the second vector
+    // what about having a PriceTag interface + 2 inheriting subclasses?
+    std::vector<boost::dynamic_bitset<> > reachable;
     
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
     
-    // first is id, second is leaf factor
-    mutable std::vector<std::pair<int, int> > leaf_tags_to_cache;
+    PriceTag(const PriceTag *tag);
     
     bool contains_goal(const LeafStateID &fact) const;
     
@@ -58,7 +52,7 @@ protected:
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    virtual bool add_fact(const LeafStateID &fact, int cost);
+    bool add_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
@@ -78,9 +72,9 @@ public:
     
     bool has_leaf_state(int id, int factor) const;
     
-    virtual const PriceTagInfo &get_info_for_fact(int id, int factor) const;
+    int get_cost_of_state(int id, int factor) const;
     
-    size_t get_number_facts(int factor) const;
+    size_t get_number_states(int factor) const;
     
     int get_goal_cost(int factor) const;
     

@@ -190,6 +190,9 @@ public:
         reopen_closed_nodes = true;
     }
     
+    /**
+     * only precompute leaf state spaces in optimal search or for small leaves
+     */
     bool precompute_state_space(int factor) const {
         return precompute_leaf_state_space[factor];
     }

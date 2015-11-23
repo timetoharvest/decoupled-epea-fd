@@ -173,19 +173,17 @@ void SearchSpace::trace_path(const State &goal_state,
     for (;;) {          // backtrace solution path
         const SearchNodeInfo &info = search_node_infos[current_state];
         const Operator *op = info.creating_operator;
-	
+        
+        if (g_use_decoupled_search){
+            states.push_back(current_state.get_id());
+        }
+
         if (op == 0) {  // reached initial state => done
             assert(info.parent_state_id == StateID::no_state);
-            if (g_use_decoupled_search){
-                states.push_back(current_state.get_id());
-            }
             break;
         }
 
         path.push_back(op);
-        if (g_use_decoupled_search){
-            states.push_back(current_state.get_id());
-        }
         current_state = g_state_registry->lookup_state(info.parent_state_id);
     }
     
@@ -203,11 +201,11 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
         
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            price_tags[0].add_fact(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
+            price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
         }
         price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
         
-        for (size_t i = 1; i < states.size(); i++){
+        for (size_t i = 1; i < states.size(); ++i){
             PathPriceTag &tag = price_tags[i];
             
             if (g_factoring->get_profile() != FORK){
@@ -233,7 +231,7 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<set<int> > marked_leaf_states(g_factors.size());       
         
         // mark leaf goal states
-        for (size_t factor = 0; factor < g_factors.size(); factor++){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (!g_goals_per_factor[factor].empty()){
                 int min_cost = numeric_limits<int>::max();
                 int best_leaf_state_id = -1;
@@ -241,10 +239,13 @@ void SearchSpace::trace_path(const State &goal_state,
                 // TODO probably iterate over leaf states in that tag as usual?
                 for (size_t id = 0; id < g_is_leaf_goal_state[factor].size(); id++){
                     if (g_is_leaf_goal_state[factor][id] && price_tags[0].has_leaf_state(id, factor)){
-                        int new_cost = price_tags[0].get_info_for_fact(id, factor).cost;
+                        int new_cost = price_tags[0].get_cost_of_state(id, factor);
                         if (min_cost > new_cost){
                             min_cost = new_cost;
                             best_leaf_state_id = id;
+                            if (g_factoring->get_search_type() == SAT){
+                                break;
+                            }
                         }
                     }
                 }
@@ -315,11 +316,11 @@ void SearchSpace::trace_path(const State &goal_state,
                 while (change){
                     change = false;
 
-                    int number_states = price_tags[step].get_number_facts(factor);
+                    size_t number_states = price_tags[step].get_number_states(factor);
                     size_t id = 0;
                     while (number_states > 0){          // iterate over all new leaf states
                         if (price_tags[step].has_leaf_state(id, factor)){
-                            number_states--;
+                            --number_states;
                             if (price_tags[step].get_path_info_for_fact(id, factor).is_new){
                         
                                 const PathPriceTagInfo &fact = price_tags[step].get_path_info_for_fact(id, factor);
@@ -341,7 +342,7 @@ void SearchSpace::trace_path(const State &goal_state,
                                             cout << fact.best_supporter->get_name() << endl;
                                             cout << "marked predecessor: " << fact.predecessor << endl;
                                             g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
+                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
                                         } else {
                                             cout << "is init state" << endl;
                                         }
@@ -350,14 +351,14 @@ void SearchSpace::trace_path(const State &goal_state,
                                             cout << "no-op (affects center)" << endl;
                                             cout << "marked predecessor: " << fact.predecessor << " in predecessor pricetag" << endl;
                                             g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
-                                            cout << "predecessor in predecessor pricetag? => " << (price_tags[step+1].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
+                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
+                                            cout << "predecessor in predecessor pricetag? => " << (price_tags[step+1].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
                                         }
                                     } else {
                                         cout << fact.best_supporter->get_name() << endl;
                                         cout << "marked predecessor: " << fact.predecessor << endl;
                                         g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_info_for_fact(fact.predecessor.hash(), factor).cost != -1) << endl;
+                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
                                     }
 #endif
 
@@ -401,11 +402,11 @@ void SearchSpace::trace_path(const State &goal_state,
                     int best_price = numeric_limits<int>::max();
                     LeafStateID best_predecessor = LeafStateID::no_state;
                     
-                    int number_states = price_tags[step + 1].get_number_facts(factor);
-                    int id = 0;
+                    size_t number_states = price_tags[step + 1].get_number_states(factor);
+                    size_t id = 0;
                     while (number_states > 0) {
                         if (price_tags[step + 1].has_leaf_state(id, factor)){
-                            number_states--;
+                            --number_states;
                             bool fulfills_pre = true;
                             LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                             for (size_t pre = 0; pre < leaf_pre_by_factor[factor].size(); pre++){
@@ -418,14 +419,14 @@ void SearchSpace::trace_path(const State &goal_state,
                             }
                             if (fulfills_pre){
                                 center_preconditions[factor].insert(leaf_state.get_id().hash());
-                                int cost = price_tags[step + 1].get_info_for_fact(leaf_state.get_id().hash(), factor).cost;
+                                int cost = price_tags[step + 1].get_cost_of_state(leaf_state.get_id().hash(), factor);
                                 if (cost < best_price){
                                     best_price = cost;
                                     best_predecessor = leaf_state.get_id();
                                 }
                             }
                         }
-                        id++;
+                        ++id;
                     }
                     
                     assert(best_predecessor != LeafStateID::no_state);

@@ -52,7 +52,7 @@ protected:
     std::vector<std::vector<Proposition> > propositions;
     std::vector<Proposition *> goal_propositions;
     
-
+    
     void reference_ops();
 
     virtual void initialize();
