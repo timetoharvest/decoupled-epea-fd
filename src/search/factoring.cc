@@ -297,8 +297,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             g_goals_per_factor[affected_factor].push_back(g_goal[g]);
             indeces_to_remove.push_back(g);
 #ifdef DEBUG_FACTORING
-            cout << "added fact to goal of factor " << affected_factor << endl;
-            cout << g_fact_names[g_goal[g].first][g_goal[g].second] << endl;
+            cout << "added fact to goal of factor " << affected_factor << ": "
+                 << g_fact_names[g_goal[g].first][g_goal[g].second] << endl;
 #endif
         }
     }
@@ -307,14 +307,28 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         g_goal.erase(it + indeces_to_remove[i]);
     }
 #ifdef DEBUG_FACTORING
-    cout << "center goals:" << endl;
-    for (size_t i = 0; i < g_goal.size(); ++i){
-        cout << g_fact_names[g_goal[i].first][g_goal[i].second] << endl;
+    if (!g_goal.empty()){
+        cout << "center goals:" << endl;
+        for (size_t i = 0; i < g_goal.size(); ++i){
+            cout << g_fact_names[g_goal[i].first][g_goal[i].second] << endl;
+        }
+    } else {
+        cout << "no center goals" << endl;
     }
 #endif
 }
 
 void Factoring::print_factoring() const {
+#ifdef DEBUG_FACTORING
+    cout << "final factoring:" << endl;
+    for (size_t factor = 0; factor < g_factors.size(); factor++){
+        cout << "leaf factor " << factor << endl;
+        for (size_t var_i = 0; var_i < g_factors[factor].size(); ++var_i){
+            cout << "   " << g_fact_names[g_factors[factor][var_i]][0] << endl;
+        }
+    }
+#endif
+    
     cout << "number leaf factors: " << g_factors.size() << endl;
     
     cout << g_center_vars.size() << " variables in center factor" << endl;
@@ -426,6 +440,9 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
                 for (size_t j = 0; j < best_factoring.size(); j++){
                     if (best_factoring[j].find(successors[succ]) != best_factoring[j].end()){
                         is_connected = true;
+#ifdef DEBUG_FACTORING
+                        cout << "ifork leaf " << i << " is connected to fork leaf " << j << ". need to discard it" << endl;
+#endif
                     }
                 }
                 if (is_connected){
@@ -701,7 +718,7 @@ Factoring::FactoredVars Factoring::get_fork_maximize_leaves(vector<int> used_var
         }
 
 #ifdef DEBUG_FACTORING
-        cout << "=========      SCC with " << sccs[i].size() << " variables" << endl;
+        cout << "=========      " << (is_leaf ? "leaf " : "") << "SCC with " << sccs[i].size() << " variables" << endl;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             cout << "   " << g_fact_names[*it][0] << endl;
         }
