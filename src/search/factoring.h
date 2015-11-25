@@ -112,7 +112,7 @@ protected:
     
     FactoredVars get_connected_components(std::vector<int> variables) const;
     
-    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
+    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false, bool extend_leaves = false) const;
     
     FactoredVars get_fork_maximize_mobility(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
     
