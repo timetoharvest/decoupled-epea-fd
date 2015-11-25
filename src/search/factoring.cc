@@ -941,7 +941,11 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> us
         if (max_leaf_size == 0 || current_size <= max_leaf_size){
             if (is_leaf){
                 best_factoring.push_back(sccs[i]);
-                best_mobility *= mobility[i];
+                if (average_mobility){
+                    best_mobility += mobility[i];
+                } else {
+                    best_mobility *= mobility[i];
+                }
             } else {
                 canditate_sccs.insert(make_pair(current_size, make_pair(vector<int>(sccs[i].begin(), sccs[i].end()), set<int>())));
             }
@@ -954,7 +958,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> us
     }
     
 #ifdef DEBUG_FACTORING
-    cout << "number leaf factors with leaf-SCCs only: " << best_factoring.size() << " mobility = " << best_mobility << endl;
+    cout << "number leaf factors with leaf-SCCs only: " << best_factoring.size() << " mobility = " << (average_mobility ? best_mobility / best_factoring.size() : best_mobility) << endl;
     cout << "number canditate sccs: " << canditate_sccs.size() << endl;
 #endif
     
@@ -1092,7 +1096,14 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> us
                     for (set<int>::iterator scc_it = sccs[i].begin(); scc_it != sccs[i].end(); ++scc_it){
                         mob += mobility[*scc_it];
                     }
-                    new_mobility *= mob;
+                    if (average_mobility) {
+                        new_mobility += mob;
+                    } else {
+                        new_mobility *= mob;
+                    }
+                }
+                if (average_mobility) {
+                    new_mobility /= sccs.size();
                 }
 #ifdef DEBUG_FACTORING
                 cout << "new factoring would have mobility " << new_mobility << " and " << sccs.size() << " leaf factors" << endl;
