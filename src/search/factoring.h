@@ -112,10 +112,6 @@ protected:
     
     FactoredVars get_connected_components(std::vector<int> variables) const;
     
-    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false, bool extend_leaves = false) const;
-    
-    FactoredVars get_fork_maximize_mobility(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
-    
     std::vector<bool> get_frozen_leaves(FactoredVars components) const;
     
     void apply_factoring(FactoredVars factoring);
