@@ -677,6 +677,7 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
 }
 
 Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, vector<int> used_vars) const {             ///////////////////////// HELPER FUNCTIONS
+    // TODO probably refactor and merge with get_fork_maximize_mobility method
     
     FactoredVars sccs = get_sccs(used_vars);
     
@@ -810,7 +811,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
 #endif
             if (it->second.second.size() == 1 &&
                 it->second.second.find(-1) == it->second.second.end()){
-                // candidate only has a single CG successor/predecessor SCC that is a leaf
+                // candidate only has a single CG successor/predecessor SCC that is also a leaf
                 
                 int successor = *it->second.second.begin();
                 
@@ -831,6 +832,9 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                     }
                     canditate_sccs.erase(it);
                     change = true;
+#ifdef DEBUG_FACTORING
+                    cout << "merged" << endl;
+#endif
                     break;
                 }
 #ifdef DEBUG_FACTORING
