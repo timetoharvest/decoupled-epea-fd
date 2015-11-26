@@ -90,9 +90,9 @@ protected:
     
     bool average_mobility;
     
-    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>()) const;
+    FactoredVars get_fork_maximize_leaves(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
     
-    FactoredVars get_fork_maximize_mobility(std::vector<int> variables = std::vector<int>()) const;
+    FactoredVars get_fork_maximize_mobility(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
     
 public:
     
@@ -398,8 +398,6 @@ void Factoring::do_factoring_or_abstain() {
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
-    size_t min_number_x_leaves = 2;
-    
     FactoredVars best_factoring;
     if (maximize_mobility){
         best_factoring = get_fork_maximize_mobility();
@@ -429,9 +427,9 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     if (variables.size() > 0){
         // this happens e.g. in Movie, where the CG is not connected
         if (maximize_mobility){
-            inv_fork = get_fork_maximize_mobility(variables);
+            inv_fork = get_fork_maximize_mobility(true, variables);
         } else {
-            inv_fork = get_fork_maximize_leaves(variables);    
+            inv_fork = get_fork_maximize_leaves(true, variables);
         }
     }
                 
@@ -461,23 +459,23 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
         }
         if (!is_connected){
             best_factoring.push_back(inv_fork[i]);
-            added++;
+            ++added;
         }
     }
     
     cout << "added " << added << " roots" << endl;
     
-    if (best_factoring.size() < min_number_x_leaves){
+    if (best_factoring.size() < min_number_leaves){
         
         if (maximize_mobility){
-            best_factoring = get_fork_maximize_mobility();
+            best_factoring = get_fork_maximize_mobility(true);
         } else {
-            best_factoring = get_fork_maximize_leaves();
+            best_factoring = get_fork_maximize_leaves(true);
         }
         
         cout << "found inv-fork factoring with " << best_factoring.size() << " leaves" << endl;
         
-        if (best_factoring.size() < min_number_x_leaves){
+        if (best_factoring.size() < min_number_leaves){
             return FactoredVars();
         }
     }
@@ -567,9 +565,9 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
     
     FactoredVars factoring;
     if (maximize_mobility){
-        factoring = get_fork_maximize_mobility();
+        factoring = get_fork_maximize_mobility(profile == I_FORK);
     } else {
-        factoring = get_fork_maximize_leaves();
+        factoring = get_fork_maximize_leaves(profile == I_FORK);
     }
 
     if (factoring.size() < min_number_leaves){
@@ -678,7 +676,7 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
     return best_factoring;
 }
 
-Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(vector<int> used_vars) const {             ///////////////////////// HELPER FUNCTIONS
+Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, vector<int> used_vars) const {             ///////////////////////// HELPER FUNCTIONS
     
     FactoredVars sccs = get_sccs(used_vars);
     
@@ -708,12 +706,12 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(vector<int> used
             }
 
             size_t bound = g_causal_graph->get_successors(var).size();
-            if (profile == I_FORK){
+            if (inverted){
                 bound = g_causal_graph->get_predecessors(var).size();
             }
             for (size_t succ = 0; succ < bound; ++succ){
                 int succ_pred;
-                if (profile == I_FORK){
+                if (inverted){
                     succ_pred = g_causal_graph->get_predecessors(var)[succ];
                 } else {
                     succ_pred = g_causal_graph->get_successors(var)[succ];
@@ -760,13 +758,13 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(vector<int> used
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
                 size_t bound = g_causal_graph->get_successors(vars[i]).size();
-                if (profile == I_FORK){
+                if (inverted){
                     bound = g_causal_graph->get_predecessors(vars[i]).size();
                 }
                 for (size_t var = 0; var < bound; ++var){
                     found = false;
                     int succ_pred;
-                    if (profile == I_FORK){
+                    if (inverted){
                         succ_pred = g_causal_graph->get_predecessors(vars[i])[var];
                     } else {
                         succ_pred = g_causal_graph->get_successors(vars[i])[var];
@@ -848,7 +846,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(vector<int> used
     return best_factoring;
 }
 
-Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> used_vars) const {
+Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted, vector<int> used_vars) const {
     // perform the actual factoring
     
     typedef multimap<uint64_t, pair<vector<int>, set<int> > > CandSCCs;
@@ -910,12 +908,12 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> us
             }
 
             size_t bound = g_causal_graph->get_successors(var).size();
-            if (profile == I_FORK){
+            if (inverted){
                 bound = g_causal_graph->get_predecessors(var).size();
             }
             for (size_t succ = 0; succ < bound; ++succ){
                 int succ_pred;
-                if (profile == I_FORK){
+                if (inverted){
                     succ_pred = g_causal_graph->get_predecessors(var)[succ];
                 } else {
                     succ_pred = g_causal_graph->get_successors(var)[succ];
@@ -979,13 +977,13 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(vector<int> us
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
                 size_t bound = g_causal_graph->get_successors(vars[i]).size();
-                if (profile == I_FORK){
+                if (inverted){
                     bound = g_causal_graph->get_predecessors(vars[i]).size();
                 }
                 for (size_t var = 0; var < bound; ++var){
                     found = false;
                     int succ_pred;
-                    if (profile == I_FORK){
+                    if (inverted){
                         succ_pred = g_causal_graph->get_predecessors(vars[i])[var];
                     } else {
                         succ_pred = g_causal_graph->get_successors(vars[i])[var];
