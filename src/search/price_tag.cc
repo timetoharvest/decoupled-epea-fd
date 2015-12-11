@@ -105,7 +105,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         StateID id = g_state_registry->insert_id_or_pop_state();
         State s = g_state_registry->lookup_state(id);
         
-#ifdef DEBUG_PRUNING         
+#ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
@@ -235,6 +235,9 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                         // must not replace a dominated state that is not on path to this state
                         continue;
                     }
+                    // TODO see also below
+                    // whenever a PriceTag is overwritten, all classes that store objects indexed
+                    // by StateIDs have to be notified, so they can also overwrite the respective data
                     g_price_tags[s] = *this;
                     return dup;
                 }
@@ -262,6 +265,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     if (replaced_state_dup != -1){
         if (replace_price_tag){
             // replace old PriceTag as this is done in StateRegistry only for new states
+            // TODO see above
             g_price_tags[replaced_state] = *this;
         }
         return replaced_state_dup;
@@ -599,8 +603,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
             
         } else {
             
-	    
-	    if (has_pre_on_factor && g_factors[factor].size() == 1){
+            if (has_pre_on_factor && g_factors[factor].size() == 1){
                 // special case handling for 1-variable leaves
                 
                 const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
@@ -632,7 +635,7 @@ void PriceTag::apply_center_op_to_leaves(const PriceTag &old_tag, const Operator
                 add_state(eff_id, cost);
                 
                 
-	    } else {
+            } else {
                 // check which leaf states satisfy center precondition and apply effects
                 
                 int number_states = old_tag.get_number_states(factor);
