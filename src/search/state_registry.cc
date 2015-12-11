@@ -317,6 +317,7 @@ void StateRegistry::build_leaf_state_spaces() {
         }
         
         if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
+            // TODO can this actually happen?
             // skip fork-leaf factor without a goal
             continue;
         }
