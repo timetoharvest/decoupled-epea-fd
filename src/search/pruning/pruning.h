@@ -25,9 +25,9 @@ public:
     
     BasicPruning() {}
     
-    BasicPruning(const Options&);
+    BasicPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const PriceTag& check, const PriceTag& reference, DOMINATION needed = NONE) const;
+    virtual DOMINATION check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed = NONE) const;
     
 };
 

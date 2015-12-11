@@ -3,16 +3,22 @@
 
 #include "pruning.h"
 
+#include "../per_state_information.h"
+#include "../ext/boost/dynamic_bitset.hpp"
+
+#include <vector>
 
 class CostFrontierPruning : public Pruning {
+    
+    PerStateInformation<std::vector<boost::dynamic_bitset<> > > is_frontier_state;
     
 public:
     
     CostFrontierPruning() {}
     
-    CostFrontierPruning(const Options&);
+    CostFrontierPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const PriceTag& check, const PriceTag& reference, DOMINATION needed = NONE) const;
+    virtual DOMINATION check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed = NONE) const;
     
 };
 
