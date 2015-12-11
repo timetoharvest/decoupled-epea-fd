@@ -123,7 +123,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, *this, g_price_tags[s]); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(s, *this, g_price_tags[s]); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -148,7 +148,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
             
             int old_g = search_space->get_node(s).get_g();
             
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, *this, g_price_tags[s]);
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(s, *this, g_price_tags[s]);
             
             if (g_value + g_inc_g_by < old_g){
                 // new state has a lower g-value and may only replace an
@@ -220,7 +220,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 // => if the new one does not dominate the old state, need
                 // to make it a new state, no duplicate
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, *this, g_price_tags[s], DOMINATES);
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(s, *this, g_price_tags[s], DOMINATES);
                 
                 if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -250,7 +250,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 // be marked as duplicate if it is subsumed.
                 // if it is not subsumed, it must be considered a new state
 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, *this, g_price_tags[s], DOMINATED);
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(s, *this, g_price_tags[s], DOMINATED);
                 
                 if (res == EQUAL || res == DOMINATED){
                     // new state is dominated by existing one

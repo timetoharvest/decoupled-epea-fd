@@ -178,7 +178,7 @@ public:
         return search_space;
     }
     
-    const Pruning* get_pruning() const {
+    Pruning* get_pruning() const {
         return pruning;
     }
     

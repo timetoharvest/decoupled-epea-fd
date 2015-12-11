@@ -17,7 +17,7 @@ class Pruning {
 public:
     
     virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
-                                       const PriceTag &reference, DOMINATION needed = NONE) const = 0;
+                                       const PriceTag &reference, DOMINATION needed = NONE) = 0;
     
 };
 
@@ -30,7 +30,7 @@ public:
     BasicPruning(const Options &opts);
     
     virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
-                                       const PriceTag &reference, DOMINATION needed = NONE) const;
+                                       const PriceTag &reference, DOMINATION needed = NONE);
     
 };
 

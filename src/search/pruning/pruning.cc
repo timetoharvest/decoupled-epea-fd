@@ -12,7 +12,7 @@ BasicPruning::BasicPruning (const Options&) {
 }
 
 DOMINATION BasicPruning::check_dominance(const State &, const PriceTag &check, 
-                                         const PriceTag &reference, DOMINATION needed) const {
+                                         const PriceTag &reference, DOMINATION needed) {
     
     bool sizes_equal = true;
     bool new_is_larger = false;
