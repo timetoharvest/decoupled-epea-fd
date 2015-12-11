@@ -169,6 +169,8 @@ HEADERS += max_heuristic.h
 HEADERS += por/expansion_core.h \
            por/simple_stubborn_sets.h \
            por/sss_expansion_core.h \
+           
+HEADERS += pruning/cost_frontier.h
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
