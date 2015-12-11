@@ -2,7 +2,7 @@
 
 #include "operator.h"
 #include "per_state_information.h"
-#include "pruning.h"
+#include "pruning/pruning.h"
 #include "search_space.h"
 #include "state_registry.h"
 #include "successor_generator.h"

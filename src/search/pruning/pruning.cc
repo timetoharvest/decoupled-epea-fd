@@ -1,8 +1,8 @@
 #include "pruning.h"
 
-#include "plugin.h"
-#include "price_tag.h"
-#include "state_registry.h"
+#include "../plugin.h"
+#include "../price_tag.h"
+#include "../state_registry.h"
 
 
 using namespace std;

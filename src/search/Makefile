@@ -65,9 +65,10 @@ HEADERS = \
           segmented_vector.h \
           path_price_tag.h\
           per_state_information.h \
+          por/por_method.h \
           pref_evaluator.h \
           price_tag.h\
-          pruning.h\
+          pruning/pruning.h\
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -163,8 +164,9 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
+# TODO check how to decouple this from the POR interface, so we can comment
+# this out here
 HEADERS += por/expansion_core.h \
-           por/por_method.h \
            por/simple_stubborn_sets.h \
            por/sss_expansion_core.h \
 
