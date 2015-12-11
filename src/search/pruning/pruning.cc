@@ -11,7 +11,8 @@ BasicPruning::BasicPruning (const Options&) {
     cout << "using BasicPruning method" << endl;
 }
 
-DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(const State &, const PriceTag &check, 
+                                         const PriceTag &reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;

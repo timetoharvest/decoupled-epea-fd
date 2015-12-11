@@ -3,6 +3,7 @@
 
 class Options;
 class PriceTag;
+class State;
 
 enum DOMINATION {
     NONE,
@@ -15,7 +16,8 @@ class Pruning {
     
 public:
     
-    virtual DOMINATION check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed = NONE) const = 0;
+    virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
+                                       const PriceTag &reference, DOMINATION needed = NONE) const = 0;
     
 };
 
@@ -27,7 +29,8 @@ public:
     
     BasicPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed = NONE) const;
+    virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
+                                       const PriceTag &reference, DOMINATION needed = NONE) const;
     
 };
 
