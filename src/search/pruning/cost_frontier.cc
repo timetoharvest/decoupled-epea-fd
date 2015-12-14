@@ -8,11 +8,13 @@
 
 using namespace std;
 
-CostFrontierPruning::CostFrontierPruning(const Options&)
+CostFrontierPruning::CostFrontierPruning(const Options&) : registered(false),
+    get_new_frontier(true)
 #ifndef NDEBUG
-    : last_checked_state(StateID::no_state)
+    , last_checked_state(StateID::no_state)
 #endif
 {
+    PriceTag::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
 
@@ -21,73 +23,107 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
     
     assert(g_factoring->get_profile() == FORK);
     assert(g_factoring->get_search_type() != SAT);
-    // TODO implement
-
     
-    last_checked.resize(g_factors.size(), boost::dynamic_bitset<>());
+    if (!registered){
+        registered = true;
+        g_state_registry->register_data_store(this);
+    }
     
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(last_checked[factor]);
-        for (size_t id = 0; id < g_leaf_state_successors[factor].size(); ++id){
-            if (!check.has_leaf_state(id, factor)){
-                continue;
-            }
-            for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
-                const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                if (op->is_center_applicable(center)){
+    if (get_new_frontier){
+        check.get_frontier().swap(last_checked);
+        get_new_frontier = false;
+    }
+    
+    assert(!last_checked.empty());
+#ifndef NDEBUG
+    last_checked_state = center.get_id();
+    cout << "current state: " << last_checked_state << endl;
+#endif
+    
+    vector<boost::dynamic_bitset<> > reference_frontier = is_frontier_state[center];
+    
+    // frontier is only stored for states for which the dominance was already checked at some point
+    assert(!reference_frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
+    
+    if (reference_frontier.empty()){
+        reference_frontier.resize(g_factors.size());
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(reference_frontier[factor]);
+            for (size_t id = 0; id < g_leaf_state_successors[factor].size(); ++id){
+                if (!reference.has_leaf_state(id, factor)){
                     continue;
                 }
-                int successor = g_leaf_state_successors[factor][id][o].second;
-                if (!check.has_leaf_state(successor, factor)){
-                    last_checked[factor][id] = true;
-                    break;
-                }
-                int new_cost = check.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                if (check.get_cost_of_state(successor, factor) > new_cost){
-                    last_checked[factor][id] = true;
-                    break;
+                for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
+                    const Operator *op = g_leaf_state_successors[factor][id][o].first;
+                    if (op->is_center_applicable(center)){
+                        continue;
+                    }
+                    int successor = g_leaf_state_successors[factor][id][o].second;
+                    if (!reference.has_leaf_state(successor, factor)){
+                        reference_frontier[factor][id] = true;
+                        break;
+                    }
+                    int new_cost = reference.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    if (reference.get_cost_of_state(successor, factor) > new_cost){
+                        reference_frontier[factor][id] = true;
+                        break;
+                    }
                 }
             }
         }
+        is_frontier_state[center] = reference_frontier;
+        cout << "not precomputed" << endl;
+    } else {
+        cout << "precomputed" << endl;
     }
-    
     
     bool dominated = true;
     bool dominates = true;
     
-    vector<boost::dynamic_bitset<> > reference_frontier = is_frontier_state[center];
-    assert(!reference_frontier.empty());
-    
     // compare prices
     for (size_t factor = 0; factor < g_factors.size(); ++factor){        
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            assert(id < g_state_registry->size(factor));
-            bool is_goal = g_is_leaf_goal_state[factor][id];
-            if (needed != DOMINATED && (last_checked[factor][id] || is_goal)){
-                // TODO need to handle goal states
-                assert(check.has_leaf_state(id, factor));
+            if (g_is_leaf_goal_state[factor][id]){
                 if (reference.has_leaf_state(id, factor)){
-                    int old_cost = reference.get_cost_of_state(id, factor);
-                    int new_cost = check.get_cost_of_state(id, factor);
-                    assert(old_cost != -1);
-                    assert(new_cost != -1);
-                    
-                    if (old_cost < new_cost){
+                    if (check.has_leaf_state(id, factor)){
+                        int old_cost = reference.get_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
+                        if (old_cost < new_cost){
+                            dominates = false;
+                        } else if (new_cost < old_cost){
+                            dominated = false;
+                        }
+                    } else {
                         dominates = false;
                     }
+                } else if (check.has_leaf_state(id, factor)){
+                    dominated = false;
                 }
-            }
-            if (needed != DOMINATES && (reference_frontier[factor][id] || is_goal)){
-                // TODO need to handle goal states
-                assert(reference.has_leaf_state(id, factor));
-                if (check.has_leaf_state(id, factor)){
-                    int old_cost = reference.get_cost_of_state(id, factor);
-                    int new_cost = check.get_cost_of_state(id, factor);
-                    assert(old_cost != -1);
-                    assert(new_cost != -1);
-                    
-                    if (old_cost > new_cost){
-                        dominated = false;
+            } else {
+                if (needed != DOMINATED && last_checked[factor][id]){
+                    assert(check.has_leaf_state(id, factor));
+                    if (reference.has_leaf_state(id, factor)){
+                        int old_cost = reference.get_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
+                        assert(old_cost != -1);
+                        assert(new_cost != -1);
+                        
+                        if (old_cost < new_cost){
+                            dominates = false;
+                        }
+                    }
+                }
+                if (needed != DOMINATES && reference_frontier[factor][id]){
+                    assert(reference.has_leaf_state(id, factor));
+                    if (check.has_leaf_state(id, factor)){
+                        int old_cost = reference.get_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
+                        assert(old_cost != -1);
+                        assert(new_cost != -1);
+                        
+                        if (old_cost > new_cost){
+                            dominated = false;
+                        }
                     }
                 }
             }
@@ -100,7 +136,6 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
             } else if (!dominates && needed == DOMINATES){
                 return NONE;
             }
-            ++id;
         }
     }
     if (dominated && dominates){
@@ -122,15 +157,17 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
     return NONE;
 }
 
-void CostFrontierPruning::store_cached_results(const State& state) {
-#ifndef NDEBUG
-    for (size_t i = 0; i < g_center_vars.size(); ++i){
-        int var = g_center_vars[i];
-        assert(g_state_registry->lookup_state(last_checked_state)[var] == state[var]);
+void CostFrontierPruning::reset() {
+    get_new_frontier = true;
+}
+
+void CostFrontierPruning::store_cached_results(const State &state) {
+    if (get_new_frontier){
+        is_frontier_state[state] = g_price_tags[state].get_frontier();
+    } else {
+        is_frontier_state[state] = last_checked;
     }
-#endif
-    
-    is_frontier_state[state] = last_checked;
+    get_new_frontier = true;
 }
 
 

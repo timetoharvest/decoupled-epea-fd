@@ -22,6 +22,10 @@ vector<vector<StateID> > PriceTag::leaf_price_cache;
 
 vector<pair<int, int> > PriceTag::leaf_tags_to_cache;
 
+bool PriceTag::store_frontier = false;
+
+vector<boost::dynamic_bitset<> > PriceTag::frontier;
+
 
 PriceTag::PriceTag(const PriceTag *tag) {
     if (tag == 0){
@@ -238,8 +242,12 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                     // TODO see also below
                     // whenever a PriceTag is overwritten, all classes that store objects indexed
                     // by StateIDs have to be notified, so they can also overwrite the respective data
-                    g_price_tags[s] = *this;
-                    return dup;
+//                     g_price_tags[s] = *this;
+//                     return dup;
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
                 }
                 
             } else {
@@ -332,6 +340,15 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 #endif
     
     assert(leaf_tags_to_cache.empty());
+    
+    g_factoring->get_pruning()->reset();
+    
+    if (store_frontier){
+        frontier.resize(g_factors.size());
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
+        }
+    }
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         
@@ -436,12 +453,23 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             ++id;
                             continue;
                         }
+                        bool all_applicable = store_frontier;
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
                                 change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                            } else if (store_frontier){
+                                all_applicable = false;
+                                int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                                int successor = g_leaf_state_successors[factor][id][o].second;
+                                if (!has_leaf_state(successor, factor) || get_cost_of_state(successor, factor) > new_cost){
+                                    frontier[factor][id] = true;
+                                }
                             }
+                        }
+                        if (all_applicable){
+                            frontier[factor][id] = false;
                         }
                     } else {
                         SegmentedArrayVector<PackedStateBin> *leaf_factor_data_pool = g_state_registry->leaf_factor_data_pool[factor];
@@ -735,6 +763,15 @@ size_t PriceTag::get_number_states(int factor) const {
 
 int PriceTag::get_goal_cost(int factor) const {
     return goal_cost[factor];
+}
+
+void PriceTag::set_store_frontier() {
+    store_frontier = true;
+}
+
+vector< boost::dynamic_bitset<> > PriceTag::get_frontier() const {
+    assert(store_frontier);
+    return frontier;
 }
 
 void PriceTag::initialize_leaf_cache() {

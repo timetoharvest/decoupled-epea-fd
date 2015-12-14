@@ -1,6 +1,7 @@
 #include "state_registry.h"
 
 #include "axioms.h"
+#include "decoupled_data_store.h"
 #include "factoring.h"
 #include "operator.h"
 #include "per_state_information.h"
@@ -136,6 +137,10 @@ const State &StateRegistry::get_initial_state() {
             state_duplicate_counter[0] = 0;
             
             g_price_tags[*cached_initial_state] = init_state_tag;
+            
+            for (size_t store = 0; store < data_stores.size(); ++store){
+                data_stores[store]->store_cached_results(*cached_initial_state);
+            }
         }
         
 #ifdef DEBUG_SEARCH
@@ -230,6 +235,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             g_price_tags[s] = new_price_tag;
             is_new = true;
             state_duplicate_counter[id.hash()] = 0;
+            for (size_t store = 0; store < data_stores.size(); ++store){
+                data_stores[store]->store_cached_results(s);
+            }
         } else {                       
             state_data_pool.push_back(predecessor.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
@@ -247,6 +255,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             if (new_dup_counter > old_dup_counter){    // is a new decoupled state
                 is_new = true;
                 g_price_tags[s] = new_price_tag;
+                for (size_t store = 0; store < data_stores.size(); ++store){
+                    data_stores[store]->store_cached_results(s);
+                }
                 state_duplicate_counter[base_state_id] = new_dup_counter;
             }
         }
@@ -260,8 +271,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             new_price_tag.discard_leaf_price_cache();
         }
         
+
+        cout << "created state " << id << (is_new ? " is new" : "") << endl;
 #ifdef DEBUG_SEARCH
-        cout << "created state " << id << endl;
         s.dump_pddl();
         const PriceTag &r = g_price_tags[s];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -579,6 +591,10 @@ void StateRegistry::output_decoupled_state_space_size() const {
     cout << "decoupled state space size [1] " << dec_size_1 << endl;
     cout << "decoupled state space size [2] " << dec_size_2 << endl;
     cout << "decoupled state space size [3] " << dec_size_3 << endl;
+}
+
+void StateRegistry::register_data_store(DecoupledDataStore* store) const {
+    data_stores.push_back(store);
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {

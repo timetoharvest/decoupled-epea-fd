@@ -15,6 +15,10 @@ class CostFrontierPruning : public Pruning, public DecoupledDataStore {
     
     std::vector<boost::dynamic_bitset<> > last_checked;
     
+    bool registered;
+    
+    bool get_new_frontier;
+    
 #ifndef NDEBUG
     StateID last_checked_state;
 #endif
@@ -24,6 +28,8 @@ class CostFrontierPruning : public Pruning, public DecoupledDataStore {
 public:
     
     CostFrontierPruning(const Options &opts);
+    
+    virtual void reset();
     
     virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
                                        const PriceTag &reference, DOMINATION needed = NONE);

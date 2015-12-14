@@ -25,6 +25,9 @@ protected:
     // first is id, second is leaf factor
     static std::vector<std::pair<int, int> > leaf_tags_to_cache;
     
+    static bool store_frontier;
+    
+    static std::vector<boost::dynamic_bitset<> > frontier;
     
     std::vector<size_t> number_facts;
     
@@ -80,6 +83,10 @@ public:
     int get_goal_cost(int factor) const;
     
     static void initialize_leaf_cache();
+    
+    static void set_store_frontier();
+    
+    std::vector<boost::dynamic_bitset<> > get_frontier() const;
     
 };
 

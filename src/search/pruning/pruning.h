@@ -16,6 +16,8 @@ class Pruning {
     
 public:
     
+    virtual void reset() = 0;
+    
     virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
                                        const PriceTag &reference, DOMINATION needed = NONE) = 0;
     
@@ -28,6 +30,8 @@ public:
     BasicPruning() {}
     
     BasicPruning(const Options &opts);
+    
+    virtual void reset() {}
     
     virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
                                        const PriceTag &reference, DOMINATION needed = NONE);
