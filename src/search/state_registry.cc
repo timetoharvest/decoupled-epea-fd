@@ -466,7 +466,7 @@ void StateRegistry::build_leaf_state_spaces() {
     cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
 #endif
    
-    size_t min_leaf_factor_size = numeric_limits<int>::max();
+    size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;
     size_t max_leaf_factor_size = 0;
     size_t tmp;
@@ -481,7 +481,7 @@ void StateRegistry::build_leaf_state_spaces() {
             built_all_state_spaces = false;
         }
     }
-    if (min_leaf_factor_size != numeric_limits<int>::max()){
+    if (min_leaf_factor_size != numeric_limits<size_t>::max()){
         cout << "min reachable leaf factor size "  << min_leaf_factor_size << endl;
     }
     if (built_all_state_spaces){
