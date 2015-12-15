@@ -76,7 +76,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     vector<size_t> predecessors;
     SearchSpace *search_space = g_factoring->get_search_space();
     
-    if (g_factoring->are_closed_nodes_reopened()){
+    if (g_factoring->get_search_type() != SAT){
         size_t curr_id = predecessor.get_id().hash();
         while (curr_id != 0){
             if (find(predecessors.begin(), predecessors.end(), curr_id) == predecessors.end()){
@@ -90,8 +90,6 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     SegmentedArrayVector<PackedStateBin> &state_data_pool = g_state_registry->state_data_pool;
     
     int replaced_state_dup = -1;
-    State replaced_state = g_initial_state();
-    bool replace_price_tag = false;
 
     for (int dup = 0; dup <= curr_number_duplicates; dup++){
         // check the price tags of all equal center states
@@ -156,40 +154,24 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
             
             if (g_value + g_inc_g_by < old_g){
                 // new state has a lower g-value and may only replace an
-                // existing state if it dominates the existing one
+                // existing state if it dominates the existing one (nodes are closed instead of replaced)
                 // => if the new one does not dominate the old state, need
                 // to make it a new state, no duplicate
                 // in satisficing search, if this state is dominated, mark it as duplicate
                 // but don't reopen it in the search
                 
                 if (res == EQUAL){
-                    if (!replace_price_tag){
-                        replaced_state_dup = dup;
-                        g_factoring->set_ignore_current_state(false);
-                    }
+                    replaced_state_dup = dup;
+                    g_factoring->set_ignore_current_state(false);
                 } else if (res == DOMINATES){
-                    bool is_predecessor = false;
-                    if (find(predecessors.begin(), predecessors.end(), id.hash()) != predecessors.end()){
-                        // must not replace a dominated state that is not on path to this state
-                        is_predecessor = true;
-                    }
-                    if (!replace_price_tag && !is_predecessor){
-                        replace_price_tag = true;
-                        replaced_state_dup = dup;
-                        replaced_state = s;
-                        g_factoring->set_ignore_current_state(false);
-                    } else {
-                        // set dominated nodes to closed
-                        SearchNode node = search_space->get_node(s);
-                        if (node.is_open()){
-                            node.close();
-                        }
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
                     }
                 } else if (res == DOMINATED){
-                    if (!replace_price_tag){
-                        g_factoring->set_ignore_current_state(true);
-                        replaced_state_dup = dup;
-                    }
+                    replaced_state_dup = dup;
+                    g_factoring->set_ignore_current_state(true);
                 }
             } else {
                 // new state has a higher/equal g-value than the existing one and can
@@ -200,9 +182,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 
                 if (res == EQUAL || res == DOMINATED){
                     // new state is dominated by existing one
-                    if (!replace_price_tag){
-                        replaced_state_dup = dup;
-                    }
+                    replaced_state_dup = dup;
                 } else if (res == DOMINATES){
                     SearchNode node = search_space->get_node(s);
                     if (node.is_open()){
@@ -220,7 +200,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
                 cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
 #endif
                 // new state has a lower g-value and may only replace an
-                // existing state if it dominates the existing one
+                // existing state if it dominates the existing one (nodes are closed instead of replaced)
                 // => if the new one does not dominate the old state, need
                 // to make it a new state, no duplicate
                 
@@ -235,18 +215,13 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
 #ifdef DEBUG_PRUNING
                     cout << "new state dominates old one" << endl;
 #endif
-                    if (find(predecessors.begin(), predecessors.end(), id.hash()) != predecessors.end()){
-                        // must not replace a dominated state that is not on path to this state
-                        continue;
-                    }
-                    // TODO see also below
-                    // whenever a PriceTag is overwritten, all classes that store objects indexed
-                    // by StateIDs have to be notified, so they can also overwrite the respective data
-//                     g_price_tags[s] = *this;
-//                     return dup;
-                    SearchNode node = search_space->get_node(s);
-                    if (node.is_open()){
-                        node.close();
+                    if (find(predecessors.begin(), predecessors.end(), id.hash()) == predecessors.end()){
+                        // must not close a dominated state that is on path to this state
+                        // it might have been reopened, so its successors may get lower g
+                        SearchNode node = search_space->get_node(s);
+                        if (node.is_open()){
+                            node.close();
+                        }
                     }
                 }
                 
@@ -271,11 +246,6 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         }
     }
     if (replaced_state_dup != -1){
-        if (replace_price_tag){
-            // replace old PriceTag as this is done in StateRegistry only for new states
-            // TODO see above
-            g_price_tags[replaced_state] = *this;
-        }
         return replaced_state_dup;
     } else {
         return curr_number_duplicates + 1;
