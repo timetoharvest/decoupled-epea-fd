@@ -13,7 +13,7 @@ class CostFrontierPruning : public Pruning, public DecoupledDataStore {
     
     PerStateInformation<std::vector<boost::dynamic_bitset<> > > is_frontier_state;
     
-    std::vector<boost::dynamic_bitset<> > last_checked;
+    std::vector<boost::dynamic_bitset<> > current_frontier;
     
     bool registered;
     

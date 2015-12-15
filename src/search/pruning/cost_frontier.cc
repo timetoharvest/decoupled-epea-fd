@@ -30,14 +30,13 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
     }
     
     if (get_new_frontier){
-        check.get_frontier().swap(last_checked);
+        check.get_frontier().swap(current_frontier);
         get_new_frontier = false;
     }
     
-    assert(!last_checked.empty());
+    assert(!current_frontier.empty());
 #ifndef NDEBUG
     last_checked_state = center.get_id();
-    cout << "current state: " << last_checked_state << endl;
 #endif
     
     vector<boost::dynamic_bitset<> > reference_frontier = is_frontier_state[center];
@@ -72,13 +71,15 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
             }
         }
         is_frontier_state[center] = reference_frontier;
+#ifdef DEBUG_PRUNING
         cout << "not precomputed" << endl;
     } else {
         cout << "precomputed" << endl;
+#endif
     }
     
-    bool dominated = true;
-    bool dominates = true;
+    bool dominated = needed != DOMINATES;
+    bool dominates = needed != DOMINATED;
     
     // compare prices
     for (size_t factor = 0; factor < g_factors.size(); ++factor){        
@@ -100,9 +101,9 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
                     dominated = false;
                 }
             } else {
-                if (needed != DOMINATED && last_checked[factor][id]){
-                    assert(check.has_leaf_state(id, factor));
-                    if (reference.has_leaf_state(id, factor)){
+                if (dominates && reference_frontier[factor][id]){
+                    assert(reference.has_leaf_state(id, factor));
+                    if (check.has_leaf_state(id, factor)){
                         int old_cost = reference.get_cost_of_state(id, factor);
                         int new_cost = check.get_cost_of_state(id, factor);
                         assert(old_cost != -1);
@@ -111,11 +112,13 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
                         if (old_cost < new_cost){
                             dominates = false;
                         }
+                    } else {
+                        dominates = false;
                     }
                 }
-                if (needed != DOMINATES && reference_frontier[factor][id]){
-                    assert(reference.has_leaf_state(id, factor));
-                    if (check.has_leaf_state(id, factor)){
+                if (dominated && current_frontier[factor][id]){
+                    assert(check.has_leaf_state(id, factor));
+                    if (reference.has_leaf_state(id, factor)){
                         int old_cost = reference.get_cost_of_state(id, factor);
                         int new_cost = check.get_cost_of_state(id, factor);
                         assert(old_cost != -1);
@@ -124,6 +127,8 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
                         if (old_cost > new_cost){
                             dominated = false;
                         }
+                    } else {
+                        dominated = false;
                     }
                 }
             }
@@ -165,7 +170,7 @@ void CostFrontierPruning::store_cached_results(const State &state) {
     if (get_new_frontier){
         is_frontier_state[state] = g_price_tags[state].get_frontier();
     } else {
-        is_frontier_state[state] = last_checked;
+        is_frontier_state[state] = current_frontier;
     }
     get_new_frontier = true;
 }
