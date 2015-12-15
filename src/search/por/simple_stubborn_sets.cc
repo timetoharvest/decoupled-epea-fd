@@ -286,19 +286,20 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 }
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
+    bool is_goal = false;
     if (test_goal(state)){
-        return make_pair(-1, -1);
+        is_goal = true;
     }
     const PriceTag &tag = g_price_tags[state];
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && tag.get_goal_cost(factor) == -1){
             vector<pair<int, int> > min_unsatisfied_goals = g_goals_per_factor[factor];
-            int number_facts = tag.get_number_states(factor);
+            size_t number_states = tag.get_number_states(factor);
             size_t id = 0;
-            while (number_facts > 0){
+            while (number_states > 0){
                 if (tag.has_leaf_state(id, factor)){
-                   number_facts--;
+                   --number_states;
                    LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                    vector<pair<int, int> > curr_unsatisfied_goals;
                    for (size_t g = 0; g < g_goals_per_factor[factor].size(); g++){
@@ -315,11 +316,40 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
                 if (min_unsatisfied_goals.size() == 1){
                     break;
                 }
-                id++;
+                ++id;
             }
             return min_unsatisfied_goals.front();
+        } else if (is_goal){
+            // TODO check this
+            size_t number_states = tag.get_number_states(factor);
+            size_t id = 0;
+            while (number_states > 0){
+                if (tag.has_leaf_state(id, factor)){
+                   --number_states;
+                   for (size_t succ = 0; succ < g_leaf_state_successors[factor][id].size(); ++succ){
+                       const Operator *op = g_leaf_state_successors[factor][id][succ].first;
+                       int successor_id = g_leaf_state_successors[factor][id][succ].second;
+                       int new_price = tag.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                       if (!tag.has_leaf_state(successor_id, factor) || new_price < tag.get_cost_of_state(successor_id, factor)){
+                           // is frontier state
+                           const vector<const Condition*> &preconditions = op->get_preconditions(-1);
+                           for (size_t pre = 0; pre < preconditions.size(); ++pre){
+                                if (state[preconditions[pre]->var] != preconditions[pre]->val){
+                                    return make_pair(preconditions[pre]->var, preconditions[pre]->val);
+                                }
+                           }
+                       }
+                   }
+                }
+                ++id;
+            }
         }
     }
+    // TODO it can happen, that we have a goal state with empty frontiers!
+    // TODO what if we chose the "wrong" open center precondition above?
+    // i.e. what if the chosen precondition is not achievable, but there is another one
+    // that can be achieved, but that we do not "mark"?
+    assert(!is_goal);
     // handle center goals
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int goal_var = g_goal[i].first;
@@ -1032,10 +1062,10 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     precond_choice(PreconditionChoice(opts.get_enum("precond_choice"))),
     mutex_option(MutexOption(opts.get_enum("mutexes"))),
     use_active_ops(opts.get<bool>("active_ops")),
-    laarman_k(opts.get<int>("laarman_k"))
-{
+    laarman_k(opts.get<int>("laarman_k")) {
     if (g_use_decoupled_search){
         precond_choice = decoupled;     // HACK
+        assert(g_factoring->get_profile() == FORK);
     }
     
     verify_no_axioms_no_conditional_effects();
@@ -1382,11 +1412,7 @@ void SimpleStubbornSets::do_pruning(
 
     // Add a necessary enabling set for an unsatisfied goal.    
     pair<int, int> goal_pair = find_unsatisfied_goal(state);
-    if (g_use_decoupled_search && goal_pair.first == -1){
-        // state is a decoupled goal state
-        // TODO special handling for this case
-        return;
-    }
+    assert(goal_pair != make_pair(-1, -1));
     add_nes_for_fact(goal_pair);
 
     // Iteratively insert operators to stubborn according to the
