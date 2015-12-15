@@ -407,7 +407,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                     ++number_states;
                 
                     int cost = get_cost_of_state(id, factor);
-                    if (best_prices[id] <= cost){
+                    if (best_prices[id] <= cost && !store_frontier){
                         ++id;
                         continue;
                     }
