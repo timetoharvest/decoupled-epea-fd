@@ -163,6 +163,9 @@ SearchNode SearchSpace::get_node(const State &state) {
 
 void SearchSpace::trace_path(const State &goal_state,
                              vector<const Operator *> &path) const {
+                                 
+    // TODO in decoupled search, before actually reconstructing the plan,
+    // check if the new plan is actually cheaper! sum(cost(a_center)) + sum_leaves(goal_cost)
 
     State current_state = goal_state;
     
@@ -249,7 +252,7 @@ void SearchSpace::trace_path(const State &goal_state,
                         }
                     }
                 }
-
+                assert(best_leaf_state_id != -1);
                 marked_leaf_states[factor].insert(best_leaf_state_id);
 
 #ifdef DEBUG_PLAN_EXTRACTION
