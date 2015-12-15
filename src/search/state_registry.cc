@@ -271,9 +271,8 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             new_price_tag.discard_leaf_price_cache();
         }
         
-
-        cout << "created state " << id << (is_new ? " is new" : "") << endl;
 #ifdef DEBUG_SEARCH
+        cout << "created state " << id << (is_new ? " is new" : "") << endl;
         s.dump_pddl();
         const PriceTag &r = g_price_tags[s];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
