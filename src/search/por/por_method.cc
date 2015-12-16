@@ -98,6 +98,15 @@ static POR::PORMethod *_parse_sss(OptionParser &parser) {
 	vector<string> precondition_choices;
 
 	precondition_choices.push_back("forward");
+        precondition_choices.push_back("backward");
+        precondition_choices.push_back("small_static");
+        precondition_choices.push_back("small_dynamic");
+        precondition_choices.push_back("laarman_heuristic");
+        precondition_choices.push_back("most_hitting");
+        precondition_choices.push_back("c_forw_small");
+        precondition_choices.push_back("minimize_global_var_ordering");
+        precondition_choices.push_back("random_dynamic");
+        precondition_choices.push_back("minimize_random_global_var_ordering");
         precondition_choices.push_back("decoupled");
 	
 	parser.add_enum_option("precond_choice", precondition_choices,
