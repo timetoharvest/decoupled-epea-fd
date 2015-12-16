@@ -1030,6 +1030,7 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     precond_choice(PreconditionChoice(opts.get_enum("precond_choice"))),
     mutex_option(MutexOption(opts.get_enum("mutexes"))),
     use_active_ops(opts.get<bool>("active_ops")),
+    ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")),
     laarman_k(opts.get<int>("laarman_k")) {
     if (g_use_decoupled_search && precond_choice == decoupled){
         assert(g_factoring->get_profile() == FORK);
@@ -1120,8 +1121,18 @@ void SimpleStubbornSets::compute_interference_relation() {
     for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
         vector<int> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
-            if (op1_no != op2_no && interfere(op1_no, op2_no))
+            if (op1_no == op2_no){
+                continue;
+            }
+            bool interfering = true;
+            if (ignore_leaf_interference){
+                interfering = g_operators[op1_no].get_affected_factor() == -1 ||
+                              g_operators[op2_no].get_affected_factor() == -1;
+            }
+            interfering &= interfere(op1_no, op2_no);
+            if (interfering){
                 interfere_op1.push_back(op2_no);
+            }
 	}
     }
 }
