@@ -95,6 +95,7 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
 
     pair<int, int> find_unsatisfied_goal(const State& state);
     pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
+    vector<pair<int, int> > find_open_center_pre_of_decoupled_goal(const State &state);
     
     pair<int, int> find_unsatisfied_goal_small_static(const State &state);
     pair<int, int> find_unsatisfied_goal_small_dynamic(const State &state);

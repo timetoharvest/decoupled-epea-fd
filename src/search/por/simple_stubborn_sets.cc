@@ -286,10 +286,6 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 }
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
-    bool is_goal = false;
-    if (test_goal(state)){
-        is_goal = true;
-    }
     const PriceTag &tag = g_price_tags[state];
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
@@ -319,37 +315,8 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
                 ++id;
             }
             return min_unsatisfied_goals.front();
-        } else if (is_goal){
-            // TODO check this
-            size_t number_states = tag.get_number_states(factor);
-            size_t id = 0;
-            while (number_states > 0){
-                if (tag.has_leaf_state(id, factor)){
-                   --number_states;
-                   for (size_t succ = 0; succ < g_leaf_state_successors[factor][id].size(); ++succ){
-                       const Operator *op = g_leaf_state_successors[factor][id][succ].first;
-                       int successor_id = g_leaf_state_successors[factor][id][succ].second;
-                       int new_price = tag.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                       if (!tag.has_leaf_state(successor_id, factor) || new_price < tag.get_cost_of_state(successor_id, factor)){
-                           // is frontier state
-                           const vector<const Condition*> &preconditions = op->get_preconditions(-1);
-                           for (size_t pre = 0; pre < preconditions.size(); ++pre){
-                                if (state[preconditions[pre]->var] != preconditions[pre]->val){
-                                    return make_pair(preconditions[pre]->var, preconditions[pre]->val);
-                                }
-                           }
-                           assert(0); // there must be an open center precondition
-                       }
-                   }
-                }
-                ++id;
-            }
         }
     }
-    // TODO it can happen, that we have a goal state with empty frontiers!
-    // TODO what if we chose the "wrong" open center precondition above?
-    // i.e. what if the chosen precondition is not achievable, but there is another one
-    // that can be achieved, but that we do not "mark"?
     
     // handle center goals
     for (size_t i = 0; i < g_goal.size(); ++i) {
@@ -1273,6 +1240,46 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition(const Operator 
 
 }
 
+vector<pair<int, int> > SimpleStubbornSets::find_open_center_pre_of_decoupled_goal(const State& state) {
+    // we cannot know which open center precondition actually is achievable, i.e. can be used to
+    // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
+    
+    set<pair<int, int> > open_center_pre;
+    const PriceTag &tag = g_price_tags[state];
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        size_t number_states = tag.get_number_states(factor);
+        size_t id = 0;
+        while (number_states > 0){
+            if (tag.has_leaf_state(id, factor)){
+                --number_states;
+                for (size_t succ = 0; succ < g_leaf_state_successors[factor][id].size(); ++succ){
+                    const Operator *op = g_leaf_state_successors[factor][id][succ].first;
+                    int successor_id = g_leaf_state_successors[factor][id][succ].second;
+                    int new_price = tag.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    if (!tag.has_leaf_state(successor_id, factor) || new_price < tag.get_cost_of_state(successor_id, factor)){
+                        // is frontier state
+                        const vector<const Condition*> &preconditions = op->get_preconditions(-1);
+#ifndef NDEBUG
+                        bool found_open_pre = false;
+#endif
+                        for (size_t pre = 0; pre < preconditions.size(); ++pre){
+                            if (state[preconditions[pre]->var] != preconditions[pre]->val){
+#ifndef NDEBUG
+                                found_open_pre = true;
+#endif
+                                open_center_pre.insert(make_pair(preconditions[pre]->var, preconditions[pre]->val));
+                            }
+                        }
+                        assert(found_open_pre); // there must be an open center precondition
+                    }
+                }
+            }
+            ++id;
+        }
+    }
+    return vector<pair<int, int> >(open_center_pre.begin(), open_center_pre.end());
+}
+
 // This code is copied from ExpansionCore
 void SimpleStubbornSets::build_dtgs() {
     /*
@@ -1411,16 +1418,25 @@ void SimpleStubbornSets::do_pruning(
         active_ops.assign(g_operators.size(), true);
     }
 
-    // Add a necessary enabling set for an unsatisfied goal.    
-    pair<int, int> goal_pair = find_unsatisfied_goal(state);
-    if (g_use_decoupled_search && goal_pair.first == -1){
-        // this can happen in case a decoupled goal state has an empty frontier
-        assert(test_goal(state));
-        applicable_ops.clear();
-        return;
+    if (g_use_decoupled_search && test_goal(state)){
+        // get all open center preconditions of all leaf frontier states
+        vector<pair<int, int> > open_center_pre = find_open_center_pre_of_decoupled_goal(state);
+        
+        if (open_center_pre.empty()){
+            // this can happen in case a decoupled goal state has an empty frontier
+            applicable_ops.clear();
+            return;
+        } else {
+            for (size_t i = 0; i < open_center_pre.size(); ++i){
+                add_nes_for_fact(open_center_pre[i]);
+            }
+        }
+    } else {
+        // Add a necessary enabling set for an unsatisfied goal.    
+        pair<int, int> goal_pair = find_unsatisfied_goal(state);
+        assert(goal_pair != make_pair(-1, -1));
+        add_nes_for_fact(goal_pair);
     }
-    assert(goal_pair != make_pair(-1, -1));
-    add_nes_for_fact(goal_pair);
 
     // Iteratively insert operators to stubborn according to the
     // definition of strong stubborn sets until a fixpoint is reached.
