@@ -338,6 +338,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
                                     return make_pair(preconditions[pre]->var, preconditions[pre]->val);
                                 }
                            }
+                           assert(0); // there must be an open center precondition
                        }
                    }
                 }
@@ -349,7 +350,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
     // TODO what if we chose the "wrong" open center precondition above?
     // i.e. what if the chosen precondition is not achievable, but there is another one
     // that can be achieved, but that we do not "mark"?
-    assert(!is_goal);
+    
     // handle center goals
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int goal_var = g_goal[i].first;
@@ -1412,6 +1413,12 @@ void SimpleStubbornSets::do_pruning(
 
     // Add a necessary enabling set for an unsatisfied goal.    
     pair<int, int> goal_pair = find_unsatisfied_goal(state);
+    if (g_use_decoupled_search && goal_pair.first == -1){
+        // this can happen in case a decoupled goal state has an empty frontier
+        assert(test_goal(state));
+        applicable_ops.clear();
+        return;
+    }
     assert(goal_pair != make_pair(-1, -1));
     add_nes_for_fact(goal_pair);
 
