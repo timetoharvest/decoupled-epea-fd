@@ -22,7 +22,6 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
                                                 const PriceTag &reference, DOMINATION needed) {
     
     assert(g_factoring->get_profile() == FORK);
-    assert(g_factoring->get_search_type() != SAT);
     
     if (!registered){
         registered = true;
