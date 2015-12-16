@@ -71,6 +71,7 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
     PreconditionChoice precond_choice;
     const MutexOption mutex_option;
     bool use_active_ops;
+    bool ignore_leaf_interference; // ignore interference in leaves when doing decoupled search
     int laarman_k; // K parameter for laarman heuristic for penalizing
 		   // applicable ops
 

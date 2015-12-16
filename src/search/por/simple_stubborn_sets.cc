@@ -1031,8 +1031,7 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     mutex_option(MutexOption(opts.get_enum("mutexes"))),
     use_active_ops(opts.get<bool>("active_ops")),
     laarman_k(opts.get<int>("laarman_k")) {
-    if (g_use_decoupled_search){
-        precond_choice = decoupled;     // HACK
+    if (g_use_decoupled_search && precond_choice == decoupled){
         assert(g_factoring->get_profile() == FORK);
     }
     

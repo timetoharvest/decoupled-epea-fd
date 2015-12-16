@@ -98,10 +98,14 @@ static POR::PORMethod *_parse_sss(OptionParser &parser) {
 	vector<string> precondition_choices;
 
 	precondition_choices.push_back("forward");
+        precondition_choices.push_back("decoupled");
 	
 	parser.add_enum_option("precond_choice", precondition_choices,
 			       "selection of variable for NES",
 			       "forward");
+        
+        // used in decoupled POR
+        parser.add_option<bool>("ignore_leaf_interference", "TODO", "false");
         
         parser.add_option<int>("laarman_k", "operator weight for Laarman heuristic", "10");     // HACK by daniel
 
