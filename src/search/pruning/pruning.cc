@@ -3,16 +3,63 @@
 #include "../plugin.h"
 #include "../price_tag.h"
 #include "../state_registry.h"
+#include "../option_parser.h"
+#include "../operator.h"
+
+#include "simulation_relation.h"
 
 
 using namespace std;
 
-BasicPruning::BasicPruning (const Options&) {
+Pruning::Pruning (const Options &opts) : do_simulation(opts.get<bool>("simulation")), 
+					 do_irrelevance(opts.get<bool>("irrelevance")){
+
+    if (opts.get<bool>("goal_price_propagation")){
+	g_compute_leaf_backward_graph = true;
+	PriceTag::set_propagate_goal_prices();
+	cout << "using goal price propagation pruning" << endl;
+    }
+
+    if (do_simulation || do_irrelevance){
+	g_compute_leaf_backward_graph = true;
+    }
+}
+
+void Pruning::init() {
+    if (do_simulation || do_irrelevance){
+
+	SimulationRelation rel; 
+	rel.init();
+	rel.statistics();
+	if (do_irrelevance) {
+	    rel.perform_leaf_irrelevance_pruning(); 
+	}
+
+	if (do_simulation) {
+	    rel.set_list_dominated_states(); 
+	}
+
+    }
+}
+void Pruning::add_options_to_parser(OptionParser &parser){
+    parser.add_option<bool>("goal_price_propagation",
+                            "perform goal price propagation", "false");
+    
+    parser.add_option<bool>("simulation",
+                            "perform simulation dominance pruning", "false");
+
+    parser.add_option<bool>("irrelevance",
+                            "perform simulation irrelevance pruning", "false");
+
+}
+
+BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
     cout << "using BasicPruning method" << endl;
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, const PriceTag &check, 
-                                         const PriceTag &reference, DOMINATION needed) {
+DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check, 
+                                         PriceTag &reference, DOMINATION needed) {
+//    if(true) return NONE;
     
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -158,6 +205,7 @@ DOMINATION BasicPruning::check_dominance(const State &, const PriceTag &check,
 
 
 static Pruning *_parse_basic(OptionParser &parser) {
+    Pruning::add_options_to_parser(parser);
     Options opts = parser.parse();
 
     BasicPruning *pruning = 0;

@@ -25,9 +25,9 @@ protected:
     // first is id, second is leaf factor
     static std::vector<std::pair<int, int> > leaf_tags_to_cache;
     
-    static bool store_frontier;
-    
-    static std::vector<boost::dynamic_bitset<> > frontier;
+    static bool store_frontier, propagate_goal_prices;
+
+    std::vector<boost::dynamic_bitset<> > frontier;
     
     std::vector<size_t> number_facts;
     
@@ -65,12 +65,20 @@ protected:
                                   const State &predecessor);
     
     virtual void apply_center_op_to_leaves(const PriceTag &old_tag, const Operator &op);
+
+    void compute_cost_frontier (const State &center); 
+
+    void goal_price_propagation();
+
+    void propagate_dominance_prices (); 
     
     void cache_leaf_price_tags(const State &state);
     
     void discard_leaf_price_cache();
     
 public:
+
+    static std::vector<std::vector<std::vector<size_t> > > dominated_states;
     
     PriceTag(){};
     
@@ -85,9 +93,10 @@ public:
     static void initialize_leaf_cache();
     
     static void set_store_frontier();
+
+    static void set_propagate_goal_prices();
     
-    std::vector<boost::dynamic_bitset<> > get_frontier() const;
-    
+    const std::vector<boost::dynamic_bitset<> > & get_frontier(const State &center);
 };
 
 

@@ -37,13 +37,13 @@ void InteractionGraph::add_dependency(int from, int to) {
 }
 
 Factoring::Factoring(const Options &opts) :
-            reopen_closed_nodes(false),
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+    reopen_closed_nodes(false),
+    search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
-        case FRA : cout << "performing Fork-Root A* search" << endl; break;
-        case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
-        case SDA : cout << "performing Star Decoupled A* search" << endl; break;
-        case SAT : cout << "performing decoupled satisficing search" << endl; break;
+    case FRA : cout << "performing Fork-Root A* search" << endl; break;
+    case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
+    case SDA : cout << "performing Star Decoupled A* search" << endl; break;
+    case SAT : cout << "performing decoupled satisficing search" << endl; break;
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -59,8 +59,8 @@ Factoring::Factoring(const Options &opts) :
     if (opts.contains("pruning")){
         pruning = opts.get<Pruning*>("pruning");
     } else {
-        pruning = new BasicPruning();
-        cout << "using default pruning method: BasicPruning" << endl;
+	pruning = new BasicPruning();
+	cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
@@ -277,13 +277,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     }
 #endif
 
-    
-    g_leaf_state_successors.resize(g_factors.size());
-    
-    g_center_successors.resize(g_factors.size());
-    
-    g_is_leaf_goal_state.resize(g_factors.size());
-    
+        
     PriceTag::initialize_leaf_cache();
     
     // setup g_goals_per_factor
@@ -1304,7 +1298,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "pruning", 
         "TODO", 
         "",
-        OptionFlags(false));
+	OptionFlags(false));
     vector<string> search_types;
     search_types.push_back("fra");
     search_types.push_back("asda");

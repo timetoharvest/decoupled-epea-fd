@@ -172,6 +172,7 @@ HEADERS += por/expansion_core.h \
            por/sss_expansion_core.h \
            
 HEADERS += pruning/cost_frontier.h
+HEADERS += pruning/simulation_relation.h
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward

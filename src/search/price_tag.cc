@@ -7,6 +7,8 @@
 #include "state_registry.h"
 #include "successor_generator.h"
 #include "utilities.h"
+#include "priority_queue.h"
+#include "globals.h"
 
 #include <limits>
 
@@ -24,7 +26,10 @@ vector<pair<int, int> > PriceTag::leaf_tags_to_cache;
 
 bool PriceTag::store_frontier = false;
 
-vector<boost::dynamic_bitset<> > PriceTag::frontier;
+bool PriceTag::propagate_goal_prices = false;
+
+std::vector<std::vector<std::vector<size_t> > > PriceTag::dominated_states;
+
 
 
 PriceTag::PriceTag(const PriceTag *tag) {
@@ -311,7 +316,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
     
     assert(leaf_tags_to_cache.empty());
     
-    g_factoring->get_pruning()->reset();
+    //g_factoring->get_pruning()->reset();
     
     if (store_frontier){
         frontier.resize(g_factors.size());
@@ -535,7 +540,16 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ RPG FINISHED" << endl;
 #endif
-    
+
+    if(!dominated_states.empty()){
+	propagate_dominance_prices ();
+    }
+
+    if(propagate_goal_prices) {
+	goal_price_propagation();
+    }
+
+
     if (curr_number_duplicates == -1){
         return 0;
     }
@@ -739,8 +753,21 @@ void PriceTag::set_store_frontier() {
     store_frontier = true;
 }
 
-vector< boost::dynamic_bitset<> > PriceTag::get_frontier() const {
+void PriceTag::set_propagate_goal_prices() {
+    propagate_goal_prices = true;
+}
+
+
+const vector< boost::dynamic_bitset<> > & PriceTag::get_frontier(const State &center) {
     assert(store_frontier);
+    if (frontier.empty()){
+	compute_cost_frontier (center);
+#ifdef DEBUG_PRUNING
+	cout << "not precomputed" << endl;
+    } else {
+    cout << "precomputed" << endl;
+#endif
+    }
     return frontier;
 }
 
@@ -754,3 +781,117 @@ void PriceTag::initialize_leaf_cache() {
     }
 }
 
+
+void PriceTag::goal_price_propagation() {
+    assert(g_factoring->get_profile() == FORK);
+    //Alvaro: dominance methods do not make sense on SAT? 
+    assert(g_factoring->get_search_type() != SAT); 
+
+    vector<vector<int> > previous_costs = costs; 
+    for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+	//cout << "Propagate: " << factor << endl;
+
+	vector<bool> closed (g_state_registry->size(factor), false);
+
+	//Alvaro: Given the size of leaf factors I think a bucketqueue
+	//should work better but requires some implementation
+	//effort. Probably worth it to reduce overhead
+	HeapQueue<int, compare_pair_first_greater<int> > open; //Alvaro: Use a heap_queue? 
+	
+	for (size_t s : g_leaf_goal_states[factor]) {
+	    //cout << s << " is goal " << endl; 
+	    open.push(goal_cost[factor], s);
+	}
+
+	while (!open.empty()) {
+	    pair<int, int> entry = open.pop();
+	    int state = entry.second;
+	    int value = entry.first;
+	    //cout << "Propagating s " << state << " with value " << value << endl; 
+	    if (closed[state]) continue;
+	    //if (value <= propagated_cost[g_leaf_state_id_map[factor][state]]) continue; // Price has already been set. 
+	    closed [state] = true;
+	    if (value != INF) add_state(LeafStateID(state, factor), value);
+
+	    for (auto transition :  g_leaf_state_predecessors[factor][state]) {
+		int t = transition.second;
+		if (closed[t]) continue;
+		int idt = g_leaf_state_id_map[factor][t];
+		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
+		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
+		
+		int previous_t_val = ((idt == -1 || (size_t)idt >= costs[factor].size()) ? 
+				      numeric_limits<int>::max() : previous_costs[factor] [idt]);
+
+		int vt = std::min(previous_t_val, propagated_val);
+		//cout << t << " is added with value " << (vt == numeric_limits<int>::max() ? INF : vt)  << endl; 
+		
+		open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
+		//if (vt > propagated_cost[g_leaf_state_id_map[factor][t]]) {
+		
+		//}
+	    }
+	}
+
+	// cout << "Cost: ";
+	// for (int c : previous_costs[factor]) {
+	//     cout << c << " "; 
+	// }
+	// cout << endl;
+
+	// cout << "Propagated cost: ";
+	// for (int c : costs[factor]) {
+	//     cout << c << " "; 
+	// }
+	// cout << endl;
+    }
+}
+
+
+void PriceTag::propagate_dominance_prices () {
+    for (size_t factor = 0; factor < dominated_states.size(); ++factor){ 
+	for (size_t s = 0; s < dominated_states[factor].size(); ++s) {
+	    if(has_leaf_state(s, factor)){
+		int cost_s = get_cost_of_state(s, factor);
+		for (int t : dominated_states[factor][s]) {
+		    if (!has_leaf_state(t, factor) || get_cost_of_state(t, factor) > cost_s) { 
+			//cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
+			add_state(LeafStateID(t, factor), cost_s);
+		    }
+		}
+	    }
+	}
+    }
+}
+
+
+void PriceTag::compute_cost_frontier(const State &center) {
+    // frontier is only stored for states for which the dominance was already checked at some point
+    //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
+    
+    frontier.resize(g_factors.size());
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+	boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
+	for (size_t id = 0; id < g_leaf_state_successors[factor].size(); ++id){
+	    if (!has_leaf_state(id, factor)){
+		continue;
+	    }
+	    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
+		const Operator *op = g_leaf_state_successors[factor][id][o].first;
+		if (op->is_center_applicable(center)){
+		    continue;
+		}
+		int successor = g_leaf_state_successors[factor][id][o].second;
+		if (!has_leaf_state(successor, factor)){
+		    frontier[factor][id] = true;
+		    break;
+		}
+		int new_cost = get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+		if (get_cost_of_state(successor, factor) > new_cost){
+		    frontier[factor][id] = true;
+		    break;
+		}
+	    }
+	}
+    }
+}
