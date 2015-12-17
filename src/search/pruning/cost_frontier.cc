@@ -4,79 +4,24 @@
 #include "../plugin.h"
 #include "../price_tag.h"
 #include "../state_registry.h"
+#include "../ext/boost/dynamic_bitset.hpp"
 
 
 using namespace std;
 
-CostFrontierPruning::CostFrontierPruning(const Options&) : registered(false),
-    get_new_frontier(true)
-#ifndef NDEBUG
-    , last_checked_state(StateID::no_state)
-#endif
-{
+CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
     PriceTag::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
 
-DOMINATION CostFrontierPruning::check_dominance(const State &center, const PriceTag &check, 
-                                                const PriceTag &reference, DOMINATION needed) {
+DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &check, 
+                                                PriceTag &reference, DOMINATION needed) {
     
     assert(g_factoring->get_profile() == FORK);
-    
-    if (!registered){
-        registered = true;
-        g_state_registry->register_data_store(this);
-    }
-    
-    if (get_new_frontier){
-        check.get_frontier().swap(current_frontier);
-        get_new_frontier = false;
-    }
-    
-    assert(!current_frontier.empty());
-#ifndef NDEBUG
-    last_checked_state = center.get_id();
-#endif
-    
-    vector<boost::dynamic_bitset<> > reference_frontier = is_frontier_state[center];
-    
-    // frontier is only stored for states for which the dominance was already checked at some point
-    assert(!reference_frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
-    
-    if (reference_frontier.empty()){
-        reference_frontier.resize(g_factors.size());
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(reference_frontier[factor]);
-            for (size_t id = 0; id < g_leaf_state_successors[factor].size(); ++id){
-                if (!reference.has_leaf_state(id, factor)){
-                    continue;
-                }
-                for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
-                    const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                    if (op->is_center_applicable(center)){
-                        continue;
-                    }
-                    int successor = g_leaf_state_successors[factor][id][o].second;
-                    if (!reference.has_leaf_state(successor, factor)){
-                        reference_frontier[factor][id] = true;
-                        break;
-                    }
-                    int new_cost = reference.get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                    if (reference.get_cost_of_state(successor, factor) > new_cost){
-                        reference_frontier[factor][id] = true;
-                        break;
-                    }
-                }
-            }
-        }
-        is_frontier_state[center] = reference_frontier;
-#ifdef DEBUG_PRUNING
-        cout << "not precomputed" << endl;
-    } else {
-        cout << "precomputed" << endl;
-#endif
-    }
-    
+
+    const vector<boost::dynamic_bitset<> > & current_frontier = check.get_frontier(center);    
+    const vector<boost::dynamic_bitset<> > & reference_frontier = reference.get_frontier(center);
+        
     bool dominated = needed != DOMINATES;
     bool dominates = needed != DOMINATED;
     
@@ -161,21 +106,8 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, const Price
     return NONE;
 }
 
-void CostFrontierPruning::reset() {
-    get_new_frontier = true;
-}
-
-void CostFrontierPruning::store_cached_results(const State &state) {
-    if (get_new_frontier){
-        is_frontier_state[state] = g_price_tags[state].get_frontier();
-    } else {
-        is_frontier_state[state] = current_frontier;
-    }
-    get_new_frontier = true;
-}
-
-
 static Pruning *_parse_cost_frontier(OptionParser &parser) {
+    Pruning::add_options_to_parser(parser);
     Options opts = parser.parse();
 
     CostFrontierPruning *pruning = 0;

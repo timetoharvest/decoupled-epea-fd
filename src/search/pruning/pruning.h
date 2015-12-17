@@ -4,6 +4,7 @@
 class Options;
 class PriceTag;
 class State;
+class OptionParser;
 
 enum DOMINATION {
     NONE,
@@ -13,28 +14,34 @@ enum DOMINATION {
 };
 
 class Pruning {
-    
+
+    bool do_simulation, do_irrelevance;
 public:
+    Pruning() : do_simulation (false), do_irrelevance(false){}
+
+    Pruning(const Options &opts);
+
+    virtual ~Pruning() = default;
     
-    virtual void reset() = 0;
-    
-    virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
-                                       const PriceTag &reference, DOMINATION needed = NONE) = 0;
+    virtual void init(); 
+
+    virtual DOMINATION check_dominance(const State &center, PriceTag &check, 
+                                       PriceTag &reference, DOMINATION needed = NONE) = 0;
+
+    static void add_options_to_parser(OptionParser &parser);
     
 };
 
 class BasicPruning : public Pruning {
     
 public:
-    
-    BasicPruning() {}
-    
+   
+    BasicPruning() : Pruning() {} 
+
     BasicPruning(const Options &opts);
-    
-    virtual void reset() {}
-    
-    virtual DOMINATION check_dominance(const State &center, const PriceTag &check, 
-                                       const PriceTag &reference, DOMINATION needed = NONE);
+      
+    virtual DOMINATION check_dominance(const State &center, PriceTag &check, 
+                                       PriceTag &reference, DOMINATION needed = NONE);
     
 };
 

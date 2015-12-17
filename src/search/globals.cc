@@ -426,6 +426,7 @@ int g_max_action_cost = 0;
 
 Factoring *g_factoring;
 bool g_use_decoupled_search;
+bool g_compute_leaf_backward_graph = false;
 
 int g_inc_g_by;
 
@@ -442,6 +443,8 @@ vector<int> g_new_index;
 
 vector<vector<vector<size_t> > > g_center_successors;
 vector<vector<vector<pair<const Operator*, size_t> > > > g_leaf_state_successors;
+vector<vector<vector<pair<const Operator*, size_t> > > > g_leaf_state_predecessors;
+vector<vector<size_t> > g_leaf_goal_states;
 vector<vector<int> > g_leaf_state_id_map;
 vector<size_t> g_curr_leaf_state_max_id;
 

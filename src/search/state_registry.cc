@@ -8,6 +8,7 @@
 #include "price_tag.h"
 #include "search_engine.h"
 #include "successor_generator.h"
+#include "pruning/pruning.h"
 
 #include <limits>
 #include <stdint.h>
@@ -290,8 +291,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
 }
 
 void StateRegistry::build_leaf_state_spaces() {
-    
+
     // TODO probably move this to PriceTag
+    g_leaf_state_successors.resize(g_factors.size());
+    g_center_successors.resize(g_factors.size());
+    g_is_leaf_goal_state.resize(g_factors.size());
+
+    if (g_compute_leaf_backward_graph){
+	g_leaf_state_predecessors.resize(g_factors.size());
+	g_leaf_goal_states.resize(g_factors.size());
+    }
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "+++++++++++++++ STARTING RPG for calculation of minimal goal cost" << endl;
@@ -461,7 +470,14 @@ void StateRegistry::build_leaf_state_spaces() {
                         // is that actually true? what about finding a globally cheaper goal state behind a goal?
                         
                         if (!is_center_op && first_time_seen){
-                            g_leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+			    size_t lidhash = lid.hash();
+                            g_leaf_state_successors[factor][id].push_back(make_pair(op, lidhash));
+			    if (g_compute_leaf_backward_graph) { 
+				if (lidhash >= g_leaf_state_predecessors[factor].size()) {
+				    g_leaf_state_predecessors[factor].resize(lidhash + 1);
+				}
+				g_leaf_state_predecessors[factor][lidhash].push_back(make_pair(op, id));
+			    }
                         }
                     }
                 }
@@ -543,6 +559,8 @@ void StateRegistry::build_leaf_state_spaces() {
         g_leaf_state_id_map[factor] = vector<int>(size(factor), -1);
         g_curr_leaf_state_max_id[factor] = 0;
     }
+
+    g_factoring->get_pruning()->init();
     
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "leaving calculate_min_goal_cost function" << endl;
@@ -563,6 +581,10 @@ void StateRegistry::store_is_leaf_goal_state(const LeafState &state) const {
         }
         assert(g_is_leaf_goal_state[factor].size() == state.get_id().hash());
         g_is_leaf_goal_state[factor].push_back(is_goal);
+
+	if(g_compute_leaf_backward_graph && is_goal) {
+	    g_leaf_goal_states[factor].push_back(state.get_id().hash());
+	}
     }
 }
 

@@ -65,17 +65,25 @@ public:
     virtual void add_virtual_pushes(int num_extra_pushes) = 0;
 };
 
+template <typename Value>
+struct compare_pair_first_greater {
+    typedef typename AbstractQueue<Value>::Entry Entry;
+    bool operator()(const Entry &lhs, const Entry &rhs) const {
+	return rhs.first == -1 || (rhs.first > lhs.first && lhs.first != -1);
+    }
+};
 
 template<typename Value>
-class HeapQueue : public AbstractQueue<Value> {
+struct compare_pair_first_less {
     typedef typename AbstractQueue<Value>::Entry Entry;
-
-    struct compare_func {
         bool operator()(const Entry &lhs, const Entry &rhs) const {
             return lhs.first > rhs.first;
         }
     };
 
+template<typename Value, typename compare_func = compare_pair_first_less<Value> >
+class HeapQueue : public AbstractQueue<Value> {
+    typedef typename AbstractQueue<Value>::Entry Entry;
     class Heap
         : public std::priority_queue<Entry, std::vector<Entry>, compare_func> {
         // We inherit since our friend needs access to the underlying

@@ -1,0 +1,279 @@
+#include "simulation_relation.h"
+
+#include "../price_tag.h"
+#include "../operator.h"
+#include "../factoring.h"
+#include "../state_registry.h"
+#include "../priority_queue.h"
+
+
+using namespace std;
+
+void SimulationRelation::init () {
+    cout  << "Init" << endl;
+    compute_label_dominance();
+    relation.resize(g_factors.size());
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+	compute_simulation( factor);
+    }
+}
+
+bool SimulationRelation::precondition_dominance(const std::vector<const Condition*> & pre, 
+						const std::vector<const Condition*> & pre2) const{
+    for (const auto & p : pre){
+	if (std::find_if(begin(pre2), end(pre2), [p] (const Condition * p2){
+		    return *p2 == *p;
+		}
+		) == end(pre2)){
+	    return false;
+	}
+    }
+    return true;
+}
+
+void SimulationRelation::compute_label_dominance() {
+    //cout  << "Label dominance" << endl;
+    op_dominated_by.resize(g_operators.size());
+    for (auto & elem : op_dominated_by)
+	elem.resize(g_operators.size(), false);
+
+    for (auto op = begin(g_operators); op != end(g_operators); ++op) {
+	int factor = op->get_affected_factor();
+	if (factor == -1) continue; //Skip center actions
+	int cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+	const auto & pre = op->get_preconditions(-1);
+	
+	for (auto op2 = op; ++op2 != end(g_operators); ) {
+	    if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
+	    int cost2 = get_adjusted_action_cost(*op2, g_factoring->get_cost_type());
+	    const auto & pre2 = op2->get_preconditions(-1);
+	    
+
+	    if(cost <= cost2 && precondition_dominance(pre, pre2)) {
+		//cout << op->get_name() << " is dominated by " << op2->get_name() << endl;
+		op_dominated_by[op2->get_index()][op->get_index()] = true;
+	    }
+
+	    if (cost2 <= cost && precondition_dominance(pre2, pre)) {
+		//cout << op2->get_name() << " is dominated by " << op->get_name() << endl;
+		op_dominated_by[op->get_index()][op2->get_index()] = true;
+	    }
+	}
+    }
+}
+
+void SimulationRelation::compute_simulation (int factor) {
+    //cout  << "Compute simulation: " << factor << endl;
+    //Init goal respecting
+    size_t num_states = g_state_registry->size(factor);
+    vector<int> goal_distances(num_states, numeric_limits<int>::max()); 
+    BucketQueue<int> open;
+	
+    for (size_t s : g_leaf_goal_states[factor]) {
+	goal_distances[s] = 0;
+	open.push(0, s);
+    }
+
+    while (!open.empty()) {
+	pair<int, int> entry = open.pop();
+	int state = entry.second;
+	int value = entry.first;
+	//cout << "s: " << state << endl;
+	if (goal_distances [state] < value) continue;
+	for (auto transition :  g_leaf_state_predecessors[factor][state]) {
+	    int t = transition.second;
+
+	    if (value + 1 < goal_distances[t]) {
+		goal_distances[t] = value + 1;
+		open.push(value + 1, t);
+	    }
+	}
+    }
+
+    relation[factor].resize(num_states);
+    for(size_t i = 0; i < num_states; i++){
+        relation[factor][i].resize(num_states, true);
+        if(!g_is_leaf_goal_state[factor][i]){
+            for (size_t j = 0; j < num_states; j++){
+                if (g_is_leaf_goal_state[factor][j] || goal_distances[i] > goal_distances[j]){
+                    relation[factor][i][j] = false;
+                }
+            }
+        }
+    }
+
+    bool changes = true;
+    while (changes) {
+        changes = false;
+        for (size_t s = 0; s < g_state_registry->size(factor); s++) {
+            for (size_t t = 0; t < g_state_registry->size(factor); t++) { //for each pair of states t, s
+		if (s != t && simulates(factor, t, s)) {
+                    //Check if really t simulates s
+                    //for each transition s--l->s':
+                    // a) with noop t >= s' and l dominated by noop?
+                    // b) exist t--l'-->t', t' >= s' and l dominated by l'?
+		    for (auto trs  : g_leaf_state_successors[factor][s]){
+			int trs_target = trs.second;
+			int trs_label = trs.first->get_index();
+			
+			if(simulates (factor, t, trs_target)
+                           /* && op_dominated_by_noop(trs_label)*/) {
+			    continue;
+			}
+			bool found = false;
+			for (auto trt  : g_leaf_state_successors[factor][t]) {
+			    int trt_target = trt.second;
+			    int trt_label = trt.first->get_index();
+
+			    if(op_dominated_by[trs_label][trt_label] &&
+			       simulates(factor, trt_target, trs_target)) {
+				found = true;
+				break;
+			    }
+			}
+			if(!found) {
+			    changes = true;
+			    remove(factor, t, s);
+			}
+		    }
+		}
+	    }
+	}
+    }
+}
+
+
+int SimulationRelation::num_equivalences(int factor) const{
+    int num = 0;
+    std::vector<bool> counted (relation[factor].size(), false);
+    for(size_t i = 0; i < counted.size(); i++){
+        if(!counted[i]){
+            for(size_t j = i + 1; j < relation[factor].size(); j++){
+                if(similar(factor, i, j)){
+                    counted [j] = true;
+                }
+            }
+        }else{
+            num++;
+        }
+    }
+    return num;
+}
+
+int SimulationRelation::num_simulations(int factor, bool ignore_equivalences) const{
+    int res = 0;
+    if(ignore_equivalences){
+        std::vector<bool> counted (relation[factor].size(), false);
+        for(size_t i = 0; i < relation[factor].size(); ++i){
+            if(!counted[i]){
+                for(size_t j = i+1; j < relation[factor].size(); ++j){
+                    if(similar(factor, i, j)){
+                        counted[j] = true;
+                    }
+                }
+            }
+        }
+        for(size_t i = 0; i < relation[factor].size(); ++i){
+            if(!counted[i]){
+                for(size_t j = i+1; j < relation[factor].size(); ++j){
+                    if(!counted[j]){
+                        if(!similar(factor, i, j) && (simulates(factor, i, j) || simulates(factor, j, i))){
+                            res ++;
+                        }
+                    }
+                }
+            }
+        }
+    }else {
+        for(size_t i = 0; i < relation[factor].size(); ++i)
+            for(size_t j = 0; j < relation[factor].size(); ++j)
+                if(simulates(factor, i, j))
+                    res++;
+    }
+    return res;
+}
+
+void SimulationRelation::set_list_dominated_states() const {
+    assert(PriceTag::dominated_states.empty());
+    
+    PriceTag::dominated_states.resize(g_factors.size());
+
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){    
+	PriceTag::dominated_states[factor].resize(relation[factor].size());
+	for(size_t s = 0; s < relation[factor].size(); ++s){
+	    for(size_t t = 0; t < relation[factor].size(); ++t) {
+		if (simulates(factor, t, s)){
+		    PriceTag::dominated_states[factor][t].push_back(s);
+		}
+	    }
+	}
+    }
+}
+
+void SimulationRelation::perform_leaf_irrelevance_pruning() const {
+    
+}
+
+void SimulationRelation::statistics() const{
+    cout << "Simulation Relation Finished. " << endl;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){    
+	cout << "Factor " <<  factor << " has " <<
+	    num_equivalences(factor) << " equivalences and " << 
+	    num_simulations(factor, true) << " simulations " << endl;
+
+	//dump(factor);
+    }    
+}
+
+void SimulationRelation::dump(int factor) const{ 
+    cout << "SIMREL:" << endl;
+
+    for(size_t j = 0; j < relation[factor].size(); ++j){
+        for(size_t i = 0; i < relation[factor][i].size(); ++i){
+            if(simulates(factor, j, i) && i != j){
+                if(simulates(factor, i, j)){
+                    if (j < i){
+                        cout << get_name(factor, i) << " <=> " << get_name(factor, j) << endl;
+                    }
+                }else{
+                    cout << get_name(factor, i) << " <= " << get_name(factor, j) << endl;
+                }
+            }
+        }
+    }
+
+
+    cout << "Reasons: " << endl;
+    for (size_t s = 0; s < g_state_registry->size(factor); s++) {
+	for (size_t t = 0; t < g_state_registry->size(factor); t++) { //for each pair of states t, s
+	    if (s != t && simulates(factor, t, s)) {
+		for (auto trs  : g_leaf_state_successors[factor][s]){
+		    int trs_target = trs.second;
+		    int trs_label = trs.first->get_index();
+		    
+		    if(simulates (factor, t, trs_target)) {
+			cout << get_name(factor, s) << " -> " << get_name(factor, trs_target) << " is simulated by " << 
+			    get_name(factor, t) << " noop " << endl;
+		        continue;
+		    }
+		    for (auto trt  : g_leaf_state_successors[factor][t]) {
+			int trt_target = trt.second;
+			int trt_label = trt.first->get_index();
+			
+			if(op_dominated_by[trs_label][trt_label] &&
+			   simulates(factor, trt_target, trs_target)) {
+			    cout << get_name(factor, s) << " -> " << get_name(factor, trs_target) << " is simulated by " << 
+				get_name(factor, t) << " -> " << get_name(factor, trt_target) << endl;
+			    break;
+			}
+		    }
+		}
+	    }
+	}
+    }
+}
+
+
+const string & SimulationRelation::get_name(int factor, int s) const{
+    return g_fact_names[g_factors[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(s, factor))[g_factors[factor][0]]];
+}
