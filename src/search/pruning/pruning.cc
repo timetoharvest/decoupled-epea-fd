@@ -41,21 +41,6 @@ void Pruning::init() {
 
     }
 }
-void Pruning::add_options_to_parser(OptionParser &parser){
-    parser.add_option<bool>("goal_price_propagation",
-                            "perform goal price propagation", "false");
-    
-    parser.add_option<bool>("simulation",
-                            "perform simulation dominance pruning", "false");
-
-    parser.add_option<bool>("irrelevance",
-                            "perform simulation irrelevance pruning", "false");
-
-}
-
-BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
-    cout << "using BasicPruning method" << endl;
-}
 
 DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check, 
                                          PriceTag &reference, DOMINATION needed) {
@@ -202,6 +187,22 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
     return NONE;
 }
 
+
+void Pruning::add_options_to_parser(OptionParser &parser){
+    parser.add_option<bool>("goal_price_propagation",
+                            "perform goal price propagation", "false");
+    
+    parser.add_option<bool>("simulation",
+                            "perform simulation dominance pruning", "false");
+
+    parser.add_option<bool>("irrelevance",
+                            "perform simulation irrelevance pruning", "false");
+
+}
+
+BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
+    cout << "using BasicPruning method" << endl;
+}
 
 static Pruning *_parse_basic(OptionParser &parser) {
     Pruning::add_options_to_parser(parser);
