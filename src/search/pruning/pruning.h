@@ -21,7 +21,7 @@ public:
 
     Pruning(const Options &opts);
 
-    virtual ~Pruning() = default;
+    virtual ~Pruning();
     
     virtual void init(); 
 
