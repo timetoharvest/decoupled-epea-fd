@@ -28,16 +28,16 @@ Pruning::Pruning (const Options &opts) : do_simulation(opts.get<bool>("simulatio
 void Pruning::init() {
     if (do_simulation || do_irrelevance){
 
-	SimulationRelation rel; 
-	rel.init();
-	rel.statistics();
-	if (do_irrelevance) {
-	    rel.perform_leaf_irrelevance_pruning(); 
-	}
+        SimulationRelation rel; 
+        rel.init();
+        rel.statistics();
+        if (do_irrelevance) {
+            rel.perform_leaf_irrelevance_pruning(); 
+        }
 
-	if (do_simulation) {
-	    rel.set_list_dominated_states(); 
-	}
+        if (do_simulation) {
+            rel.set_list_dominated_states(); 
+        }
 
     }
 }
@@ -59,7 +59,6 @@ BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
 
 DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check, 
                                          PriceTag &reference, DOMINATION needed) {
-//    if(true) return NONE;
     
     bool sizes_equal = true;
     bool new_is_larger = false;

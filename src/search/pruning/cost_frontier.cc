@@ -19,8 +19,8 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
     
     assert(g_factoring->get_profile() == FORK);
 
-    const vector<boost::dynamic_bitset<> > & current_frontier = check.get_frontier(center);    
-    const vector<boost::dynamic_bitset<> > & reference_frontier = reference.get_frontier(center);
+    const vector<boost::dynamic_bitset<> > &current_frontier = check.get_frontier(center);    
+    const vector<boost::dynamic_bitset<> > &reference_frontier = reference.get_frontier(center);
         
     bool dominated = needed != DOMINATES;
     bool dominates = needed != DOMINATED;

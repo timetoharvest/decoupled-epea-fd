@@ -19,7 +19,7 @@ protected:
     std::vector<std::vector<boost::dynamic_bitset<> > > relation;
 
     bool precondition_dominance(const std::vector<const Condition*> & pre, 
-				const std::vector<const Condition*> & pre2) const;
+                                const std::vector<const Condition*> & pre2) const;
 
     void compute_label_dominance();
 

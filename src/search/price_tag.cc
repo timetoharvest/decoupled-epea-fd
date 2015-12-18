@@ -316,8 +316,6 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
     
     assert(leaf_tags_to_cache.empty());
     
-    //g_factoring->get_pruning()->reset();
-    
     if (store_frontier){
         frontier.resize(g_factors.size());
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
