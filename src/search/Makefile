@@ -228,6 +228,10 @@ TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
 CXX = g++-4.9
 
+ifeq (, $(shell which $(CXX)))
+    CXX = g++
+endif
+
 DEPEND = $(CXX) -MM
 
 ## CXXFLAGS, LDFLAGS, POSTLINKOPT are options for compiler and linker
