@@ -13,10 +13,12 @@ class StateRegistry;
 
 class PriceTag {
     friend class StateRegistry;
+
+public:
+    static const int INF;
     
 protected:
     
-    static const int INF;
     
     static const size_t MAX_LEAF_SPACE_STORE;
     
