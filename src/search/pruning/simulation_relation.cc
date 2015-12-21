@@ -25,22 +25,20 @@ void SimulationRelation::perform_leaf_irrelevance_pruning() const {
 	    auto  & trs_s = g_leaf_state_successors[factor][s];
 	    num_transitions_before += trs_s.size();
 	    trs_s.erase(std::remove_copy_if(begin(trs_s),
-				       end(trs_s), begin(trs_s),
-				       [&](std::pair<const Operator*, size_t> & tr){
-					   if (simulates(factor, s, tr.second)) return true;
-					    
-					   return std::find_if(begin(trs_s),
-							       end(trs_s),
-							       [&](std::pair<const Operator*, size_t> & tr2){
-								   bool sim1 =simulates(factor, tr2.second, tr.second) && 
-								       op_dominated_by[tr2.first->get_index()] [tr.first->get_index()]; 
-								   bool sim2 =simulates(factor, tr.second, tr2.second) && 
-								       op_dominated_by[tr.first->get_index()] [tr2.first->get_index()]; 
-
-								   return sim1 && (!sim2 || tr.second <= tr2.second || 
-										   (tr.second == tr2.second &&
-										    tr.first->get_index() < tr2.first->get_index()));
-							       }) != end(trs_s);
+					    end(trs_s), begin(trs_s),
+					    [&](std::pair<const Operator*, size_t> & tr){
+						if (simulates(factor, s, tr.second)) return true;
+						return std::find_if(begin(trs_s),
+								    end(trs_s),
+								    [&](std::pair<const Operator*, size_t> & tr2){
+									return simulates(factor, tr2.second, tr.second) && 
+									    op_dominated_by[tr.first->get_index()] [tr2.first->get_index()]
+									    && (!(simulates(factor, tr.second, tr2.second) && 
+										  op_dominated_by[tr2.first->get_index()] [tr.first->get_index()])
+										|| tr.second < tr2.second || 
+										(tr.second == tr2.second &&
+										 tr.first->get_index() < tr2.first->get_index()));
+								    }) != end(trs_s);
 					    }),
 			end(trs_s));
 	    
