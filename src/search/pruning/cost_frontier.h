@@ -6,7 +6,8 @@
 #include <vector>
 
 class CostFrontierPruning : public Pruning {
-         
+
+    const bool compare_goal_prices;
 public:
     
     CostFrontierPruning(const Options &opts);

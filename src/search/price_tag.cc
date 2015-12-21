@@ -432,7 +432,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
                                 change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
-                            } else if (store_frontier){
+                            } else if (store_frontier) {
                                 all_applicable = false;
                                 int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
                                 int successor = g_leaf_state_successors[factor][id][o].second;
@@ -790,6 +790,12 @@ void PriceTag::goal_price_propagation() {
 	//cout << "Propagate: " << factor << endl;
 
 	vector<bool> closed (g_state_registry->size(factor), false);
+	
+	//boost::dynamic_bitset<> previous_frontier = frontier[factor];
+	
+	if(store_frontier) {
+	    frontier[factor].reset();  
+	}
 
 	//Alvaro: Given the size of leaf factors I think a bucketqueue
 	//should work better but requires some implementation
@@ -805,6 +811,7 @@ void PriceTag::goal_price_propagation() {
 	    pair<int, int> entry = open.pop();
 	    int state = entry.second;
 	    int value = entry.first;
+
 	    //cout << "Propagating s " << state << " with value " << value << endl; 
 	    if (closed[state]) continue;
 	    //if (value <= propagated_cost[g_leaf_state_id_map[factor][state]]) continue; // Price has already been set. 
@@ -814,34 +821,25 @@ void PriceTag::goal_price_propagation() {
 	    for (auto transition :  g_leaf_state_predecessors[factor][state]) {
 		int t = transition.second;
 		if (closed[t]) continue;
+
 		int idt = g_leaf_state_id_map[factor][t];
 		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
-		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
-		
+		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));		
 		int previous_t_val = ((idt == -1 || (size_t)idt >= costs[factor].size()) ? 
 				      numeric_limits<int>::max() : previous_costs[factor] [idt]);
 
 		int vt = std::min(previous_t_val, propagated_val);
+		if (store_frontier && vt < propagated_val) {
+		    frontier[factor][t] = true;
+		}
+
 		//cout << t << " is added with value " << (vt == numeric_limits<int>::max() ? INF : vt)  << endl; 
 		
 		open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
-		//if (vt > propagated_cost[g_leaf_state_id_map[factor][t]]) {
-		
-		//}
 	    }
 	}
 
-	// cout << "Cost: ";
-	// for (int c : previous_costs[factor]) {
-	//     cout << c << " "; 
-	// }
-	// cout << endl;
-
-	// cout << "Propagated cost: ";
-	// for (int c : costs[factor]) {
-	//     cout << c << " "; 
-	// }
-	// cout << endl;
+	//assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());
     }
 }
 
