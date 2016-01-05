@@ -1032,7 +1032,9 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     use_active_ops(opts.get<bool>("active_ops")),
     ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")),
     laarman_k(opts.get<int>("laarman_k")) {
-    if (g_use_decoupled_search && precond_choice == decoupled){
+    if (g_use_decoupled_search || precond_choice == decoupled){
+        assert(g_use_decoupled_search);
+        assert(precond_choice == decoupled);
         assert(g_factoring->get_profile() == FORK);
     }
     
