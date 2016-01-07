@@ -77,6 +77,8 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         }
     }
 #endif
+
+    
     
     vector<size_t> predecessors;
     SearchSpace *search_space = g_factoring->get_search_space();
@@ -785,10 +787,10 @@ void PriceTag::goal_price_propagation() {
     //Alvaro: dominance methods do not make sense on SAT? 
     assert(g_factoring->get_search_type() != SAT); 
 
+
     vector<vector<int> > previous_costs = costs; 
     for (size_t factor = 0; factor < g_factors.size(); ++factor) {
 	//cout << "Propagate: " << factor << endl;
-
 	vector<bool> closed (g_state_registry->size(factor), false);
 	
 	//boost::dynamic_bitset<> previous_frontier = frontier[factor];
@@ -813,6 +815,7 @@ void PriceTag::goal_price_propagation() {
 	    int value = entry.first;
 
 	    //cout << "Propagating s " << state << " with value " << value << endl; 
+
 	    if (closed[state]) continue;
 	    //if (value <= propagated_cost[g_leaf_state_id_map[factor][state]]) continue; // Price has already been set. 
 	    closed [state] = true;
@@ -825,9 +828,11 @@ void PriceTag::goal_price_propagation() {
 		int idt = g_leaf_state_id_map[factor][t];
 		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
 		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));		
-		int previous_t_val = ((idt == -1 || (size_t)idt >= costs[factor].size()) ? 
+		int previous_t_val = ((idt == -1 || (size_t)idt >= costs[factor].size() || previous_costs[factor] [idt] == -1) ? 
 				      numeric_limits<int>::max() : previous_costs[factor] [idt]);
 
+	       
+		
 		int vt = std::min(previous_t_val, propagated_val);
 		if (store_frontier && vt < propagated_val) {
 		    frontier[factor][t] = true;
@@ -838,7 +843,8 @@ void PriceTag::goal_price_propagation() {
 		open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
 	    }
 	}
-
+	assert (goal_cost[factor] == -1 || number_facts [factor] ==  g_state_registry->size(factor));
+	
 	//assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());
     }
 }
