@@ -54,7 +54,7 @@ public:
 
 class PORMethodWithStatistics : public PORMethod {
     // if safety_belt is true, and there is no transition pruned on 
-    // the first 100 expanded states, POR will be switched off
+    // the first 1000 expanded states, POR will be switched off
     bool safety_belt, switched_off;
     int number_expansions;
     long unpruned_successors_generated;

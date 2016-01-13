@@ -53,10 +53,10 @@ void PORMethodWithStatistics::prune_operators(
         if (switched_off){
             return;
         }
-        if(++number_expansions == 100){
+        if(++number_expansions == 1000){
             if (unpruned_successors_generated == pruned_successors_generated){
                 switched_off = true;
-                cout << "POR safety belt triggered: Expanded 100 states, but no pruning => POR deactivated" << endl;
+                cout << "POR safety belt triggered: Expanded 1000 states, but no pruning => POR deactivated" << endl;
             }
         }
     }
