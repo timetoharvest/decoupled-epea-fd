@@ -6,6 +6,7 @@
 
 class Operator;
 class OptionParser;
+class Options;
 class State;
 
 namespace POR {
@@ -52,6 +53,10 @@ public:
 
 
 class PORMethodWithStatistics : public PORMethod {
+    // if safety_belt is true, and there is no transition pruned on 
+    // the first 100 expanded states, POR will be switched off
+    bool safety_belt, switched_off;
+    int number_expansions;
     long unpruned_successors_generated;
     long pruned_successors_generated;
 protected:
@@ -59,6 +64,7 @@ protected:
                             std::vector<const Operator *> &ops) = 0;
 public:
     PORMethodWithStatistics();
+    PORMethodWithStatistics(const Options &opts);
     virtual ~PORMethodWithStatistics();
 
     virtual void prune_operators(const State &state,

@@ -1057,6 +1057,7 @@ void SimpleStubbornSets::dump_active_ops_option() {
 }
 
 SimpleStubbornSets::SimpleStubbornSets(const Options& opts) : 
+    PORMethodWithStatistics(opts),
     precond_choice(PreconditionChoice(opts.get_enum("precond_choice"))),
     mutex_option(MutexOption(opts.get_enum("mutexes"))),
     use_active_ops(opts.get<bool>("active_ops")),
