@@ -9,8 +9,7 @@
 
 using namespace std;
 
-CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts), 
-								compare_goal_prices(opts.get<bool>("compare_goal_prices")) {
+CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
     PriceTag::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
@@ -28,46 +27,30 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
     
     // compare prices
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	if (compare_goal_prices) {
-	    if (check.get_goal_cost(factor) != PriceTag::INF || reference.get_goal_cost(factor) != PriceTag::INF){
-		if (check.get_goal_cost(factor) == PriceTag::INF || 
-		    (reference.get_goal_cost(factor) != PriceTag::INF &&
-		     check.get_goal_cost(factor) > reference.get_goal_cost (factor))) {
-		    dominates = false;
-		}else if (reference.get_goal_cost(factor) == PriceTag::INF || 
-			  (check.get_goal_cost(factor) != PriceTag::INF &&
-			   reference.get_goal_cost(factor) > check.get_goal_cost (factor))) {
-		    dominated = false;
-		}else {
-		    assert(check.get_goal_cost(factor) == reference.get_goal_cost(factor));	 
-		}
-	    }
+        if (check.get_goal_cost(factor) != PriceTag::INF || reference.get_goal_cost(factor) != PriceTag::INF){
+            if (check.get_goal_cost(factor) == PriceTag::INF || 
+                (reference.get_goal_cost(factor) != PriceTag::INF &&
+                    check.get_goal_cost(factor) > reference.get_goal_cost (factor))) {
+                dominates = false;
+            } else if (reference.get_goal_cost(factor) == PriceTag::INF || 
+                        (check.get_goal_cost(factor) != PriceTag::INF &&
+                        reference.get_goal_cost(factor) > check.get_goal_cost (factor))) {
+                dominated = false;
+            } 
+#ifndef NDEBUG
+            else {
+                assert(check.get_goal_cost(factor) == reference.get_goal_cost(factor));	 
+            }
+#endif
 	}
 
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (g_is_leaf_goal_state[factor][id]){
-		if (compare_goal_prices) continue;
-                if (reference.has_leaf_state(id, factor)){		    
-                    if (check.has_leaf_state(id, factor)){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
-                        if (old_cost < new_cost){
-			    dominates = false;
-                        } else if (new_cost < old_cost){
-                            dominated = false;
-                        }
-                    } else {
-                        dominates = false;
-                    }
-                } else if (check.has_leaf_state(id, factor)){
-                    dominated = false;
-                }
-            } else {
+            if (!g_is_leaf_goal_state[factor][id]){
                 if (dominates && reference_frontier[factor][id]){
-                    assert(reference.has_leaf_state(id, factor));
-                    if (check.has_leaf_state(id, factor)){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
+                    assert(reference.has_propagated_leaf_state(id, factor));
+                    if (check.has_propagated_leaf_state(id, factor)){
+                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
+                        int new_cost = check.get_propagated_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -79,10 +62,10 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
                     }
                 }
                 if (dominated && current_frontier[factor][id]){
-                    assert(check.has_leaf_state(id, factor));
-                    if (reference.has_leaf_state(id, factor)){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
+                    assert(check.has_propagated_leaf_state(id, factor));
+                    if (reference.has_propagated_leaf_state(id, factor)){
+                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
+                        int new_cost = check.get_propagated_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -93,18 +76,11 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
                         dominated = false;
                     }
                 }
-            }
-            
+            }            
 
             if (!dominated && !dominates){
                 return NONE;
             }
-            //Alvaro: removed unnecessary conditions 
-            // else if (!dominated && needed == DOMINATED){
-            //     return NONE;
-            // } else if (!dominates && needed == DOMINATES){
-            //     return NONE;
-            // }
         }
     }
     if (dominated && dominates){
@@ -128,9 +104,6 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
 
 static Pruning *_parse_cost_frontier(OptionParser &parser) {
     Pruning::add_options_to_parser(parser);
-    parser.add_option<bool>("compare_goal_prices",
-                            "if true, all goal states are considered like a single state",
-			    "false");
 
     Options opts = parser.parse();
 

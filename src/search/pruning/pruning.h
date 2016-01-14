@@ -14,10 +14,19 @@ enum DOMINATION {
 };
 
 class Pruning {
-
-    bool do_simulation, do_irrelevance;
+    
+    enum IRRELEVANCE {
+        NO,
+        STATES,
+        TRANSITIONS
+    };
+    
+    IRRELEVANCE irrelevance;
+    
+protected:    
+    bool do_simulation;
 public:
-    Pruning() : do_simulation (false), do_irrelevance(false){}
+    Pruning() : irrelevance(NO), do_simulation (false) {}
 
     Pruning(const Options &opts);
 

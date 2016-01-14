@@ -11,8 +11,8 @@
 
 using namespace std;
 
-Pruning::Pruning (const Options &opts) : do_simulation(opts.get<bool>("simulation")), 
-					 do_irrelevance(opts.get<bool>("irrelevance")){
+Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
+                                         do_simulation(opts.get<bool>("simulation")) {
 
     if (opts.get<bool>("goal_price_propagation")){
 	g_compute_leaf_backward_graph = true;
@@ -20,19 +20,19 @@ Pruning::Pruning (const Options &opts) : do_simulation(opts.get<bool>("simulatio
 	cout << "using goal price propagation pruning" << endl;
     }
 
-    if (do_simulation || do_irrelevance){
+    if (do_simulation || irrelevance != NO){
 	g_compute_leaf_backward_graph = true;
     }
 }
 
 void Pruning::init() {
-    if (do_simulation || do_irrelevance){
+    if (do_simulation || irrelevance != NO){
 
         SimulationRelation rel; 
         rel.init();
         rel.statistics();
-        if (do_irrelevance) {
-            rel.perform_leaf_irrelevance_pruning(); 
+        if (irrelevance != NO) {
+            rel.perform_leaf_irrelevance_pruning(irrelevance == STATES);
         }
 
         if (do_simulation) {
@@ -58,60 +58,62 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     
     // check number of reachable leaf states
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
-            // in satisficing search, updating PriceTags stops if a goal 
-            // is reached in fork leaves. thus cannot compare number of states 
-            // in this case
-            if (check.get_goal_cost(factor) >= 0){
-                if (reference.get_goal_cost(factor) >= 0){
-                    // don't care about size/reachability
-                } else {
+    if (!do_simulation){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
+                // in satisficing search, updating PriceTags stops if a goal 
+                // is reached in fork leaves. thus cannot compare number of states 
+                // in this case
+                if (check.get_goal_cost(factor) >= 0){
+                    if (reference.get_goal_cost(factor) >= 0){
+                        // don't care about size/reachability
+                    } else {
+                        all_goals_reached = false;
+                        new_is_larger = true;
+                        new_is_smaller = true;
+                        sizes_equal = false;
+                    }
+                    skip_leaf[factor] = true;
+                    continue;
+                } else if (reference.get_goal_cost(factor) >= 0){
                     all_goals_reached = false;
-                    new_is_larger = true;
                     new_is_smaller = true;
+                    new_is_larger = true;
                     sizes_equal = false;
+                    skip_leaf[factor] = true;
+                    continue;
                 }
-                skip_leaf[factor] = true;
-                continue;
-            } else if (reference.get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
+            }
+            if (reference.get_number_states(factor) > check.get_number_states(factor)){
                 new_is_smaller = true;
+                sizes_equal = false;
+            } else if (reference.get_number_states(factor) < check.get_number_states(factor)){
                 new_is_larger = true;
                 sizes_equal = false;
-                skip_leaf[factor] = true;
-                continue;
             }
-            all_goals_reached = false;
+            if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+                all_leaves_max_size = false;
+            }
         }
-        if (reference.get_number_states(factor) > check.get_number_states(factor)){
-            new_is_smaller = true;
-            sizes_equal = false;
-        } else if (reference.get_number_states(factor) < check.get_number_states(factor)){
-            new_is_larger = true;
-            sizes_equal = false;
+        
+        if (new_is_smaller && new_is_larger){
+            return NONE;
+        } else if (new_is_smaller && needed == DOMINATES){
+            return NONE;
+        } else if (new_is_larger && needed == DOMINATED){
+            return NONE;
         }
-        if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
-            all_leaves_max_size = false;
+        
+        if (all_goals_reached){
+            // this is only relevant in satisficing fork-decoupled search when the center
+            // has not reached its goal yet, but all leaves do.
+            return EQUAL;
         }
-    }
-    
-    if (new_is_smaller && new_is_larger){
-        return NONE;
-    } else if (new_is_smaller && needed == DOMINATES){
-        return NONE;
-    } else if (new_is_larger && needed == DOMINATED){
-        return NONE;
-    }
-    
-    if (all_goals_reached){
-        // this is only relevant in satisficing fork-decoupled search when the center
-        // has not reached its goal yet, but all leaves do.
-        return EQUAL;
-    }
-    
-    if (sizes_equal && all_leaves_max_size){
-        return EQUAL;
+        
+        if (sizes_equal && all_leaves_max_size){
+            return EQUAL;
+        }
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -122,20 +124,20 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
-        size_t number_new_states = check.get_number_states(factor);
-        size_t number_old_states = reference.get_number_states(factor);
+        size_t number_new_states = check.get_number_propagated_states(factor);
+        size_t number_old_states = reference.get_number_propagated_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check.has_leaf_state(id, factor)){
+            if (check.has_propagated_leaf_state(id, factor)){
                 --number_new_states;
-                if (reference.has_leaf_state(id, factor)){
+                if (reference.has_propagated_leaf_state(id, factor)){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
+                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
+                        int new_cost = check.get_propagated_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -148,7 +150,7 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
                 } else {
                     dominated = false;
                 }                
-            } else if (reference.has_leaf_state(id, factor)){
+            } else if (reference.has_propagated_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
             }
@@ -195,8 +197,10 @@ void Pruning::add_options_to_parser(OptionParser &parser){
     parser.add_option<bool>("simulation",
                             "perform simulation dominance pruning", "false");
 
-    parser.add_option<bool>("irrelevance",
-                            "perform simulation irrelevance pruning", "false");
+    vector<string> irr_options({"NO", "STATES", "TRANSITIONS"});
+    parser.add_enum_option("irrelevance",
+                           irr_options,
+                           "perform simulation irrelevance pruning", "NO");
 
 }
 

@@ -18,32 +18,85 @@ void SimulationRelation::init () {
     }
 }
 
-void SimulationRelation::perform_leaf_irrelevance_pruning() const {
+void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) const {
+    
+    vector<vector<vector<pair<const Operator*, size_t> > > > tmp;
+    if (only_remove_states){
+        tmp = g_leaf_state_successors;        
+    }    
+    
     int num_transitions_before = 0, num_transitions_after = 0;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
-	    auto  & trs_s = g_leaf_state_successors[factor][s];
-	    num_transitions_before += trs_s.size();
-	    trs_s.erase(std::remove_copy_if(begin(trs_s),
-					    end(trs_s), begin(trs_s),
-					    [&](std::pair<const Operator*, size_t> & tr){
-						if (simulates(factor, s, tr.second)) return true;
-						return std::find_if(begin(trs_s),
-								    end(trs_s),
-								    [&](std::pair<const Operator*, size_t> & tr2){
-									return simulates(factor, tr2.second, tr.second) && 
-									    op_dominated_by[tr.first->get_index()] [tr2.first->get_index()]
-									    && (!(simulates(factor, tr.second, tr2.second) && 
-										  op_dominated_by[tr2.first->get_index()] [tr.first->get_index()])
-										|| tr.second < tr2.second || 
-										(tr.second == tr2.second &&
-										 tr.first->get_index() < tr2.first->get_index()));
-								    }) != end(trs_s);
-					    }),
-			end(trs_s));
-	    
-	    num_transitions_after += trs_s.size();
-	}
+        for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
+            auto  & trs_s = g_leaf_state_successors[factor][s];
+            num_transitions_before += trs_s.size();
+            trs_s.erase(std::remove_copy_if(begin(trs_s),
+                                            end(trs_s), begin(trs_s),
+                                            [&](std::pair<const Operator*, size_t> & tr){
+                                                if (simulates(factor, s, tr.second)) return true;
+                                                return std::find_if(begin(trs_s),
+                                                                    end(trs_s),
+                                                                    [&](std::pair<const Operator*, size_t> & tr2){
+                                                                        return simulates(factor, tr2.second, tr.second) && 
+                                                                            op_dominated_by[tr.first->get_index()] [tr2.first->get_index()]
+                                                                            && (!(simulates(factor, tr.second, tr2.second) && 
+                                                                                  op_dominated_by[tr2.first->get_index()] [tr.first->get_index()])
+                                                                                || tr.second < tr2.second || 
+                                                                                (tr.second == tr2.second &&
+                                                                                 tr.first->get_index() < tr2.first->get_index()));
+                                                                    }) != end(trs_s);
+                                            }),
+                        end(trs_s));
+            num_transitions_after += trs_s.size();
+        }
+
+        // reachability analysis
+        boost::dynamic_bitset<> reachable(g_leaf_state_successors[factor].size(), false);
+        
+        vector<size_t> current(1, 0);
+
+        while (!current.empty()){
+            vector<size_t> next;
+            for (auto id : current){
+                if (reachable[id]){
+                    continue;
+                }
+                reachable[id] = true;
+                for (auto transition : g_leaf_state_successors[factor][id]){
+                    int t = transition.second;
+                    if (!reachable[t]) {
+                        next.push_back(t);
+                    }
+                }
+            }
+            next.swap(current);
+        }
+        
+        if (only_remove_states){
+            g_leaf_state_successors[factor].swap(tmp[factor]);
+        }
+        
+        // remove irrelevant states 
+        for (size_t id = 0; id < reachable.size(); ++id){
+            if (!reachable[id]){
+                vector<pair<const Operator*, size_t> >().swap(g_leaf_state_successors[factor][id]);
+            }
+        }
+        
+        if (only_remove_states){
+            num_transitions_after = 0;
+            // (re-)remove transitions entering removed states
+            for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
+                auto &trs_s = g_leaf_state_successors[factor][s];
+                
+                trs_s.erase(std::remove_if(begin(trs_s), end(trs_s),
+                    [&](std::pair<const Operator*, size_t> & tr){
+                        return !reachable[tr.second];
+                    }), end(trs_s));
+                
+                num_transitions_after += trs_s.size();
+            }
+        }
     }
     
     if (g_compute_leaf_backward_graph) {

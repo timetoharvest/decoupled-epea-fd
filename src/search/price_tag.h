@@ -9,8 +9,6 @@
 #include <vector>
 
 
-class StateRegistry;
-
 class PriceTag {
     friend class StateRegistry;
 
@@ -31,9 +29,14 @@ protected:
 
     std::vector<boost::dynamic_bitset<> > frontier;
     
-    std::vector<size_t> number_facts;
+    std::vector<size_t> number_states;
     
-    std::vector<std::vector<int> > costs;
+    std::vector<size_t> number_propagated_states;
+    
+    std::vector<std::vector<int> > prices;
+    
+    std::vector<std::vector<int> > propagated_prices;
+    
     // TODO somehow get rid of the second vector
     // what about having a PriceTag interface + 2 inheriting subclasses?
     // then, make two global objects storing the different PriceTags
@@ -59,6 +62,8 @@ protected:
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost);
+    
+    void add_propagated_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
@@ -86,9 +91,15 @@ public:
     
     bool has_leaf_state(int id, int factor) const;
     
+    bool has_propagated_leaf_state(int id, int factor) const;
+    
     int get_cost_of_state(int id, int factor) const;
     
+    int get_propagated_cost_of_state(int id, int factor) const;
+    
     size_t get_number_states(int factor) const;
+    
+    size_t get_number_propagated_states(int factor) const;
     
     int get_goal_cost(int factor) const;
     

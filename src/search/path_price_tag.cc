@@ -25,24 +25,24 @@ void PathPriceTagInfo::dump() const {
 
 PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
     if (tag == 0){
-        number_facts = vector<size_t>(g_factors.size(), 0);
+        number_states = vector<size_t>(g_factors.size(), 0);
         if (g_factoring->get_search_type() != SAT){
-            costs = vector<vector<int> >(g_factors.size());
+            prices = vector<vector<int> >(g_factors.size());
         } else {
             reachable = vector<boost::dynamic_bitset<> >(g_factors.size());
         }
         goal_cost = vector<int>(g_factors.size(), INF);
         paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
     } else {
-        number_facts = tag->number_facts;
+        number_states = tag->number_states;
         goal_cost = tag->goal_cost;
-        costs = tag->costs;
+        prices = tag->prices;
         reachable = tag->reachable;
         paths = tag->paths;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (g_factoring->get_search_type() != SAT){
-                for (size_t state = 0; state < costs[factor].size(); ++state){
-                    if (costs[factor][state] != INF){
+                for (size_t state = 0; state < prices[factor].size(); ++state){
+                    if (prices[factor][state] != INF){
                         paths[factor][state].is_new = false;
                     }
                 }
@@ -103,7 +103,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
             }
             lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
         }
-        cout << "       " << new_tag.get_number_facts(factor) << " fact(s) initially true in leaf factor " << factor << endl;
+        cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif   
         
         vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
@@ -116,9 +116,9 @@ void PathPriceTag::update_price_tags(const State &base_state) {
             
             change = false;
             
-            size_t number_states = 0;
+            size_t num_states = 0;
             size_t id = 0;
-            while (number_states < number_facts[factor]) {
+            while (num_states < number_states[factor]) {
                 
                 if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
                     // in satisficing search => stop once a goal is reachable in fork-leaves
@@ -130,7 +130,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     break;
                 }
                 if (has_leaf_state(id, factor)){
-                    ++number_states;
+                    ++num_states;
                 
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){

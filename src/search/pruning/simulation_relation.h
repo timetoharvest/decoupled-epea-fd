@@ -58,7 +58,7 @@ public:
 
     void set_list_dominated_states() const;
 
-    void perform_leaf_irrelevance_pruning() const;
+    void perform_leaf_irrelevance_pruning(bool only_remove_states = false) const;
 
 };
 
