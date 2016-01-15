@@ -47,9 +47,6 @@ PriceTag::PriceTag(const PriceTag *tag) {
         reachable = tag->reachable;
         goal_cost = tag->goal_cost;
     }
-    if (propagate_goal_prices || !dominated_states.empty()){
-        number_propagated_states.resize(g_factors.size());
-    }
 }
 
 bool PriceTag::contains_goal(const LeafStateID &fact) const {
@@ -319,6 +316,7 @@ void PriceTag::add_propagated_state(const LeafStateID &state, int cost) {
     if(propagated_prices.empty()){
 	if (has_leaf_state(leaf_id, factor) && cost >= get_cost_of_state(leaf_id, factor)) return;
         propagated_prices = prices;
+        number_propagated_states = number_states;
     }
 
     assert(g_factoring->get_search_type() != SAT); // not implemented, yet
@@ -760,7 +758,7 @@ bool PriceTag::has_leaf_state(int id, int factor) const {
 }
 
 bool PriceTag::has_propagated_leaf_state(int id, int factor) const {
-    if (propagated_prices.empty()){ // if (!propagate_goal_prices && dominated_states.empty()){
+    if (propagated_prices.empty()){
         return has_leaf_state(id, factor);
     } else {
         if (g_leaf_state_id_map[factor][id] == -1){
@@ -782,7 +780,7 @@ int PriceTag::get_cost_of_state(int id, int factor) const {
 }
 
 int PriceTag::get_propagated_cost_of_state(int id, int factor) const {
-    if (propagated_prices.empty()){ // (!propagate_goal_prices && dominated_states.empty()){
+    if (propagated_prices.empty()){
         return get_cost_of_state(id, factor);
     } else {
         assert(g_factoring->get_search_type() != SAT);  // not yet implemented
@@ -796,7 +794,7 @@ size_t PriceTag::get_number_states(int factor) const {
 }
 
 size_t PriceTag::get_number_propagated_states(int factor) const {
-    if (propagated_prices.empty()) {/*!propagate_goal_prices && dominated_states.empty()*/
+    if (propagated_prices.empty()){
         return number_states[factor];
     } else {
         return number_propagated_states[factor];
@@ -843,12 +841,6 @@ void PriceTag::goal_price_propagation() {
     assert(g_factoring->get_profile() == FORK);
     //Alvaro: dominance methods do not make sense on SAT?
     assert(g_factoring->get_search_type() != SAT);
-    
-    if (dominated_states.empty()){
-        // we do not also do simulation
-        // propagated_prices = prices;
-        number_propagated_states = number_states;
-    }
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor) {
 	//cout << "Propagate: " << factor << endl;
@@ -920,8 +912,7 @@ void PriceTag::goal_price_propagation() {
 
 void PriceTag::propagate_dominance_prices() {
     assert(g_factoring->get_profile() == FORK);
-    //propagated_prices = prices;
-    number_propagated_states = number_states;
+        
     for (size_t factor = 0; factor < dominated_states.size(); ++factor){
 	for (size_t s = 0; s < dominated_states[factor].size(); ++s) {
 	    if(has_propagated_leaf_state(s, factor)){

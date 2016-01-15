@@ -58,62 +58,60 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     
     // check number of reachable leaf states
-    if (!g_compute_leaf_backward_graph /* simulation or goal price propagation */){
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
-                // in satisficing search, updating PriceTags stops if a goal 
-                // is reached in fork leaves. thus cannot compare number of states 
-                // in this case
-                if (check.get_goal_cost(factor) >= 0){
-                    if (reference.get_goal_cost(factor) >= 0){
-                        // don't care about size/reachability
-                    } else {
-                        all_goals_reached = false;
-                        new_is_larger = true;
-                        new_is_smaller = true;
-                        sizes_equal = false;
-                    }
-                    skip_leaf[factor] = true;
-                    continue;
-                } else if (reference.get_goal_cost(factor) >= 0){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
+            // in satisficing search, updating PriceTags stops if a goal 
+            // is reached in fork leaves. thus cannot compare number of states 
+            // in this case
+            if (check.get_goal_cost(factor) >= 0){
+                if (reference.get_goal_cost(factor) >= 0){
+                    // don't care about size/reachability
+                } else {
                     all_goals_reached = false;
-                    new_is_smaller = true;
                     new_is_larger = true;
+                    new_is_smaller = true;
                     sizes_equal = false;
-                    skip_leaf[factor] = true;
-                    continue;
                 }
+                skip_leaf[factor] = true;
+                continue;
+            } else if (reference.get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
-            }
-            if (reference.get_number_states(factor) > check.get_number_states(factor)){
                 new_is_smaller = true;
-                sizes_equal = false;
-            } else if (reference.get_number_states(factor) < check.get_number_states(factor)){
                 new_is_larger = true;
                 sizes_equal = false;
+                skip_leaf[factor] = true;
+                continue;
             }
-            if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
-                all_leaves_max_size = false;
-            }
+            all_goals_reached = false;
         }
-        
-        if (new_is_smaller && new_is_larger){
-            return NONE;
-        } else if (new_is_smaller && needed == DOMINATES){
-            return NONE;
-        } else if (new_is_larger && needed == DOMINATED){
-            return NONE;
+        if (reference.get_number_propagated_states(factor) > check.get_number_propagated_states(factor)){
+            new_is_smaller = true;
+            sizes_equal = false;
+        } else if (reference.get_number_propagated_states(factor) < check.get_number_propagated_states(factor)){
+            new_is_larger = true;
+            sizes_equal = false;
         }
-        
-        if (all_goals_reached){
-            // this is only relevant in satisficing fork-decoupled search when the center
-            // has not reached its goal yet, but all leaves do.
-            return EQUAL;
+        if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+            all_leaves_max_size = false;
         }
-        
-        if (sizes_equal && all_leaves_max_size){
-            return EQUAL;
-        }
+    }
+    
+    if (new_is_smaller && new_is_larger){
+        return NONE;
+    } else if (new_is_smaller && needed == DOMINATES){
+        return NONE;
+    } else if (new_is_larger && needed == DOMINATED){
+        return NONE;
+    }
+    
+    if (all_goals_reached){
+        // this is only relevant in satisficing fork-decoupled search when the center
+        // has not reached its goal yet, but all leaves do.
+        return EQUAL;
+    }
+    
+    if (sizes_equal && all_leaves_max_size){
+        return EQUAL;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
