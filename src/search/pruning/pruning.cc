@@ -58,7 +58,7 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     
     // check number of reachable leaf states
-    if (!do_simulation){
+    if (!g_compute_leaf_backward_graph /* simulation or goal price propagation */){
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
                 // in satisficing search, updating PriceTags stops if a goal 

@@ -49,7 +49,6 @@ PriceTag::PriceTag(const PriceTag *tag) {
     }
     if (propagate_goal_prices || !dominated_states.empty()){
         number_propagated_states.resize(g_factors.size());
-        propagated_prices.resize(g_factors.size());
     }
 }
 
@@ -316,6 +315,11 @@ void PriceTag::add_propagated_state(const LeafStateID &state, int cost) {
         ++g_curr_leaf_state_max_id[factor];
     }
     size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
+
+    if(propagated_prices.empty()){
+	if (has_leaf_state(leaf_id, factor) && cost >= get_cost_of_state(leaf_id, factor)) return;
+        propagated_prices = prices;
+    }
 
     assert(g_factoring->get_search_type() != SAT); // not implemented, yet
     
@@ -756,7 +760,7 @@ bool PriceTag::has_leaf_state(int id, int factor) const {
 }
 
 bool PriceTag::has_propagated_leaf_state(int id, int factor) const {
-    if (!propagate_goal_prices && dominated_states.empty()){
+    if (propagated_prices.empty()){ // if (!propagate_goal_prices && dominated_states.empty()){
         return has_leaf_state(id, factor);
     } else {
         if (g_leaf_state_id_map[factor][id] == -1){
@@ -778,7 +782,7 @@ int PriceTag::get_cost_of_state(int id, int factor) const {
 }
 
 int PriceTag::get_propagated_cost_of_state(int id, int factor) const {
-    if (!propagate_goal_prices && dominated_states.empty()){
+    if (propagated_prices.empty()){ // (!propagate_goal_prices && dominated_states.empty()){
         return get_cost_of_state(id, factor);
     } else {
         assert(g_factoring->get_search_type() != SAT);  // not yet implemented
@@ -792,7 +796,7 @@ size_t PriceTag::get_number_states(int factor) const {
 }
 
 size_t PriceTag::get_number_propagated_states(int factor) const {
-    if (!propagate_goal_prices && dominated_states.empty()){
+    if (propagated_prices.empty()) {/*!propagate_goal_prices && dominated_states.empty()*/
         return number_states[factor];
     } else {
         return number_propagated_states[factor];
@@ -842,7 +846,7 @@ void PriceTag::goal_price_propagation() {
     
     if (dominated_states.empty()){
         // we do not also do simulation
-        propagated_prices = prices;
+        // propagated_prices = prices;
         number_propagated_states = number_states;
     }
     
@@ -892,8 +896,9 @@ void PriceTag::goal_price_propagation() {
 		int idt = g_leaf_state_id_map[factor][t];
 		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
 		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
-		int previous_t_val = ((idt == -1 || (size_t) idt >= propagated_prices[factor].size() || propagated_prices[factor][idt] == -1) ? 
-				      numeric_limits<int>::max() : propagated_prices[factor][idt]);
+
+		int previous_t_val = !has_propagated_leaf_state(idt, factor) ? numeric_limits<int>::max() :
+				      get_propagated_cost_of_state(idt, factor);
 
 		int vt = std::min(previous_t_val, propagated_val);
                 open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
@@ -915,7 +920,7 @@ void PriceTag::goal_price_propagation() {
 
 void PriceTag::propagate_dominance_prices() {
     assert(g_factoring->get_profile() == FORK);
-    propagated_prices = prices;
+    //propagated_prices = prices;
     number_propagated_states = number_states;
     for (size_t factor = 0; factor < dominated_states.size(); ++factor){
 	for (size_t s = 0; s < dominated_states[factor].size(); ++s) {
