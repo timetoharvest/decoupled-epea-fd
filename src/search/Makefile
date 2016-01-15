@@ -10,6 +10,9 @@ DOWNWARD_BITWIDTH ?= 32
 ## Set DOWNWARD_USE_LP to 1 to enable linear programming stuff.
 DOWNWARD_USE_LP ?= 0
 
+## Set USE_BLISS to the version (0.5 or 0.72) to enable the BLISS tool. Otherwise, set to 0.
+USE_BLISS=0.72
+
 ## Fast Downward uses the Open Solver Interface (OSI) by the
 ## COIN-OR project for access to LP solvers. Set DOWNWARD_COIN_ROOT
 ## to a path where OSI is installed.
@@ -29,6 +32,14 @@ DOWNWARD_GUROBI_LIBDIR ?=
 ## disable/enable static linking of the executable in release mode.
 ## On OS X, this is unsupported and will be silently disabled.
 DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
+
+## Set CANONICAL to 0 or 1 to control whether additional buffer is used in state proxy
+## for symmetries.
+CANONICAL=0
+
+## Set DEBUGMODE to 0 or 1 to control whether additional output is produced.
+DEBUGMODE=0
+
 
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
@@ -91,6 +102,11 @@ HEADERS = \
           open_lists/tiebreaking_open_list.h \
           \
           lp_solver_interface.h \
+
+##HEADERS += symmetries/graph_creator.h \
+##           symmetries/permutation.h \
+##           symmetries/group.h \
+
 
 ## Each of the following "HEADERS += ..." constructs defines a
 ## "plugin" feature that can be enabled or disabled by simply
@@ -386,6 +402,50 @@ POSTLINKOPT_PROFILE += -Wl,-Bdynamic
 endif
 
 endif # LP code
+
+
+ifneq ($(USE_BLISS),0)
+
+## Link Bliss (for symmetries)
+BLISS_DIR = bliss-$(USE_BLISS)
+
+$(BLISS_DIR)/libbliss.a:
+	cd $(BLISS_DIR) && make
+
+$(TARGET_RELEASE) $(OBJECTS_RELEASE): $(BLISS_DIR)/libbliss.a
+$(TARGET_DEBUG) $(OBJECTS_DEBUG): $(BLISS_DIR)/libbliss.a
+$(TARGET_PROFILE) $(OBJECTS_PROFILE): $(BLISS_DIR)/libbliss.a
+
+CCOPT += -DUSE_BLISS -I$(BLISS_DIR)
+
+ifeq ($(USE_BLISS),0.5)
+CCOPT += -DUSE_BLISS05
+endif
+
+
+#BLISS_LINKOPT = -L$(BLISS_DIR) -Wl,-Bstatic -lbliss
+BLISS_LINKOPT = -L$(BLISS_DIR)
+ifeq ($(LINK_RELEASE_STATICALLY), 0)
+BLISS_LINKOPT += -lbliss
+else
+BLISS_LINKOPT += -Wl,-Bstatic -lbliss
+endif
+
+
+POSTLINKOPT_RELEASE += $(BLISS_LINKOPT)
+POSTLINKOPT_DEBUG += $(BLISS_LINKOPT)
+POSTLINKOPT_PROFILE += $(BLISS_LINKOPT)
+
+endif # BLISS code
+
+ifeq ($(CANONICAL), 1)
+CCOPT += -DCANONICAL
+endif
+
+ifeq ($(DEBUGMODE), 1)
+CCOPT += -DDEBUGMODE
+endif
+
 
 all: release debug profile
 
