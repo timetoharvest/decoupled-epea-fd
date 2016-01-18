@@ -256,7 +256,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 marked_leaf_states[factor].insert(best_leaf_state_id);
 
 #ifdef DEBUG_PLAN_EXTRACTION
-                cout << "marked goal fact: " << best_leaf_state_id << endl;
+                cout << "marked goal fact: " << best_leaf_state_id << " for cost " << min_cost << endl;
                 g_state_registry->lookup_leaf_state(LeafStateID(best_leaf_state_id, factor)).dump_pddl();
 #endif
             }
