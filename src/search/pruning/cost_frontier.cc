@@ -14,13 +14,13 @@ CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
     cout << "using cost frontier pruning" << endl;
 }
 
-DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &check, 
+DOMINATION CostFrontierPruning::check_dominance(const State &, PriceTag &check, 
                                                 PriceTag &reference, DOMINATION needed) {
     
     assert(g_factoring->get_profile() == FORK);
 
-    const vector<boost::dynamic_bitset<> > &current_frontier = check.get_frontier(center);    
-    const vector<boost::dynamic_bitset<> > &reference_frontier = reference.get_frontier(center);
+    const vector<boost::dynamic_bitset<> > &current_frontier = check.get_frontier();
+    const vector<boost::dynamic_bitset<> > &reference_frontier = reference.get_frontier();
         
     bool dominated = needed != DOMINATES;
     bool dominates = needed != DOMINATED;
@@ -47,10 +47,11 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (!g_is_leaf_goal_state[factor][id]){
                 if (dominates && reference_frontier[factor][id]){
-                    assert(reference.has_propagated_leaf_state(id, factor));
-                    if (check.has_propagated_leaf_state(id, factor)){
+                    assert(reference.has_leaf_state(id, factor));
+                    
+                    if (check.has_leaf_state(id, factor)){
                         int old_cost = reference.get_propagated_cost_of_state(id, factor);
-                        int new_cost = check.get_propagated_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -62,9 +63,10 @@ DOMINATION CostFrontierPruning::check_dominance(const State &center, PriceTag &c
                     }
                 }
                 if (dominated && current_frontier[factor][id]){
-                    assert(check.has_propagated_leaf_state(id, factor));
-                    if (reference.has_propagated_leaf_state(id, factor)){
-                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
+                    assert(check.has_leaf_state(id, factor));
+                    
+                    if (reference.has_leaf_state(id, factor)){
+                        int old_cost = reference.get_cost_of_state(id, factor);
                         int new_cost = check.get_propagated_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);

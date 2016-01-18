@@ -263,6 +263,7 @@ bool PriceTag::add_state(const LeafStateID &state, int cost) {
         g_leaf_state_id_map[factor][state.hash()] = g_curr_leaf_state_max_id[factor];
         ++g_curr_leaf_state_max_id[factor];
     }
+    assert(g_leaf_state_id_map[factor][state.hash()] >= 0);
     size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
 
     if (g_factoring->get_search_type() != SAT){
@@ -311,6 +312,7 @@ void PriceTag::add_propagated_state(const LeafStateID &state, int cost) {
         g_leaf_state_id_map[factor][state.hash()] = g_curr_leaf_state_max_id[factor];
         ++g_curr_leaf_state_max_id[factor];
     }
+    assert(g_leaf_state_id_map[factor][state.hash()] >= 0);
     size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
 
     if(propagated_prices.empty()){
@@ -453,13 +455,13 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             ++id;
                             continue;
                         }
-                        bool all_applicable = store_frontier;
+                        bool all_applicable = store_frontier && !propagate_goal_prices;
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
                                 change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
-                            } else if (store_frontier) {
+                            } else if (store_frontier && !propagate_goal_prices) {
                                 all_applicable = false;
                                 int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
                                 int successor = g_leaf_state_successors[factor][id][o].second;
@@ -813,10 +815,10 @@ void PriceTag::set_propagate_goal_prices() {
     propagate_goal_prices = true;
 }
 
-const vector< boost::dynamic_bitset<> > & PriceTag::get_frontier(const State &center) {
+const vector< boost::dynamic_bitset<> > & PriceTag::get_frontier() {
     assert(store_frontier);
     if (frontier.empty()){
-	compute_cost_frontier (center);
+	compute_cost_frontier();
 #ifdef DEBUG_PRUNING
 	cout << "not precomputed" << endl;
     } else {
@@ -837,13 +839,14 @@ void PriceTag::initialize_leaf_cache() {
 }
 
 void PriceTag::goal_price_propagation() {
-    assert(false);
     assert(g_factoring->get_profile() == FORK);
     //Alvaro: dominance methods do not make sense on SAT?
     assert(g_factoring->get_search_type() != SAT);
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor) {
-	//cout << "Propagate: " << factor << endl;
+        
+// 	cout << "Propagate: " << factor << endl;
+        
 	vector<bool> closed(g_state_registry->size(factor), false);
 	
 	if(store_frontier) {
@@ -870,9 +873,9 @@ void PriceTag::goal_price_propagation() {
             
 	    int value = entry.first;
 
-	    //cout << "Propagating s " << state << " with value " << value << endl; 
+// 	    cout << "Propagating s " << g_fact_names[g_factors[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(state, factor))[g_factors[factor][0]]] << " with value " << value << endl; 
 	    
-	    closed [state] = true;
+	    closed[state] = true;
             
 	    if (value != INF) {
                 add_propagated_state(LeafStateID(state, factor), value);
@@ -885,12 +888,11 @@ void PriceTag::goal_price_propagation() {
                     continue;
                 }
 
-		int idt = g_leaf_state_id_map[factor][t];
 		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
 		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
-		int previous_t_val = !has_propagated_leaf_state(idt, factor) ? numeric_limits<int>::max() :
-				      get_propagated_cost_of_state(idt, factor);
+		int previous_t_val = !has_propagated_leaf_state(t, factor) ? numeric_limits<int>::max() :
+				      get_propagated_cost_of_state(t, factor);
 
 		int vt = std::min(previous_t_val, propagated_val);
                 open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
@@ -898,8 +900,6 @@ void PriceTag::goal_price_propagation() {
 		if (store_frontier && has_leaf_state(t, factor) && get_cost_of_state(t, factor) < propagated_val) {
 		    frontier[factor][t] = true;
 		}
-
-		//cout << t << " is added with value " << (vt == numeric_limits<int>::max() ? INF : vt)  << endl;
 	    }
 	}
 // 	assert(goal_cost[factor] == -1 || number_propagated_states[factor] == g_state_registry->size(factor));
@@ -917,47 +917,22 @@ void PriceTag::propagate_dominance_prices() {
 	for (size_t s = 0; s < dominated_states[factor].size(); ++s) {
 	    if(has_propagated_leaf_state(s, factor)){
 		int cost_s = get_propagated_cost_of_state(s, factor);
-		for (int t : dominated_states[factor][s]) {
+		for (size_t t : dominated_states[factor][s]) {
 		    if (!has_propagated_leaf_state(t, factor) || get_propagated_cost_of_state(t, factor) > cost_s) { 
 			//cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
 			add_propagated_state(LeafStateID(t, factor), cost_s);
+                        // TODO: Daniel.. should we not only do this if add_propagated_state actually changes the price?
+                        frontier[factor][t] = false;
+    
 		    }
 		}
 	    }
 	}
     }
-    if (store_frontier && !propagate_goal_prices){
-        // frontier is overwritten by goal price propagation
-        // frontier might change due to propagated prices
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            for (size_t id = 0; id < g_leaf_state_successors[factor].size(); ++id){
-                if (!frontier[factor][id]){
-                    continue;
-                }
-                bool is_frontier = false;
-                for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
-                    const Operator *op = g_leaf_state_successors[factor][id][o].first;
-                    int successor = g_leaf_state_successors[factor][id][o].second;
-                    if (!has_propagated_leaf_state(successor, factor)){
-                        is_frontier = true;
-                        break;
-                    }
-                    int new_cost = get_propagated_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                    if (get_propagated_cost_of_state(successor, factor) > new_cost){
-                        is_frontier = true;
-                        break;
-                    }
-                }
-                if (!is_frontier){
-                    frontier[factor][id] = false;
-                }
-            }
-        }
-    }
 }
 
 
-void PriceTag::compute_cost_frontier(const State &center) {
+void PriceTag::compute_cost_frontier() {
     // frontier is only stored for states for which the dominance was already checked at some point
     //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
     
@@ -969,16 +944,13 @@ void PriceTag::compute_cost_frontier(const State &center) {
 		continue;
 	    }
 	    for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
-		const Operator *op = g_leaf_state_successors[factor][id][o].first;
-		if (op->is_center_applicable(center)){
-		    continue;
-		}
 		int successor = g_leaf_state_successors[factor][id][o].second;
 		if (!has_propagated_leaf_state(successor, factor)){
 		    frontier[factor][id] = true;
 		    break;
 		}
-		int new_cost = get_propagated_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+		int action_cost = get_adjusted_action_cost(*g_leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
+                int new_cost = get_propagated_cost_of_state(id, factor) + action_cost;
 		if (get_propagated_cost_of_state(successor, factor) > new_cost){
 		    frontier[factor][id] = true;
 		    break;

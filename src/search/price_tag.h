@@ -73,7 +73,7 @@ protected:
     
     virtual void apply_center_op_to_leaves(const PriceTag &old_tag, const Operator &op);
 
-    void compute_cost_frontier (const State &center); 
+    void compute_cost_frontier();
 
     void goal_price_propagation();
 
@@ -109,7 +109,7 @@ public:
 
     static void set_propagate_goal_prices();
     
-    const std::vector<boost::dynamic_bitset<> > & get_frontier(const State &center);
+    const std::vector<boost::dynamic_bitset<> > & get_frontier();
 };
 
 
