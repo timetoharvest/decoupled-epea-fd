@@ -346,10 +346,13 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
     assert(leaf_tags_to_cache.empty());
     
     if (store_frontier){
-        frontier.resize(g_factors.size());
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
+        const PriceTag &tag = g_price_tags[predecessor];
+        if (tag.prices.empty()){
+            // is initial state
+            assert(predecessor.get_id().hash() == 0);
+            g_price_tags[predecessor] = *this;
         }
+        frontier = g_price_tags[predecessor].get_frontier();
     }
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
@@ -422,25 +425,21 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
            
             change = false;
             
-            size_t num_states = 0;
-            size_t id = 0;
-            while (num_states < number_states[factor]) {
+            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 
                 if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
                     // in satisficing search => stop once a goal is reachable in fork-leaves
                     change = false;
                     break;
                 }
-                if (id >= g_state_registry->size(factor)){
-                    change = true;
-                    break;
-                }
                 if (has_leaf_state(id, factor)){
-                    ++num_states;
+                    
+                    if (store_frontier && !frontier[factor][id]){
+                        continue;
+                    }
                 
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost && !store_frontier){
-                        ++id;
                         continue;
                     }
                     
@@ -452,15 +451,19 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                             (id < g_leaf_state_successors[factor].size() && !g_leaf_state_successors[factor][id].empty())){
                         if (!g_factoring->precompute_state_space(factor) && g_leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
-                            ++id;
                             continue;
                         }
                         bool all_applicable = store_frontier && !propagate_goal_prices;
                         for (size_t o = 0; o < g_leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = g_leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                change |= add_state(LeafStateID(g_leaf_state_successors[factor][id][o].second, factor), 
+                                size_t successor = g_leaf_state_successors[factor][id][o].second;
+                                bool added = add_state(LeafStateID(successor, factor), 
                                                 cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                                change |= added;
+                                if (store_frontier && added){
+                                    frontier[factor][successor] = true;
+                                }
                             } else if (store_frontier && !propagate_goal_prices) {
                                 all_applicable = false;
                                 int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
@@ -554,7 +557,6 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                         }
                     }
                 }
-                ++id;
             }
         }
         
