@@ -63,7 +63,7 @@ protected:
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost);
     
-    void add_propagated_state(const LeafStateID &fact, int cost);
+    bool add_propagated_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
