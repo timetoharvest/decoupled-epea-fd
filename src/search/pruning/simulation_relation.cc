@@ -300,7 +300,7 @@ void SimulationRelation::set_list_dominated_states() const {
 	PriceTag::dominated_states[factor].resize(relation[factor].size());
 	for(size_t s = 0; s < relation[factor].size(); ++s){
 	    for(size_t t = 0; t < relation[factor].size(); ++t) {
-		if (simulates(factor, t, s)){
+		if (s != t && simulates(factor, t, s)){
 		    PriceTag::dominated_states[factor][t].push_back(s);
 		}
 	    }
