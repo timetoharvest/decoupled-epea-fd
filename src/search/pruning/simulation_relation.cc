@@ -10,7 +10,7 @@
 using namespace std;
 
 void SimulationRelation::init () {
-    cout  << "Init" << endl;
+    cout  << "Initializing simulation relation" << endl;
     compute_label_dominance();
     relation.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -315,7 +315,7 @@ void SimulationRelation::statistics() const{
 	    num_equivalences(factor) << " equivalences and " << 
 	    num_simulations(factor, true) << " simulations " << endl;
 
-	//dump(factor);
+// 	dump(factor);
     }    
 }
 
