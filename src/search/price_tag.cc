@@ -69,13 +69,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(id, factor)){
-                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-            }
-        }
-    }
+    dump();
 #endif    
     
     vector<size_t> predecessors;
@@ -114,13 +108,7 @@ int PriceTag::check_duplicate(const State &base_state, int curr_number_duplicate
         
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (g_price_tags[s].has_leaf_state(id, factor)){
-                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-                }
-            }
-        }
+        g_price_tags[s].dump();
 #endif
         
         if (!g_factoring->are_closed_nodes_reopened()){
@@ -316,7 +304,7 @@ bool PriceTag::add_propagated_state(const LeafStateID &state, int cost) {
     size_t leaf_id = g_leaf_state_id_map[factor][state.hash()];
 
     if(propagated_prices.empty()){
-	if (has_leaf_state(leaf_id, factor) && cost >= get_cost_of_state(leaf_id, factor)) {
+	if (has_leaf_state(state.hash(), factor) && cost >= get_cost_of_state(state.hash(), factor)) {
             return false;
         }
         propagated_prices = prices;
@@ -328,6 +316,7 @@ bool PriceTag::add_propagated_state(const LeafStateID &state, int cost) {
     if (leaf_id >= propagated_prices[factor].size()){
         propagated_prices[factor].resize(leaf_id + 1, INF);
     }
+    
     if (propagated_prices[factor][leaf_id] == INF){
         propagated_prices[factor][leaf_id] = cost;
         ++number_propagated_states[factor];
@@ -936,8 +925,8 @@ void PriceTag::propagate_dominance_prices() {
 	    if(has_propagated_leaf_state(s, factor)){
 		int cost_s = get_propagated_cost_of_state(s, factor);
 		for (size_t t : dominated_states[factor][s]) {
-		    if (!has_propagated_leaf_state(t, factor) || get_propagated_cost_of_state(t, factor) > cost_s) { 
-			//cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
+		    if (!has_propagated_leaf_state(t, factor) || get_propagated_cost_of_state(t, factor) > cost_s) {
+//                         cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
                         if (add_propagated_state(LeafStateID(t, factor), cost_s) && store_frontier){
                             frontier[factor][t] = false;
                         }
@@ -945,7 +934,8 @@ void PriceTag::propagate_dominance_prices() {
 		}
 	    }
 	}
-    }
+	assert(goal_cost[factor] != 0 || number_propagated_states[factor] == g_state_registry->size(factor));
+    }  
 }
 
 
@@ -976,3 +966,21 @@ void PriceTag::compute_cost_frontier() {
 	}
     }
 }
+
+void PriceTag::dump() const {
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_propagated_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                if (g_factors[factor].size() == 1){
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << (store_frontier ? " frontier state " : " ") << "with price " << get_propagated_cost_of_state(id, factor) << endl;
+                } else {
+                    state.dump_pddl();
+                    cout << (store_frontier ? "frontier state " : "") << "with price " << get_cost_of_state(id, factor) << endl;
+                }
+            }
+        }
+    }
+}
+

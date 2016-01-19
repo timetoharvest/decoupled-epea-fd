@@ -110,6 +110,8 @@ public:
     static void set_propagate_goal_prices();
     
     const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    
+    void dump() const;
 };
 
 
