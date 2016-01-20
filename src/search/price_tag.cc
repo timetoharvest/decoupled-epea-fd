@@ -850,7 +850,7 @@ void PriceTag::goal_price_propagation() {
         
 	vector<bool> closed(g_state_registry->size(factor), false);
 	
-	boost::dynamic_bitset<> sim_frontier;        
+	boost::dynamic_bitset<> sim_frontier;
         if(store_frontier) {
             if (!dominated_states.empty()){
                 sim_frontier = frontier[factor];
@@ -913,7 +913,7 @@ void PriceTag::goal_price_propagation() {
         // this assertion is not true! in case we have dead-end (i.e. irrelevant) leaf states that are not reached, no price is propagated to them
 	
 	//assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());
-    }
+    }    
 }
 
 
