@@ -18,8 +18,8 @@ void SimulationRelation::init () {
     }
 }
 
-void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) const {
-    
+void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) {
+    reachable.resize(g_factors.size());
     vector<vector<vector<pair<const Operator*, size_t> > > > tmp;
     if (only_remove_states){
         tmp = g_leaf_state_successors;        
@@ -47,24 +47,24 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
                                                                     }) != end(trs_s);
                                             }),
                         end(trs_s));
-            num_transitions_after += trs_s.size();
         }
 
-        // reachability analysis
-        boost::dynamic_bitset<> reachable(g_leaf_state_successors[factor].size(), false);
+        // reachability analysis        
+        // forward analysis
+        reachable[factor].resize(g_leaf_state_successors[factor].size(), false);
         
         vector<size_t> current(1, 0);
 
         while (!current.empty()){
             vector<size_t> next;
             for (auto id : current){
-                if (reachable[id]){
+                if (reachable[factor][id]){
                     continue;
                 }
-                reachable[id] = true;
+                reachable[factor][id] = true;
                 for (auto transition : g_leaf_state_successors[factor][id]){
                     int t = transition.second;
-                    if (!reachable[t]) {
+                    if (!reachable[factor][t]) {
                         next.push_back(t);
                     }
                 }
@@ -72,30 +72,65 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
             next.swap(current);
         }
         
+        // backward analysis: disable because it does not make any sense. Don't ask why is here then....
+//          for (size_t factor = 0; factor < g_factors.size(); ++factor){
+//             for (size_t s = 0; s  < g_leaf_state_predecessors[factor].size(); ++s){
+//                 std::vector<std::pair<const Operator*, size_t> >().swap(g_leaf_state_predecessors[factor][s]);
+//             }
+//             
+//             for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
+//                 for (auto tr : g_leaf_state_successors[factor][s]){
+//                     g_leaf_state_predecessors[factor][tr.second].push_back(make_pair(tr.first, s));
+//                 }
+//             }
+//         }
+// 
+        
+//         boost::dynamic_bitset<> reachable_backwards(g_leaf_state_successors[factor].size(), false) ;
+//         
+//         current = g_leaf_goal_states[factor];
+// 
+//         while (!current.empty()){
+//             vector<size_t> next;
+//             for (auto id : current){
+//                 if (reachable_backwards[id]){
+//                     continue;
+//                 }
+//                 reachable_backwards[id] = true;
+//                 for (auto transition : g_leaf_state_predecessors[factor][id]){
+//                     int t = transition.second;
+//                     if (!reachable_backwards[t]) {
+//                         next.push_back(t);
+//                     }
+//                 }
+//             }
+//             next.swap(current);
+//         }
+//         
+//         reachable[factor] &= reachable_backwards;
+        
+        
         if (only_remove_states){
             g_leaf_state_successors[factor].swap(tmp[factor]);
         }
         
         // remove irrelevant states 
-        for (size_t id = 0; id < reachable.size(); ++id){
-            if (!reachable[id]){
+        for (size_t id = 0; id < reachable[factor].size(); ++id){
+            if (!reachable[factor][id]){
                 vector<pair<const Operator*, size_t> >().swap(g_leaf_state_successors[factor][id]);
             }
         }
         
-        if (only_remove_states){
-            num_transitions_after = 0;
-            // (re-)remove transitions entering removed states
-            for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
-                auto &trs_s = g_leaf_state_successors[factor][s];
-                
-                trs_s.erase(std::remove_if(begin(trs_s), end(trs_s),
-                    [&](std::pair<const Operator*, size_t> & tr){
-                        return !reachable[tr.second];
-                    }), end(trs_s));
-                
-                num_transitions_after += trs_s.size();
-            }
+        // (re-)remove transitions entering removed states
+        for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
+            auto &trs_s = g_leaf_state_successors[factor][s];
+            
+            trs_s.erase(std::remove_if(begin(trs_s), end(trs_s),
+                [&](std::pair<const Operator*, size_t> & tr){
+                    return !reachable[factor][tr.second];
+                }), end(trs_s));
+            
+            num_transitions_after += trs_s.size();
         }
     }
     
@@ -297,9 +332,12 @@ void SimulationRelation::set_list_dominated_states() const {
     PriceTag::dominated_states.resize(g_factors.size());
 
     for (size_t factor = 0; factor < g_factors.size(); ++factor){    
+        
 	PriceTag::dominated_states[factor].resize(relation[factor].size());
 	for(size_t s = 0; s < relation[factor].size(); ++s){
+            if(!reachable.empty() && !reachable[factor][s]) continue;
 	    for(size_t t = 0; t < relation[factor].size(); ++t) {
+                if(!reachable.empty() && !reachable[factor][t]) continue;
 		if (s != t && simulates(factor, t, s)){
 		    PriceTag::dominated_states[factor][t].push_back(s);
 		}

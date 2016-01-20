@@ -17,6 +17,9 @@ protected:
     std::vector<boost::dynamic_bitset<> > op_dominated_by;
 
     std::vector<std::vector<boost::dynamic_bitset<> > > relation;
+    
+    //Whether states are reachable after irrelevance pruning
+    std::vector<boost::dynamic_bitset<>> reachable;
 
     bool precondition_dominance(const std::vector<const Condition*> & pre, 
                                 const std::vector<const Condition*> & pre2) const;
@@ -58,7 +61,7 @@ public:
 
     void set_list_dominated_states() const;
 
-    void perform_leaf_irrelevance_pruning(bool only_remove_states = false) const;
+    void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
 
 };
 
