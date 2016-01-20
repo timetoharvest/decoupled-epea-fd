@@ -49,9 +49,9 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, PriceTag &check,
                 if (dominates && reference_frontier[factor][id]){
                     assert(reference.has_leaf_state(id, factor));
                     
-                    if (check.has_leaf_state(id, factor)){
-                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
+                    if (check.has_propagated_leaf_state(id, factor)){
+                        int old_cost = reference.get_cost_of_state(id, factor);
+                        int new_cost = check.get_propagated_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -65,9 +65,9 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, PriceTag &check,
                 if (dominated && current_frontier[factor][id]){
                     assert(check.has_leaf_state(id, factor));
                     
-                    if (reference.has_leaf_state(id, factor)){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_propagated_cost_of_state(id, factor);
+                    if (reference.has_propagated_leaf_state(id, factor)){
+                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
+                        int new_cost = check.get_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
