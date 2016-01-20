@@ -919,7 +919,7 @@ void PriceTag::goal_price_propagation() {
 
 void PriceTag::propagate_dominance_prices() {
     assert(g_factoring->get_profile() == FORK);
-        
+    
     for (size_t factor = 0; factor < dominated_states.size(); ++factor){
 	for (size_t s = 0; s < dominated_states[factor].size(); ++s) {
 	    if(has_propagated_leaf_state(s, factor)){
@@ -934,7 +934,7 @@ void PriceTag::propagate_dominance_prices() {
 		}
 	    }
 	}
-	assert(goal_cost[factor] != 0 || number_propagated_states[factor] == g_state_registry->size(factor));
+// 	assert(goal_cost[factor] != 0 || number_propagated_states[factor] == g_state_registry->size(factor));
     }  
 }
 
