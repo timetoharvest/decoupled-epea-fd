@@ -23,12 +23,16 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
     vector<vector<vector<pair<const Operator*, size_t> > > > tmp;
     if (only_remove_states){
         tmp = g_leaf_state_successors;        
-    }    
+    }
     
+    boost::dynamic_bitset<> dead_ops(g_operators.size(), false);
     int num_transitions_before = 0, num_transitions_after = 0;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
             auto  & trs_s = g_leaf_state_successors[factor][s];
+	    for(auto tr : trs_s) {
+		dead_ops[tr.first->get_index()] = true;
+	    }
             num_transitions_before += trs_s.size();
             trs_s.erase(std::remove_copy_if(begin(trs_s),
                                             end(trs_s), begin(trs_s),
@@ -129,6 +133,10 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
                 [&](std::pair<const Operator*, size_t> & tr){
                     return !reachable[factor][tr.second];
                 }), end(trs_s));
+
+	    for(auto tr : trs_s) {
+		dead_ops[tr.first->get_index()] = false;
+	    }
             
             num_transitions_after += trs_s.size();
         }
@@ -145,6 +153,12 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
 		    g_leaf_state_predecessors[factor][tr.second].push_back(make_pair(tr.first, s));
 		}
 	    }
+	}
+    }
+
+    for (size_t op = 0; op < g_operators.size(); ++op) {
+	if (dead_ops[op]){
+	    g_operators[op].set_dead();
 	}
     }
     

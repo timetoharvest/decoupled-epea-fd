@@ -41,6 +41,7 @@ void Operator::read_pre_post(istream &in) {
 
 Operator::Operator(istream &in, bool axiom, int index) {
     marked = false;
+    dead = false;
 
     is_an_axiom = axiom;
     if (!is_an_axiom) {
