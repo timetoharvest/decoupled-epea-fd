@@ -27,6 +27,9 @@ protected:
     
     static bool store_frontier, propagate_goal_prices;
 
+    // TODO we should not always initialize the frontier of each factor
+    // to size g_state_registry->size(factor). This causes a big (unnecessary)
+    // memory overhead
     std::vector<boost::dynamic_bitset<> > frontier;
     
     std::vector<size_t> number_states;
