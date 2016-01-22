@@ -114,8 +114,8 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
         return EQUAL;
     }
     
-    bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
-    bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
+    bool dominated = needed != DOMINATES && ((new_is_smaller && !new_is_larger) || sizes_equal);
+    bool dominates = needed != DOMINATED && ((new_is_larger && !new_is_smaller) || sizes_equal);
     
     // compare prices / reachability
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -171,17 +171,17 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
-#endif          
+#endif
         return EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
-#endif          
+#endif
         return DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
-#endif          
+#endif
         return DOMINATES;
     }
     return NONE;
