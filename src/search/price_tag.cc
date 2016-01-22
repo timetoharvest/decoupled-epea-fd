@@ -913,7 +913,7 @@ void PriceTag::goal_price_propagation() {
         // this assertion is not true! in case we have dead-end (i.e. irrelevant) leaf states that are not reached, no price is propagated to them
 	
 	//assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());
-    }    
+    }
 }
 
 
@@ -971,13 +971,14 @@ void PriceTag::dump() const {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_propagated_leaf_state(id, factor)){
+            if (has_leaf_state(id, factor)){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                bool is_frontier = store_frontier ? frontier[factor][id] : false;
                 if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << (store_frontier ? " frontier state " : " ") << "with price " << get_propagated_cost_of_state(id, factor) << endl;
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << (is_frontier ? " frontier state " : " ") << "with price " << get_cost_of_state(id, factor) << endl;
                 } else {
                     state.dump_pddl();
-                    cout << (store_frontier ? "frontier state " : "") << "with price " << get_cost_of_state(id, factor) << endl;
+                    cout << (is_frontier ? "frontier state " : "") << "with price " << get_cost_of_state(id, factor) << endl;
                 }
             }
         }
