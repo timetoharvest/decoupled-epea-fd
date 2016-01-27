@@ -434,6 +434,7 @@ int PriceTag::update_price_tags(int curr_number_duplicates,
                 if (has_leaf_state(id, factor)){
                     
                     if (store_frontier && !frontier[factor][id]){
+                        // TODO should probably only do this if simulation/propagation is disabled
                         continue;
                     }
                 
