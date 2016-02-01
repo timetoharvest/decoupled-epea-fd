@@ -578,9 +578,9 @@ void StateRegistry::store_is_leaf_goal_state(const LeafState &state) const {
 }
 
 size_t StateRegistry::get_max_number_duplicates() const {
-    int m = 0;
+    size_t m = 0;
     for (DupCounterTable::const_iterator it = state_duplicate_counter.begin(); it != state_duplicate_counter.end(); ++it){
-        m = max(m, (int) it->second);
+        m = max(m, it->second);
     }
     return m;
 }
