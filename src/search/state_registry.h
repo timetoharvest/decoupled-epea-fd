@@ -193,8 +193,6 @@ class StateRegistry {
 
     mutable std::set<PerStateInformationBase *> subscribers;
     
-    mutable std::vector<DecoupledDataStore *> data_stores;
-    
     StateID insert_id_or_pop_state();
     
     LeafStateID insert_id_or_pop_leaf_state(int factor);
@@ -252,8 +250,6 @@ public:
     size_t get_max_number_duplicates() const;
     
     void output_decoupled_state_space_size() const;
-    
-    void register_data_store(DecoupledDataStore *store) const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is
