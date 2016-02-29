@@ -1,7 +1,8 @@
 #include "pruning.h"
 
+#include "compliant_path_graph.h"
+#include "factoring.h"
 #include "plugin.h"
-#include "price_tag.h"
 #include "state_registry.h"
 
 
@@ -11,7 +12,7 @@ BasicPruning::BasicPruning (const Options&) {
     cout << "using BasicPruning method" << endl;
 }
 
-DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -31,8 +32,8 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
             // in satisficing search, updating PriceTags stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
             // in this case
-            if (check.get_goal_cost(factor) >= 0){
-                if (reference.get_goal_cost(factor) >= 0){
+            if (check->get_goal_cost(factor) >= 0){
+                if (reference->get_goal_cost(factor) >= 0){
                     // don't care about size/reachability
                 } else {
                     all_goals_reached = false;
@@ -42,7 +43,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                 }
                 skip_leaf[factor] = true;
                 continue;
-            } else if (reference.get_goal_cost(factor) >= 0){
+            } else if (reference->get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
                 new_is_smaller = true;
                 new_is_larger = true;
@@ -52,14 +53,14 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
             }
             all_goals_reached = false;
         }
-        if (reference.get_number_states(factor) > check.get_number_states(factor)){
+        if (reference->get_number_states(factor) > check->get_number_states(factor)){
             new_is_smaller = true;
             sizes_equal = false;
-        } else if (reference.get_number_states(factor) < check.get_number_states(factor)){
+        } else if (reference->get_number_states(factor) < check->get_number_states(factor)){
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+        if (check->get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
             all_leaves_max_size = false;
         }
     }
@@ -90,20 +91,20 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
-        size_t number_new_states = check.get_number_states(factor);
-        size_t number_old_states = reference.get_number_states(factor);
+        size_t number_new_states = check->get_number_states(factor);
+        size_t number_old_states = reference->get_number_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check.has_leaf_state(id, factor)){
+            if (check->has_leaf_state(id, factor)){
                 --number_new_states;
-                if (reference.has_leaf_state(id, factor)){
+                if (reference->has_leaf_state(id, factor)){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference.get_cost_of_state(id, factor);
-                        int new_cost = check.get_cost_of_state(id, factor);
+                        int old_cost = reference->get_cost_of_state(id, factor);
+                        int new_cost = check->get_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -116,7 +117,7 @@ DOMINATION BasicPruning::check_dominance(const PriceTag &check, const PriceTag &
                 } else {
                     dominated = false;
                 }                
-            } else if (reference.has_leaf_state(id, factor)){
+            } else if (reference->has_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
             }

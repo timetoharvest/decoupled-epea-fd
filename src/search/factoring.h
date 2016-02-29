@@ -185,7 +185,7 @@ public:
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
     }
-    
+
     /**
      * only precompute leaf state spaces in optimal search or for small leaves
      */

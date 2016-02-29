@@ -25,10 +25,6 @@ class Factoring;
 class IntPacker;
 class Operator;
 class RandomNumberGenerator;
-class LeafStateID;
-class PriceTag;
-template <class T>
-class PerStateInformation;
 class State;
 class StateID;
 class SuccessorGenerator;
@@ -55,7 +51,10 @@ bool are_mutex(const std::pair<int, int> &a, const std::pair<int, int> &b);
 
 extern bool g_use_metric;
 extern int g_min_action_cost;
+extern std::vector<int> g_min_action_cost_per_factor;
 extern int g_max_action_cost;
+
+extern size_t MAX_DUPLICATE_COUNTER;
 
 extern Factoring *g_factoring;
 extern bool g_use_decoupled_search;
@@ -65,8 +64,6 @@ extern bool g_use_decoupled_search;
 // g-value is increased by the sum of the minimum precondition cost of each
 // leaf factor that puts preconditions on the center operator
 extern int g_inc_g_by;
-
-extern PerStateInformation<PriceTag> g_price_tags;
 
 extern std::vector<int> g_belongs_to_factor;
 extern std::vector<std::vector<int> > g_factors;
@@ -78,11 +75,6 @@ extern std::vector<int> g_variable_domain;
 // to the corresponding index in g_variable_domain
 extern std::vector<int> g_center_vars;
 extern std::vector<int> g_new_index;
-
-extern std::vector<std::vector<std::vector<size_t> > > g_center_successors;
-extern std::vector<std::vector<std::vector<std::pair<const Operator*, size_t> > > > g_leaf_state_successors;
-extern std::vector<std::vector<int> > g_leaf_state_id_map;
-extern std::vector<size_t> g_curr_leaf_state_max_id;
 
 extern std::vector<std::vector<std::string> > g_fact_names;
 extern std::vector<int> g_axiom_layers;
@@ -101,11 +93,10 @@ extern const State &g_initial_state();
 
 // in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
+extern std::vector<std::vector<std::pair<int, int> > > g_goals_per_factor;
 // contains the locally minimal goal cost per factor
 extern std::vector<int> g_min_goal_cost;
 extern int g_sum_min_goal_cost;
-extern std::vector<std::vector<std::pair<int, int> > > g_goals_per_factor;
-extern std::vector<std::vector<bool> > g_is_leaf_goal_state;
 
 extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;

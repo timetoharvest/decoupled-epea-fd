@@ -41,7 +41,9 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
+          compliant_path_graph.h \
           countdown_timer.h \
+          cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -66,8 +68,9 @@ HEADERS = \
           path_price_tag.h\
           per_state_information.h \
           pref_evaluator.h \
-          price_tag.h\
+          pricing_function.h\
           pruning.h\
+          reachability_function.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \

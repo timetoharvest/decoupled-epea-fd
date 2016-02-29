@@ -1,6 +1,7 @@
 #include "factoring.h" 
 
 #include "causal_graph.h"
+#include "compliant_path_graph.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
@@ -10,7 +11,6 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
-#include "price_tag.h"
 
 #include <iostream>
 #include <limits>
@@ -219,6 +219,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 #endif
         }
     }
+    
+    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
    
     // assign operators to their factors
 #ifdef DEBUG_FACTORING
@@ -262,6 +264,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             num_ops_per_factor[factor]++;
 #endif
             op.set_affected_factor(factor);
+            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
         } else {
             pre_factors.erase(-1);
             if (eff_factors.size() > 1 || !pre_factors.empty()){
@@ -282,15 +285,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         cout << num_ops_per_factor[i] << " operators used in RPG of factor " << i << endl;
     }
 #endif
-
     
-    g_leaf_state_successors.resize(g_factors.size());
-    
-    g_center_successors.resize(g_factors.size());
-    
-    g_is_leaf_goal_state.resize(g_factors.size());
-    
-    PriceTag::initialize_leaf_cache();
+    CompliantPathGraph::initialize();
     
     // setup g_goals_per_factor
     // TODO check if each factor contains a goal! what to do if not??

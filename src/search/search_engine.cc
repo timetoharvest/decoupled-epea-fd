@@ -1,13 +1,15 @@
 #include "search_engine.h"
 
 #include "countdown_timer.h"
+#include "factoring.h"
 #include "globals.h"
-#include "operator_cost.h"
 #include "option_parser.h"
 
 #include <cassert>
 #include <iostream>
 #include <limits>
+
+
 using namespace std;
 
 

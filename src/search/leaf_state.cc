@@ -1,9 +1,9 @@
 #include "leaf_state.h"
 
-#include "state_registry.h"
+#include "globals.h"
 
-#include <algorithm>
 #include <cassert>
+#include <iostream>
 
 using namespace std;
 
