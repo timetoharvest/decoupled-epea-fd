@@ -166,6 +166,13 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                             if (!effects.empty() && op->is_center_applicable(base_state)){
                                 LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();
                                 
+                                if (lid.hash() >= leaf_state_id_map[factor].size()){
+                                    // this can happen when using reachability functions in search, since here we might
+                                    // find new leaf states
+                                    leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                                    best_prices.resize(lid.hash() + 1, numeric_limits<int>::max());
+                                }
+                                
                                 change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
                             }
                         }

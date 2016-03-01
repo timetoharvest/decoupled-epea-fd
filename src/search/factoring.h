@@ -142,9 +142,7 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct) {
-        cost_type = ct;
-    }
+    void set_cost_type(OperatorCost ct);
     
     OperatorCost get_cost_type() const {
         return cost_type;

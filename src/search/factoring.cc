@@ -64,6 +64,7 @@ Factoring::Factoring(const Options &opts) :
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
+    ignore_current_state = false;
 }
 
 class CenterFactoring : public Factoring {
@@ -189,6 +190,16 @@ public:
 };
 
 
+void Factoring::set_cost_type(OperatorCost ct) {
+    cost_type = ct;
+    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
+    for (const auto &op : g_operators){
+        int factor = op.get_affected_factor();
+        if (factor != -1){
+            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
+        }
+    }
+}
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor
@@ -219,8 +230,6 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 #endif
         }
     }
-    
-    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
    
     // assign operators to their factors
 #ifdef DEBUG_FACTORING
@@ -264,7 +273,6 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             num_ops_per_factor[factor]++;
 #endif
             op.set_affected_factor(factor);
-            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
         } else {
             pre_factors.erase(-1);
             if (eff_factors.size() > 1 || !pre_factors.empty()){
