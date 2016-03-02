@@ -296,15 +296,11 @@ int Reachable::update_price_tags(int curr_number_duplicates,
             size_t id = 0;
             while (num_states < tmp_reach.reachable[factor].count()) {
                 
-                if (!g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
-                    // in satisficing search => stop once a goal is reachable in fork-leaves
-                    change = false;
-                    break;
-                }
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
                 }
+                
                 if (tmp_reach.has_leaf_state(id, factor)){
                     ++num_states;
 
@@ -403,6 +399,13 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                             // to mark "dead end" leaf states
                             leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
                         }
+                    }
+                    
+                    
+                    if (!g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
+                        // in satisficing search => stop once a goal is reachable in fork-leaves
+                        change = false;
+                        break;
                     }
                 }
                 ++id;

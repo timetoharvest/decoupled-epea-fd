@@ -107,11 +107,6 @@ void PathPriceTag::update_price_tags(const State &base_state) {
             size_t id = 0;
             while (num_states < number_states[factor]) {
                 
-                if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
-                    // in satisficing search => stop once a goal is reachable in fork-leaves
-                    change = false;
-                    break;
-                }
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
@@ -176,6 +171,13 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                                 change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
                             }
                         }
+                    }
+                    
+                    
+                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
+                        // in satisficing search => stop once a goal is reachable in fork-leaves
+                        change = false;
+                        break;
                     }
                 }
                 ++id;

@@ -312,12 +312,6 @@ int Prices::update_price_tags(int curr_number_duplicates,
             size_t id = 0;
             while (num_states < tmp_price.number_states[factor]) {
                 
-                // TODO probably reintroduce this for optimal search again
-//                 if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
-//                     // in satisficing search => stop once a goal is reachable in fork-leaves
-//                     change = false;
-//                     break;
-//                 }
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
@@ -342,6 +336,15 @@ int Prices::update_price_tags(int curr_number_duplicates,
                                             cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                         }
                     }
+                    
+                    
+                    // TODO probably reintroduce this for optimal search again
+                    // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPriceTag
+//                 if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
+//                     // in satisficing search => stop once a goal is reachable in fork-leaves
+//                     change = false;
+//                     break;
+//                 }
                 }
                 ++id;
             }
