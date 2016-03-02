@@ -383,7 +383,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                                 LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();
                                 
                                 if (lid.hash() >= handled.size()){
-                                    handled.resize(lid.hash() + 1, numeric_limits<int>::max());
+                                    handled.resize(lid.hash() + 1, false);
                                 }
                                 
                                 if (lid.hash() >= leaf_state_id_map[factor].size()){
