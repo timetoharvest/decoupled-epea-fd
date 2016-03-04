@@ -225,8 +225,8 @@ int Reachable::update_price_tags(int curr_number_duplicates,
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         
-        // skip fork leaves that don't have a goal!
         if (!g_factoring->has_successors(factor)){
+            // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || tmp_reach.goal_reached[factor]){
                 continue;
             }
