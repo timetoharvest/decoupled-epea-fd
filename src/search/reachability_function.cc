@@ -288,6 +288,8 @@ int Reachable::update_price_tags(int curr_number_duplicates,
         
         boost::dynamic_bitset<> handled(number_leaf_states, false);
         
+        size_t curr_number_states = tmp_reach.reachable[factor].count();
+        
         bool change = true;
 
         while (change) {
@@ -296,7 +298,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
             
             size_t num_states = 0;
             size_t id = 0;
-            while (num_states < tmp_reach.reachable[factor].count()) {
+            while (num_states < curr_number_states) {
                 
                 if (id >= g_state_registry->size(factor)){
                     change = true;
@@ -315,6 +317,8 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                     
                     assert(id < leaf_state_successors[factor].size() || !g_factoring->precompute_state_space(factor));
                     
+                    size_t added = 0;
+                    
                     if (g_factoring->precompute_state_space(factor) || 
                             (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
                         if (!g_factoring->precompute_state_space(factor) && leaf_state_successors[factor][id][0].first == 0){
@@ -325,7 +329,9 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                change |= tmp_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor));
+                                if(tmp_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                    ++added;
+                                }
                             }
                         }
                     } else {
@@ -389,7 +395,9 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                                 }
                                 
                                 if(!fits_store || op->is_center_applicable(base_state)){
-                                    change |= tmp_reach.add_state(lid);
+                                    if (tmp_reach.add_state(lid)){
+                                        ++added;
+                                    }
                                 }
                                 
                                 if (op->get_affected_factor() != -1 && fits_store){
@@ -403,6 +411,10 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                         }
                     }
                     
+                    if (added > 0){
+                        curr_number_states += added;
+                        change = true;
+                    }
                     
                     if (!g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
