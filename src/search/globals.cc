@@ -2,13 +2,13 @@
 
 #include "axioms.h"
 #include "causal_graph.h"
+#include "compliant_path_graph.h"
+#include "cpg_storage.h"
 #include "domain_transition_graph.h"
 #include "factoring.h"
 #include "heuristic.h"
 #include "int_packer.h"
 #include "operator.h"
-#include "per_state_information.h"
-#include "price_tag.h"
 #include "rng.h"
 #include "state.h"
 #include "state_registry.h"
@@ -47,9 +47,9 @@ bool test_goal(const State &state) {
         }
     }
     if (g_use_decoupled_search){
-	const PriceTag &leaf_facts = g_price_tags[state];
+	const CompliantPathGraph *leaf_facts = CPGStorage::get_cpg(state);
 	for (size_t i = 0; i < g_goals_per_factor.size(); ++i) {
-	    if (!g_goals_per_factor[i].empty() && leaf_facts.get_goal_cost(i) == -1){
+	    if (!g_goals_per_factor[i].empty() && leaf_facts->get_goal_cost(i) == -1){
 		return false;
 	    }
 	}
@@ -304,7 +304,7 @@ void read_everything(istream &in) {
         }
         // TODO adapt the size based on experiments, max so far about 7500
         // also take into account center-factoring and new pruning methods!
-        center_domains.push_back(10000);
+        center_domains.push_back(MAX_DUPLICATE_COUNTER);
         
         cout << "packing state variables..." << flush;
         g_state_packer = new IntPacker(center_domains);
@@ -422,14 +422,15 @@ const State &g_initial_state() {
 
 bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
+vector<int> g_min_action_cost_per_factor;
 int g_max_action_cost = 0;
+
+size_t MAX_DUPLICATE_COUNTER = 100000;
 
 Factoring *g_factoring;
 bool g_use_decoupled_search;
 
 int g_inc_g_by;
-
-PerStateInformation<PriceTag> g_price_tags;
 
 vector<int> g_belongs_to_factor;
 vector<vector<int> > g_factors;
@@ -440,11 +441,6 @@ vector<int> g_variable_domain;
 vector<int> g_center_vars;
 vector<int> g_new_index;
 
-vector<vector<vector<size_t> > > g_center_successors;
-vector<vector<vector<pair<const Operator*, size_t> > > > g_leaf_state_successors;
-vector<vector<int> > g_leaf_state_id_map;
-vector<size_t> g_curr_leaf_state_max_id;
-
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
 vector<int> g_default_axiom_values;
@@ -454,10 +450,9 @@ vector<IntPacker*> g_leaf_factor_packers;
 vector<int> g_initial_state_data;
 
 vector<pair<int, int> > g_goal;
+vector<vector<pair<int, int> > > g_goals_per_factor;
 vector<int> g_min_goal_cost;
 int g_sum_min_goal_cost = 0;
-vector<vector<pair<int, int> > > g_goals_per_factor;
-vector<vector<bool> > g_is_leaf_goal_state;
 
 vector<Operator> g_operators;
 vector<Operator> g_axioms;

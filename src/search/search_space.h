@@ -8,12 +8,12 @@
 
 #include <vector>
 
-class Operator;
-class State;
 
+class Operator;
 
 class SearchNode {
-    friend class PriceTag;
+    friend class Prices;
+    friend class Reachable;
     
     StateID state_id;
     SearchNodeInfo &info;

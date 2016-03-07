@@ -142,9 +142,7 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct) {
-        cost_type = ct;
-    }
+    void set_cost_type(OperatorCost ct);
     
     OperatorCost get_cost_type() const {
         return cost_type;
@@ -185,7 +183,7 @@ public:
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
     }
-    
+
     /**
      * only precompute leaf state spaces in optimal search or for small leaves
      */

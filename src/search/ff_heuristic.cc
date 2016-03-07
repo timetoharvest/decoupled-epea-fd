@@ -1,11 +1,12 @@
 #include "ff_heuristic.h"
 
+#include "compliant_path_graph.h"
+#include "cpg_storage.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "per_state_information.h"
 #include "plugin.h"
-#include "price_tag.h"
 #include "state.h"
 
 #include <cassert>
@@ -94,18 +95,18 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 }
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
-    const PriceTag &tag = g_price_tags[state];
+    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); factor++){
-        int number_states = tag.get_number_states(factor);
+        int number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag.has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(id, factor)){
                 --number_states;
                 int base_cost = 0;
                 UnaryOperator *op = 0;
                 if (search_type == STAR){
                     op = artificial_leaf_ops[factor][id];
-                    base_cost = tag.get_cost_of_state(id, factor);
+                    base_cost = tag->get_cost_of_state(id, factor);
                 }
                 LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 for (size_t v = 0; v < g_factors[factor].size(); ++v) {
@@ -143,13 +144,13 @@ int FFHeuristic::compute_heuristic(const State &state) {
     }
     int leaf_goal_cost = 0;
     if (search_type == STAR){
-        const PriceTag &tag = g_price_tags[state];
+        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
         for (size_t factor = 0; factor < artificial_leaf_ops.size(); ++factor){
             for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
                 if (relaxed_leaf_plan[factor][fact]){
                     relaxed_leaf_plan[factor][fact] = false;
-                    assert(tag.get_cost_of_state(fact, factor) >= 0);
-                    leaf_goal_cost += tag.get_cost_of_state(fact, factor);
+                    assert(tag->get_cost_of_state(fact, factor) >= 0);
+                    leaf_goal_cost += tag->get_cost_of_state(fact, factor);
                 }
             }
         }

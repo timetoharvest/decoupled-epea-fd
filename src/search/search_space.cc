@@ -4,7 +4,6 @@
 #include "globals.h"
 #include "operator.h"
 #include "path_price_tag.h"
-#include "price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
 
@@ -12,7 +11,6 @@
 #include <limits>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 SearchNode::SearchNode(StateID state_id_, SearchNodeInfo &info_,
@@ -241,18 +239,23 @@ void SearchSpace::trace_path(const State &goal_state,
                 int min_cost = numeric_limits<int>::max();
                 int best_leaf_state_id = -1;
                 
-                // TODO probably iterate over leaf states in that tag as usual?
-                for (size_t id = 0; id < g_is_leaf_goal_state[factor].size(); id++){
-                    if (g_is_leaf_goal_state[factor][id] && price_tags[0].has_leaf_state(id, factor)){
-                        int new_cost = price_tags[0].get_cost_of_state(id, factor);
-                        if (min_cost > new_cost){
-                            min_cost = new_cost;
-                            best_leaf_state_id = id;
-                            if (g_factoring->get_search_type() == SAT){
-                                break;
+                size_t number_states = price_tags[0].get_number_states(factor);
+                size_t id = 0;
+                while (number_states > 0) {
+                    if (price_tags[0].has_leaf_state(id, factor)){
+                        --number_states;
+                        if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+                            int new_cost = price_tags[0].get_cost_of_state(id, factor);
+                            if (min_cost > new_cost){
+                                min_cost = new_cost;
+                                best_leaf_state_id = id;
+                                if (g_factoring->get_search_type() == SAT){
+                                    break;
+                                }
                             }
                         }
                     }
+                    ++id;
                 }
 
                 marked_leaf_states[factor].insert(best_leaf_state_id);

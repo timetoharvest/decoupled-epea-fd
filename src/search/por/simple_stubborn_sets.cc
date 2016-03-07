@@ -1,10 +1,10 @@
 #include "simple_stubborn_sets.h"
 
+#include "../compliant_path_graph.h"
+#include "../cpg_storage.h"
 #include "../globals.h"
 #include "../operator.h"
 #include "../option_parser.h"
-#include "../per_state_information.h"
-#include "../price_tag.h"
 #include "../rng.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
@@ -289,15 +289,15 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
     if (test_goal(state)){
         return make_pair(-1, -1);
     }
-    const PriceTag &tag = g_price_tags[state];
+    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         // factor has a goal that is not reachable
-        if (!g_goals_per_factor[factor].empty() && tag.get_goal_cost(factor) == -1){
+        if (!g_goals_per_factor[factor].empty() && tag->get_goal_cost(factor) == -1){
             vector<pair<int, int> > min_unsatisfied_goals = g_goals_per_factor[factor];
-            int number_facts = tag.get_number_states(factor);
+            int number_facts = tag->get_number_states(factor);
             size_t id = 0;
             while (number_facts > 0){
-                if (tag.has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(id, factor)){
                    number_facts--;
                    LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                    vector<pair<int, int> > curr_unsatisfied_goals;
@@ -524,11 +524,11 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         const vector<const Condition*> &preconds = op.get_preconditions(factor);
         vector<pair<int, int> > min_number_pre(preconds.size() + 1);
         
-        const PriceTag &tag = g_price_tags[state];
-        int number_states = tag.get_number_states(factor);
+        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        int number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag.has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(id, factor)){
                 number_states--;
                 vector<pair<int, int> > curr_number_pre;
                 LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));

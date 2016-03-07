@@ -1,7 +1,6 @@
 #ifndef STATE_REGISTRY_H
 #define STATE_REGISTRY_H
 
-#include "factoring.h"
 #include "globals.h"
 #include "int_packer.h"
 #include "leaf_state.h"
@@ -103,8 +102,6 @@
 class PerStateInformationBase;
 
 class StateRegistry {
-    friend class PriceTag;
-    friend class PathPriceTag;
     
     struct StateIDSemanticHash {
         const SegmentedArrayVector<PackedStateBin> &state_data_pool;
@@ -173,7 +170,7 @@ class StateRegistry {
 
     SegmentedArrayVector<PackedStateBin> state_data_pool;
     
-    std::vector<SegmentedArrayVector<PackedStateBin>* > leaf_factor_data_pool;
+    std::vector<SegmentedArrayVector<PackedStateBin>* > leaf_state_data_pool;
 
     StateIDSet registered_states;
     
@@ -192,13 +189,6 @@ class StateRegistry {
     StateID insert_id_or_pop_state();
     
     LeafStateID insert_id_or_pop_leaf_state(int factor);
-    
-    /*
-      this builds all entire leaf state spaces and stores them
-    */
-    void build_leaf_state_spaces();
-    
-    void store_is_leaf_goal_state(const LeafState &state) const;
     
 public:
     StateRegistry();
@@ -228,6 +218,13 @@ public:
       as it includes duplicate checking.
     */
     State get_successor_state(const State &predecessor, const Operator &op);
+    /*
+      returns the state resulting from setting the last variable (dup counter)
+      to dup_counter
+    */
+    State get_center_state(const State &predecessor, int dup_counter);
+    
+    LeafState get_successor_leaf_state(const LeafState &predecessor, const Operator &op);
 
     /*
       Returns the number of states registered so far.
