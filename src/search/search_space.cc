@@ -195,6 +195,11 @@ void SearchSpace::trace_path(const State &goal_state,
         cout << "##################### STARTING TRACE_PATH" << endl;
 #endif
         
+        // TODO at this point, we already know if the globalcost of the found
+        // plan will be lower than the currently best solution. if this is not
+        // the case, just skip the reconstruction of the path and return some
+        // path whose cost is higher than the current optimum
+        
         reverse(states.begin(), states.end());
         
         // reconstruct leaf paths

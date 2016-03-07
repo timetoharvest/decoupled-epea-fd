@@ -566,6 +566,12 @@ void StateRegistry::output_decoupled_state_space_size() const {
     size_t dec_size_1 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
     size_t dec_size_2 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size_3 = g_center_vars.size() * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
+    size_t dec_size_4 = g_center_vars.size() * size();  // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        dec_size_4 += size(factor) * g_factors[factor].size();
+    }
+    
     for (size_t i = 0; i < size(); ++i){
         const PriceTag &tag = g_price_tags[lookup_state(StateID(i))];
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -573,11 +579,13 @@ void StateRegistry::output_decoupled_state_space_size() const {
             dec_size_1 += g_factors[factor].size() * number_states;
             dec_size_2 += number_states;
             dec_size_3 += size(factor);
+            dec_size_4 += number_states;
         }
     }
     cout << "decoupled state space size [1] " << dec_size_1 << endl;
     cout << "decoupled state space size [2] " << dec_size_2 << endl;
     cout << "decoupled state space size [3] " << dec_size_3 << endl;
+    cout << "decoupled state space size [4] " << dec_size_4 << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
