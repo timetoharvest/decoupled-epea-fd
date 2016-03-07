@@ -290,8 +290,11 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && tag.get_goal_cost(factor) == -1){
-            set<pair<int, int> > open_goals(g_goals_per_factor[factor].begin(), g_goals_per_factor[factor].end());
-            set<pair<int, int> > unsatified_goals;
+            int number_open_goals = g_goals_per_factor[factor].size();
+            vector<bool> is_open_goal(number_open_goals, true); // false => is fulfilled by some leaf state
+            int number_unsatisfied_goals = 0;
+            vector<bool> is_unsatisfied_goal(number_open_goals, false); // true => is not fulfilled by some leaf state
+        
             size_t number_states = tag.get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
@@ -302,28 +305,46 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
                         int var = g_goals_per_factor[factor][i].first;
                         int val = g_goals_per_factor[factor][i].second;
                         if (s[var] == val){
-                            open_goals.erase(g_goals_per_factor[factor][i]);
+                            if (is_open_goal[i]){
+                                --number_open_goals;
+                            }
+                            is_open_goal[i] = false;
                         } else {
-                            unsatified_goals.insert(g_goals_per_factor[factor][i]);
+                            if (!is_unsatisfied_goal[i]){
+                                ++number_unsatisfied_goals;
+                            }
+                            is_unsatisfied_goal[i] = true;
                         }
                     }
                 }
                 ++id;
             }
-            if (!open_goals.empty()){            
-                return *open_goals.begin();
+            if (number_open_goals > 0){
+                for (size_t i = 0; i < is_open_goal.size(); ++i){
+                    if (is_open_goal[i]){
+                        return g_goals_per_factor[factor][i];
+                    }
+                }
+                assert(false);
             }
                         
             // if multi-variable leaf factors, need to check if there is a goal
             // that is not satisfied by any leaf state; if not, need to achieve all
             // goals that *ever* were unsatisfied
-            assert(!unsatified_goals.empty());
+            assert(number_unsatisfied_goals > 0);
             
-            for (set<pair<int, int> >::const_iterator it = next(unsatified_goals.begin()); it != unsatified_goals.end(); ++it){
-                add_nes_for_fact(*it);
+            pair<int, int> first(-1, -1);
+            for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+                if (is_unsatisfied_goal[i]){
+                    if (first.first != -1){
+                        add_nes_for_fact(g_goals_per_factor[factor][i]);
+                    } else {
+                        first = g_goals_per_factor[factor][i];
+                    }
+                }
             }
         
-            return *unsatified_goals.begin();
+            return first;
         }
     }
     
@@ -530,8 +551,10 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         
         const vector<const Condition*> &preconds = op.get_preconditions(factor);
         
-        set<const Condition*> open_preconds(preconds.begin(), preconds.end());
-        set<pair<int, int> > unsatisfied_preconds;
+        int number_open_preconds = preconds.size();
+        vector<bool> is_open_precond(number_open_preconds, true); // false => is fulfilled by some leaf state
+        int number_unsatisfied_preconds = 0;
+        vector<bool> is_unsatisfied_precond(number_open_preconds, false); // true => is not fulfilled by some leaf state
         
         bool is_applicable = false;
         
@@ -547,9 +570,15 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
                     int var = preconds[i]->var;
                     int value = preconds[i]->val;
                     if (s[var] == value){
-                        open_preconds.erase(preconds[i]);
+                        if (is_open_precond[i]){
+                            --number_open_preconds;
+                        }
+                        is_open_precond[i] = false;
                     } else {
-                        unsatisfied_preconds.insert(make_pair(var, value));
+                        if (!is_unsatisfied_precond[i]){
+                            ++number_unsatisfied_preconds;
+                        }
+                        is_unsatisfied_precond[i] = true;
                         applicable_state = false;
                     }
                 }
@@ -559,24 +588,34 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
             }
             ++id;
         }
-        if (!open_preconds.empty()){           
-            int var = (*open_preconds.begin())->var;
-            int val = (*open_preconds.begin())->val;
-            return make_pair(var, val);
+        if (number_open_preconds > 0){
+            for (size_t i = 0; i < is_open_precond.size(); ++i){
+                if (is_open_precond[i]){
+                    return make_pair(preconds[i]->var, preconds[i]->val);
+                }
+            }
+            assert(false);
         }
         
-        assert(!unsatisfied_preconds.empty() || is_applicable);
+        assert(number_unsatisfied_preconds > 0 || is_applicable);
         
-        if (!unsatisfied_preconds.empty() && !is_applicable){
+        if (number_unsatisfied_preconds > 0 && !is_applicable){
             // if multi-variable leaf factors, need to check if there is a precondition
             // that is not satisfied by any leaf state; if not, need to achieve all
             // preconditions that *ever* were unsatisfied
             
-            for (set<pair<int, int> >::const_iterator it = next(unsatisfied_preconds.begin()); it != unsatisfied_preconds.end(); ++it){
-                add_nes_for_fact(*it);
+            pair<int, int> first(-1, -1);
+            for (size_t i = 0; i < preconds.size(); ++i){
+                if (is_unsatisfied_precond[i]){
+                    if (first.first != -1){
+                        add_nes_for_fact(make_pair(preconds[i]->var, preconds[i]->val));
+                    } else {
+                        first = make_pair(preconds[i]->var, preconds[i]->val);
+                    }
+                }
             }
             
-            return *unsatisfied_preconds.begin();
+            return first;
         }
     }
        
@@ -1278,7 +1317,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition(const Operator 
 
 }
 
-void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const State& state) {
+void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const State &state) {
     // we cannot know which open center precondition actually is achievable, i.e. can be used to
     // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
     
