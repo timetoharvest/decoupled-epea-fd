@@ -1,12 +1,12 @@
 #include "successor_generator.h"
 
+#include "compliant_path_graph.h"
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
-#include "per_state_information.h"
-#include "price_tag.h"
 #include "state.h"
 #include "utilities.h"
+#include "cpg_storage.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -84,20 +84,20 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
         
         vector<int> counter(g_operators.size(), 0);
 
-        const PriceTag &tag = g_price_tags[curr];
+        const CompliantPathGraph *tag = CPGStorage::get_cpg(curr);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (!g_factoring->has_successors(factor)){
                 continue;       // is fork leaf
             }
 
             vector<bool> is_applicable_leaf(g_operators.size(), false);
-            size_t number_states = tag.get_number_states(factor);
+            size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag.has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(id, factor)){
                     --number_states;
-                    for (size_t op = 0; op < g_center_successors[factor][id].size(); ++op){
-                        int index = g_center_successors[factor][id][op];
+                    for (size_t op = 0; op < CompliantPathGraph::center_successors[factor][id].size(); ++op){
+                        int index = CompliantPathGraph::center_successors[factor][id][op];
                         if (!is_applicable_leaf[index]){
                             ++counter[index];
                             is_applicable_leaf[index] = true;

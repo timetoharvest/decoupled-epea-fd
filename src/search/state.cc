@@ -4,9 +4,9 @@
 #include "utilities.h"
 #include "state_registry.h"
 
-#include <algorithm>
-#include <iostream>
 #include <cassert>
+#include <iostream>
+
 using namespace std;
 
 
