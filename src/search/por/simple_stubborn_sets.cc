@@ -286,40 +286,68 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 }
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
-    if (test_goal(state)){
-        return make_pair(-1, -1);
-    }
     const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && tag->get_goal_cost(factor) == -1){
-            vector<pair<int, int> > min_unsatisfied_goals = g_goals_per_factor[factor];
-            int number_facts = tag->get_number_states(factor);
+            int number_open_goals = g_goals_per_factor[factor].size();
+            vector<bool> is_open_goal(number_open_goals, true); // false => is fulfilled by some leaf state
+            int number_unsatisfied_goals = 0;
+            vector<bool> is_unsatisfied_goal(number_open_goals, false); // true => is not fulfilled by some leaf state
+        
+            size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
-            while (number_facts > 0){
+            while (number_states > 0){
                 if (tag->has_leaf_state(id, factor)){
-                   number_facts--;
-                   LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                   vector<pair<int, int> > curr_unsatisfied_goals;
-                   for (size_t g = 0; g < g_goals_per_factor[factor].size(); g++){
-                       int var = g_goals_per_factor[factor][g].first;
-                       int val = g_goals_per_factor[factor][g].second;
-                       if (s[var] != val){
-                           curr_unsatisfied_goals.push_back(make_pair(var, val));
-                       }
-                   }
-                   if (curr_unsatisfied_goals.size() < min_unsatisfied_goals.size()){
-                       min_unsatisfied_goals = curr_unsatisfied_goals;
-                   }
+                    --number_states;
+                    LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+                        int var = g_goals_per_factor[factor][i].first;
+                        int val = g_goals_per_factor[factor][i].second;
+                        if (s[var] == val){
+                            if (is_open_goal[i]){
+                                --number_open_goals;
+                            }
+                            is_open_goal[i] = false;
+                        } else {
+                            if (!is_unsatisfied_goal[i]){
+                                ++number_unsatisfied_goals;
+                            }
+                            is_unsatisfied_goal[i] = true;
+                        }
+                    }
                 }
-                if (min_unsatisfied_goals.size() == 1){
-                    break;
-                }
-                id++;
+                ++id;
             }
-            return min_unsatisfied_goals.front();
+            if (number_open_goals > 0){
+                for (size_t i = 0; i < is_open_goal.size(); ++i){
+                    if (is_open_goal[i]){
+                        return g_goals_per_factor[factor][i];
+                    }
+                }
+                assert(false);
+            }
+                        
+            // if multi-variable leaf factors, need to check if there is a goal
+            // that is not satisfied by any leaf state; if not, need to achieve all
+            // goals that *ever* were unsatisfied
+            assert(number_unsatisfied_goals > 0);
+            
+            pair<int, int> first(-1, -1);
+            for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+                if (is_unsatisfied_goal[i]){
+                    if (first.first != -1){
+                        add_nes_for_fact(g_goals_per_factor[factor][i]);
+                    } else {
+                        first = g_goals_per_factor[factor][i];
+                    }
+                }
+            }
+        
+            return first;
         }
     }
+    
     // handle center goals
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int goal_var = g_goal[i].first;
@@ -522,35 +550,72 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         int factor = op.get_affected_factor();
         
         const vector<const Condition*> &preconds = op.get_preconditions(factor);
-        vector<pair<int, int> > min_number_pre(preconds.size() + 1);
+        
+        int number_open_preconds = preconds.size();
+        vector<bool> is_open_precond(number_open_preconds, true); // false => is fulfilled by some leaf state
+        int number_unsatisfied_preconds = 0;
+        vector<bool> is_unsatisfied_precond(number_open_preconds, false); // true => is not fulfilled by some leaf state
+        
+        bool is_applicable = false;
         
         const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-        int number_states = tag->get_number_states(factor);
+        size_t number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
             if (tag->has_leaf_state(id, factor)){
-                number_states--;
-                vector<pair<int, int> > curr_number_pre;
+                --number_states;
                 LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                bool applicable_state = true;
                 for (size_t i = 0; i < preconds.size(); ++i) {
                     int var = preconds[i]->var;
                     int value = preconds[i]->val;
-                    if (s[var] != value){
-                        curr_number_pre.push_back(make_pair(var, value));
+                    if (s[var] == value){
+                        if (is_open_precond[i]){
+                            --number_open_preconds;
+                        }
+                        is_open_precond[i] = false;
+                    } else {
+                        if (!is_unsatisfied_precond[i]){
+                            ++number_unsatisfied_preconds;
+                        }
+                        is_unsatisfied_precond[i] = true;
+                        applicable_state = false;
                     }
                 }
-
-                if (curr_number_pre.size() < min_number_pre.size()){
-                    min_number_pre.swap(curr_number_pre);
+                if (applicable_state){
+                    is_applicable = true;
                 }
-            }
-            if (min_number_pre.empty()){
-                break;
             }
             ++id;
         }
-        if (!min_number_pre.empty()){
-            return min_number_pre.front();
+        if (number_open_preconds > 0){
+            for (size_t i = 0; i < is_open_precond.size(); ++i){
+                if (is_open_precond[i]){
+                    return make_pair(preconds[i]->var, preconds[i]->val);
+                }
+            }
+            assert(false);
+        }
+        
+        assert(number_unsatisfied_preconds > 0 || is_applicable);
+        
+        if (number_unsatisfied_preconds > 0 && !is_applicable){
+            // if multi-variable leaf factors, need to check if there is a precondition
+            // that is not satisfied by any leaf state; if not, need to achieve all
+            // preconditions that *ever* were unsatisfied
+            
+            pair<int, int> first(-1, -1);
+            for (size_t i = 0; i < preconds.size(); ++i){
+                if (is_unsatisfied_precond[i]){
+                    if (first.first != -1){
+                        add_nes_for_fact(make_pair(preconds[i]->var, preconds[i]->val));
+                    } else {
+                        first = make_pair(preconds[i]->var, preconds[i]->val);
+                    }
+                }
+            }
+            
+            return first;
         }
     }
        
@@ -562,6 +627,8 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
             return make_pair(var, value);
         }
     }
+    
+    assert(op.is_applicable(state));
 
     return make_pair(-1, -1);
 }
@@ -1029,13 +1096,16 @@ void SimpleStubbornSets::dump_active_ops_option() {
 }
 
 SimpleStubbornSets::SimpleStubbornSets(const Options& opts) : 
+    PORMethodWithStatistics(opts),
     precond_choice(PreconditionChoice(opts.get_enum("precond_choice"))),
     mutex_option(MutexOption(opts.get_enum("mutexes"))),
     use_active_ops(opts.get<bool>("active_ops")),
-    laarman_k(opts.get<int>("laarman_k"))
-{
-    if (g_use_decoupled_search){
-        precond_choice = decoupled;     // HACK
+    ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")),
+    laarman_k(opts.get<int>("laarman_k")) {
+    if (g_use_decoupled_search || precond_choice == decoupled){
+        assert(g_use_decoupled_search);
+        assert(precond_choice == decoupled);
+        assert(g_factoring->get_profile() == FORK);
     }
     
     verify_no_axioms_no_conditional_effects();
@@ -1121,10 +1191,15 @@ void SimpleStubbornSets::compute_interference_relation() {
     size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
     for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
+        if (ignore_leaf_interference && g_operators[op1_no].get_affected_factor() != -1){
+            // do not store interfering operators for leaf operators
+            continue;
+        }
         vector<int> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
-            if (op1_no != op2_no && interfere(op1_no, op2_no))
+            if (op1_no != op2_no && interfere(op1_no, op2_no)){
                 interfere_op1.push_back(op2_no);
+            }
 	}
     }
 }
@@ -1240,6 +1315,46 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition(const Operator 
 	exit(2);
     }	
 
+}
+
+void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const State &state) {
+    // we cannot know which open center precondition actually is achievable, i.e. can be used to
+    // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
+    
+    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        vector<vector<pair<const Operator*, size_t> > > &leaf_successors = CompliantPathGraph::leaf_state_successors[factor];
+        
+        size_t number_states = tag->get_number_states(factor);
+        size_t id = 0;        
+        while (number_states > 0){
+            if (tag->has_leaf_state(id, factor)){
+                --number_states;
+                for (size_t succ = 0; succ < leaf_successors[id].size(); ++succ){
+                    const Operator *op = leaf_successors[id][succ].first;
+                    int successor_id = leaf_successors[id][succ].second;
+                    int new_price = tag->get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    if (!tag->has_leaf_state(successor_id, factor) || new_price < tag->get_cost_of_state(successor_id, factor)){
+                        // is frontier state
+                        const vector<const Condition*> &preconditions = op->get_preconditions(-1);
+#ifndef NDEBUG
+                        bool found_open_pre = false;
+#endif
+                        for (size_t pre = 0; pre < preconditions.size(); ++pre){
+                            if (state[preconditions[pre]->var] != preconditions[pre]->val){
+#ifndef NDEBUG
+                                found_open_pre = true;
+#endif
+                                add_nes_for_fact(make_pair(preconditions[pre]->var, preconditions[pre]->val));
+                            }
+                        }
+                        assert(found_open_pre); // there must be an open center precondition
+                    }
+                }
+            }
+            ++id;
+        }
+    }
 }
 
 // This code is copied from ExpansionCore
@@ -1380,14 +1495,24 @@ void SimpleStubbornSets::do_pruning(
         active_ops.assign(g_operators.size(), true);
     }
 
-    // Add a necessary enabling set for an unsatisfied goal.    
-    pair<int, int> goal_pair = find_unsatisfied_goal(state);
-    if (g_use_decoupled_search && goal_pair.first == -1){
-        // state is a decoupled goal state
-        // TODO special handling for this case
-        return;
+    if (g_use_decoupled_search && test_goal(state)){
+        // get all open center preconditions of all leaf frontier states
+        
+        mark_open_center_pre_of_decoupled_goal_frontier(state);      
+        
+        if (stubborn_queue.empty()){
+            // this can happen in case a decoupled goal state has an empty frontier
+            // in this case, there cannot be a postfix in state achieving a lower
+            // global cost
+            applicable_ops.clear();
+            return;
+        }
+    } else {
+        // Add a necessary enabling set for an unsatisfied goal.    
+        pair<int, int> goal_pair = find_unsatisfied_goal(state);
+        assert(goal_pair != make_pair(-1, -1));
+        add_nes_for_fact(goal_pair);
     }
-    add_nes_for_fact(goal_pair);
 
     // Iteratively insert operators to stubborn according to the
     // definition of strong stubborn sets until a fixpoint is reached.

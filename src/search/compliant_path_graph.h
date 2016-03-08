@@ -4,6 +4,7 @@
 #include "ext/boost/dynamic_bitset.hpp"
 #include "factoring.h"
 #include "globals.h"
+#include "por/simple_stubborn_sets.h"
 
 #include <vector>
 
@@ -14,7 +15,8 @@ class StateID;
 
 class CompliantPathGraph {
     friend class StateRegistry;
-    friend class SuccessorGeneratorSwitch;
+    friend class POR::SimpleStubbornSets; // access to leaf_state_successors
+    friend class SuccessorGeneratorSwitch; // access to center_successors
     
 protected:
     
