@@ -8,6 +8,7 @@
 
 #include <vector>
 
+
 class LeafState;
 class LeafStateID;
 class State;
@@ -64,21 +65,19 @@ public:
     
     static const int INF;
     
-    virtual ~CompliantPathGraph(){};
+    virtual ~CompliantPathGraph() = default;
+    
+    // TODO has_leaf_state and get_number_states are mainly used to iterate 
+    // over leaf state IDs, what about having some kind of iterator providing
+    // this functionality?
 
     virtual bool has_leaf_state(int id, int factor) const = 0;
     
-    virtual bool has_effective_leaf_state(int id, int factor) const = 0;
-    
     virtual int get_cost_of_state(int id, int factor) const = 0;
-    
-    virtual int get_effective_cost_of_state(int id, int factor) const = 0;
     
     virtual size_t get_number_states(int factor) const = 0;
 
-    virtual size_t get_number_effective_states(int factor) const = 0;
-    
-    virtual int get_goal_cost(int factor) const = 0;
+    virtual bool goal_reachable(int factor) const = 0;
     
      
     static void store_new_graph(const State &state);

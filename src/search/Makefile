@@ -70,6 +70,7 @@ HEADERS = \
           por/por_method.h \
           pref_evaluator.h \
           pricing_function.h\
+          pruning/prunable.h\
           pruning/pruning.h\
           reachability_function.h \
           relaxation_heuristic.h \

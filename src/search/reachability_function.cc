@@ -87,7 +87,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::get_cpg(s)); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::reach_tags[s]); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -112,7 +112,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             
             int old_g = search_space->get_node(s).get_g();
             
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::get_cpg(s));
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::reach_tags[s]);
             
             if (g_value + g_inc_g_by < old_g){
                 // new state has a lower g-value and may only replace an
@@ -531,6 +531,15 @@ int Reachable::get_goal_cost(int factor) const {
     } else {
         return -1;
     }
+}
+
+bool Reachable::goal_reachable(int factor) const {
+    return goal_reached[factor];
+}
+
+const vector< boost::dynamic_bitset< long unsigned int > >& Reachable::get_frontier() {
+    cout << "not implemented, yet (reachablility_function.cc)" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
 }
 
 void Reachable::store_new_graph(const State &state) {

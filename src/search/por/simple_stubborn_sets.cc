@@ -289,7 +289,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
     const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
-        if (!g_goals_per_factor[factor].empty() && tag->get_goal_cost(factor) == -1){
+        if (!g_goals_per_factor[factor].empty() && !tag->goal_reachable(factor)){
             int number_open_goals = g_goals_per_factor[factor].size();
             vector<bool> is_open_goal(number_open_goals, true); // false => is fulfilled by some leaf state
             int number_unsatisfied_goals = 0;

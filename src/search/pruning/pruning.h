@@ -1,7 +1,7 @@
 #ifndef PRUNING_H
 #define PRUNING_H
 
-class CompliantPathGraph;
+class Prunable;
 class Options;
 class State;
 class OptionParser;
@@ -36,7 +36,7 @@ public:
     
     virtual void init();
     
-    virtual DOMINATION check_dominance(const State &center, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed = NONE) const = 0;
+    virtual DOMINATION check_dominance(const State &center, Prunable *check, Prunable *reference, DOMINATION needed = NONE) const = 0;
 
     static void add_options_to_parser(OptionParser &parser);
     
@@ -50,7 +50,7 @@ public:
     
     BasicPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const State &center, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed = NONE) const;
+    virtual DOMINATION check_dominance(const State &center, Prunable *check, Prunable *reference, DOMINATION needed = NONE) const;
     
 };
 

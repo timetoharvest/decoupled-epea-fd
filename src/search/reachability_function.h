@@ -6,10 +6,11 @@
 #include "globals.h"
 #include "leaf_state.h"
 #include "leaf_state_id.h"
+#include "pruning/prunable.h"
 
 #include <vector>
 
-class Reachable : public CompliantPathGraph {
+class Reachable : public CompliantPathGraph, public Prunable {
     
     static Reachable tmp_reach;
     
@@ -57,6 +58,10 @@ public:
     virtual size_t get_number_effective_states(int factor) const;
     
     virtual int get_goal_cost(int factor) const;
+    
+    virtual bool goal_reachable(int factor) const;
+    
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     
     static void store_new_graph(const State &state);

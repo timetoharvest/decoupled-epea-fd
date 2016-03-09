@@ -52,7 +52,7 @@ void Pruning::init() {
     }
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;

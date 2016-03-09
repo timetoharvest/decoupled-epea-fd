@@ -15,14 +15,7 @@ CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
     cout << "using cost frontier pruning" << endl;
 }
 
-DOMINATION CostFrontierPruning::check_dominance(const State &, const CompliantPathGraph *, 
-                                                const CompliantPathGraph *, DOMINATION) const {
-    // TODO get rid of this!
-    cout << "This code should not be reached! (cost_frontier.cc)" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
-}
-
-DOMINATION CostFrontierPruning::check_dominance(const State &, Prices *check, Prices *reference, DOMINATION needed) {
+DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
     
     assert(g_factoring->get_profile() == FORK);
 
@@ -39,7 +32,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prices *check, Pr
         if (check->get_goal_cost(factor) != CompliantPathGraph::INF || reference->get_goal_cost(factor) != CompliantPathGraph::INF){
             if (check->get_goal_cost(factor) == CompliantPathGraph::INF || 
                 (reference->get_goal_cost(factor) != CompliantPathGraph::INF &&
-                    check->get_goal_cost(factor) > reference->get_goal_cost (factor))) {
+                    check->get_goal_cost(factor) > reference->get_goal_cost(factor))) {
                 dominates = false;
             } else if (reference->get_goal_cost(factor) == CompliantPathGraph::INF || 
                         (check->get_goal_cost(factor) != CompliantPathGraph::INF &&
@@ -56,7 +49,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prices *check, Pr
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
                 if (dominates && reference_frontier[factor][id]){
-                    assert(reference->has_leaf_state(id, factor));
+                    assert(reference->has_effective_leaf_state(id, factor));
                     
                     if (check->has_effective_leaf_state(id, factor)){
                         int old_cost = reference->get_cost_of_state(id, factor);
@@ -72,7 +65,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prices *check, Pr
                     }
                 }
                 if (dominated && current_frontier[factor][id]){
-                    assert(check->has_leaf_state(id, factor));
+                    assert(check->has_effective_leaf_state(id, factor));
                     
                     if (reference->has_effective_leaf_state(id, factor)){
                         int old_cost = reference->get_effective_cost_of_state(id, factor);

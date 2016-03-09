@@ -5,21 +5,17 @@
 #include "globals.h"
 #include "leaf_state.h"
 #include "leaf_state_id.h"
+#include "pruning/prunable.h"
 
 #include <vector>
 
 
-class Prices : public CompliantPathGraph {
+class Prices : public CompliantPathGraph, public Prunable {
     friend class CompliantPathGraph;
     
     static Prices tmp_price;
     
-protected:
-    
-    static bool store_frontier;
-    
-    static bool propagate_goal_prices;
-    
+protected:  
     
     std::vector<boost::dynamic_bitset<> > frontier;
 
@@ -84,7 +80,9 @@ public:
     virtual size_t get_number_effective_states(int factor) const;
     
     virtual int get_goal_cost(int factor) const;
-
+    
+    virtual bool goal_reachable(int factor) const;
+    
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     void dump() const;
@@ -93,14 +91,6 @@ public:
     static void create_init_state_prices();
 
     static void store_new_graph(const State &state);
-    
-    static void set_store_frontier() {
-        store_frontier = true;
-    }
-
-    static void set_propagate_goal_prices() {
-        propagate_goal_prices = true;
-    }
     
 };
 

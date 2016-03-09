@@ -20,10 +20,6 @@ using namespace std;
 
 Prices Prices::tmp_price;
 
-bool Prices::store_frontier = false;
-
-bool Prices::propagate_goal_prices = false;
-
 
 Prices::Prices(const Prices *tag) {
     if (tag == 0){
@@ -558,6 +554,10 @@ size_t Prices::get_number_effective_states(int factor) const {
 
 int Prices::get_goal_cost(int factor) const {
     return goal_cost[factor];
+}
+
+bool Prices::goal_reachable(int factor) const {
+    return goal_cost[factor] != INF;
 }
 
 const vector<boost::dynamic_bitset<> > & Prices::get_frontier() {
