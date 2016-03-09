@@ -11,8 +11,6 @@ typedef IntPacker::Bin PackedStateBin;
 
 class LeafState {
     friend class StateRegistry;
-    friend class PriceTag;
-    friend class PathPriceTag;
     
     LeafStateID id;
     

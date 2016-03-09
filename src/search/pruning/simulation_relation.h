@@ -54,7 +54,11 @@ protected:
 
     const std::string & get_name(int factor, int s) const;
 
-public:    
+public:
+    
+    static std::vector<std::vector<std::vector<size_t> > > simulated_states;
+    
+    
     void init();
 
     void statistics() const;

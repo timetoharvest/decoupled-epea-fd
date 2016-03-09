@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "operator_cost.h"
+#include "utilities.h"
 
 #include <set>
 #include <string>
@@ -35,12 +36,6 @@ enum SEARCH_TYPE {
     SAT         // satisficing search
 };
 
-enum PRUNING_TYPE {
-    BASIC//,
-//     COST_FRONTIER,   // TODO integrate Patrick's code
-//     COST_FRONTIER_PRECOMPUTE,
-//     GOAL_COST_PROPAGATION
-};
 
 struct InteractionGraph {
     friend class Factoring;
@@ -118,7 +113,7 @@ protected:
     
     void print_factoring() const;
     
-    void exit_error(std::string message, int exit_code) const;
+    void exit_error(std::string message, ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
@@ -142,9 +137,7 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct) {
-        cost_type = ct;
-    }
+    void set_cost_type(OperatorCost ct);
     
     OperatorCost get_cost_type() const {
         return cost_type;
@@ -185,7 +178,7 @@ public:
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
     }
-    
+
     /**
      * only precompute leaf state spaces in optimal search or for small leaves
      */

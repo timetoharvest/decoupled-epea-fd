@@ -1,9 +1,10 @@
 #include "operator.h"
 
-#include "globals.h"
+#include "compliant_path_graph.h"
+#include "cpg_storage.h"
 #include "factoring.h"
-#include "per_state_information.h"
-#include "price_tag.h"
+#include "globals.h"
+#include "state_registry.h"
 
 #include <iostream>
 using namespace std;
@@ -117,14 +118,14 @@ bool Operator::is_applicable(const State& state) const {
             // in fork topology, center actions don't have leaf preconditions
             return true;
         }
-        const PriceTag &price_tag = g_price_tags[state];
+        const CompliantPathGraph *price_tag = CPGStorage::get_cpg(state);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (has_precondition_on(factor)){
                 bool applicable = false;
-                size_t number_states = price_tag.get_number_states(factor);
+                size_t number_states = price_tag->get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0){
-                    if (price_tag.has_leaf_state(id, factor)){
+                    if (price_tag->has_leaf_state(id, factor)){
                         --number_states;
                         if (is_applicable(LeafStateID(id, factor))){
                             applicable = true;

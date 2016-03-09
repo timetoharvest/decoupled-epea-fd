@@ -1,11 +1,12 @@
 #include "lm_cut_heuristic.h"
 
+#include "compliant_path_graph.h"
+#include "cpg_storage.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "per_state_information.h"
 #include "plugin.h"
-#include "price_tag.h"
 #include "state.h"
 
 #include <cassert>
@@ -388,20 +389,20 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         
         dereference_ops();
         
-        const PriceTag &tag = g_price_tags[state];
+        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
         
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
-            int number_states = tag.get_number_states(factor);
+            int number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag.has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(id, factor)){
                     --number_states;
                     
                     int cost = 0;
                     if (search_type == STAR){
-                        cost = tag.get_cost_of_state(id, factor);
+                        cost = tag->get_cost_of_state(id, factor);
                         assert(cost >= 0);
                     }
                     

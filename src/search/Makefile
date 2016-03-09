@@ -41,7 +41,9 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
+          compliant_path_graph.h \
           countdown_timer.h \
+          cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -67,8 +69,9 @@ HEADERS = \
           per_state_information.h \
           por/por_method.h \
           pref_evaluator.h \
-          price_tag.h\
+          pricing_function.h\
           pruning/pruning.h\
+          reachability_function.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -226,7 +229,7 @@ OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
 CXX = g++-4.9
-
+# nasty HACK to be able to compile Alvaro's magic constructs on the cluster
 ifeq (, $(shell which $(CXX)))
     CXX = g++
 endif

@@ -1,6 +1,6 @@
 #include "simulation_relation.h"
 
-#include "../price_tag.h"
+#include "../compliant_path_graph.h"
 #include "../operator.h"
 #include "../factoring.h"
 #include "../state_registry.h"
@@ -8,6 +8,10 @@
 
 
 using namespace std;
+
+
+vector<vector<vector<size_t> > > SimulationRelation::simulated_states;
+
 
 void SimulationRelation::init () {
     cout  << "Initializing simulation relation" << endl;
@@ -20,16 +24,19 @@ void SimulationRelation::init () {
 
 void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) {
     reachable.resize(g_factors.size());
+    
+    vector<vector<vector<pair<const Operator*, size_t> > > > &leaf_state_successors = CompliantPathGraph::leaf_state_successors;
+    
     vector<vector<vector<pair<const Operator*, size_t> > > > tmp;
     if (only_remove_states){
-        tmp = g_leaf_state_successors;        
+        tmp = leaf_state_successors;        
     }
     
     boost::dynamic_bitset<> dead_ops(g_operators.size(), false);
     int num_transitions_before = 0, num_transitions_after = 0;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
-            auto  & trs_s = g_leaf_state_successors[factor][s];
+        for (size_t s = 0; s  < leaf_state_successors[factor].size(); ++s){
+            auto  & trs_s = leaf_state_successors[factor][s];
 	    for(auto tr : trs_s) {
 		dead_ops[tr.first->get_index()] = true;
 	    }
@@ -55,7 +62,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
 
         // reachability analysis        
         // forward analysis
-        reachable[factor].resize(g_leaf_state_successors[factor].size(), false);
+        reachable[factor].resize(leaf_state_successors[factor].size(), false);
         
         vector<size_t> current(1, 0);
 
@@ -66,7 +73,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
                     continue;
                 }
                 reachable[factor][id] = true;
-                for (auto transition : g_leaf_state_successors[factor][id]){
+                for (auto transition : leaf_state_successors[factor][id]){
                     int t = transition.second;
                     if (!reachable[factor][t]) {
                         next.push_back(t);
@@ -115,19 +122,19 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
         
         
         if (only_remove_states){
-            g_leaf_state_successors[factor].swap(tmp[factor]);
+            leaf_state_successors[factor].swap(tmp[factor]);
         }
         
         // remove irrelevant states 
         for (size_t id = 0; id < reachable[factor].size(); ++id){
             if (!reachable[factor][id]){
-                vector<pair<const Operator*, size_t> >().swap(g_leaf_state_successors[factor][id]);
+                vector<pair<const Operator*, size_t> >().swap(leaf_state_successors[factor][id]);
             }
         }
         
         // (re-)remove transitions entering removed states
-        for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
-            auto &trs_s = g_leaf_state_successors[factor][s];
+        for (size_t s = 0; s  < leaf_state_successors[factor].size(); ++s){
+            auto &trs_s = leaf_state_successors[factor][s];
             
             trs_s.erase(std::remove_if(begin(trs_s), end(trs_s),
                 [&](std::pair<const Operator*, size_t> & tr){
@@ -142,15 +149,16 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
         }
     }
     
-    if (g_compute_leaf_backward_graph) {
+    if (CompliantPathGraph::compute_leaf_backwards_graph) {
+        vector<vector<vector<pair<const Operator*, size_t> > > > &leaf_state_predecessors = CompliantPathGraph::leaf_state_predecessors;
 	for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	    for (size_t s = 0; s  < g_leaf_state_predecessors[factor].size(); ++s){
-		std::vector<std::pair<const Operator*, size_t> >().swap(g_leaf_state_predecessors[factor][s]);
+	    for (size_t s = 0; s  < leaf_state_predecessors[factor].size(); ++s){
+		std::vector<std::pair<const Operator*, size_t> >().swap(leaf_state_predecessors[factor][s]);
 	    }
 	    
-	    for (size_t s = 0; s  < g_leaf_state_successors[factor].size(); ++s){
-		for (auto tr : g_leaf_state_successors[factor][s]){
-		    g_leaf_state_predecessors[factor][tr.second].push_back(make_pair(tr.first, s));
+	    for (size_t s = 0; s  < leaf_state_successors[factor].size(); ++s){
+		for (auto tr : leaf_state_successors[factor][s]){
+		    leaf_state_predecessors[factor][tr.second].push_back(make_pair(tr.first, s));
 		}
 	    }
 	}
@@ -216,7 +224,7 @@ void SimulationRelation::compute_simulation (int factor) {
     vector<int> goal_distances(num_states, numeric_limits<int>::max()); 
     BucketQueue<int> open;
 	
-    for (size_t s : g_leaf_goal_states[factor]) {
+    for (size_t s : CompliantPathGraph::leaf_goal_states[factor]) {
 	goal_distances[s] = 0;
 	open.push(0, s);
     }
@@ -227,7 +235,7 @@ void SimulationRelation::compute_simulation (int factor) {
 	int value = entry.first;
 	//cout << "s: " << state << endl;
 	if (goal_distances [state] < value) continue;
-	for (auto transition :  g_leaf_state_predecessors[factor][state]) {
+	for (auto transition :  CompliantPathGraph::leaf_state_predecessors[factor][state]) {
 	    int t = transition.second;
 
 	    if (value + 1 < goal_distances[t]) {
@@ -240,9 +248,9 @@ void SimulationRelation::compute_simulation (int factor) {
     relation[factor].resize(num_states);
     for(size_t i = 0; i < num_states; i++){
         relation[factor][i].resize(num_states, true);
-        if(!g_is_leaf_goal_state[factor][i]){
+        if(!CompliantPathGraph::is_leaf_goal_state(LeafStateID(i, factor))){
             for (size_t j = 0; j < num_states; j++){
-                if (g_is_leaf_goal_state[factor][j] || goal_distances[i] > goal_distances[j]){
+                if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(j, factor)) || goal_distances[i] > goal_distances[j]){
                     relation[factor][i][j] = false;
                 }
             }
@@ -259,7 +267,7 @@ void SimulationRelation::compute_simulation (int factor) {
                     //for each transition s--l->s':
                     // a) with noop t >= s' and l dominated by noop?
                     // b) exist t--l'-->t', t' >= s' and l dominated by l'?
-		    for (auto trs  : g_leaf_state_successors[factor][s]){
+		    for (auto trs  : CompliantPathGraph::leaf_state_successors[factor][s]){
 			int trs_target = trs.second;
 			int trs_label = trs.first->get_index();
 			
@@ -268,7 +276,7 @@ void SimulationRelation::compute_simulation (int factor) {
 			    continue;
 			}
 			bool found = false;
-			for (auto trt  : g_leaf_state_successors[factor][t]) {
+			for (auto trt  : CompliantPathGraph::leaf_state_successors[factor][t]) {
 			    int trt_target = trt.second;
 			    int trt_label = trt.first->get_index();
 
@@ -341,19 +349,19 @@ int SimulationRelation::num_simulations(int factor, bool ignore_equivalences) co
 }
 
 void SimulationRelation::set_list_dominated_states() const {
-    assert(PriceTag::dominated_states.empty());
+    assert(simulated_states.empty());
     
-    PriceTag::dominated_states.resize(g_factors.size());
+    simulated_states.resize(g_factors.size());
 
     for (size_t factor = 0; factor < g_factors.size(); ++factor){    
         
-	PriceTag::dominated_states[factor].resize(relation[factor].size());
+	simulated_states[factor].resize(relation[factor].size());
 	for(size_t s = 0; s < relation[factor].size(); ++s){
             if(!reachable.empty() && !reachable[factor][s]) continue;
 	    for(size_t t = 0; t < relation[factor].size(); ++t) {
                 if(!reachable.empty() && !reachable[factor][t]) continue;
 		if (s != t && simulates(factor, t, s)){
-		    PriceTag::dominated_states[factor][t].push_back(s);
+		    simulated_states[factor][t].push_back(s);
 		}
 	    }
 	}
@@ -393,7 +401,7 @@ void SimulationRelation::dump(int factor) const{
     for (size_t s = 0; s < g_state_registry->size(factor); s++) {
 	for (size_t t = 0; t < g_state_registry->size(factor); t++) { //for each pair of states t, s
 	    if (s != t && simulates(factor, t, s)) {
-		for (auto trs  : g_leaf_state_successors[factor][s]){
+		for (auto trs  : CompliantPathGraph::leaf_state_successors[factor][s]){
 		    int trs_target = trs.second;
 		    int trs_label = trs.first->get_index();
 		    
@@ -402,7 +410,7 @@ void SimulationRelation::dump(int factor) const{
 			    get_name(factor, t) << " noop " << endl;
 		        continue;
 		    }
-		    for (auto trt  : g_leaf_state_successors[factor][t]) {
+		    for (auto trt  : CompliantPathGraph::leaf_state_successors[factor][t]) {
 			int trt_target = trt.second;
 			int trt_label = trt.first->get_index();
 			

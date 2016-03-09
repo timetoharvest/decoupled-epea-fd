@@ -1,8 +1,8 @@
 #ifndef PRUNING_H
 #define PRUNING_H
 
+class CompliantPathGraph;
 class Options;
-class PriceTag;
 class State;
 class OptionParser;
 
@@ -23,8 +23,10 @@ class Pruning {
     
     IRRELEVANCE irrelevance;
     
-protected:    
     bool do_simulation;
+    
+    bool goal_price_propagation;
+    
 public:
     Pruning() : irrelevance(NO), do_simulation (false) {}
 
@@ -32,10 +34,9 @@ public:
 
     virtual ~Pruning() = default;
     
-    virtual void init(); 
-
-    virtual DOMINATION check_dominance(const State &center, PriceTag &check, 
-                                       PriceTag &reference, DOMINATION needed = NONE) = 0;
+    virtual void init();
+    
+    virtual DOMINATION check_dominance(const State &center, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed = NONE) const = 0;
 
     static void add_options_to_parser(OptionParser &parser);
     
@@ -44,13 +45,12 @@ public:
 class BasicPruning : public Pruning {
     
 public:
-   
-    BasicPruning() : Pruning() {} 
-
+    
+    BasicPruning() : Pruning() {}
+    
     BasicPruning(const Options &opts);
-      
-    virtual DOMINATION check_dominance(const State &center, PriceTag &check, 
-                                       PriceTag &reference, DOMINATION needed = NONE);
+    
+    virtual DOMINATION check_dominance(const State &center, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed = NONE) const;
     
 };
 

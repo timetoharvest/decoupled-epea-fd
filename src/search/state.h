@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-class Operator;
+
 class StateRegistry;
 
 typedef IntPacker::Bin PackedStateBin;
@@ -17,9 +17,9 @@ typedef IntPacker::Bin PackedStateBin;
 // states see the file state_registry.h.
 class State {
     friend class StateRegistry;
-    friend class PriceTag;
     template <class Entry>
     friend class PerStateInformation;
+
     // Values for vars are maintained in a packed state and accessed on demand.
     const PackedStateBin *buffer;
     // registry isn't a reference because we want to support operator=

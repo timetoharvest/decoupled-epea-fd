@@ -1,28 +1,38 @@
 #include "pruning.h"
 
+#include "../compliant_path_graph.h"
+#include "../factoring.h"
 #include "../plugin.h"
-#include "../price_tag.h"
-#include "../state_registry.h"
-#include "../option_parser.h"
-#include "../operator.h"
-
+#include "../pricing_function.h"
 #include "simulation_relation.h"
+#include "../state_registry.h"
 
 
 using namespace std;
 
+
 Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
-                                         do_simulation(opts.get<bool>("simulation")) {
+                                        do_simulation(opts.get<bool>("simulation")),
+                                        goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
 
-    if (opts.get<bool>("goal_price_propagation")){
-	g_compute_leaf_backward_graph = true;
-	PriceTag::set_propagate_goal_prices();
-	cout << "using goal price propagation pruning" << endl;
-    }
+    if (goal_price_propagation || do_simulation || irrelevance != NO){
+        assert(g_factoring->get_profile() == FORK);
+        
+        CompliantPathGraph::set_compute_leaf_backwards_graph();
+        
+        if (goal_price_propagation){
+            Prices::set_propagate_goal_prices();
+            cout << "using goal price propagation" << endl;
+        }
+        
+        if (do_simulation){
+            cout << "using simulation within leaf factors" << endl;
+        }
 
-    if (do_simulation || irrelevance != NO){
-	g_compute_leaf_backward_graph = true;
-    }
+        if (irrelevance != NO){
+            cout << "performing irrelevance pruning" << endl;
+        }
+    }    
 }
 
 void Pruning::init() {
@@ -42,8 +52,7 @@ void Pruning::init() {
     }
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check, 
-                                         PriceTag &reference, DOMINATION needed) {
+DOMINATION BasicPruning::check_dominance(const State &, const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -63,8 +72,8 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
             // in satisficing search, updating PriceTags stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
             // in this case
-            if (check.get_goal_cost(factor) >= 0){
-                if (reference.get_goal_cost(factor) >= 0){
+            if (check->get_goal_cost(factor) >= 0){
+                if (reference->get_goal_cost(factor) >= 0){
                     // don't care about size/reachability
                 } else {
                     all_goals_reached = false;
@@ -74,7 +83,7 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
                 }
                 skip_leaf[factor] = true;
                 continue;
-            } else if (reference.get_goal_cost(factor) >= 0){
+            } else if (reference->get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
                 new_is_smaller = true;
                 new_is_larger = true;
@@ -84,14 +93,14 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
             }
             all_goals_reached = false;
         }
-        if (reference.get_number_propagated_states(factor) > check.get_number_propagated_states(factor)){
+        if (reference->get_number_effective_states(factor) > check->get_number_states(factor)){
             new_is_smaller = true;
             sizes_equal = false;
-        } else if (reference.get_number_propagated_states(factor) < check.get_number_propagated_states(factor)){
+        } else if (reference->get_number_effective_states(factor) < check->get_number_states(factor)){
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check.get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+        if (check->get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
             all_leaves_max_size = false;
         }
     }
@@ -122,20 +131,20 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
-        size_t number_new_states = check.get_number_propagated_states(factor);
-        size_t number_old_states = reference.get_number_propagated_states(factor);
+        size_t number_new_states = check->get_number_effective_states(factor);
+        size_t number_old_states = reference->get_number_effective_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check.has_propagated_leaf_state(id, factor)){
+            if (check->has_effective_leaf_state(id, factor)){
                 --number_new_states;
-                if (reference.has_propagated_leaf_state(id, factor)){
+                if (reference->has_effective_leaf_state(id, factor)){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference.get_propagated_cost_of_state(id, factor);
-                        int new_cost = check.get_propagated_cost_of_state(id, factor);
+                        int old_cost = reference->get_effective_cost_of_state(id, factor);
+                        int new_cost = check->get_effective_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -148,7 +157,7 @@ DOMINATION BasicPruning::check_dominance(const State &, PriceTag &check,
                 } else {
                     dominated = false;
                 }                
-            } else if (reference.has_propagated_leaf_state(id, factor)){
+            } else if (reference->has_effective_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
             }

@@ -1,7 +1,7 @@
 #ifndef PATH_PRICE_TAG_H
 #define PATH_PRICE_TAG_H
 
-#include "price_tag.h"
+#include "pricing_function.h"
 
 
 struct PathPriceTagInfo {
@@ -19,8 +19,7 @@ struct PathPriceTagInfo {
 };
 
 
-class PathPriceTag : public PriceTag {
-    
+class PathPriceTag : public Prices {
     friend class SearchSpace;
     
     // path information
@@ -30,7 +29,7 @@ class PathPriceTag : public PriceTag {
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost, const Operator *bs, 
-                  const LeafStateID &predecessor);
+                   const LeafStateID &predecessor);
     
     PathPriceTag(const PathPriceTag *tag);
     
@@ -42,7 +41,7 @@ public:
     
     virtual void update_price_tags(const State &base_state);
     
-    virtual void apply_center_op_to_leaves(const PriceTag &old_tag, const Operator &op);
+    virtual void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
     
 };
 

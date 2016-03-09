@@ -1,6 +1,7 @@
 #include "factoring.h" 
 
 #include "causal_graph.h"
+#include "compliant_path_graph.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
@@ -10,7 +11,6 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
-#include "price_tag.h"
 
 #include <iostream>
 #include <limits>
@@ -37,13 +37,13 @@ void InteractionGraph::add_dependency(int from, int to) {
 }
 
 Factoring::Factoring(const Options &opts) :
-    reopen_closed_nodes(false),
-    search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+            reopen_closed_nodes(false),
+            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
-    case FRA : cout << "performing Fork-Root A* search" << endl; break;
-    case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
-    case SDA : cout << "performing Star Decoupled A* search" << endl; break;
-    case SAT : cout << "performing decoupled satisficing search" << endl; break;
+        case FRA : cout << "performing Fork-Root A* search" << endl; break;
+        case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
+        case SDA : cout << "performing Star Decoupled A* search" << endl; break;
+        case SAT : cout << "performing decoupled satisficing search" << endl; break;
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -59,11 +59,12 @@ Factoring::Factoring(const Options &opts) :
     if (opts.contains("pruning")){
         pruning = opts.get<Pruning*>("pruning");
     } else {
-	pruning = new BasicPruning();
-	cout << "using default pruning method: BasicPruning" << endl;
+        pruning = new BasicPruning();
+        cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
+    ignore_current_state = false;
 }
 
 class CenterFactoring : public Factoring {
@@ -189,6 +190,16 @@ public:
 };
 
 
+void Factoring::set_cost_type(OperatorCost ct) {
+    cost_type = ct;
+    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
+    for (const auto &op : g_operators){
+        int factor = op.get_affected_factor();
+        if (factor != -1){
+            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
+        }
+    }
+}
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor
@@ -282,9 +293,8 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         cout << num_ops_per_factor[i] << " operators used in RPG of factor " << i << endl;
     }
 #endif
-
-        
-    PriceTag::initialize_leaf_cache();
+    
+    CompliantPathGraph::initialize();
     
     // setup g_goals_per_factor
     // TODO check if each factor contains a goal! what to do if not??
@@ -366,10 +376,10 @@ void Factoring::print_factoring() const {
     cout << "max leaf factor size: " << max_size << endl;
 }
 
-void Factoring::exit_error(string message, int exit_code) const {
+void Factoring::exit_error(string message, ExitCode exit_code) const {
     cout << "Error while factoring planning task!" << endl;
     cout << message << endl;
-    exit(exit_code);
+    exit_with(exit_code);
 }
 
 void Factoring::do_factoring_or_abstain() {
@@ -1443,7 +1453,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "pruning", 
         "TODO", 
         "",
-	OptionFlags(false));
+        OptionFlags(false));
     vector<string> search_types;
     search_types.push_back("fra");
     search_types.push_back("asda");
