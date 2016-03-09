@@ -1,10 +1,10 @@
 #ifndef COMPLIANT_PATH_GRAPH_H
 #define COMPLIANT_PATH_GRAPH_H
 
-#include "ext/boost/dynamic_bitset.hpp"
-#include "factoring.h"
-#include "globals.h"
-#include "por/simple_stubborn_sets.h"
+#include "../ext/boost/dynamic_bitset.hpp"
+#include "../factoring.h"
+#include "../globals.h"
+#include "../por/simple_stubborn_sets.h"
 
 #include <vector>
 

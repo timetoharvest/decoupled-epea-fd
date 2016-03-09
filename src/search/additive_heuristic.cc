@@ -1,7 +1,7 @@
 #include "additive_heuristic.h"
 
-#include "cpg_storage.h"
-#include "compliant_path_graph.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "per_state_information.h"

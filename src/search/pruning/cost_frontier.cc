@@ -1,17 +1,17 @@
 #include "cost_frontier.h"
 
-#include "../compliant_path_graph.h"
+#include "../compliant_paths/compliant_path_graph.h"
 #include "../operator.h"
 #include "../plugin.h"
+#include "prunable.h"
 #include "../state_registry.h"
 #include "../ext/boost/dynamic_bitset.hpp"
-#include "../pricing_function.h"
 
 
 using namespace std;
 
 CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
-    Prices::set_store_frontier();
+    Prunable::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
 

@@ -1,7 +1,7 @@
 #include "factoring.h" 
 
 #include "causal_graph.h"
-#include "compliant_path_graph.h"
+#include "compliant_paths/compliant_path_graph.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"

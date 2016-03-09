@@ -3,7 +3,7 @@
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
-#include "path_price_tag.h"
+#include "compliant_paths/path_price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
 

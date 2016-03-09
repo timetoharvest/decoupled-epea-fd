@@ -1,16 +1,16 @@
 #include "pricing_function.h"
 
 #include "cpg_storage.h"
-#include "factoring.h"
-#include "globals.h"
-#include "operator.h"
-#include "priority_queue.h"
-#include "pruning/pruning.h"
-#include "pruning/simulation_relation.h"
-#include "search_space.h"
-#include "state_registry.h"
-#include "successor_generator.h"
-#include "utilities.h"
+#include "../factoring.h"
+#include "../globals.h"
+#include "../operator.h"
+#include "../priority_queue.h"
+#include "../pruning/pruning.h"
+#include "../pruning/simulation_relation.h"
+#include "../search_space.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
+#include "../utilities.h"
 
 #include <limits>
 

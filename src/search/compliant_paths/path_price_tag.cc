@@ -1,10 +1,10 @@
 #include "path_price_tag.h"
 
-#include "factoring.h"
-#include "operator.h"
-#include "operator_cost.h"
-#include "state_registry.h"
-#include "successor_generator.h"
+#include "../factoring.h"
+#include "../operator.h"
+#include "../operator_cost.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
 
 #include <limits>
 #include <iostream>

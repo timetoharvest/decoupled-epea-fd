@@ -1,7 +1,7 @@
 #include "successor_generator.h"
 
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"

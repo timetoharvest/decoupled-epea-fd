@@ -41,9 +41,9 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
-          compliant_path_graph.h \
+          compliant_paths/compliant_path_graph.h \
           countdown_timer.h \
-          cpg_storage.h \
+          compliant_paths/cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -65,14 +65,10 @@ HEADERS = \
           option_parser.h \
           option_parser_util.h \
           segmented_vector.h \
-          path_price_tag.h\
           per_state_information.h \
           por/por_method.h \
           pref_evaluator.h \
-          pricing_function.h\
-          pruning/prunable.h\
-          pruning/pruning.h\
-          reachability_function.h \
+          pruning/pruning.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -174,8 +170,13 @@ HEADERS += por/expansion_core.h \
            por/simple_stubborn_sets.h \
            por/sss_expansion_core.h \
            
-HEADERS += pruning/cost_frontier.h
-HEADERS += pruning/simulation_relation.h
+HEADERS += pruning/cost_frontier.h \
+           pruning/simulation_relation.h \
+           pruning/prunable.h
+
+HEADERS += compliant_paths/path_price_tag.h \
+           compliant_paths/pricing_function.h \
+           compliant_paths/reachability_function.h
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward

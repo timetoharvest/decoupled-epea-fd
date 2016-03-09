@@ -1,15 +1,15 @@
 #include "compliant_path_graph.h"
 
 #include "cpg_storage.h"
-#include "factoring.h"
-#include "leaf_state_id.h"
-#include "operator.h"
+#include "../factoring.h"
+#include "../leaf_state_id.h"
+#include "../operator.h"
 #include "pricing_function.h"
 #include "reachability_function.h"
-#include "state.h"
-#include "state_id.h"
-#include "state_registry.h"
-#include "successor_generator.h"
+#include "../state.h"
+#include "../state_id.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
 
 
 using namespace std;

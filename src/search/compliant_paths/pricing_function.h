@@ -1,26 +1,40 @@
-#ifndef REACHABILITY_FUNCTION_H
-#define REACHABILITY_FUNCTION_H
+#ifndef PRICING_FUNCTION_H
+#define PRICING_FUNCTION_H
 
 #include "compliant_path_graph.h"
-#include "ext/boost/dynamic_bitset.hpp"
-#include "globals.h"
-#include "leaf_state.h"
-#include "leaf_state_id.h"
-#include "pruning/prunable.h"
+#include "../globals.h"
+#include "../leaf_state.h"
+#include "../leaf_state_id.h"
+#include "../pruning/prunable.h"
 
 #include <vector>
 
-class Reachable : public CompliantPathGraph, public Prunable {
+
+class Prices : public CompliantPathGraph, public Prunable {
+    friend class CompliantPathGraph;
     
-    static Reachable tmp_reach;
+    static Prices tmp_price;
     
-protected:
+protected:  
     
-    std::vector<boost::dynamic_bitset<> > reachable;
+    std::vector<boost::dynamic_bitset<> > frontier;
+
+    std::vector<std::vector<int> > prices;
     
-    boost::dynamic_bitset<> goal_reached;
+    std::vector<std::vector<int> > effective_prices;
+    
+    std::vector<size_t> number_states;
+    
+    std::vector<size_t> number_effective_states;
+
+    // stores the current minimal goal cost per factor
+    std::vector<int> goal_cost;
         
-    Reachable(const Reachable *tag);
+    Prices(const Prices *tag);
+      
+    // used when including part of the leaf cost into the g-value
+    // of a search node
+    void reduce_cost_by(int factor, int cost);
     
     // returns the duplicate counter for this base state and price tag 
     // i.e. the counter of the subsuming that or the current max + 1
@@ -30,7 +44,9 @@ protected:
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    bool add_state(const LeafStateID &fact);
+    bool add_state(const LeafStateID &fact, int cost);
+    
+    bool add_effective_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
@@ -39,11 +55,17 @@ protected:
                                   const State &predecessor,
                                   const Operator *op) const;
     
-    void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+
+    void compute_cost_frontier();
+
+    void goal_price_propagation();
+
+    void propagate_dominance_prices(); 
     
 public:
     
-    Reachable(){};
+    Prices(){};
     
     virtual bool has_leaf_state(int id, int factor) const;
     
@@ -63,11 +85,13 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
+    void dump() const;
+
     
+    static void create_init_state_prices();
+
     static void store_new_graph(const State &state);
     
-    static void create_init_state_reachable();
- 
 };
 
 

@@ -1,9 +1,9 @@
 #include "pruning.h"
 
-#include "../compliant_path_graph.h"
+#include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"
 #include "../plugin.h"
-#include "../pricing_function.h"
+#include "prunable.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
 
@@ -21,7 +21,7 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
-            Prices::set_propagate_goal_prices();
+            Prunable::set_propagate_goal_prices();
             cout << "using goal price propagation" << endl;
         }
         

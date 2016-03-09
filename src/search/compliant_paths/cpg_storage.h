@@ -1,7 +1,7 @@
 #ifndef CPG_STORAGE
 #define CPG_STORAGE
 
-#include "per_state_information.h"
+#include "../per_state_information.h"
 #include "pricing_function.h"
 #include "reachability_function.h"
 

@@ -2,8 +2,8 @@
 
 #include "axioms.h"
 #include "causal_graph.h"
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "domain_transition_graph.h"
 #include "factoring.h"
 #include "heuristic.h"
