@@ -522,7 +522,7 @@ size_t Reachable::get_number_states(int factor) const {
 }
 
 size_t Reachable::get_number_effective_states(int factor) const {
-    return get_number_effective_states(factor);
+    return get_number_states(factor);
 }
 
 int Reachable::get_goal_cost(int factor) const {
