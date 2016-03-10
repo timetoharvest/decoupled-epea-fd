@@ -2,6 +2,7 @@
 #define PRUNABLE_H
 
 #include "../ext/boost/dynamic_bitset.hpp"
+#include "simulation_relation.h"
 
 #include <vector>
 
@@ -33,6 +34,10 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
     
+    
+    static bool do_pruning() {
+        return store_frontier || propagate_goal_prices || !SimulationRelation::simulated_states.empty();
+    }
     
     static void set_store_frontier() {
         store_frontier = true;

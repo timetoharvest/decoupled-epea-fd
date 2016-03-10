@@ -79,6 +79,8 @@ public:
 
     virtual bool goal_reachable(int factor) const = 0;
     
+    virtual void dump() const = 0;
+    
      
     static void store_new_graph(const State &state);
     

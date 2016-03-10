@@ -207,38 +207,6 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     return false;
 }
 
-bool Prices::add_effective_state(const LeafStateID &state, int cost) {
-    size_t factor = state.get_factor();
-    if (leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
-        leaf_state_id_map[factor][state.hash()] = curr_leaf_state_max_id[factor];
-        ++curr_leaf_state_max_id[factor];
-    }
-    assert(leaf_state_id_map[factor][state.hash()] >= 0);
-    size_t leaf_id = leaf_state_id_map[factor][state.hash()];
-
-    if(effective_prices.empty()){
-        if (has_leaf_state(state.hash(), factor) && cost >= get_cost_of_state(state.hash(), factor)) {
-            return false;
-        }
-        effective_prices = prices;
-        number_effective_states = number_states;
-    }
-    
-    if (leaf_id >= effective_prices[factor].size()){
-        effective_prices[factor].resize(leaf_id + 1, INF);
-    }
-    
-    if (effective_prices[factor][leaf_id] == INF){
-        effective_prices[factor][leaf_id] = cost;
-        ++number_effective_states[factor];
-        return true;
-    } else if (effective_prices[factor][leaf_id] > cost){
-        effective_prices[factor][leaf_id] = cost;
-        return true;
-    }
-    return false;
-}
-
 int Prices::update_price_tags(int curr_number_duplicates,
                               const State &base_state,
                               int g_value,
@@ -259,21 +227,6 @@ int Prices::update_price_tags(int curr_number_duplicates,
 #endif
     
     assert(leaf_tags_to_cache.empty());
-    
-    if (store_frontier){
-        const Prices &tag = CPGStorage::price_tags[predecessor];
-        if (tag.prices.empty()){
-            // is initial state
-            assert(predecessor.get_id().hash() == 0);
-            tmp_price.frontier.resize(g_factors.size());
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                tmp_price.frontier[factor].resize(g_state_registry->size(factor));
-                tmp_price.frontier[factor][0] = true;
-            }
-        } else {
-            tmp_price.frontier = CPGStorage::price_tags[predecessor].get_frontier();
-        }
-    }
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         
@@ -348,14 +301,9 @@ int Prices::update_price_tags(int curr_number_duplicates,
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 
                 if (tmp_price.has_leaf_state(id, factor)){
-
-                    if (store_frontier && !tmp_price.frontier[factor][id]){
-                        // TODO should probably only do this if simulation/propagation is disabled.. Why?
-                        continue;
-                    }
                 
                     int cost = tmp_price.get_cost_of_state(id, factor);
-                    if (best_prices[id] <= cost && !store_frontier){
+                    if (best_prices[id] <= cost){
                         continue;
                     }
                     
@@ -363,29 +311,14 @@ int Prices::update_price_tags(int curr_number_duplicates,
                     
                     assert(id < leaf_state_successors[factor].size());
 
-                    bool all_applicable = store_frontier && !propagate_goal_prices;
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
-                            bool added = tmp_price.add_state(LeafStateID(successor, factor), 
+                            change |= tmp_price.add_state(LeafStateID(successor, factor), 
                                                    cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
-                            change |= added;
-                            if (store_frontier && added){
-                                tmp_price.frontier[factor][successor] = true;
-                            }
-                        } else if (store_frontier && !propagate_goal_prices) {
-                            all_applicable = false;
-                            int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                            int successor = leaf_state_successors[factor][id][o].second;
-                            if (!tmp_price.has_leaf_state(successor, factor) || tmp_price.get_cost_of_state(successor, factor) > new_cost){
-                                tmp_price.frontier[factor][id] = true;
-                            }
                         }
-                    }
-                    if (all_applicable){
-                        tmp_price.frontier[factor][id] = false;
-                    }                    
+                    }   
                     
                     // TODO probably reintroduce this for optimal search again
                     // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPrices
@@ -408,14 +341,6 @@ int Prices::update_price_tags(int curr_number_duplicates,
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ RPG FINISHED" << endl;
 #endif
-
-    if(!SimulationRelation::simulated_states.empty()){
-        tmp_price.propagate_dominance_prices();
-    }
-
-    if(propagate_goal_prices) {
-        tmp_price.goal_price_propagation();
-    }
 
     if (curr_number_duplicates == -1){
         return 0;
@@ -515,15 +440,7 @@ bool Prices::has_leaf_state(int id, int factor) const {
 }
 
 bool Prices::has_effective_leaf_state(int id, int factor) const {
-    if (effective_prices.empty()){
-        return has_leaf_state(id, factor);
-    } else {
-        if (leaf_state_id_map[factor][id] == -1){
-            return false;
-        }
-        size_t leaf_id = leaf_state_id_map[factor][id];
-        return leaf_id < effective_prices[factor].size() && effective_prices[factor][leaf_id] != INF;
-    }
+    return has_leaf_state(id, factor);
 }
 
 int Prices::get_cost_of_state(int id, int factor) const {
@@ -532,12 +449,7 @@ int Prices::get_cost_of_state(int id, int factor) const {
 }
 
 int Prices::get_effective_cost_of_state(int id, int factor) const {
-    if (effective_prices.empty()){
-        return get_cost_of_state(id, factor);
-    } else {
-        assert((size_t) leaf_state_id_map[factor][id] < effective_prices[factor].size());
-        return effective_prices[factor][leaf_state_id_map[factor][id]];
-    }
+    return get_cost_of_state(id, factor);
 }
 
 size_t Prices::get_number_states(int factor) const {
@@ -545,11 +457,7 @@ size_t Prices::get_number_states(int factor) const {
 }
 
 size_t Prices::get_number_effective_states(int factor) const {
-    if (number_effective_states.empty()){
-        return get_number_states(factor);
-    } else {
-        return number_effective_states[factor];
-    }
+    return number_states[factor];
 }
 
 int Prices::get_goal_cost(int factor) const {
@@ -561,16 +469,8 @@ bool Prices::goal_reachable(int factor) const {
 }
 
 const vector<boost::dynamic_bitset<> > & Prices::get_frontier() {
-    assert(store_frontier);
-    if (frontier.empty()){
-	compute_cost_frontier();
-#ifdef DEBUG_PRUNING
-	cout << "not precomputed" << endl;
-    } else {
-    cout << "precomputed" << endl;
-#endif
-    }
-    return frontier;
+    cout << "this code must not be reached (pricing_function.cc)" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
 }
 
 void Prices::store_new_graph(const State &state) {
@@ -578,142 +478,16 @@ void Prices::store_new_graph(const State &state) {
 }
 
 void Prices::create_init_state_prices() {
-    Prices prices(0);
-        
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        prices.add_state(LeafStateID(0, factor), 0);
-    }
-        
-    prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
-}
-
-void Prices::goal_price_propagation() {
-    assert(g_factoring->get_profile() == FORK);
-     
-    for (size_t factor = 0; factor < g_factors.size(); ++factor) {
-        
-// 	cout << "Propagate: " << factor << endl;
-        
-	vector<bool> closed(g_state_registry->size(factor), false);
-	
-	boost::dynamic_bitset<> sim_frontier;
-        if(store_frontier) {
-            if (!SimulationRelation::simulated_states.empty()){
-                sim_frontier = frontier[factor];
-            }
-            frontier[factor].reset();  
+    if (do_pruning()){
+        PruningPrices::create_init_state_prices();
+    } else {
+        Prices prices(0);
+            
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            prices.add_state(LeafStateID(0, factor), 0);
         }
-
-	//Alvaro: Given the size of leaf factors I think a bucketqueue
-	//should work better but requires some implementation
-	//effort. Probably worth it to reduce overhead
-	HeapQueue<int, compare_pair_first_greater<int> > open; //Alvaro: Use a heap_queue? 
-	
-	for (size_t s : leaf_goal_states[factor]) {
-	    //cout << s << " is goal " << endl; 
-	    open.push(goal_cost[factor], s);
-	}
-
-	while (!open.empty()) {
-	    pair<int, int> entry = open.pop();
-	    int state = entry.second;
             
-            if (closed[state]){
-                continue;
-            }
-            
-	    int value = entry.first;
-
-// 	    cout << "Propagating s " << g_fact_names[g_factors[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(state, factor))[g_factors[factor][0]]] << " with value " << value << endl; 
-	    
-	    closed[state] = true;
-            
-	    if (value != INF) {
-                add_effective_state(LeafStateID(state, factor), value);
-            }
-
-	    for (auto transition : leaf_state_predecessors[factor][state]) {
-		size_t t = transition.second;
-                
-		if (closed[t]) {
-                    continue;
-                }
-
-		int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
-		int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
-
-		int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :
-				      get_effective_cost_of_state(t, factor);
-
-		int vt = std::min(previous_t_val, propagated_val);
-                open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
-                
-		if (store_frontier && has_leaf_state(t, factor) && get_cost_of_state(t, factor) < propagated_val) {
-                    if (SimulationRelation::simulated_states.empty() || sim_frontier[t]){
-                        frontier[factor][t] = true;
-                    }
-		}
-	    }
-	}
-// 	assert(goal_cost[factor] == -1 || number_propagated_states[factor] == g_state_registry->size(factor));
-        // this assertion is not true! in case we have dead-end (i.e. irrelevant) leaf states that are not reached, no price is propagated to them
-	
-	//assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());
-    }
-}
-
-
-void Prices::propagate_dominance_prices() {
-    assert(g_factoring->get_profile() == FORK);
-    
-    vector<vector<vector<size_t> > > &simulated_states = SimulationRelation::simulated_states;
-    
-    for (size_t factor = 0; factor < simulated_states.size(); ++factor){
-	for (size_t s = 0; s < simulated_states[factor].size(); ++s) {
-	    if(has_effective_leaf_state(s, factor)){
-		int cost_s = get_effective_cost_of_state(s, factor);
-		for (size_t t : simulated_states[factor][s]) {
-		    if (!has_effective_leaf_state(t, factor) || get_effective_cost_of_state(t, factor) > cost_s) {
-//                         cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
-                        if (add_effective_state(LeafStateID(t, factor), cost_s) && store_frontier){
-                            frontier[factor][t] = false;
-                        }
-		    }
-		}
-	    }
-	}
-// 	assert(goal_cost[factor] != 0 || number_propagated_states[factor] == g_state_registry->size(factor));
-    }  
-}
-
-
-void Prices::compute_cost_frontier() {
-    assert(g_factoring->get_profile() == FORK);
-    
-    // frontier is only stored for states for which the dominance was already checked at some point
-    //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
-    
-    frontier.resize(g_factors.size());
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
-	for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
-	    if (!has_leaf_state(id, factor)){
-		continue;
-	    }
-	    for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-		int successor = leaf_state_successors[factor][id][o].second;
-		if (!has_effective_leaf_state(successor, factor)){
-		    frontier[factor][id] = true;
-		    break;
-		}
-		int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
-                int new_cost = get_effective_cost_of_state(id, factor) + action_cost;
-		if (get_effective_cost_of_state(successor, factor) > new_cost){
-		    frontier[factor][id] = true;
-		    break;
-		}
-	    }
-	}
+        prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
     }
 }
 
@@ -723,12 +497,11 @@ void Prices::dump() const {
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                bool is_frontier = store_frontier ? frontier[factor][id] : false;
                 if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << (is_frontier ? " frontier state " : " ") << "with price " << get_cost_of_state(id, factor) << endl;
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << endl;
                 } else {
                     state.dump_pddl();
-                    cout << (is_frontier ? "frontier state " : "") << "with price " << get_cost_of_state(id, factor) << endl;
+                    cout << " with price " << get_cost_of_state(id, factor) << endl;
                 }
             }
         }

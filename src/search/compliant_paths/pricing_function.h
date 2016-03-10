@@ -16,16 +16,10 @@ class Prices : public CompliantPathGraph, public Prunable {
     static Prices tmp_price;
     
 protected:  
-    
-    std::vector<boost::dynamic_bitset<> > frontier;
 
     std::vector<std::vector<int> > prices;
     
-    std::vector<std::vector<int> > effective_prices;
-    
     std::vector<size_t> number_states;
-    
-    std::vector<size_t> number_effective_states;
 
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
@@ -46,8 +40,6 @@ protected:
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost);
     
-    bool add_effective_state(const LeafStateID &fact, int cost);
-    
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
                                   const State &base_state,
@@ -56,12 +48,6 @@ protected:
                                   const Operator *op) const;
     
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
-
-    void compute_cost_frontier();
-
-    void goal_price_propagation();
-
-    void propagate_dominance_prices(); 
     
 public:
     
@@ -85,7 +71,7 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
-    void dump() const;
+    virtual void dump() const;
 
     
     static void create_init_state_prices();

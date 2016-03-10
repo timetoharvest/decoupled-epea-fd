@@ -538,7 +538,7 @@ bool Reachable::goal_reachable(int factor) const {
 }
 
 const vector< boost::dynamic_bitset< long unsigned int > >& Reachable::get_frontier() {
-    cout << "not implemented, yet (reachablility_function.cc)" << endl;
+    cout << "this code must not be reached (reachablility_function.cc)" << endl;
     exit_with(EXIT_CRITICAL_ERROR);
 }
 
@@ -554,5 +554,20 @@ void Reachable::create_init_state_reachable() {
     }
         
     reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
+}
+
+void Reachable::dump() const {
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                if (g_factors[factor].size() == 1){
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << endl;
+                } else {
+                    state.dump_pddl();
+                }
+            }
+        }
+    }
 }
 

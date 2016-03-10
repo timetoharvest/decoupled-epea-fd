@@ -63,6 +63,8 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
+    virtual void dump() const;
+    
     
     static void store_new_graph(const State &state);
     
