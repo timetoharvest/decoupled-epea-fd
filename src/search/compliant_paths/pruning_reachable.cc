@@ -268,24 +268,16 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
     return tmp_p_reach.check_duplicate(base_state, curr_number_duplicates, g_value, predecessor);
 }
 
-const vector< boost::dynamic_bitset< long unsigned int > >& PruningReachable::get_frontier() {
+const vector<boost::dynamic_bitset<> >& PruningReachable::get_frontier() {
     assert(store_frontier);
     if (frontier.empty()){
         compute_frontier();
-#ifdef DEBUG_PRUNING
-        cout << "not precomputed" << endl;
-    } else {
-    cout << "precomputed" << endl;
-#endif
     }
     return frontier;
 }
 
 void PruningReachable::compute_frontier() {
     assert(g_factoring->get_profile() == FORK);
-    
-    // frontier is only stored for states for which the dominance was already checked at some point
-    //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
     
     frontier.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -295,16 +287,8 @@ void PruningReachable::compute_frontier() {
                 continue;
             }
             for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                int successor = leaf_state_successors[factor][id][o].second;
-                if (!has_effective_leaf_state(successor, factor)){
+                if (!has_leaf_state(leaf_state_successors[factor][id][o].second, factor)){
                     frontier[factor][id] = true;
-                    break;
-                }
-                int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
-                int new_cost = get_effective_cost_of_state(id, factor) + action_cost;
-                if (get_effective_cost_of_state(successor, factor) > new_cost){
-                    frontier[factor][id] = true;
-                    break;
                 }
             }
         }
