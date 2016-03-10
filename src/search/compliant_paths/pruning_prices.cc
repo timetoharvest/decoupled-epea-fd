@@ -97,7 +97,7 @@ int PruningPrices::update_price_tags(int curr_number_duplicates,
                 tmp_p_price.frontier[factor][0] = true;
             }
         } else {
-            tmp_p_price.frontier = CPGStorage::price_tags[predecessor].get_frontier();
+            tmp_p_price.frontier = CPGStorage::pruning_prices[predecessor].get_frontier();
         }
     }
 
