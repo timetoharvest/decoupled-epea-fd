@@ -63,7 +63,7 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
                 predecessors.push_back(curr_id.hash());
             }
-            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).info.parent_state_id;
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
         }
         predecessors.push_back(0);
     }
@@ -474,7 +474,11 @@ const vector<boost::dynamic_bitset<> > & Prices::get_frontier() {
 }
 
 void Prices::store_new_graph(const State &state) {
-    CPGStorage::price_tags[state] = tmp_price;
+    if (do_pruning()){
+        PruningPrices::store_new_graph(state);
+    } else {
+        CPGStorage::price_tags[state] = tmp_price;
+    }
 }
 
 void Prices::create_init_state_prices() {

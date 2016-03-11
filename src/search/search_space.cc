@@ -55,6 +55,10 @@ int SearchNode::get_h() const {
     return info.h;
 }
 
+StateID SearchNode::get_parent_state_id() const {
+    return info.parent_state_id;
+}
+
 bool SearchNode::is_h_dirty() const {
     return info.h_is_dirty;
 }

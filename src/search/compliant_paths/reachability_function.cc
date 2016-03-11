@@ -50,7 +50,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
                 predecessors.push_back(curr_id.hash());
             }
-            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).info.parent_state_id;
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
         }
         predecessors.push_back(0);
     }
@@ -543,17 +543,25 @@ const vector< boost::dynamic_bitset< long unsigned int > >& Reachable::get_front
 }
 
 void Reachable::store_new_graph(const State &state) {
-    CPGStorage::reach_tags[state] = tmp_reach;
+    if (do_pruning()){
+        PruningReachable::store_new_graph(state);
+    } else {
+        CPGStorage::reach_tags[state] = tmp_reach;
+    }
 }
 
 void Reachable::create_init_state_reachable() {
-    Reachable reach(0);
-        
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        reach.add_state(LeafStateID(0, factor));
+    if (do_pruning()){
+        PruningReachable::create_init_state_reachable();        
+    } else {
+        Reachable reach(0);
+            
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            reach.add_state(LeafStateID(0, factor));
+        }
+            
+        reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
     }
-        
-    reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
 }
 
 void Reachable::dump() const {
