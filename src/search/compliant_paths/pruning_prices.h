@@ -29,6 +29,11 @@ protected:
     
     bool add_effective_state(const LeafStateID &fact, int cost);
     
+    // returns the duplicate counter for this base state and price tag 
+    // i.e. the counter of the subsuming that or the current max + 1
+    int check_duplicate(const State &base_state, int curr_number_duplicates, 
+                        int g_value, const State &predecessor);
+    
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
                                   const State &base_state,

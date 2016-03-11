@@ -28,6 +28,161 @@ PruningReachable::PruningReachable(const PruningReachable *tag) {
     }
 }
 
+int PruningReachable::check_duplicate(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
+    
+#ifdef DEBUG_PRUNING
+    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+            }
+        }
+    }
+#endif
+    
+    vector<size_t> predecessors;
+    SearchSpace *search_space = g_factoring->get_search_space();
+    
+    if (g_factoring->are_closed_nodes_reopened()){
+        StateID curr_id = predecessor.get_id();
+        while (curr_id.hash() != 0){
+            if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
+                predecessors.push_back(curr_id.hash());
+            }
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
+        }
+        predecessors.push_back(0);
+    }
+    
+    int replaced_state_dup = -1;
+    State replaced_state = g_initial_state();
+    bool replace_price_tag = false;
+
+    for (int dup = 0; dup <= curr_number_duplicates; dup++){
+        // check the price tags of all equal center states
+        
+#ifdef DEBUG_PRUNING
+        cout << "current dup counter " << dup << endl;
+#endif
+
+        // get other state
+        State s = g_state_registry->get_center_state(base_state, dup);
+        
+#ifdef DEBUG_PRUNING         
+        cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+                if (g_price_tags[s].has_leaf_state(id, factor)){
+                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+                }
+            }
+        }
+#endif
+        
+        if (!g_factoring->are_closed_nodes_reopened()){
+            // in greedy search, close nodes that are dominated by this one as cannot
+            // reach anything new from those that cannot be reached from this node
+            // if dominated => do not consider this state
+            // in this case, all dominated nodes are also dominated by the state
+            // that dominates this one
+
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::pruning_reachable[s]); 
+            
+            if (res != NONE){
+                if (res == DOMINATES) {
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                } else {
+                    replaced_state_dup = dup;
+
+                    // otherwise, the path to an existing state dominating this one
+                    // will be updated, so that paths to leaf states that are not
+                    // reachable in this state cannot be constructed
+                    // this is only needed for eager search, where for duplicate states
+                    // reached on a cheaper path, the predecessor is updated
+                    g_factoring->set_ignore_current_state(true);
+                }
+            }       
+            
+        } else {
+            
+            int old_g = search_space->get_node(s).get_g();
+            
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::pruning_reachable[s]);
+            
+            if (g_value + g_inc_g_by < old_g){
+                // new state has a lower g-value and may only replace an
+                // existing state if it dominates the existing one
+                // => if the new one does not dominate the old state, need
+                // to make it a new state, no duplicate
+                // in satisficing search, if this state is dominated, mark it as duplicate
+                // but don't reopen it in the search
+                
+                if (res == EQUAL){
+                    if (!replace_price_tag){
+                        replaced_state_dup = dup;
+                        g_factoring->set_ignore_current_state(false);
+                    }
+                } else if (res == DOMINATES){
+                    bool is_predecessor = false;
+                    if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) != predecessors.end()){
+                        // must not replace a dominated state that is not on path to this state
+                        is_predecessor = true;
+                    }
+                    if (!replace_price_tag && !is_predecessor){
+                        replace_price_tag = true;
+                        replaced_state_dup = dup;
+                        replaced_state = s;
+                        g_factoring->set_ignore_current_state(false);
+                    } else {
+                        // set dominated nodes to closed
+                        SearchNode node = search_space->get_node(s);
+                        if (node.is_open()){
+                            node.close();
+                        }
+                    }
+                } else if (res == DOMINATED){
+                    if (!replace_price_tag){
+                        g_factoring->set_ignore_current_state(true);
+                        replaced_state_dup = dup;
+                    }
+                }
+            } else {
+                // new state has a higher/equal g-value than the existing one and can
+                // be marked as duplicate if it is subsumed.
+                // if it is not subsumed, it must be considered a new state
+                // in satisficing search, if this state dominates an existing one
+                // close existing and consider this one a new state
+                
+                if (res == EQUAL || res == DOMINATED){
+                    // new state is dominated by existing one
+                    if (!replace_price_tag){
+                        replaced_state_dup = dup;
+                    }
+                } else if (res == DOMINATES){
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                }
+            }
+        }
+    }
+    if (replaced_state_dup != -1){
+        if (replace_price_tag){
+            // replace old PriceTag as this is done in StateRegistry only for new states
+            store_new_graph(replaced_state);
+        }
+        return replaced_state_dup;
+    } else {
+        return curr_number_duplicates + 1;
+    }
+}
+
 int PruningReachable::update_price_tags(int curr_number_duplicates,
                                  const State &base_state,
                                  int g_value,
