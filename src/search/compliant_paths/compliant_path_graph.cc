@@ -5,6 +5,7 @@
 #include "../leaf_state_id.h"
 #include "../operator.h"
 #include "pricing_function.h"
+#include "../pruning/pruning.h"
 #include "reachability_function.h"
 #include "../state.h"
 #include "../state_id.h"
@@ -257,6 +258,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
 #endif
+    
+    g_factoring->get_pruning()->init();
    
     size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;
@@ -323,7 +326,6 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         leaf_state_id_map[factor] = vector<int>(g_state_registry->size(factor), -1);
         curr_leaf_state_max_id[factor] = 0;
     }
-    
     
     if (g_factoring->get_search_type() == SAT){
         Reachable::create_init_state_reachable();
