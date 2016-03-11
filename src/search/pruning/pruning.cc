@@ -15,9 +15,7 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
                                         do_simulation(opts.get<bool>("simulation")),
                                         goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
 
-    if (goal_price_propagation || do_simulation || irrelevance != NO){
-        assert(g_factoring->get_profile() == FORK);
-        
+    if (goal_price_propagation || do_simulation || irrelevance != NO){        
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
@@ -36,7 +34,18 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
 }
 
 void Pruning::init() {
+    if (g_factoring->get_search_type() == SAT){
+        if (goal_price_propagation){
+            cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
+            exit_with(EXIT_INPUT_ERROR);
+        }        
+        if (do_simulation){
+            cout << "simulation is not (yet) supported for satisficing search" << endl;
+            exit_with(EXIT_INPUT_ERROR);
+        }
+    }
     if (do_simulation || irrelevance != NO){
+        assert(g_factoring->get_profile() == FORK);
 
         SimulationRelation rel; 
         rel.init();
@@ -48,7 +57,6 @@ void Pruning::init() {
         if (do_simulation) {
             rel.set_list_dominated_states(); 
         }
-
     }
 }
 
@@ -208,7 +216,6 @@ void Pruning::add_options_to_parser(OptionParser &parser){
     parser.add_enum_option("irrelevance",
                            irr_options,
                            "perform simulation irrelevance pruning", "NO");
-
 }
 
 BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
