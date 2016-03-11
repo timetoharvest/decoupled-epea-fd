@@ -16,7 +16,6 @@ CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
 }
 
 DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
-    
     assert(g_factoring->get_profile() == FORK);
 
     const vector<boost::dynamic_bitset<> > &current_frontier = check->get_frontier();
