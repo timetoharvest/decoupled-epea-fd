@@ -18,7 +18,7 @@ void SimulationRelation::init () {
     compute_label_dominance();
     relation.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	compute_simulation( factor);
+	compute_simulation(factor);
     }
 }
 
@@ -300,7 +300,7 @@ void SimulationRelation::compute_simulation (int factor) {
 
 int SimulationRelation::num_equivalences(int factor) const{
     int num = 0;
-    std::vector<bool> counted (relation[factor].size(), false);
+    vector<bool> counted(relation[factor].size(), false);
     for(size_t i = 0; i < counted.size(); i++){
         if(!counted[i]){
             for(size_t j = i + 1; j < relation[factor].size(); j++){
@@ -308,8 +308,8 @@ int SimulationRelation::num_equivalences(int factor) const{
                     counted [j] = true;
                 }
             }
-        }else{
-            num++;
+        } else {
+            ++num;
         }
     }
     return num;
@@ -317,7 +317,7 @@ int SimulationRelation::num_equivalences(int factor) const{
 
 int SimulationRelation::num_simulations(int factor, bool ignore_equivalences) const{
     int res = 0;
-    if(ignore_equivalences){
+    if (ignore_equivalences){
         std::vector<bool> counted (relation[factor].size(), false);
         for(size_t i = 0; i < relation[factor].size(); ++i){
             if(!counted[i]){
@@ -333,17 +333,17 @@ int SimulationRelation::num_simulations(int factor, bool ignore_equivalences) co
                 for(size_t j = i+1; j < relation[factor].size(); ++j){
                     if(!counted[j]){
                         if(!similar(factor, i, j) && (simulates(factor, i, j) || simulates(factor, j, i))){
-                            res ++;
+                            ++res;
                         }
                     }
                 }
             }
         }
-    }else {
+    } else {
         for(size_t i = 0; i < relation[factor].size(); ++i)
             for(size_t j = 0; j < relation[factor].size(); ++j)
                 if(simulates(factor, i, j))
-                    res++;
+                    ++res;
     }
     return res;
 }
@@ -374,7 +374,6 @@ void SimulationRelation::statistics() const{
 	cout << "Factor " <<  factor << " has " <<
 	    num_equivalences(factor) << " equivalences and " << 
 	    num_simulations(factor, true) << " simulations " << endl;
-
 // 	dump(factor);
     }    
 }
