@@ -352,7 +352,9 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
         }
         assert(is_a_leaf_goal_state[factor].size() == state.get_id().hash());
         is_a_leaf_goal_state[factor].push_back(is_goal);
-        leaf_goal_states[factor].push_back(state.get_id().hash());
+        if (is_goal && compute_leaf_backwards_graph){
+            leaf_goal_states[factor].push_back(state.get_id().hash());
+        }
     }
 }
 
