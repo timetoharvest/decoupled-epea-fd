@@ -366,6 +366,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
             number_states[factor] = old_tag.number_states[factor];
             prices[factor] = old_tag.prices[factor];
             goal_cost[factor] = old_tag.goal_cost[factor];
+            continue;
         }
         
         int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;

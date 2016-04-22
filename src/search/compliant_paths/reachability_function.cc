@@ -459,6 +459,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
             // op does not affect leaf at all => copy everything            
             reachable[factor] = old_tag.reachable[factor];
             goal_reached[factor] = old_tag.goal_reached[factor];
+            continue;
         }
         
         if (eff_on_factor.size() == g_factors[factor].size()){
