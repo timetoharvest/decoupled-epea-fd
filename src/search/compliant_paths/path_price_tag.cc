@@ -206,10 +206,12 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
 #endif
 
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
+        
+        // TODO why don't we have the special case handling from, e.g., pricing_function, here?
         
         if (has_pre_on_factor && num_effects == g_factors[factor].size()){
             // center op completely overwrites leaf
