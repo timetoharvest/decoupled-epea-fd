@@ -131,8 +131,8 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
         return EQUAL;
     }
     
-    bool dominated = needed != DOMINATES && ((new_is_smaller && !new_is_larger) || sizes_equal);
-    bool dominates = needed != DOMINATED && ((new_is_larger && !new_is_smaller) || sizes_equal);
+    bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
+    bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
     // compare prices / reachability
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
