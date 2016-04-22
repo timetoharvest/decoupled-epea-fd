@@ -492,7 +492,7 @@ void PruningPrices::goal_price_propagation() {
                 int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :
                                       get_effective_cost_of_state(t, factor);
 
-                int vt = std::min(previous_t_val, propagated_val);
+                int vt = min(previous_t_val, propagated_val);
                 open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
                 
                 if (store_frontier && has_leaf_state(t, factor) && get_cost_of_state(t, factor) < propagated_val) {
