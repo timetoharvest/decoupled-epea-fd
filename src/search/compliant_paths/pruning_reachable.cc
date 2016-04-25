@@ -295,13 +295,13 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                     
                     handled[id] = true;
                     
-                    assert(id < leaf_state_successors[factor].size() || !g_factoring->precompute_state_space(factor));
+                    assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
                     
                     size_t added = 0;
                     
-                    if (g_factoring->precompute_state_space(factor) || 
+                    if (precompute_leaf_state_spaces[factor] || 
                             (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!g_factoring->precompute_state_space(factor) && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
                             ++id;
                             continue;

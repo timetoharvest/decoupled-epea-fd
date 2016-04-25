@@ -28,7 +28,7 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
         }
 
         if (irrelevance != NO){
-            cout << "performing irrelevance pruning" << endl;
+            cout << "performing irrelevance analysis in leaf factors" << endl;
         }
     }    
 }
@@ -108,7 +108,7 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check->get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+        if (check->get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
             all_leaves_max_size = false;
         }
     }

@@ -128,11 +128,11 @@ void PathPriceTag::update_price_tags(const State &base_state) {
 
                     LeafStateID predecessor_id(id, factor);
                     
-                    assert(!g_factoring->precompute_state_space(factor) || id < leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
+                    assert(!precompute_leaf_state_spaces[factor] || id < leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
                     
-                    if (g_factoring->precompute_state_space(factor) || 
+                    if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!g_factoring->precompute_state_space(factor) && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
                             ++id;
                             continue;

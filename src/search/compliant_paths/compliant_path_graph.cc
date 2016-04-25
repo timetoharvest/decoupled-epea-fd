@@ -22,6 +22,8 @@ const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
 bool CompliantPathGraph::compute_leaf_backwards_graph = false;
 
+vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
+
 vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
 
 vector<pair<int, int> > CompliantPathGraph::leaf_tags_to_cache;
@@ -92,6 +94,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     if (compute_leaf_backwards_graph){
         leaf_state_predecessors.resize(g_factors.size());
+        precompute_leaf_state_spaces = vector<bool>(g_factors.size(), true);
     }
     
     Prices goal_price_tag(0);
@@ -102,7 +105,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             continue;
         }
         
@@ -267,7 +270,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     size_t tmp;
     bool built_all_state_spaces = true;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (g_factoring->precompute_state_space(factor)){
+        if (precompute_leaf_state_spaces[factor]){
             tmp = g_state_registry->size(factor);
             min_leaf_factor_size = min(min_leaf_factor_size, tmp);
             avg_leaf_factor_size += tmp;
@@ -287,7 +290,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     g_min_goal_cost = vector<int>(g_factors.size(), numeric_limits<int>::max());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             cout << "min goal cost of factor " << factor << " not computed" << endl;
             g_min_goal_cost[factor] = 0;
             continue;
@@ -315,7 +318,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     g_leaf_successor_generators.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             g_leaf_successor_generators[factor] = g_successor_generator->copy();
             g_leaf_successor_generators[factor]->split_ops_center_leaf(factor);
         }

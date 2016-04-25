@@ -347,7 +347,7 @@ void Factoring::print_factoring() const {
         cout << g_factors[i].size() << " variables in leaf factor " << i << endl;
     }
     
-    precompute_leaf_state_space.resize(g_factors.size(), true);
+    vector<bool> precompute_leaf_state_space(g_factors.size(), true);
     
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
@@ -364,6 +364,8 @@ void Factoring::print_factoring() const {
         min_size = min(min_size, f_size);
         max_size = max(max_size, f_size);
     }
+    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
+    
     uint64_t avg = 0;
     if (g_factors.size() > 0){
         avg = avg_size / g_factors.size();

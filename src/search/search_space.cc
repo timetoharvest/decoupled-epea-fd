@@ -503,7 +503,7 @@ void SearchSpace::statistics() const {
             min_leaf_factor_size = min(min_leaf_factor_size, tmp);
             avg_leaf_factor_size += tmp;
             max_leaf_factor_size = max(max_leaf_factor_size, tmp);
-            if (!g_factoring->precompute_state_space(factor)){
+            if (!CompliantPathGraph::precompute_leaf_state_space(factor)){
                 precomputed_state_spaces = false;
             }
             cout << "Number of registered leaf states in factor " << factor << ": " << tmp << endl;

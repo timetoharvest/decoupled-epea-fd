@@ -26,6 +26,8 @@ protected:
     
     static bool compute_leaf_backwards_graph;
     
+    static std::vector<bool> precompute_leaf_state_spaces;
+    
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
     // first is id, second is leaf factor
@@ -95,6 +97,14 @@ public:
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;
+    }
+    
+    static void set_precompute_leaf_state_spaces(const std::vector<bool> &precompute) {
+        precompute_leaf_state_spaces = precompute;
+    }
+    
+    static bool precompute_leaf_state_space(int factor) {
+        return precompute_leaf_state_spaces[factor];
     }
     
 };
