@@ -29,7 +29,7 @@ class PathPriceTag : public Prices {
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost, const Operator *bs, 
-                  const LeafStateID &predecessor);
+                   const LeafStateID &predecessor);
     
     PathPriceTag(const PathPriceTag *tag);
     

@@ -2,7 +2,7 @@
 
 #include "ext/tree_util.hh"
 #include "plugin.h"
-#include "pruning.h"
+#include "pruning/pruning.h"
 #include "rng.h"
 
 #include <algorithm>

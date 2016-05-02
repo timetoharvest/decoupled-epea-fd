@@ -1,33 +1,26 @@
-#ifndef PRICING_FUNCTION_H
-#define PRICING_FUNCTION_H
+#ifndef REACHABILITY_FUNCTION_H
+#define REACHABILITY_FUNCTION_H
 
 #include "compliant_path_graph.h"
-
-#include "globals.h"
-#include "leaf_state.h"
-#include "leaf_state_id.h"
+#include "../ext/boost/dynamic_bitset.hpp"
+#include "../globals.h"
+#include "../leaf_state.h"
+#include "../leaf_state_id.h"
+#include "../pruning/prunable.h"
 
 #include <vector>
 
-
-class Prices : public CompliantPathGraph {
-    friend class CompliantPathGraph;
+class Reachable : public CompliantPathGraph, public Prunable {
     
-    static Prices tmp_price;
+    static Reachable tmp_reach;
     
 protected:
     
-    std::vector<std::vector<int> > costs;
+    std::vector<boost::dynamic_bitset<> > reachable;
     
-    std::vector<size_t> number_states;
-    
-    std::vector<int> goal_cost;
+    boost::dynamic_bitset<> goal_reached;
         
-    Prices(const Prices *tag);
-      
-    // used when including part of the leaf cost into the g-value
-    // of a search node
-    void reduce_cost_by(int factor, int cost);
+    Reachable(const Reachable *tag);
     
     // returns the duplicate counter for this base state and price tag 
     // i.e. the counter of the subsuming that or the current max + 1
@@ -37,7 +30,7 @@ protected:
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    bool add_state(const LeafStateID &fact, int cost);
+    bool add_state(const LeafStateID &fact);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
@@ -46,24 +39,37 @@ protected:
                                   const State &predecessor,
                                   const Operator *op) const;
     
-    void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
     
 public:
     
-    Prices(){};
+    Reachable(){};
     
     virtual bool has_leaf_state(int id, int factor) const;
     
+    virtual bool has_effective_leaf_state(int id, int factor) const;
+    
     virtual int get_cost_of_state(int id, int factor) const;
     
+    virtual int get_effective_cost_of_state(int id, int factor) const;
+    
     virtual size_t get_number_states(int factor) const;
+
+    virtual size_t get_number_effective_states(int factor) const;
     
     virtual int get_goal_cost(int factor) const;
     
+    virtual bool goal_reachable(int factor) const;
+    
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    
+    virtual void dump() const;
+    
+    
     static void store_new_graph(const State &state);
     
-    static void create_init_state_prices();
-    
+    static void create_init_state_reachable();
+ 
 };
 
 

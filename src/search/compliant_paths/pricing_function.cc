@@ -1,13 +1,16 @@
 #include "pricing_function.h"
 
 #include "cpg_storage.h"
-#include "factoring.h"
-#include "operator.h"
-#include "pruning.h"
-#include "search_space.h"
-#include "state_registry.h"
-#include "successor_generator.h"
-#include "utilities.h"
+#include "../factoring.h"
+#include "../globals.h"
+#include "../operator.h"
+#include "../priority_queue.h"
+#include "../pruning/pruning.h"
+#include "../pruning/simulation_relation.h"
+#include "../search_space.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
+#include "../utilities.h"
 
 #include <limits>
 
@@ -21,23 +24,25 @@ Prices Prices::tmp_price;
 Prices::Prices(const Prices *tag) {
     if (tag == 0){
         number_states = vector<size_t>(g_factors.size(), 0);
-        costs = vector<vector<int> >(g_factors.size());
+        prices = vector<vector<int> >(g_factors.size());
         goal_cost = vector<int>(g_factors.size(), INF);
     } else {
         number_states = tag->number_states;
-        costs = tag->costs;
+        prices = tag->prices;
         goal_cost = tag->goal_cost;
     }
 }
 
 void Prices::reduce_cost_by(int factor, int cost) {
+    assert(g_factoring->get_profile() != FORK);
+    
     if (goal_cost[factor] != INF){
         // if there is a goal state, its cost must be >= cost!
         goal_cost[factor] -= cost;
     }
-    for (size_t id = 0; id < costs[factor].size(); ++id){
-        if (costs[factor][id] != INF){
-            costs[factor][id] -= cost;
+    for (size_t id = 0; id < prices[factor].size(); ++id){
+        if (prices[factor][id] != INF){
+            prices[factor][id] -= cost;
         }
     }
 }
@@ -46,13 +51,7 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(id, factor)){
-                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-            }
-        }
-    }
+    dump();
 #endif
     
     vector<size_t> predecessors;
@@ -64,14 +63,12 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
                 predecessors.push_back(curr_id.hash());
             }
-            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).info.parent_state_id;
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
         }
         predecessors.push_back(0);
     }
     
     int replaced_state_dup = -1;
-    State replaced_state = g_initial_state();
-    bool replace_price_tag = false;
 
     for (int dup = 0; dup <= curr_number_duplicates; dup++){
         // check the price tags of all equal center states
@@ -81,17 +78,11 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
 #endif
 
         // get other state
-        State s = g_state_registry->get_center_state(base_state, dup);
+        const State s = g_state_registry->get_center_state(base_state, dup);
         
-#ifdef DEBUG_PRUNING         
+#ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (g_price_tags[s].has_leaf_state(id, factor)){
-                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-                }
-            }
-        }
+        g_price_tags[s].dump();
 #endif
         
         if (!g_factoring->are_closed_nodes_reopened()){
@@ -101,7 +92,7 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(this, CPGStorage::get_cpg(s)); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::price_tags[s]); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -132,11 +123,11 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
                 cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
 #endif
                 // new state has a lower g-value and may only replace an
-                // existing state if it dominates the existing one
+                // existing state if it dominates the existing one (nodes are closed instead of replaced)
                 // => if the new one does not dominate the old state, need
                 // to make it a new state, no duplicate
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(this, CPGStorage::get_cpg(s), DOMINATES);
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::price_tags[s], DOMINATES);
                 
                 if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -147,12 +138,14 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
 #ifdef DEBUG_PRUNING
                     cout << "new state dominates old one" << endl;
 #endif
-                    if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) != predecessors.end()){
-                        // must not replace a dominated state that is not on path to this state
-                        continue;
+                    if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
+                        // must not close a dominated state that is on path to this state
+                        // it might have been reopened, so its successors may get lower g
+                        SearchNode node = search_space->get_node(s);
+                        if (node.is_open()){
+                            node.close();
+                        }
                     }
-                    store_new_graph(s);
-                    return dup;
                 }
                 
             } else {
@@ -163,7 +156,7 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
                 // be marked as duplicate if it is subsumed.
                 // if it is not subsumed, it must be considered a new state
 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(this, CPGStorage::get_cpg(s), DOMINATED);
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::price_tags[s], DOMINATED);
                 
                 if (res == EQUAL || res == DOMINATED){
                     // new state is dominated by existing one
@@ -176,10 +169,6 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
         }
     }
     if (replaced_state_dup != -1){
-        if (replace_price_tag){
-            // replace old PriceTag as this is done in StateRegistry only for new states
-            store_new_graph(replaced_state);
-        }
         return replaced_state_dup;
     } else {
         return curr_number_duplicates + 1;
@@ -194,11 +183,11 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     }
     size_t leaf_id = leaf_state_id_map[factor][state.hash()];
 
-    if (leaf_id >= costs[factor].size()){
-        costs[factor].resize(leaf_id + 1, INF);
+    if (leaf_id >= prices[factor].size()){
+        prices[factor].resize(leaf_id + 1, INF);
     }
-    if (costs[factor][leaf_id] == INF){
-        costs[factor][leaf_id] = cost;
+    if (prices[factor][leaf_id] == INF){
+        prices[factor][leaf_id] = cost;
         ++number_states[factor];
         if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
             if (goal_cost[factor] == INF || goal_cost[factor] > cost){
@@ -206,8 +195,8 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
             }
         }
         return true;
-    } else if (costs[factor][leaf_id] > cost){
-        costs[factor][leaf_id] = cost;
+    } else if (prices[factor][leaf_id] > cost){
+        prices[factor][leaf_id] = cost;
         if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
             if (goal_cost[factor] > cost){
                 goal_cost[factor] = cost;
@@ -230,6 +219,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
     } else {                
         tmp_price = Prices(this);
     }
+    // the rest of this function works on tmp_price!
     
     
 #ifdef DEBUG_SEARCH
@@ -249,7 +239,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
 
 #ifdef DEBUG_SEARCH
         cout << "       starting RPG for leaf factor " << factor << endl;
-        const vector<PriceTagInfo*> &achieved_facts = new_tag.get_facts(factor);
+        const vector<PricesInfo*> &achieved_facts = new_tag.get_facts(factor);
         for (int i = 0; i < achieved_facts.size(); i++){
             if (achieved_facts[i] == 0){
                 continue;
@@ -263,7 +253,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
         
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
             // the two above conditions together prevent errors in case the CG is not connected.
-            // i.e. g_leaf_price_cache is empty for fork topologies
+            // i.e. leaf_price_cache is empty for fork topologies
             
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
@@ -308,20 +298,12 @@ int Prices::update_price_tags(int curr_number_duplicates,
            
             change = false;
             
-            size_t num_states = 0;
-            size_t id = 0;
-            while (num_states < tmp_price.number_states[factor]) {
+            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 
-                if (id >= g_state_registry->size(factor)){
-                    change = true;
-                    break;
-                }
                 if (tmp_price.has_leaf_state(id, factor)){
-                    ++num_states;
                 
                     int cost = tmp_price.get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
-                        ++id;
                         continue;
                     }
                     
@@ -332,14 +314,14 @@ int Prices::update_price_tags(int curr_number_duplicates,
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                            change |= tmp_price.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor), 
-                                            cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                            size_t successor = leaf_state_successors[factor][id][o].second;
+                            change |= tmp_price.add_state(LeafStateID(successor, factor), 
+                                                   cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                         }
-                    }
-                    
+                    }   
                     
                     // TODO probably reintroduce this for optimal search again
-                    // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPriceTag
+                    // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPrices
                     // when introducing this, also have a shortcut at the beginning of the outmost for loop
 //                 if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
 //                     // in satisficing search => stop once a goal is reachable in fork-leaves
@@ -347,7 +329,6 @@ int Prices::update_price_tags(int curr_number_duplicates,
 //                     break;
 //                 }
                 }
-                ++id;
             }
         }
         
@@ -360,7 +341,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ RPG FINISHED" << endl;
 #endif
-    
+
     if (curr_number_duplicates == -1){
         return 0;
     }
@@ -383,8 +364,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
             // op does not affect leaf at all => copy everything
             
             number_states[factor] = old_tag.number_states[factor];
-            costs[factor] = old_tag.costs[factor];
+            prices[factor] = old_tag.prices[factor];
             goal_cost[factor] = old_tag.goal_cost[factor];
+            continue;
         }
         
         int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
@@ -396,7 +378,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
             
             add_state(g_state_registry->get_successor_leaf_state(pred, op).get_id(), 0);
             
-            if (has_pre_on_factor && g_factoring->get_search_type() != SAT){
+            if (has_pre_on_factor){
                 size_t number_states = old_tag.get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0 && min_price > 0) {
@@ -455,32 +437,79 @@ bool Prices::has_leaf_state(int id, int factor) const {
         return false;
     }
     size_t leaf_id = leaf_state_id_map[factor][id];
-    return leaf_id < costs[factor].size() && costs[factor][leaf_id] != INF;
+    return leaf_id < prices[factor].size() && prices[factor][leaf_id] != INF;
+}
+
+bool Prices::has_effective_leaf_state(int id, int factor) const {
+    return has_leaf_state(id, factor);
 }
 
 int Prices::get_cost_of_state(int id, int factor) const {
-    assert((size_t) leaf_state_id_map[factor][id] < costs[factor].size());
-    return costs[factor][leaf_state_id_map[factor][id]];
+    assert((size_t) leaf_state_id_map[factor][id] < prices[factor].size());
+    return prices[factor][leaf_state_id_map[factor][id]];
+}
+
+int Prices::get_effective_cost_of_state(int id, int factor) const {
+    return get_cost_of_state(id, factor);
 }
 
 size_t Prices::get_number_states(int factor) const {
     return number_states[factor];
 }
-    
+
+size_t Prices::get_number_effective_states(int factor) const {
+    return number_states[factor];
+}
+
 int Prices::get_goal_cost(int factor) const {
     return goal_cost[factor];
 }
 
+bool Prices::goal_reachable(int factor) const {
+    return goal_cost[factor] != INF;
+}
+
+const vector<boost::dynamic_bitset<> > & Prices::get_frontier() {
+    cout << "this code must not be reached (pricing_function.cc)" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+
 void Prices::store_new_graph(const State &state) {
-    CPGStorage::price_tags[state] = tmp_price;
+    if (do_pruning()){
+        PruningPrices::store_new_graph(state);
+    } else {
+        CPGStorage::price_tags[state] = tmp_price;
+    }
 }
 
 void Prices::create_init_state_prices() {
-    Prices prices(0);
-        
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        prices.add_state(LeafStateID(0, factor), 0);
+    if (do_pruning()){
+        PruningPrices::create_init_state_prices();
+    } else {
+        Prices prices(0);
+            
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            prices.add_state(LeafStateID(0, factor), 0);
+        }
+            
+        prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
     }
-        
-    prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
 }
+
+void Prices::dump() const {
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                if (g_factors[factor].size() == 1){
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << endl;
+                } else {
+                    state.dump_pddl();
+                    cout << " with price " << get_cost_of_state(id, factor) << endl;
+                }
+            }
+        }
+    }
+}
+

@@ -1,7 +1,7 @@
 #include "operator.h"
 
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "factoring.h"
 #include "globals.h"
 #include "state_registry.h"
@@ -42,6 +42,7 @@ void Operator::read_pre_post(istream &in) {
 
 Operator::Operator(istream &in, bool axiom, int index) {
     marked = false;
+    dead = false;
 
     is_an_axiom = axiom;
     if (!is_an_axiom) {

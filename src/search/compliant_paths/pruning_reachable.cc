@@ -1,13 +1,13 @@
-#include "reachability_function.h"
+#include "pruning_reachable.h"
 
 #include "cpg_storage.h"
-#include "factoring.h"
-#include "operator.h"
-#include "pruning.h"
-#include "search_space.h"
-#include "state_registry.h"
-#include "successor_generator.h"
-#include "utilities.h"
+#include "../factoring.h"
+#include "../operator.h"
+#include "../pruning/pruning.h"
+#include "../search_space.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
+#include "../utilities.h"
 
 #include <limits>
 
@@ -15,10 +15,10 @@
 using namespace std;
 
 
-Reachable Reachable::tmp_reach;
+PruningReachable PruningReachable::tmp_p_reach;
 
 
-Reachable::Reachable(const Reachable *tag) {
+PruningReachable::PruningReachable(const PruningReachable *tag) {
     if (tag == 0){
         reachable = vector<boost::dynamic_bitset<> >(g_factors.size());
         goal_reached.resize(g_factors.size(), false);
@@ -28,7 +28,7 @@ Reachable::Reachable(const Reachable *tag) {
     }
 }
 
-int Reachable::check_duplicate(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
+int PruningReachable::check_duplicate(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
@@ -50,7 +50,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
                 predecessors.push_back(curr_id.hash());
             }
-            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).info.parent_state_id;
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
         }
         predecessors.push_back(0);
     }
@@ -87,7 +87,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(this, CPGStorage::get_cpg(s)); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::pruning_reachable[s]); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -112,7 +112,7 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
             
             int old_g = search_space->get_node(s).get_g();
             
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(this, CPGStorage::get_cpg(s));
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::pruning_reachable[s]);
             
             if (g_value + g_inc_g_by < old_g){
                 // new state has a lower g-value and may only replace an
@@ -183,54 +183,34 @@ int Reachable::check_duplicate(const State &base_state, int curr_number_duplicat
     }
 }
 
-bool Reachable::add_state(const LeafStateID &state) {
-    size_t factor = state.get_factor();
-    if (leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
-        leaf_state_id_map[factor][state.hash()] = curr_leaf_state_max_id[factor];
-        ++curr_leaf_state_max_id[factor];
-    }
-    size_t leaf_id = leaf_state_id_map[factor][state.hash()];
-
-    if (leaf_id >= reachable[factor].size()){
-        reachable[factor].resize(leaf_id + 1, false);
-    }
-    if (!reachable[factor][leaf_id]){
-        reachable[factor][leaf_id] = true;
-        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
-            goal_reached[factor] = true;
-        }
-        return true;
-    }
-    return false;
-}
-
-int Reachable::update_price_tags(int curr_number_duplicates,
+int PruningReachable::update_price_tags(int curr_number_duplicates,
                                  const State &base_state,
                                  int g_value,
                                  const State &predecessor,
                                  const Operator *op) const {
     
     if (g_factoring->get_profile() != FORK && op != 0){
-        tmp_reach = Reachable(0);               // for initial state => op == 0
-        tmp_reach.apply_center_op_to_leaves(*this, *op);
+        tmp_p_reach = PruningReachable(0);               // for initial state => op == 0
+        tmp_p_reach.apply_center_op_to_leaves(*this, *op);
     } else {                
-        tmp_reach = Reachable(this);
+        tmp_p_reach = PruningReachable(this);
     }
+    // the rest of this function works on tmp_p_reach!
     
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
     
     assert(leaf_tags_to_cache.empty());
-
+    
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         
         if (!g_factoring->has_successors(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
-            if (g_goals_per_factor[factor].empty() || tmp_reach.goal_reached[factor]){
+            if (g_goals_per_factor[factor].empty() || tmp_p_reach.goal_reached[factor]){
                 continue;
             }
-        }
+        }        
         
         size_t number_leaf_states = g_state_registry->size(factor);
 
@@ -255,25 +235,25 @@ int Reachable::update_price_tags(int curr_number_duplicates,
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            if (tmp_reach.reachable[factor].count() == 1){
+            if (tmp_p_reach.reachable[factor].count() == 1){
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_reach.has_leaf_state(leaf_id, factor)){
+                    if (tmp_p_reach.has_leaf_state(leaf_id, factor)){
                         break;
                     }
                     ++leaf_id;
                 }
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const Reachable &tag_to_copy = CPGStorage::reach_tags[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
+                    const PruningReachable &tag_to_copy = CPGStorage::pruning_reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_reach.get_cost_of_state(leaf_id, factor);
+                    int cost_delta = tmp_p_reach.get_cost_of_state(leaf_id, factor);
                     cost_delta -= tag_to_copy.get_cost_of_state(leaf_id, factor);
                     
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
-                            tmp_reach.add_state(LeafStateID(fact, factor));
+                            tmp_p_reach.add_state(LeafStateID(fact, factor));
                             if (--number_states == 0){
                                 break;
                             }
@@ -288,7 +268,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
         
         boost::dynamic_bitset<> handled(number_leaf_states, false);
         
-        size_t curr_number_states = tmp_reach.reachable[factor].count();
+        size_t curr_number_states = tmp_p_reach.reachable[factor].count();
         
         bool change = true;
 
@@ -305,7 +285,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                     break;
                 }
                 
-                if (tmp_reach.has_leaf_state(id, factor)){
+                if (tmp_p_reach.has_leaf_state(id, factor)){
                     ++num_states;
 
                     if (handled[id]){
@@ -315,13 +295,13 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                     
                     handled[id] = true;
                     
-                    assert(id < leaf_state_successors[factor].size() || !g_factoring->precompute_state_space(factor));
+                    assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
                     
                     size_t added = 0;
                     
-                    if (g_factoring->precompute_state_space(factor) || 
+                    if (precompute_leaf_state_spaces[factor] || 
                             (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!g_factoring->precompute_state_space(factor) && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
                             ++id;
                             continue;
@@ -329,7 +309,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                if(tmp_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                if(tmp_p_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
                                     ++added;
                                 }
                             }
@@ -395,7 +375,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                                 }
                                 
                                 if(!fits_store || op->is_center_applicable(base_state)){
-                                    if (tmp_reach.add_state(lid)){
+                                    if (tmp_p_reach.add_state(lid)){
                                         ++added;
                                     }
                                 }
@@ -416,7 +396,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                         change = true;
                     }
                     
-                    if (!g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
+                    if (!g_factoring->has_successors(factor) && tmp_p_reach.goal_reached[factor]){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
                         break;
@@ -440,97 +420,63 @@ int Reachable::update_price_tags(int curr_number_duplicates,
         return 0;
     }
     
-    return tmp_reach.check_duplicate(base_state, curr_number_duplicates, g_value, predecessor);
+    return tmp_p_reach.check_duplicate(base_state, curr_number_duplicates, g_value, predecessor);
 }
 
-void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op) {
-     
-#ifdef DEBUG_SEARCH
-    cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
-#endif
+const vector<boost::dynamic_bitset<> >& PruningReachable::get_frontier() {
+    assert(store_frontier);
+    if (frontier.empty()){
+        compute_frontier();
+    }
+    return frontier;
+}
 
+void PruningReachable::compute_frontier() {
+    assert(g_factoring->get_profile() == FORK);
+    
+    frontier.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-          
-        bool has_pre_on_factor = op.has_precondition_on(factor);
-        const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
-        
-        if (!has_pre_on_factor && eff_on_factor.empty()){
-            // op does not affect leaf at all => copy everything            
-            reachable[factor] = old_tag.reachable[factor];
-            goal_reached[factor] = old_tag.goal_reached[factor];
-        }
-        
-        if (eff_on_factor.size() == g_factors[factor].size()){
-            // center op completely overwrites this leaf factor
-                    
-            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
-            
-            add_state(g_state_registry->get_successor_leaf_state(pred, op).get_id());
-               
-        } else {
-            // check which leaf states satisfy center precondition and apply effects
-            
-            size_t number_states = old_tag.get_number_states(factor);
-            size_t id = 0;
-            while (number_states > 0) {
-                if (old_tag.has_leaf_state(id, factor)){
-                    --number_states;
-                    
-                    LeafStateID lid(id, factor);
-                    
-                    if (!has_pre_on_factor || op.is_applicable(lid)){
-                                
-                        if (eff_on_factor.empty()){
-                            add_state(lid);
-                        } else {
-                            const LeafState state = g_state_registry->lookup_leaf_state(lid);
-
-                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id());
-                        }
-                    }
+        boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
+        for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
+            if (!has_leaf_state(id, factor)){
+                continue;
+            }
+            for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
+                if (!has_leaf_state(leaf_state_successors[factor][id][o].second, factor)){
+                    frontier[factor][id] = true;
                 }
-                ++id;
             }
         }
     }
 }
 
-bool Reachable::has_leaf_state(int id, int factor) const {
-    if (leaf_state_id_map[factor][id] == -1){
-        return false;
-    }
-    size_t leaf_id = leaf_state_id_map[factor][id];
-    return leaf_id < reachable[factor].size() && reachable[factor][leaf_id];
+void PruningReachable::store_new_graph(const State &state) {
+    CPGStorage::pruning_reachable[state] = tmp_p_reach;
 }
 
-int Reachable::get_cost_of_state(int id, int factor) const {
-    assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
-    return reachable[factor][leaf_state_id_map[factor][id]] ? g_min_action_cost_per_factor[factor] : INF;
-}
-
-size_t Reachable::get_number_states(int factor) const {
-    return reachable[factor].count();
-}
-
-int Reachable::get_goal_cost(int factor) const {
-    if (goal_reached[factor]){
-        return g_min_action_cost_per_factor[factor];
-    } else {
-        return -1;
-    }
-}
-
-void Reachable::store_new_graph(const State &state) {
-    CPGStorage::reach_tags[state] = tmp_reach;
-}
-
-void Reachable::create_init_state_reachable() {
-    Reachable reach(0);
+void PruningReachable::create_init_state_reachable() {
+    PruningReachable reach(0);
         
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         reach.add_state(LeafStateID(0, factor));
     }
         
     reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
+}
+
+void PruningReachable::dump() const {
+    // TODO include frontier information
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                if (g_factors[factor].size() == 1){
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << endl;
+                } else {
+                    state.dump_pddl();
+                }
+            }
+        }
+    }
 }
 

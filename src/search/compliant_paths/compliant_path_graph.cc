@@ -1,15 +1,16 @@
 #include "compliant_path_graph.h"
 
 #include "cpg_storage.h"
-#include "factoring.h"
-#include "leaf_state_id.h"
-#include "operator.h"
+#include "../factoring.h"
+#include "../leaf_state_id.h"
+#include "../operator.h"
 #include "pricing_function.h"
+#include "../pruning/pruning.h"
 #include "reachability_function.h"
-#include "state.h"
-#include "state_id.h"
-#include "state_registry.h"
-#include "successor_generator.h"
+#include "../state.h"
+#include "../state_id.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
 
 
 using namespace std;
@@ -19,15 +20,23 @@ const int CompliantPathGraph::INF = -1;
     
 const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
+bool CompliantPathGraph::compute_leaf_backwards_graph = false;
+
+vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
+
 vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
 
 vector<pair<int, int> > CompliantPathGraph::leaf_tags_to_cache;
 
-vector<boost::dynamic_bitset<> > CompliantPathGraph::leaf_goal_states;
+vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
+
+vector<vector<size_t> > CompliantPathGraph::leaf_goal_states;
     
 vector<vector<vector<size_t> > > CompliantPathGraph::center_successors;
     
 vector<vector<vector<pair<const Operator*, size_t> > > > CompliantPathGraph::leaf_state_successors;
+
+vector<vector<vector<pair<const Operator*, size_t> > > > CompliantPathGraph::leaf_state_predecessors;
     
 vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
     
@@ -36,7 +45,7 @@ vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
 
 
 bool CompliantPathGraph::is_leaf_goal_state(const LeafStateID &fact) {
-    return leaf_goal_states[fact.get_factor()][fact.hash()];
+    return is_a_leaf_goal_state[fact.get_factor()][fact.hash()];
 }
 
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
@@ -62,6 +71,7 @@ void CompliantPathGraph::discard_leaf_price_cache() {
 void CompliantPathGraph::initialize() {
     leaf_state_successors.resize(g_factors.size());    
     center_successors.resize(g_factors.size());    
+    is_a_leaf_goal_state.resize(g_factors.size());
     leaf_goal_states.resize(g_factors.size());
     
     // initialize cache if at least one inv-fork leaf present
@@ -82,6 +92,11 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     leaf_state_id_map.resize(g_factors.size(), vector<int>(1, -1));
     curr_leaf_state_max_id.resize(g_factors.size(), 0);
     
+    if (compute_leaf_backwards_graph){
+        leaf_state_predecessors.resize(g_factors.size());
+        precompute_leaf_state_spaces = vector<bool>(g_factors.size(), true);
+    }
+    
     Prices goal_price_tag(0);
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -90,7 +105,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             continue;
         }
         
@@ -225,6 +240,12 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         
                         if (!is_center_op && first_time_seen){
                             leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+                            if (compute_leaf_backwards_graph) { 
+                                if (lid.hash() >= leaf_state_predecessors[factor].size()) {
+                                    leaf_state_predecessors[factor].resize(lid.hash() + 1);
+                                }
+                                leaf_state_predecessors[factor][lid.hash()].push_back(make_pair(op, id));
+                            }
                         }
                     }
                 }
@@ -240,6 +261,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
 #endif
+    
+    g_factoring->get_pruning()->init();
    
     size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;
@@ -247,7 +270,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     size_t tmp;
     bool built_all_state_spaces = true;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (g_factoring->precompute_state_space(factor)){
+        if (precompute_leaf_state_spaces[factor]){
             tmp = g_state_registry->size(factor);
             min_leaf_factor_size = min(min_leaf_factor_size, tmp);
             avg_leaf_factor_size += tmp;
@@ -267,7 +290,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     g_min_goal_cost = vector<int>(g_factors.size(), numeric_limits<int>::max());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             cout << "min goal cost of factor " << factor << " not computed" << endl;
             g_min_goal_cost[factor] = 0;
             continue;
@@ -280,7 +303,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
                     cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
                 }
-                exit(EXIT_UNSOLVABLE);
+                exit_with(EXIT_UNSOLVABLE);
             }
             g_min_goal_cost[factor] = 0;
         } else {
@@ -295,7 +318,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     g_leaf_successor_generators.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (!g_factoring->precompute_state_space(factor)){
+        if (!precompute_leaf_state_spaces[factor]){
             g_leaf_successor_generators[factor] = g_successor_generator->copy();
             g_leaf_successor_generators[factor]->split_ops_center_leaf(factor);
         }
@@ -305,8 +328,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         leaf_state_id_map[factor] = vector<int>(g_state_registry->size(factor), -1);
         curr_leaf_state_max_id[factor] = 0;
-    }    
-    
+    }
     
     if (g_factoring->get_search_type() == SAT){
         Reachable::create_init_state_reachable();
@@ -331,8 +353,11 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
                 break;
             }
         }
-        assert(leaf_goal_states[factor].size() == state.get_id().hash());
-        leaf_goal_states[factor].push_back(is_goal);
+        assert(is_a_leaf_goal_state[factor].size() == state.get_id().hash());
+        is_a_leaf_goal_state[factor].push_back(is_goal);
+        if (is_goal && compute_leaf_backwards_graph){
+            leaf_goal_states[factor].push_back(state.get_id().hash());
+        }
     }
 }
 

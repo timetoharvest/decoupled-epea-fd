@@ -1,7 +1,7 @@
 #include "lm_cut_heuristic.h"
 
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
@@ -45,7 +45,8 @@ void LandmarkCutHeuristic::initialize() {
 
     // Build relaxed operators for operators and axioms.
     for (size_t i = 0; i < g_operators.size(); ++i){
-        build_relaxed_operator(g_operators[i]);
+	if(!g_operators[i].is_dead())
+	    build_relaxed_operator(g_operators[i]);
     }
 
     // Simplify relaxed operators.

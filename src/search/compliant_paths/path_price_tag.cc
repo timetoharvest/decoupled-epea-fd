@@ -1,15 +1,17 @@
 #include "path_price_tag.h"
 
-#include "factoring.h"
-#include "operator.h"
-#include "operator_cost.h"
-#include "state_registry.h"
-#include "successor_generator.h"
+#include "../factoring.h"
+#include "../operator.h"
+#include "../operator_cost.h"
+#include "../state_registry.h"
+#include "../successor_generator.h"
 
 #include <limits>
 #include <iostream>
 
+
 using namespace std;
+
 
 void PathPriceTagInfo::dump() const {
     cout << "PathPriceTagInfo" << endl;
@@ -23,27 +25,27 @@ void PathPriceTagInfo::dump() const {
     }
 }
 
+
 PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
     if (tag == 0){
         number_states = vector<size_t>(g_factors.size(), 0);
-        costs = vector<vector<int> >(g_factors.size());
+        prices = vector<vector<int> >(g_factors.size());
         goal_cost = vector<int>(g_factors.size(), INF);
         paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
     } else {
         number_states = tag->number_states;
         goal_cost = tag->goal_cost;
-        costs = tag->costs;
+        prices = tag->prices;
         paths = tag->paths;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            for (size_t state = 0; state < costs[factor].size(); ++state){
-                if (costs[factor][state] != INF){
+            for (size_t state = 0; state < prices[factor].size(); ++state){
+                if (prices[factor][state] != INF){
                     paths[factor][state].is_new = false;
                 }
             }
         }
     }
 }
-
 
 bool PathPriceTag::add_state(const LeafStateID &state, int cost, const Operator* bs, 
                         const LeafStateID &predecessor) {
@@ -74,9 +76,11 @@ void PathPriceTag::update_price_tags(const State &base_state) {
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         
-        // skip fork leaves that don't have a goal!
-        if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
-            continue;
+        if (!g_factoring->has_successors(factor)){
+            // skip fork leaves that don't have a goal or whose goal is already achieved (only satisficing search)
+            if (g_goals_per_factor[factor].empty() || (g_factoring->get_search_type() == SAT && goal_cost[factor] != INF)){
+                continue;
+            }
         }
         
         size_t number_leaf_states = g_state_registry->size(factor);
@@ -90,7 +94,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
             }
             lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
         }
-        cout << "       " << new_tag.get_number_facts(factor) << " fact(s) initially true in leaf factor " << factor << endl;
+        cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif   
         
         vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
@@ -124,11 +128,11 @@ void PathPriceTag::update_price_tags(const State &base_state) {
 
                     LeafStateID predecessor_id(id, factor);
                     
-                    assert(!g_factoring->precompute_state_space(factor) || id < leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
+                    assert(!precompute_leaf_state_spaces[factor] || id < leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
                     
-                    if (g_factoring->precompute_state_space(factor) || 
+                    if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!g_factoring->precompute_state_space(factor) && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
                             // is "dead-end" leaf state
                             ++id;
                             continue;
@@ -174,7 +178,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     }
                     
                     
-                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) >= 0){
+                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && get_goal_cost(factor) != INF){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
                         break;
@@ -202,10 +206,12 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
 #endif
 
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
+        
+        // TODO why don't we have the special case handling from, e.g., pricing_function, here?
         
         if (has_pre_on_factor && num_effects == g_factors[factor].size()){
             // center op completely overwrites leaf

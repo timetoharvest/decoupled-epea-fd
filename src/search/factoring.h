@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "operator_cost.h"
+#include "utilities.h"
 
 #include <set>
 #include <string>
@@ -35,12 +36,6 @@ enum SEARCH_TYPE {
     SAT         // satisficing search
 };
 
-enum PRUNING_TYPE {
-    BASIC//,
-//     COST_FRONTIER,   // TODO integrate Patrick's code
-//     COST_FRONTIER_PRECOMPUTE,
-//     GOAL_COST_PROPAGATION
-};
 
 struct InteractionGraph {
     friend class Factoring;
@@ -92,8 +87,6 @@ class Factoring {
     
     size_t max_precompute_state_space_size;
     
-    mutable std::vector<bool> precompute_leaf_state_space;
-    
 protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
@@ -118,7 +111,7 @@ protected:
     
     void print_factoring() const;
     
-    void exit_error(std::string message, int exit_code) const;
+    void exit_error(std::string message, ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
@@ -172,7 +165,7 @@ public:
         return search_space;
     }
     
-    const Pruning* get_pruning() const {
+    Pruning* get_pruning() const {
         return pruning;
     }
     
@@ -182,13 +175,6 @@ public:
     
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
-    }
-
-    /**
-     * only precompute leaf state spaces in optimal search or for small leaves
-     */
-    bool precompute_state_space(int factor) const {
-        return precompute_leaf_state_space[factor];
     }
     
     static void add_options_to_parser(OptionParser &parser);

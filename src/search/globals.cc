@@ -2,8 +2,8 @@
 
 #include "axioms.h"
 #include "causal_graph.h"
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "domain_transition_graph.h"
 #include "factoring.h"
 #include "heuristic.h"
@@ -47,13 +47,12 @@ bool test_goal(const State &state) {
         }
     }
     if (g_use_decoupled_search){
-	const CompliantPathGraph *leaf_facts = CPGStorage::get_cpg(state);
-	for (size_t i = 0; i < g_goals_per_factor.size(); ++i) {
-	    if (!g_goals_per_factor[i].empty() && leaf_facts->get_goal_cost(i) == -1){
-		return false;
-	    }
-	}
-    
+        const CompliantPathGraph *cpg = CPGStorage::get_cpg(state);
+        for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+            if (!g_goals_per_factor[factor].empty() && !cpg->goal_reachable(factor)){
+                return false;
+            }
+        }    
     }
     return true;
 }
@@ -302,8 +301,7 @@ void read_everything(istream &in) {
                 leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
             }
         }
-        // TODO adapt the size based on experiments, max so far about 7500
-        // also take into account center-factoring and new pruning methods!
+        
         center_domains.push_back(MAX_DUPLICATE_COUNTER);
         
         cout << "packing state variables..." << flush;
@@ -425,10 +423,13 @@ int g_min_action_cost = numeric_limits<int>::max();
 vector<int> g_min_action_cost_per_factor;
 int g_max_action_cost = 0;
 
+// TODO adapt the size based on experiments
+// also take into account non-fork factorings and new pruning methods!
 size_t MAX_DUPLICATE_COUNTER = 100000;
 
 Factoring *g_factoring;
 bool g_use_decoupled_search;
+bool g_compute_leaf_backward_graph = false;
 
 int g_inc_g_by;
 

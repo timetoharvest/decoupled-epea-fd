@@ -1,18 +1,66 @@
 #include "pruning.h"
 
-#include "compliant_path_graph.h"
-#include "factoring.h"
-#include "plugin.h"
-#include "state_registry.h"
+#include "../compliant_paths/compliant_path_graph.h"
+#include "../factoring.h"
+#include "../plugin.h"
+#include "prunable.h"
+#include "simulation_relation.h"
+#include "../state_registry.h"
 
 
 using namespace std;
 
-BasicPruning::BasicPruning (const Options&) {
-    cout << "using BasicPruning method" << endl;
+
+Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
+                                        do_simulation(opts.get<bool>("simulation")),
+                                        goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
+
+    if (goal_price_propagation || do_simulation || irrelevance != NO){        
+        CompliantPathGraph::set_compute_leaf_backwards_graph();
+        
+        if (goal_price_propagation){
+            Prunable::set_propagate_goal_prices();
+            cout << "using goal price propagation" << endl;
+        }
+        
+        if (do_simulation){
+            cout << "using simulation within leaf factors" << endl;
+        }
+
+        if (irrelevance != NO){
+            cout << "performing irrelevance analysis in leaf factors" << endl;
+        }
+    }    
 }
 
-DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const CompliantPathGraph *reference, DOMINATION needed) const {
+void Pruning::init() {
+    if (g_factoring->get_search_type() == SAT){
+        if (goal_price_propagation){
+            cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
+            exit_with(EXIT_INPUT_ERROR);
+        }        
+        if (do_simulation){
+            cout << "simulation is not (yet) supported for satisficing search" << endl;
+            exit_with(EXIT_INPUT_ERROR);
+        }
+    }
+    if (do_simulation || irrelevance != NO){
+        assert(g_factoring->get_profile() == FORK);
+
+        SimulationRelation rel; 
+        rel.init();
+        rel.statistics();
+        if (irrelevance != NO) {
+            rel.perform_leaf_irrelevance_pruning(irrelevance == STATES);
+        }
+
+        if (do_simulation) {
+            rel.set_list_dominated_states(); 
+        }
+    }
+}
+
+DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -53,14 +101,14 @@ DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const 
             }
             all_goals_reached = false;
         }
-        if (reference->get_number_states(factor) > check->get_number_states(factor)){
+        if (reference->get_number_effective_states(factor) > check->get_number_states(factor)){
             new_is_smaller = true;
             sizes_equal = false;
-        } else if (reference->get_number_states(factor) < check->get_number_states(factor)){
+        } else if (reference->get_number_effective_states(factor) < check->get_number_states(factor)){
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check->get_number_states(factor) < g_state_registry->size(factor) || !g_factoring->precompute_state_space(factor)){
+        if (check->get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
             all_leaves_max_size = false;
         }
     }
@@ -91,20 +139,20 @@ DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const 
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
-        size_t number_new_states = check->get_number_states(factor);
-        size_t number_old_states = reference->get_number_states(factor);
+        size_t number_new_states = check->get_number_effective_states(factor);
+        size_t number_old_states = reference->get_number_effective_states(factor);
         size_t id = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check->has_leaf_state(id, factor)){
+            if (check->has_effective_leaf_state(id, factor)){
                 --number_new_states;
-                if (reference->has_leaf_state(id, factor)){
+                if (reference->has_effective_leaf_state(id, factor)){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference->get_cost_of_state(id, factor);
-                        int new_cost = check->get_cost_of_state(id, factor);
+                        int old_cost = reference->get_effective_cost_of_state(id, factor);
+                        int new_cost = check->get_effective_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -117,7 +165,7 @@ DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const 
                 } else {
                     dominated = false;
                 }                
-            } else if (reference->has_leaf_state(id, factor)){
+            } else if (reference->has_effective_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
             }
@@ -140,24 +188,42 @@ DOMINATION BasicPruning::check_dominance(const CompliantPathGraph *check, const 
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
-#endif          
+#endif
         return EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
-#endif          
+#endif
         return DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
-#endif          
+#endif
         return DOMINATES;
     }
     return NONE;
 }
 
 
+void Pruning::add_options_to_parser(OptionParser &parser){
+    parser.add_option<bool>("goal_price_propagation",
+                            "perform goal price propagation", "false");
+    
+    parser.add_option<bool>("simulation",
+                            "perform simulation dominance pruning", "false");
+
+    vector<string> irr_options({"NO", "STATES", "TRANSITIONS"});
+    parser.add_enum_option("irrelevance",
+                           irr_options,
+                           "perform simulation irrelevance pruning", "NO");
+}
+
+BasicPruning::BasicPruning (const Options&opts) : Pruning(opts) {
+    cout << "using BasicPruning method" << endl;
+}
+
 static Pruning *_parse_basic(OptionParser &parser) {
+    Pruning::add_options_to_parser(parser);
     Options opts = parser.parse();
 
     BasicPruning *pruning = 0;

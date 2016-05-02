@@ -1,11 +1,9 @@
 #include "state_registry.h"
 
 #include "axioms.h"
-#include "cpg_storage.h"
+#include "compliant_paths/cpg_storage.h"
 #include "factoring.h"
 #include "operator.h"
-#include "pricing_function.h"
-#include "reachability_function.h"
 #include "search_engine.h"
 #include "successor_generator.h"
 

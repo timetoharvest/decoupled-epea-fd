@@ -1,7 +1,7 @@
 #include "ff_heuristic.h"
 
-#include "compliant_path_graph.h"
-#include "cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
