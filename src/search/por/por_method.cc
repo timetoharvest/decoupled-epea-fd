@@ -29,7 +29,18 @@ void NullPORMethod::dump_options() const {
 }
 
 PORMethodWithStatistics::PORMethodWithStatistics()
-    : unpruned_successors_generated(0),
+    : safety_belt(false),
+      switched_off(false),
+      number_expansions(0),
+      unpruned_successors_generated(0),
+      pruned_successors_generated(0) {
+}
+
+PORMethodWithStatistics::PORMethodWithStatistics(const Options &opts)
+    : safety_belt(opts.get<bool>("safety_belt")),
+      switched_off(false),
+      number_expansions(0),
+      unpruned_successors_generated(0),
       pruned_successors_generated(0) {
 }
 
@@ -38,6 +49,17 @@ PORMethodWithStatistics::~PORMethodWithStatistics() {
 
 void PORMethodWithStatistics::prune_operators(
     const State &state, std::vector<const Operator *> &ops) {
+    if (safety_belt){
+        if (switched_off){
+            return;
+        }
+        if(++number_expansions == 1000){
+            if (unpruned_successors_generated == pruned_successors_generated){
+                switched_off = true;
+                cout << "POR safety belt triggered: Expanded 1000 states, but no pruning => POR deactivated" << endl;
+            }
+        }
+    }
     unpruned_successors_generated += ops.size();
     do_pruning(state, ops);
     pruned_successors_generated += ops.size();
@@ -52,7 +74,7 @@ void PORMethodWithStatistics::dump_statistics() const {
 
 }
 
-static inline OptionParser& add_mutex_parser_option(OptionParser& parser) {
+static inline void add_mutex_parser_option(OptionParser& parser) {
 
     vector<string> mutex_options;
     mutex_options.push_back("none");
@@ -61,9 +83,10 @@ static inline OptionParser& add_mutex_parser_option(OptionParser& parser) {
     parser.add_enum_option("mutexes", mutex_options,
 			   "mutexes used for dependency relation",
 			   "none");
-    
-    return parser;
+}
 
+static inline void add_safety_belt_parser_option(OptionParser& parser) {
+    parser.add_option<bool>("safety_belt", "TODO", "false");    
 }
 
 static POR::PORMethod *_parse(OptionParser &parser) {
@@ -98,14 +121,28 @@ static POR::PORMethod *_parse_sss(OptionParser &parser) {
 	vector<string> precondition_choices;
 
 	precondition_choices.push_back("forward");
+        precondition_choices.push_back("backward");
+        precondition_choices.push_back("small_static");
+        precondition_choices.push_back("small_dynamic");
+        precondition_choices.push_back("laarman_heuristic");
+        precondition_choices.push_back("most_hitting");
+        precondition_choices.push_back("c_forw_small");
+        precondition_choices.push_back("minimize_global_var_ordering");
+        precondition_choices.push_back("random_dynamic");
+        precondition_choices.push_back("minimize_random_global_var_ordering");
+        precondition_choices.push_back("decoupled");
 	
 	parser.add_enum_option("precond_choice", precondition_choices,
 			       "selection of variable for NES",
 			       "forward");
         
+        // used in decoupled POR
+        parser.add_option<bool>("ignore_leaf_interference", "TODO", "false");        
+        
         parser.add_option<int>("laarman_k", "operator weight for Laarman heuristic", "10");     // HACK by daniel
 
-	parser = add_mutex_parser_option(parser);
+        add_safety_belt_parser_option(parser);
+	add_mutex_parser_option(parser);
 	Options opts = parser.parse();
 	
 	return new POR::SimpleStubbornSets(opts);
@@ -120,7 +157,7 @@ static POR::PORMethod *_parse_sss_ec(OptionParser &parser) {
 	cout << "por method: sss_ec" << endl;
 
 	parser.add_option<bool>("active_ops", "use active operators", "false");
-	parser = add_mutex_parser_option(parser);
+	add_mutex_parser_option(parser);
 	Options opts = parser.parse();
 
 	return new POR::SSS_ExpansionCore(opts);
@@ -154,7 +191,7 @@ static POR::PORMethod *_parse_sss_small(OptionParser &parser) {
 
 	parser.add_option<int>("laarman_k", "operator weight for Laarman heuristic", "10");
 	
-	parser = add_mutex_parser_option(parser);
+	add_mutex_parser_option(parser);
 
 	Options opts = parser.parse();
 

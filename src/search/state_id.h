@@ -8,9 +8,8 @@
 
 class StateID {
     friend class StateRegistry;
-    friend class PriceTag;
     friend std::ostream &operator<<(std::ostream &os, StateID id);
-    template<typename>
+    template<class T>
     friend class PerStateInformation;
 
     size_t value;

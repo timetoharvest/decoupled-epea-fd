@@ -73,7 +73,8 @@ class Operator {
     size_t index;
 
     mutable bool marked; // Used for short-term marking of preferred operators
-    
+    bool dead;
+
     void read_pre_post(std::istream &in);
 public:
     explicit Operator(std::istream &in, bool is_axiom, int index);
@@ -88,6 +89,14 @@ public:
     
     const std::vector<Effect> &get_effects() const {
         return effects;
+    }
+
+    void set_dead() {
+	dead = true;
+    }
+
+    bool is_dead() const{
+	return dead;
     }
 
     const std::vector<const Condition*> &get_preconditions(int factor) const;

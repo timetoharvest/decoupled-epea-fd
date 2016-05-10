@@ -1,5 +1,6 @@
 #include "lazy_search.h"
 
+#include "factoring.h"
 #include "g_evaluator.h"
 #include "heuristic.h"
 #include "successor_generator.h"

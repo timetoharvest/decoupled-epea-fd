@@ -52,7 +52,9 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
+          compliant_paths/compliant_path_graph.h \
           countdown_timer.h \
+          compliant_paths/cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -74,11 +76,10 @@ HEADERS = \
           option_parser.h \
           option_parser_util.h \
           segmented_vector.h \
-          path_price_tag.h\
           per_state_information.h \
+          por/por_method.h \
           pref_evaluator.h \
-          price_tag.h\
-          pruning.h\
+          pruning/pruning.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -179,10 +180,21 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
+# TODO check how to decouple this from the POR interface, so we can comment
+# this out here
 HEADERS += por/expansion_core.h \
-           por/por_method.h \
            por/simple_stubborn_sets.h \
            por/sss_expansion_core.h \
+           
+HEADERS += pruning/cost_frontier.h \
+           pruning/simulation_relation.h \
+           pruning/prunable.h
+
+HEADERS += compliant_paths/path_price_tag.h \
+           compliant_paths/pricing_function.h \
+           compliant_paths/pruning_prices.h \
+           compliant_paths/pruning_reachable.h \
+           compliant_paths/reachability_function.h
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
@@ -235,6 +247,12 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
+
+CXX = g++-4.9
+# nasty HACK to be able to compile Alvaro's magic constructs on the cluster
+ifeq (, $(shell which $(CXX)))
+    CXX = g++
+endif
 
 DEPEND = $(CXX) -MM
 

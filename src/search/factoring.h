@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "operator_cost.h"
+#include "utilities.h"
 
 #include <set>
 #include <string>
@@ -35,12 +36,6 @@ enum SEARCH_TYPE {
     SAT         // satisficing search
 };
 
-enum PRUNING_TYPE {
-    BASIC//,
-//     COST_FRONTIER,   // TODO integrate Patrick's code
-//     COST_FRONTIER_PRECOMPUTE,
-//     GOAL_COST_PROPAGATION
-};
 
 struct InteractionGraph {
     friend class Factoring;
@@ -92,8 +87,6 @@ class Factoring {
     
     size_t max_precompute_state_space_size;
     
-    mutable std::vector<bool> precompute_leaf_state_space;
-    
 protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
@@ -112,17 +105,13 @@ protected:
     
     FactoredVars get_connected_components(std::vector<int> variables) const;
     
-    FactoredVars get_fork_maximize_leaves(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
-    
-    FactoredVars get_fork_maximize_mobility(std::vector<int> variables = std::vector<int>(), bool inverted = false) const;
-    
     std::vector<bool> get_frozen_leaves(FactoredVars components) const;
     
     void apply_factoring(FactoredVars factoring);
     
     void print_factoring() const;
     
-    void exit_error(std::string message, int exit_code) const;
+    void exit_error(std::string message, ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
@@ -146,9 +135,7 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct) {
-        cost_type = ct;
-    }
+    void set_cost_type(OperatorCost ct);
     
     OperatorCost get_cost_type() const {
         return cost_type;
@@ -178,7 +165,7 @@ public:
         return search_space;
     }
     
-    const Pruning* get_pruning() const {
+    Pruning* get_pruning() const {
         return pruning;
     }
     
@@ -188,13 +175,6 @@ public:
     
     void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
-    }
-    
-    /**
-     * only precompute leaf state spaces in optimal search or for small leaves
-     */
-    bool precompute_state_space(int factor) const {
-        return precompute_leaf_state_space[factor];
     }
     
     static void add_options_to_parser(OptionParser &parser);

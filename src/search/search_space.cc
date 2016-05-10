@@ -3,8 +3,7 @@
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
-#include "path_price_tag.h"
-#include "price_tag.h"
+#include "compliant_paths/path_price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
 
@@ -12,7 +11,6 @@
 #include <limits>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 SearchNode::SearchNode(StateID state_id_, SearchNodeInfo &info_,
@@ -55,6 +53,10 @@ int SearchNode::get_leaf_part_g() const {
 
 int SearchNode::get_h() const {
     return info.h;
+}
+
+StateID SearchNode::get_parent_state_id() const {
+    return info.parent_state_id;
 }
 
 bool SearchNode::is_h_dirty() const {
@@ -163,6 +165,15 @@ SearchNode SearchSpace::get_node(const State &state) {
 
 void SearchSpace::trace_path(const State &goal_state,
                              vector<const Operator *> &path) const {
+                                 
+    // TODO in decoupled search, before actually reconstructing the plan,
+    // check if the new plan is actually cheaper! sum(cost(a_center)) + sum_leaves(goal_cost)
+    // at this point, we already know if the globalcost of the found
+    // plan will be lower than the currently best solution. if this is not
+    // the case, just skip the reconstruction of the path and return some
+    // path whose cost is higher than the current optimum
+    // keep the Reachabiliy Function in mind that does *not* store the cost
+    // of cheapest compliant paths!
 
     State current_state = goal_state;
     
@@ -236,24 +247,29 @@ void SearchSpace::trace_path(const State &goal_state,
                 int min_cost = numeric_limits<int>::max();
                 int best_leaf_state_id = -1;
                 
-                // TODO probably iterate over leaf states in that tag as usual?
-                for (size_t id = 0; id < g_is_leaf_goal_state[factor].size(); id++){
-                    if (g_is_leaf_goal_state[factor][id] && price_tags[0].has_leaf_state(id, factor)){
-                        int new_cost = price_tags[0].get_cost_of_state(id, factor);
-                        if (min_cost > new_cost){
-                            min_cost = new_cost;
-                            best_leaf_state_id = id;
-                            if (g_factoring->get_search_type() == SAT){
-                                break;
+                size_t number_states = price_tags[0].get_number_states(factor);
+                size_t id = 0;
+                while (number_states > 0) {
+                    if (price_tags[0].has_leaf_state(id, factor)){
+                        --number_states;
+                        if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+                            int new_cost = price_tags[0].get_cost_of_state(id, factor);
+                            if (min_cost > new_cost){
+                                min_cost = new_cost;
+                                best_leaf_state_id = id;
+                                if (g_factoring->get_search_type() == SAT){
+                                    break;
+                                }
                             }
                         }
                     }
+                    ++id;
                 }
-
+                assert(best_leaf_state_id != -1);
                 marked_leaf_states[factor].insert(best_leaf_state_id);
 
 #ifdef DEBUG_PLAN_EXTRACTION
-                cout << "marked goal fact: " << best_leaf_state_id << endl;
+                cout << "marked goal fact: " << best_leaf_state_id << " for cost " << min_cost << endl;
                 g_state_registry->lookup_leaf_state(LeafStateID(best_leaf_state_id, factor)).dump_pddl();
 #endif
             }
@@ -487,7 +503,7 @@ void SearchSpace::statistics() const {
             min_leaf_factor_size = min(min_leaf_factor_size, tmp);
             avg_leaf_factor_size += tmp;
             max_leaf_factor_size = max(max_leaf_factor_size, tmp);
-            if (!g_factoring->precompute_state_space(factor)){
+            if (!CompliantPathGraph::precompute_leaf_state_space(factor)){
                 precomputed_state_spaces = false;
             }
             cout << "Number of registered leaf states in factor " << factor << ": " << tmp << endl;

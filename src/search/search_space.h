@@ -8,13 +8,10 @@
 
 #include <vector>
 
+
 class Operator;
-class State;
 
-
-class SearchNode {
-    friend class PriceTag;
-    
+class SearchNode {    
     StateID state_id;
     SearchNodeInfo &info;
     OperatorCost cost_type;
@@ -39,6 +36,7 @@ public:
     int get_real_g() const;
     int get_leaf_part_g() const;
     int get_h() const;
+    StateID get_parent_state_id() const;
 
     void open_initial(int h);
     void open(int h, const SearchNode &parent_node,

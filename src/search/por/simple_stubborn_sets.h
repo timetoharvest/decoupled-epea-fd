@@ -71,6 +71,7 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
     PreconditionChoice precond_choice;
     const MutexOption mutex_option;
     bool use_active_ops;
+    bool ignore_leaf_interference; // ignore interference in leaves when doing decoupled search
     int laarman_k; // K parameter for laarman heuristic for penalizing
 		   // applicable ops
 
@@ -95,6 +96,7 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
 
     pair<int, int> find_unsatisfied_goal(const State& state);
     pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
+    void mark_open_center_pre_of_decoupled_goal_frontier(const State &state);
     
     pair<int, int> find_unsatisfied_goal_small_static(const State &state);
     pair<int, int> find_unsatisfied_goal_small_dynamic(const State &state);
