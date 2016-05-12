@@ -51,13 +51,15 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                     assert(reference->has_effective_leaf_state(id, factor));
                     
                     if (check->has_effective_leaf_state(id, factor)){
-                        int old_cost = reference->get_cost_of_state(id, factor);
-                        int new_cost = check->get_effective_cost_of_state(id, factor);
-                        assert(old_cost != -1);
-                        assert(new_cost != -1);
-                        
-                        if (old_cost < new_cost){
-                            dominates = false;
+                        if (g_factoring->get_search_type() != SAT){
+                            int old_cost = reference->get_cost_of_state(id, factor);
+                            int new_cost = check->get_effective_cost_of_state(id, factor);
+                            assert(old_cost != -1);
+                            assert(new_cost != -1);
+                            
+                            if (old_cost < new_cost){
+                                dominates = false;
+                            }
                         }
                     } else {
                         dominates = false;
@@ -67,13 +69,15 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                     assert(check->has_effective_leaf_state(id, factor));
                     
                     if (reference->has_effective_leaf_state(id, factor)){
-                        int old_cost = reference->get_effective_cost_of_state(id, factor);
-                        int new_cost = check->get_cost_of_state(id, factor);
-                        assert(old_cost != -1);
-                        assert(new_cost != -1);
-                        
-                        if (old_cost > new_cost){
-                            dominated = false;
+                        if (g_factoring->get_search_type() != SAT){
+                            int old_cost = reference->get_effective_cost_of_state(id, factor);
+                            int new_cost = check->get_cost_of_state(id, factor);
+                            assert(old_cost != -1);
+                            assert(new_cost != -1);
+                            
+                            if (old_cost > new_cost){
+                                dominated = false;
+                            }
                         }
                     } else {
                         dominated = false;
