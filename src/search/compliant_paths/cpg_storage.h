@@ -23,18 +23,18 @@ class CPGStorage {
 
 public:
 
-    static const CompliantPathGraph* get_cpg(const State &state) {
+    static const CompliantPathGraph* get_cpg(const State &state) {      // TODO think of something more clever
         if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
             if (Prunable::do_pruning()){
-                return &CPGStorage::pruning_reachable[state];
+                return &pruning_reachable[state];
             } else {
-                return &CPGStorage::reach_tags[state];
+                return &reach_tags[state];
             }
         } else {
             if (Prunable::do_pruning()){
-                return &CPGStorage::pruning_prices[state];
+                return &pruning_prices[state];
             } else {
-                return &CPGStorage::price_tags[state];
+                return &price_tags[state];
             }
         }
     }
