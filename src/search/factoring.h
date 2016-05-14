@@ -33,7 +33,8 @@ enum SEARCH_TYPE {
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
-    SAT         // satisficing search
+    SAT,        // satisficing search
+    UNSAT       // for proving unsolvability (SAT + optimizations)
 };
 
 
@@ -143,10 +144,6 @@ public:
     
     SEARCH_TYPE get_search_type() const {
         return search_type;
-    }
-    
-    void set_search_type(SEARCH_TYPE type) {
-        search_type = type;
     }
     
     void set_ignore_current_state(bool ignore) {

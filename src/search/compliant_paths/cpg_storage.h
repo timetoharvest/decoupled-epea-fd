@@ -24,7 +24,7 @@ class CPGStorage {
 public:
 
     static const CompliantPathGraph* get_cpg(const State &state) {
-        if (g_factoring->get_search_type() == SAT){
+        if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
             if (Prunable::do_pruning()){
                 return &CPGStorage::pruning_reachable[state];
             } else {

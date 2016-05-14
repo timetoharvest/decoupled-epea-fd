@@ -34,7 +34,7 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
 }
 
 void Pruning::init() {
-    if (g_factoring->get_search_type() == SAT){
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
             cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
             exit_with(EXIT_INPUT_ERROR);
