@@ -83,7 +83,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                         dominated = false;
                     }
                 }
-            }            
+            }
 
             if (!dominated && !dominates){
                 return NONE;
