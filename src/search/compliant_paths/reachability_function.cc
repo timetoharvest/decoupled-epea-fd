@@ -449,6 +449,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
 }
 
 bool Reachable::has_leaf_state(int id, int factor) const {
+    assert(((size_t) id) < leaf_state_id_map[factor].size());
     if (leaf_state_id_map[factor][id] == -1){
         return false;
     }
@@ -461,6 +462,7 @@ bool Reachable::has_effective_leaf_state(int id, int factor) const {
 }
 
 int Reachable::get_cost_of_state(int id, int factor) const {
+    assert(has_leaf_state(id, factor));
     assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
     return reachable[factor][leaf_state_id_map[factor][id]] ? g_min_action_cost_per_factor[factor] : INF;
 }
@@ -481,7 +483,7 @@ int Reachable::get_goal_cost(int factor) const {
     if (goal_reached[factor]){
         return g_min_action_cost_per_factor[factor];
     } else {
-        return -1;
+        return INF;
     }
 }
 
