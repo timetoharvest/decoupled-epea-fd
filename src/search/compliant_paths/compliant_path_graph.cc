@@ -303,6 +303,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
                     cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
                 }
+                cout << "Total time: " << g_timer << endl;
                 exit_with(EXIT_UNSOLVABLE);
             }
             g_min_goal_cost[factor] = 0;
