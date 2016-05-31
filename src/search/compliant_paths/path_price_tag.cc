@@ -238,7 +238,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 if (op.is_applicable(lid)){
                     if (g_factoring->get_search_type() != SAT){
                         min_price = min(min_price, old_tag.get_cost_of_state(id, factor));
-                        assert(min_price != -1);
+                        assert(min_price != INF);
                     }
                             
                     if (num_effects == 0){

@@ -51,7 +51,7 @@ bool are_mutex(const std::pair<int, int> &a, const std::pair<int, int> &b);
 
 extern bool g_use_metric;
 extern int g_min_action_cost;
-extern std::vector<int> g_min_action_cost_per_factor; // TODO this is used nowhere
+extern std::vector<int> g_min_action_cost_per_factor;
 extern int g_max_action_cost;
 
 extern size_t MAX_DUPLICATE_COUNTER;

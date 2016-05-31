@@ -297,7 +297,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         }
         g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
         
-        if (g_min_goal_cost[factor] == -1){
+        if (g_min_goal_cost[factor] == INF){
             if (!g_goals_per_factor[factor].empty()){
                 cout << "There is a goal that cannot be achieved in factor " << factor << endl;
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
