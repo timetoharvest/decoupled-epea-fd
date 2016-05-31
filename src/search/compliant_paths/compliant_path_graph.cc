@@ -11,6 +11,7 @@
 #include "../state_id.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
+#include "../timer.h"
 
 
 using namespace std;
