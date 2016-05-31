@@ -51,7 +51,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                     assert(reference->has_effective_leaf_state(id, factor));
                     
                     if (check->has_effective_leaf_state(id, factor)){
-                        if (g_factoring->get_search_type() != SAT){
+                        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
                             int old_cost = reference->get_cost_of_state(id, factor);
                             int new_cost = check->get_effective_cost_of_state(id, factor);
                             assert(old_cost != -1);
@@ -69,7 +69,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                     assert(check->has_effective_leaf_state(id, factor));
                     
                     if (reference->has_effective_leaf_state(id, factor)){
-                        if (g_factoring->get_search_type() != SAT){
+                        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
                             int old_cost = reference->get_effective_cost_of_state(id, factor);
                             int new_cost = check->get_cost_of_state(id, factor);
                             assert(old_cost != -1);

@@ -44,6 +44,8 @@ Factoring::Factoring(const Options &opts) :
         case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
         case SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
+        case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(EXIT_CRITICAL_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -356,7 +358,7 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_factors[i].size(); ++j){
             f_size *= g_variable_domain[g_factors[i][j]];
-            if (search_type == SAT && f_size > max_precompute_state_space_size){
+            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
                 precompute_leaf_state_space[i] = false;
             }
         }
@@ -1461,6 +1463,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("asda");
     search_types.push_back("sda");
     search_types.push_back("sat");
+    search_types.push_back("unsat");
     parser.add_enum_option(
         "search_type",
         search_types,

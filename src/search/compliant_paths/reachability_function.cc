@@ -179,7 +179,8 @@ int Reachable::update_price_tags(int curr_number_duplicates,
         
         if (!g_factoring->has_successors(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
-            if (g_goals_per_factor[factor].empty() || tmp_reach.goal_reached[factor]){
+            if (g_goals_per_factor[factor].empty() || 
+                (g_factoring->get_search_type() == SAT && tmp_reach.goal_reached[factor])){
                 continue;
             }
         }
@@ -368,7 +369,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                         change = true;
                     }
                     
-                    if (!g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
+                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
                         break;
