@@ -191,6 +191,20 @@ public:
   
 };
 
+class DocTransferFactoring : public Factoring {
+  
+public:
+    
+    DocTransferFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = DOC_TRANSFER;
+        cout << "using doc transfer factoring profile" << endl;
+    };
+    
+    virtual FactoredVars get_factoring();
+  
+};
+
 
 void Factoring::set_cost_type(OperatorCost ct) {
     cost_type = ct;
@@ -1450,6 +1464,18 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
     return best_factoring;
 }
 
+Factoring::FactoredVars DocTransferFactoring::get_factoring() {
+    FactoredVars factoring;
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        if (strncmp(g_fact_names[var][0].c_str(), "Atom at(document", 16) == 0 || strncmp(g_fact_names[var][0].c_str(), "Atom at(fuel", 12) == 0){
+            set<int> tmp;
+            tmp.insert(var);
+            factoring.push_back(tmp);
+        }
+    }
+    return factoring;
+}
+
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
@@ -1550,9 +1576,23 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
     
     Options opts = parser.parse();
 
-    IncidentArcsFactoring::Factoring *factoring = 0;
+    IncidentArcsFactoring *factoring = 0;
     if (!parser.dry_run()) {
         factoring = new IncidentArcsFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Factoring *_parse_doctransfer(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    
+    Options opts = parser.parse();
+
+    DocTransferFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new DocTransferFactoring(opts);
     }
 
     return factoring;
@@ -1566,5 +1606,6 @@ static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
 // static Plugin<Factoring> _plugin_sokoban("sokoban", _parse_sokoban);
 // static Plugin<Factoring> _plugin_tpp_const("tpp_const", _parse_tpp_const);
 // static Plugin<Factoring> _plugin_itpp_const("itpp_const", _parse_itpp_const);
-// static Plugin<Factoring> _plugin_openstacks("openstacks", _parse_openstacks);
+
+static Plugin<Factoring> _plugin_doctransfer("doctransfer", _parse_doctransfer);
 

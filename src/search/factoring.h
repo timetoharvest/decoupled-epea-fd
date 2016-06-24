@@ -26,6 +26,7 @@ enum PROFILE {
     OPENSTACKS, // domain dependant factoring
     TPP_CONSTRAINED, // domain dependant factoring
     INV_TPP_CONSTRAINED, // domain dependant factoring
+    DOC_TRANSFER, // domain dependant factoring
     INC_ARCS
 };
 
