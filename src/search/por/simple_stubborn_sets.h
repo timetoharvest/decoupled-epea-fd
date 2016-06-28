@@ -95,8 +95,14 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
     void compute_active_operators(const State &state);
 
     pair<int, int> find_unsatisfied_goal(const State& state);
-    pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
     void mark_open_center_pre_of_decoupled_goal_frontier(const State &state);
+    
+    pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
+    // NOTE: if there is a leaf precondition that is never achieved in the given factor, this will be returnd;
+    // otherwise, if the op is still not applicable in this factor, only a single open pre is returned, but all
+    // remaining leaf preconditions that in some reached leaf state are not achieved will be added via add_nes_for_fact
+    pair<int, int> find_unsatisfied_leaf_precondition(const Operator &op, const State &state, int factor);
+    
     
     pair<int, int> find_unsatisfied_goal_small_static(const State &state);
     pair<int, int> find_unsatisfied_goal_small_dynamic(const State &state);

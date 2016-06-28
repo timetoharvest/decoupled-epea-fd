@@ -55,9 +55,9 @@ static inline bool can_disable(int op1_no, int op2_no) {
     while (i < op_preconds[op2_no].size() && j < op_effects[op1_no].size()) {
         int read_var = op_preconds[op2_no][i].var;
         int write_var = op_effects[op1_no][j].var;
-        if (read_var < write_var)
+        if (read_var < write_var){
             i++;
-        else if (read_var == write_var) {
+        } else if (read_var == write_var) {
             int read_value = op_preconds[op2_no][i].val;
             int write_value = op_effects[op1_no][j].val;
             if (read_value != write_value)
@@ -67,6 +67,52 @@ static inline bool can_disable(int op1_no, int op2_no) {
         } else {
             // read_var > write_var
             j++;
+        }
+    }
+    if (g_use_decoupled_search && g_factoring->get_profile() != FORK){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            // preconditions are not guaranteed to be sorted by variable index
+            const vector<const Condition*> &op1_pre = g_operators[op1_no].get_preconditions(factor);
+            const vector<const Condition*> &op2_pre = g_operators[op2_no].get_preconditions(factor);
+            if (!op1_pre.empty() && !op2_pre.empty()){
+                vector<bool> handled(op2_pre.size(), false);
+                for (const auto &pre1 : op1_pre){
+                    bool found = false;
+                    for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
+                        const Condition *pre2 = op2_pre[var2];
+                        if (pre1->var == pre2->var){
+                            handled[var2] = true;
+                            if (pre1->val != pre2->val){
+                                return true;
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found){
+                        return true;
+                    }
+                }
+                for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
+                    if (handled[var2]){
+                        continue;
+                    }
+                    const Condition *pre2 = op2_pre[var2];
+                    bool found = false;
+                    for (const auto &pre1 : op1_pre){
+                        if (pre1->var == pre2->var){
+                            if (pre1->val != pre2->val){
+                                return true;
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found){
+                        return true;
+                    }
+                }
+            }
         }
     }
     return false;
@@ -540,85 +586,103 @@ static inline pair<int, int> find_unsatisfied_precondition_forward(const Operato
     return make_pair(-1, -1);
 }
 
+pair<int, int> SimpleStubbornSets::find_unsatisfied_leaf_precondition(const Operator& op, const State& state, int factor) {
+    const vector<const Condition*> &preconds = op.get_preconditions(factor);
+    
+    if (preconds.empty()){
+        return make_pair(-1, -1);
+    }
+        
+    size_t number_open_preconds = preconds.size();
+    vector<bool> is_open_precond(number_open_preconds, true); // false => is fulfilled by some leaf state
+    size_t number_unsatisfied_preconds = 0;
+    vector<bool> is_unsatisfied_precond(number_open_preconds, false); // true => is not fulfilled by some leaf state
+    
+    bool is_applicable = false;
+    
+    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    size_t number_states = tag->get_number_states(factor);
+    size_t id = 0;
+    while (number_states > 0){
+        if (tag->has_leaf_state(id, factor)){
+            --number_states;
+            LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+            bool applicable_state = true;
+            for (size_t i = 0; i < preconds.size(); ++i) {
+                int var = preconds[i]->var;
+                int value = preconds[i]->val;
+                if (s[var] == value){
+                    if (is_open_precond[i]){
+                        --number_open_preconds;
+                    }
+                    is_open_precond[i] = false;
+                } else {
+                    if (!is_unsatisfied_precond[i]){
+                        ++number_unsatisfied_preconds;
+                    }
+                    is_unsatisfied_precond[i] = true;
+                    applicable_state = false;
+                }
+            }
+            if (applicable_state){
+                is_applicable = true;
+            }
+        }
+        ++id;
+    }
+    if (number_open_preconds > 0){
+        for (size_t i = 0; i < is_open_precond.size(); ++i){
+            if (is_open_precond[i]){
+                return make_pair(preconds[i]->var, preconds[i]->val);
+            }
+        }
+        assert(false);
+    }
+    
+    assert(number_unsatisfied_preconds > 0 || is_applicable);
+    
+    if (number_unsatisfied_preconds > 0 && !is_applicable){
+        // if multi-variable leaf factors, need to check if there is a precondition
+        // that is not satisfied by any leaf state; if not, need to achieve all
+        // preconditions that *ever* were unsatisfied
+        
+        pair<int, int> first(-1, -1);
+        for (size_t i = 0; i < preconds.size(); ++i){
+            if (is_unsatisfied_precond[i]){
+                if (first.first != -1){
+                    add_nes_for_fact(make_pair(preconds[i]->var, preconds[i]->val));
+                } else {
+                    first = make_pair(preconds[i]->var, preconds[i]->val);
+                }
+            }
+        }
+        
+        return first;
+    }
+    
+    return make_pair(-1, -1);
+}
+
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const Operator &op, 
                                                                    const State &state) {
     
     if (op.get_affected_factor() != -1){
-        // in fork-factoring, an op can only have preconditions on one leaf + center
+        pair<int, int> open_pre = find_unsatisfied_leaf_precondition(op, state, op.get_affected_factor());
         
-        int factor = op.get_affected_factor();
+        if (open_pre.first != -1){
+            return open_pre;
+        }        
+    } else if (g_factoring->get_profile() != FORK){
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            pair<int, int> open_pre = find_unsatisfied_leaf_precondition(op, state, factor);
         
-        const vector<const Condition*> &preconds = op.get_preconditions(factor);
-        
-        int number_open_preconds = preconds.size();
-        vector<bool> is_open_precond(number_open_preconds, true); // false => is fulfilled by some leaf state
-        int number_unsatisfied_preconds = 0;
-        vector<bool> is_unsatisfied_precond(number_open_preconds, false); // true => is not fulfilled by some leaf state
-        
-        bool is_applicable = false;
-        
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-        size_t number_states = tag->get_number_states(factor);
-        size_t id = 0;
-        while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
-                --number_states;
-                LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                bool applicable_state = true;
-                for (size_t i = 0; i < preconds.size(); ++i) {
-                    int var = preconds[i]->var;
-                    int value = preconds[i]->val;
-                    if (s[var] == value){
-                        if (is_open_precond[i]){
-                            --number_open_preconds;
-                        }
-                        is_open_precond[i] = false;
-                    } else {
-                        if (!is_unsatisfied_precond[i]){
-                            ++number_unsatisfied_preconds;
-                        }
-                        is_unsatisfied_precond[i] = true;
-                        applicable_state = false;
-                    }
-                }
-                if (applicable_state){
-                    is_applicable = true;
-                }
+            if (open_pre.first != -1){
+                return open_pre;
             }
-            ++id;
-        }
-        if (number_open_preconds > 0){
-            for (size_t i = 0; i < is_open_precond.size(); ++i){
-                if (is_open_precond[i]){
-                    return make_pair(preconds[i]->var, preconds[i]->val);
-                }
-            }
-            assert(false);
-        }
-        
-        assert(number_unsatisfied_preconds > 0 || is_applicable);
-        
-        if (number_unsatisfied_preconds > 0 && !is_applicable){
-            // if multi-variable leaf factors, need to check if there is a precondition
-            // that is not satisfied by any leaf state; if not, need to achieve all
-            // preconditions that *ever* were unsatisfied
-            
-            pair<int, int> first(-1, -1);
-            for (size_t i = 0; i < preconds.size(); ++i){
-                if (is_unsatisfied_precond[i]){
-                    if (first.first != -1){
-                        add_nes_for_fact(make_pair(preconds[i]->var, preconds[i]->val));
-                    } else {
-                        first = make_pair(preconds[i]->var, preconds[i]->val);
-                    }
-                }
-            }
-            
-            return first;
         }
     }
-       
+    
     const vector<const Condition*> &preconds = op.get_preconditions(-1);
     for (size_t i = 0; i < preconds.size(); ++i) {
         int var = preconds[i]->var;
@@ -1105,7 +1169,6 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     if (g_use_decoupled_search || precond_choice == decoupled){
         assert(g_use_decoupled_search);
         assert(precond_choice == decoupled);
-        assert(g_factoring->get_profile() == FORK);
     }
     
     verify_no_axioms_no_conditional_effects();
