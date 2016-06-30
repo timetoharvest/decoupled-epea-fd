@@ -27,6 +27,7 @@ enum PROFILE {
     TPP_CONSTRAINED, // domain dependant factoring
     INV_TPP_CONSTRAINED, // domain dependant factoring
     DOC_TRANSFER, // domain dependant factoring
+    PEGSOL, // domain dependant factoring
     INC_ARCS
 };
 
