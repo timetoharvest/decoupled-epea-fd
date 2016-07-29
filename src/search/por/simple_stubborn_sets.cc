@@ -49,7 +49,7 @@ inline bool operator<(const Operator &lhs, const Operator &rhs) {
     return get_op_index(&lhs) < get_op_index(&rhs);
 }
 
-static inline bool can_disable(int op1_no, int op2_no) {
+static inline bool can_disable(int op1_no, int op2_no, bool check_decoupled) {
     size_t i = 0;
     size_t j = 0;
     while (i < op_preconds[op2_no].size() && j < op_effects[op1_no].size()) {
@@ -60,8 +60,9 @@ static inline bool can_disable(int op1_no, int op2_no) {
         } else if (read_var == write_var) {
             int read_value = op_preconds[op2_no][i].val;
             int write_value = op_effects[op1_no][j].val;
-            if (read_value != write_value)
+            if (read_value != write_value){
                 return true;
+            }
             i++;
             j++;
         } else {
@@ -69,37 +70,16 @@ static inline bool can_disable(int op1_no, int op2_no) {
             j++;
         }
     }
-    if (g_use_decoupled_search && g_factoring->get_profile() != FORK){
+    if (check_decoupled && g_factoring->get_profile() != FORK){
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            // preconditions are not guaranteed to be sorted by variable index
             const vector<const Condition*> &op1_pre = g_operators[op1_no].get_preconditions(factor);
             const vector<const Condition*> &op2_pre = g_operators[op2_no].get_preconditions(factor);
             if (!op1_pre.empty() && !op2_pre.empty()){
-                vector<bool> handled(op2_pre.size(), false);
                 for (const auto &pre1 : op1_pre){
+                    // preconditions are not guaranteed to be sorted by variable index
                     bool found = false;
                     for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
                         const Condition *pre2 = op2_pre[var2];
-                        if (pre1->var == pre2->var){
-                            handled[var2] = true;
-                            if (pre1->val != pre2->val){
-                                return true;
-                            }
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found){
-                        return true;
-                    }
-                }
-                for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
-                    if (handled[var2]){
-                        continue;
-                    }
-                    const Condition *pre2 = op2_pre[var2];
-                    bool found = false;
-                    for (const auto &pre1 : op1_pre){
                         if (pre1->var == pre2->var){
                             if (pre1->val != pre2->val){
                                 return true;
@@ -130,8 +110,9 @@ static inline bool can_conflict(int op1_no, int op2_no) {
         else if (var1 == var2) {
             int value1 = op_effects[op1_no][i].val;
             int value2 = op_effects[op2_no][j].val;
-            if (value1 != value2)
+            if (value1 != value2){
                 return true;
+	    }
             i++;
             j++;
         } else {
@@ -258,9 +239,9 @@ inline bool SimpleStubbornSets::interfere(int op1_no, int op2_no) {
     
     switch (mutex_option) {
     case 0:
-	return (can_disable(op1_no, op2_no) || can_conflict(op1_no, op2_no) || can_disable(op2_no, op1_no));
+	return (can_disable(op1_no, op2_no, g_use_decoupled_search) || can_conflict(op1_no, op2_no) || can_disable(op2_no, op1_no, false));
     case 1:
-	return !mutex_precond(op1_no, op2_no) && (can_disable(op1_no, op2_no) || can_conflict(op1_no, op2_no) || can_disable(op2_no, op1_no));
+	return !mutex_precond(op1_no, op2_no) && (can_disable(op1_no, op2_no, false) || can_conflict(op1_no, op2_no) || can_disable(op2_no, op1_no, false));
     default:
 	assert(false);
 	exit(2);
@@ -1297,17 +1278,21 @@ void SimpleStubbornSets::add_nes_for_fact(pair<int, int> fact) {
     int value = fact.second;
     const vector<int> &op_nos = achievers[var][value];
     
-    for (size_t i = 0; i < op_nos.size(); ++i)
-	if (active_ops[op_nos[i]])
+    for (size_t i = 0; i < op_nos.size(); ++i){
+	if (active_ops[op_nos[i]]){
 	    mark_as_stubborn(op_nos[i]);
+        }
+    }
 }
 
 // Add all operators that interfere with op.
 void SimpleStubbornSets::add_interfering(int op_no) {
     const vector<int> &interferers = interference_relation[op_no];
-    for (size_t i = 0; i < interferers.size(); ++i)
-	if (active_ops[interferers[i]])
+    for (size_t i = 0; i < interferers.size(); ++i){
+	if (active_ops[interferers[i]]){
 	    mark_as_stubborn(interferers[i]);
+        }
+    }
 }
 
 
