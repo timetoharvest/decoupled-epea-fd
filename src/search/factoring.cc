@@ -286,7 +286,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             assert(eff_factors.size() == 1);
             int factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
-            num_ops_per_factor[factor]++;
+            ++num_ops_per_factor[factor];
 #endif
             op.set_affected_factor(factor);
         } else {
