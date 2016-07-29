@@ -70,27 +70,31 @@ static inline bool can_disable(int op1_no, int op2_no, bool check_decoupled) {
             j++;
         }
     }
-    if (check_decoupled && g_factoring->get_profile() != FORK){
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            const vector<const Condition*> &op1_pre = g_operators[op1_no].get_preconditions(factor);
-            const vector<const Condition*> &op2_pre = g_operators[op2_no].get_preconditions(factor);
-            if (!op1_pre.empty() && !op2_pre.empty()){
-                for (const auto &pre1 : op1_pre){
-                    // preconditions are not guaranteed to be sorted by variable index
-                    bool found = false;
-                    for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
-                        const Condition *pre2 = op2_pre[var2];
-                        if (pre1->var == pre2->var){
-                            if (pre1->val != pre2->val){
-                                return true;
-                            }
-                            found = true;
-                            break;
+    
+    if (!check_decoupled || g_factoring->get_profile() == FORK || (g_factoring->get_profile() == I_FORK && g_operators[op2_no].get_affected_factor() != -1)){
+        return false;
+    }
+    
+    // check interference for star factorings (and inverted fork between center actions)
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        const vector<const Condition*> &op1_pre = g_operators[op1_no].get_preconditions(factor);
+        const vector<const Condition*> &op2_pre = g_operators[op2_no].get_preconditions(factor);
+        if (!op1_pre.empty() && !op2_pre.empty()){
+            for (const auto &pre1 : op1_pre){
+                // preconditions are not guaranteed to be sorted by variable index
+                bool found = false;
+                for (size_t var2 = 0; var2 < op2_pre.size(); ++var2){
+                    const Condition *pre2 = op2_pre[var2];
+                    if (pre1->var == pre2->var){
+                        if (pre1->val != pre2->val){
+                            return true;
                         }
+                        found = true;
+                        break;
                     }
-                    if (!found){
-                        return true;
-                    }
+                }
+                if (!found){
+                    return true;
                 }
             }
         }
