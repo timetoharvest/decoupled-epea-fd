@@ -48,7 +48,7 @@ PORMethodWithStatistics::~PORMethodWithStatistics() {
 }
 
 void PORMethodWithStatistics::prune_operators(
-    const State &state, std::vector<const Operator *> &ops) {
+    const State &state, vector<const Operator *> &ops) {
     if (safety_belt){
         if (switched_off){
             return;
