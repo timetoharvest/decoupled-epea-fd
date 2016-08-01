@@ -97,7 +97,7 @@ void Group::default_direct_product(){
 
 Permutation Group::compose_permutation(Trace& perm_index) const {
     Permutation new_perm;
-    for (int i = 0; i < perm_index.size(); ++i) {
+    for (size_t i = 0; i < perm_index.size(); ++i) {
         new_perm = Permutation(new_perm, get_permutation(perm_index[i]));
 
     }
@@ -138,13 +138,13 @@ void Group::dump_generators() const {
     cout << "Extra group info:" << endl;
     cout << "Permutation length: " << Permutation::length << endl;
     cout << "Permutation variables by values (" << g_variable_domain.size() << "): " << endl;
-    for (int i = g_variable_domain.size(); i < Permutation::length; i++)
+    for (size_t i = g_variable_domain.size(); i < Permutation::length; i++)
         cout << Permutation::get_var_by_index(i) << "  " ;
     cout << endl;
 }
 
 void Group::copy_buff(state_var_t* s1, const state_var_t* s2) const{
-    for(int i = 0; i < g_variable_domain.size(); ++i) s1[i] = s2[i];
+    for(size_t i = 0; i < g_variable_domain.size(); ++i) s1[i] = s2[i];
 }
 
 void Group::get_trace(const State& state, Trace& full_trace) {
@@ -152,7 +152,7 @@ void Group::get_trace(const State& state, Trace& full_trace) {
     if (size == 0)
         return;
 
-    for(int i = 0; i < g_variable_domain.size(); ++i)
+    for(size_t i = 0; i < g_variable_domain.size(); ++i)
         original_state[i] = state[i];
     bool changed = true;
     while (changed) {

@@ -33,12 +33,12 @@ void Permutation::_deallocate() {
 }
 
 void Permutation::_copy_value_from_permutation(const Permutation &perm) {
-    for (int i = 0; i < length; i++)
+    for (size_t i = 0; i < length; i++)
     	set_value(i, perm.get_value(i));
 }
 
 void Permutation::_inverse_value_from_permutation(const Permutation &perm) {
-    for (int i = 0; i < length; i++)
+    for (size_t i = 0; i < length; i++)
 		set_value(perm.get_value(i), i);
 }
 
@@ -60,7 +60,7 @@ Permutation &Permutation::operator=(const Permutation &other) {
 
 Permutation::Permutation(){
 	_allocate();
-    for (int i = 0; i < length; i++)
+    for (size_t i = 0; i < length; i++)
     	set_value(i,i);
     finalize();
 }
@@ -68,7 +68,7 @@ Permutation::Permutation(){
 
 Permutation::Permutation(const unsigned int* full_permutation){
 	_allocate();
-	for (int i = 0; i < length; i++){
+	for (size_t i = 0; i < length; i++){
     	set_value(i,full_permutation[i]);
 	}
 	finalize();
@@ -88,7 +88,7 @@ Permutation::Permutation(const Permutation& perm, bool invert){
 Permutation::Permutation(const Permutation& perm1, const Permutation& perm2){
     _allocate();
 
-	for (int i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++) {
 		set_value(i, perm2.get_value(perm1.get_value(i)));
 	}
 	finalize();
@@ -107,7 +107,7 @@ void Permutation::finalize(){
 	// Going over the vector from_vars of the mappings of the variables and finding cycles
 	vector<bool> marked;
 	marked.assign(g_variable_domain.size(), false);
-	for (int i = 0; i < from_vars.size(); i++) {
+	for (size_t i = 0; i < from_vars.size(); i++) {
 		if (marked[i] || from_vars[i] == -1)
 			continue;
 
@@ -116,7 +116,7 @@ void Permutation::finalize(){
 		vector<int> cycle;
 		cycle.push_back(current);
 
-        while (from_vars[current] != i){
+		while (from_vars[current] != (int)i){
         	current = from_vars[current];
         	marked[current] = true;
         	cycle.insert(cycle.begin(),current);
@@ -132,7 +132,7 @@ bool Permutation::identity() const{
 
 bool Permutation::operator ==(const Permutation &other) const{
 
-	for(int i = 0; i < length; i++) {
+	for(size_t i = 0; i < length; i++) {
         if (get_value(i) != other.get_value(i)) return false;
     }
 
@@ -142,15 +142,15 @@ bool Permutation::operator ==(const Permutation &other) const{
 
 void Permutation::print_cycle_notation() const {
 	vector<int> done;
-	for (int i = g_variable_domain.size(); i < length; i++){
+	for (size_t i = g_variable_domain.size(); i < length; i++){
 		if (find(done.begin(), done.end(), i) == done.end()){
 	        int current = i;
-	        if(get_value(i) == i) continue; //don't print cycles of size 1
+	        if(get_value(i) == (int)i) continue; //don't print cycles of size 1
 
 	        pair<int, state_var_t> varval = get_var_val_by_index(i);
 	        cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
 
-	        while(get_value(current) != i){
+	        while(get_value(current) != (int)i){
 	            done.push_back(current);
 	            current = get_value(current);
 
@@ -162,16 +162,16 @@ void Permutation::print_cycle_notation() const {
 		}
 	}
 	cout << endl << "Variables:  ";
-	for(int i = 0; i < vars_affected.size(); i++) cout << vars_affected[i] << "  ";
+	for(size_t i = 0; i < vars_affected.size(); i++) cout << vars_affected[i] << "  ";
 	cout << endl << "Variables permuted:  ";
 
-	for(int i = 0; i < vars_affected.size(); i++) cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
+	for(size_t i = 0; i < vars_affected.size(); i++) cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
 	cout << endl;
 
 	cout << "Affected variables by cycles: " << endl;
-	for (int i=0; i < affected_vars_cycles.size(); i++) {
+	for (size_t i=0; i < affected_vars_cycles.size(); i++) {
 		cout << "( " ;
-		for (int j=0; j < affected_vars_cycles[i].size(); j++) {
+		for (size_t j=0; j < affected_vars_cycles[i].size(); j++) {
 			cout << affected_vars_cycles[i][j] << " ";
 		}
 		cout << ")  ";
@@ -180,13 +180,13 @@ void Permutation::print_cycle_notation() const {
 }
 
 void Permutation::dump(){
-	for(int i = 0; i < length; i++){
-		if (get_value(i) != i)
+	for(size_t i = 0; i < length; i++){
+	    if (get_value(i) != (int)i)
 			cout << setw(4) << i;
 	}
 	cout << endl;
-	for(int i = 0; i < length; i++){
-		if (get_value(i) != i)
+	for(size_t i = 0; i < length; i++){
+	    if (get_value(i) != (int)i)
 			cout << setw(4) << get_value(i);
 	}
 	cout << endl;
@@ -196,7 +196,7 @@ void Permutation::dump(){
 // Changes added by Michael on 30.1.12
 int Permutation::get_var_by_index(int ind) {
 	// In case of ind < g_variable_domain.size(), returns the index itself, as this is the variable part of the permutation.
-	if (ind < g_variable_domain.size()) {
+    if (ind < (int)(g_variable_domain.size())) {
 		cout << "=====> WARNING!!!! Check that this is done on purpose!" << endl;
 		return ind;
 	}
@@ -224,7 +224,7 @@ void Permutation::set_value(int ind, int val) {
 
 void Permutation::set_affected(int ind, int val) {
 
-	if (ind < g_variable_domain.size() || ind == val)
+    if (ind < (int)(g_variable_domain.size()) || ind == val)
 		return;
 
 
@@ -285,10 +285,10 @@ bool Permutation::replace_if_less(state_var_t* state) {
 
 		break;
 	}
-	if (from_here == vars_affected.size())
+	if (from_here == (int)(vars_affected.size()))
 		return false;
 
-	for(int i = 0; i < affected_vars_cycles.size(); i++) {
+	for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
 		if (affected_vars_cycles[i].size() == 1) {
 			int var = affected_vars_cycles[i][0];
 			state_var_t from_val = state[var];
@@ -319,7 +319,7 @@ bool Permutation::replace_if_less(state_var_t* state) {
 void Permutation::permute_state(const state_var_t* from_state, state_var_t* to_state) {
 	// Does not assume anything about to_state
 
-	for(int from_var = 0; from_var < g_variable_domain.size(); from_var++) {
+	for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
 		state_var_t from_val = from_state[from_var];
 		pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
 

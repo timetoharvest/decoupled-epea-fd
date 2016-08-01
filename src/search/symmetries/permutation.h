@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 
+typedef int state_var_t;
 class Permutation{
 public:
     Permutation();

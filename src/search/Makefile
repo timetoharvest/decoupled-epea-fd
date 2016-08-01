@@ -104,9 +104,9 @@ HEADERS = \
           \
           lp_solver_interface.h \
 
-##HEADERS += symmetries/graph_creator.h \
-##           symmetries/permutation.h \
-##           symmetries/group.h \
+HEADERS += symmetries/graph_creator.h \
+           symmetries/permutation.h \
+           symmetries/group.h \
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
