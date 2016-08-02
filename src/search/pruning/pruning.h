@@ -28,7 +28,7 @@ class Pruning {
     bool goal_price_propagation;
     
 public:
-    Pruning() : irrelevance(NO), do_simulation (false) {}
+    Pruning() : irrelevance(NO), do_simulation (false), goal_price_propagation(false) {}
 
     Pruning(const Options &opts);
 

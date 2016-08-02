@@ -38,6 +38,7 @@ public:
 
     bool replace_if_less(state_var_t*);
 
+
 private:
     int* value;
     int* inverse_value;

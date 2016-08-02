@@ -257,7 +257,7 @@ void SearchSpace::trace_path(const State &goal_state,
                             if (min_cost > new_cost){
                                 min_cost = new_cost;
                                 best_leaf_state_id = id;
-                                if (g_factoring->get_search_type() == SAT){
+                                if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                                     break;
                                 }
                             }
