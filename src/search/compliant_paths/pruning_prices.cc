@@ -502,7 +502,7 @@ void PruningPrices::goal_price_propagation() {
                 }
             }
         }
-//      assert(goal_cost[factor] == -1 || number_propagated_states[factor] == g_state_registry->size(factor));
+//      assert(goal_cost[factor] == INF || number_propagated_states[factor] == g_state_registry->size(factor));
         // this assertion is not true! in case we have dead-end (i.e. irrelevant) leaf states that are not reached, no price is propagated to them
         
         //assert(!store_frontier || ((previous_frontier^frontier[factor])&frontier[factor]).none());

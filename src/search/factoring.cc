@@ -44,6 +44,8 @@ Factoring::Factoring(const Options &opts) :
         case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
         case SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
+        case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(EXIT_CRITICAL_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -183,6 +185,34 @@ public:
             : Factoring(opts), inverted(opts.get<bool>("inverted")) {
         profile = OPENSTACKS;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
+    };
+    
+    virtual FactoredVars get_factoring();
+  
+};
+
+class DocTransferFactoring : public Factoring {
+  
+public:
+    
+    DocTransferFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = DOC_TRANSFER;
+        cout << "using doc transfer factoring profile" << endl;
+    };
+    
+    virtual FactoredVars get_factoring();
+  
+};
+
+class PegsolFactoring : public Factoring {
+  
+public:
+    
+    PegsolFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = PEGSOL;
+        cout << "using pegsol factoring profile" << endl;
     };
     
     virtual FactoredVars get_factoring();
@@ -356,7 +386,7 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_factors[i].size(); ++j){
             f_size *= g_variable_domain[g_factors[i][j]];
-            if (search_type == SAT && f_size > max_precompute_state_space_size){
+            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
                 precompute_leaf_state_space[i] = false;
             }
         }
@@ -1448,6 +1478,38 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
     return best_factoring;
 }
 
+Factoring::FactoredVars DocTransferFactoring::get_factoring() {
+    FactoredVars factoring;
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        if (strncmp(g_fact_names[var][0].c_str(), "Atom at(document", 16) == 0 || strncmp(g_fact_names[var][0].c_str(), "Atom at(fuel", 12) == 0){
+            set<int> tmp;
+            tmp.insert(var);
+            factoring.push_back(tmp);
+        }
+    }
+    return factoring;
+}
+
+Factoring::FactoredVars PegsolFactoring::get_factoring() {
+    FactoredVars factoring(4);
+    vector<vector<string> > factors(4, vector<string>(7));
+    factors[0][0] = "Atom free(pos-0-2)";factors[0][1] = "Atom free(pos-0-3)";factors[0][2] = "Atom free(pos-0-4)";factors[0][3] = "Atom free(pos-1-2)";factors[0][4] = "Atom free(pos-1-3)";factors[0][5] = "Atom free(pos-1-4)";//factors[0][6] = "Atom free(pos-2-3)";
+    factors[1][0] = "Atom free(pos-2-0)";factors[1][1] = "Atom free(pos-3-0)";factors[1][2] = "Atom free(pos-4-0)";factors[1][3] = "Atom free(pos-2-1)";factors[1][4] = "Atom free(pos-3-1)";factors[1][5] = "Atom free(pos-4-1)";//factors[1][6] = "Atom free(pos-3-2)";
+    factors[2][0] = "Atom free(pos-5-2)";factors[2][1] = "Atom free(pos-5-3)";factors[2][2] = "Atom free(pos-5-4)";factors[2][3] = "Atom free(pos-6-2)";factors[2][4] = "Atom free(pos-6-3)";factors[2][5] = "Atom free(pos-6-4)";//factors[2][6] = "Atom free(pos-4-3)";
+    factors[3][0] = "Atom free(pos-2-5)";factors[3][1] = "Atom free(pos-3-5)";factors[3][2] = "Atom free(pos-4-5)";factors[3][3] = "Atom free(pos-2-6)";factors[3][4] = "Atom free(pos-3-6)";factors[3][5] = "Atom free(pos-4-6)";//factors[3][6] = "Atom free(pos-3-4)";
+    
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        for (size_t factor = 0; factor < factors.size(); ++factor){
+            vector<string>::const_iterator it = find(factors[factor].begin(), factors[factor].end(), g_fact_names[var][0].c_str());
+            if (it != factors[factor].end()){
+                factoring[factor].insert(var);
+                break;
+            }
+        }
+    }
+    return factoring;
+}
+
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
@@ -1461,6 +1523,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("asda");
     search_types.push_back("sda");
     search_types.push_back("sat");
+    search_types.push_back("unsat");
     parser.add_enum_option(
         "search_type",
         search_types,
@@ -1547,9 +1610,37 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
     
     Options opts = parser.parse();
 
-    IncidentArcsFactoring::Factoring *factoring = 0;
+    IncidentArcsFactoring *factoring = 0;
     if (!parser.dry_run()) {
         factoring = new IncidentArcsFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Factoring *_parse_doctransfer(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    
+    Options opts = parser.parse();
+
+    DocTransferFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new DocTransferFactoring(opts);
+    }
+
+    return factoring;
+}
+
+static Factoring *_parse_pegsol(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    
+    Options opts = parser.parse();
+
+    PegsolFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new PegsolFactoring(opts);
     }
 
     return factoring;
@@ -1563,5 +1654,7 @@ static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
 // static Plugin<Factoring> _plugin_sokoban("sokoban", _parse_sokoban);
 // static Plugin<Factoring> _plugin_tpp_const("tpp_const", _parse_tpp_const);
 // static Plugin<Factoring> _plugin_itpp_const("itpp_const", _parse_itpp_const);
-// static Plugin<Factoring> _plugin_openstacks("openstacks", _parse_openstacks);
+
+static Plugin<Factoring> _plugin_doctransfer("doctransfer", _parse_doctransfer);
+static Plugin<Factoring> _plugin_pegsol("pegsol", _parse_pegsol);
 

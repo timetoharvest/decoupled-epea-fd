@@ -164,7 +164,7 @@ bool Operator::is_applicable(const LeafStateID &leaf_id) const {
 }
 
 bool Operator::is_center_applicable(const State &state) const {
-    const std::vector<const Condition*> &center_preconds = get_preconditions(-1);
+    const vector<const Condition*> &center_preconds = get_preconditions(-1);
     for (size_t i = 0; i < center_preconds.size(); ++i){
         if (!center_preconds[i]->is_applicable(state)){
             return false;

@@ -107,11 +107,16 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
                 ++id;
             }
         }
+#ifndef NDEBUG
         vector<bool> added(g_operators.size(), false);
+#endif
         for (size_t i = 0; i < center_ops.size(); ++i){
             int op = center_ops[i]->get_index();
-            if (!added[op] && counter[op] == g_operators[op].get_number_pre_factors()){
+            if (counter[op] == g_operators[op].get_number_pre_factors()){
+#ifndef NDEBUG
+                assert(!added[op]);
                 added[op] = true;
+#endif
                 ops.push_back(&g_operators[op]);
             }
         }
@@ -140,7 +145,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafS
         }
 #ifndef NDEBUG
         else {
-            assert(!g_factoring->precompute_state_space(leaf_state.get_id().get_factor()));
+            assert(!CompliantPathGraph::precompute_leaf_state_space(leaf_state.get_id().get_factor()));
         }
 #endif
     } else {

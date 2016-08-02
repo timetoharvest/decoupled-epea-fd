@@ -73,7 +73,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
     if (test_goal(state)) {
         Plan plan;
         search_space.trace_path(state, plan);
-	if (g_use_decoupled_search && g_factoring->get_search_type() != SAT){
+	if (g_use_decoupled_search && g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
 	    if (g_factoring->get_search_type() == FRA){
 		if (!is_optimal_leaf_plan(plan)){
 		    cout << "found plan is not optimal, cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;

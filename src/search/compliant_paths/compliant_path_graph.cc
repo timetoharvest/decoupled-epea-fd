@@ -11,6 +11,7 @@
 #include "../state_id.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
+#include "../timer.h"
 
 
 using namespace std;
@@ -141,7 +142,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 int cost = goal_price_tag.get_cost_of_state(id, factor);
                 if (id < best_prices.size()){
                     if (cost > best_prices[id]
-                        || (g_factoring->get_search_type() == SAT && best_prices[id] != numeric_limits<int>::max())){
+                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
+                            && best_prices[id] != numeric_limits<int>::max())){
                         continue;
                     }
                 }
@@ -297,12 +299,13 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         }
         g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
         
-        if (g_min_goal_cost[factor] == -1){
+        if (g_min_goal_cost[factor] == INF){
             if (!g_goals_per_factor[factor].empty()){
                 cout << "There is a goal that cannot be achieved in factor " << factor << endl;
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
                     cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
                 }
+                cout << "Total time: " << g_timer << endl;
                 exit_with(EXIT_UNSOLVABLE);
             }
             g_min_goal_cost[factor] = 0;
@@ -330,7 +333,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    if (g_factoring->get_search_type() == SAT){
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         Reachable::create_init_state_reachable();
     } else {
         Prices::create_init_state_prices();
@@ -363,7 +366,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
 
 void CompliantPathGraph::store_new_graph(const State &state) {
     cache_leaf_price_tags(state);
-    if (g_factoring->get_search_type() == SAT){
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         Reachable::store_new_graph(state);
     } else {
         Prices::store_new_graph(state);

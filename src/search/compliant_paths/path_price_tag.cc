@@ -236,9 +236,9 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 LeafStateID lid(id, factor);
                 
                 if (op.is_applicable(lid)){
-                    if (g_factoring->get_search_type() != SAT){
+                    if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
                         min_price = min(min_price, old_tag.get_cost_of_state(id, factor));
-                        assert(min_price != -1);
+                        assert(min_price != INF);
                     }
                             
                     if (num_effects == 0){
@@ -255,11 +255,11 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             ++id;
         }
 
-        if (g_factoring->get_search_type() != SAT && min_price > 0){
+        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT && min_price > 0){
             reduce_cost_by(factor, min_price);
         }
         
-        assert(g_factoring->get_search_type() == SAT || min_price != numeric_limits<int>::max());
+        assert(g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT || min_price != numeric_limits<int>::max());
 #ifdef DEBUG_PATH_RECONSTRUCTION
         cout << "min_price of factor " << factor << " = " << min_price << endl;
 #endif
