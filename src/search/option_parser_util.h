@@ -19,6 +19,7 @@ class Factoring;
 class MergeStrategy;
 class ShrinkStrategy;
 class LandmarkGraph;
+class GraphCreator;
 class Heuristic;
 class ScalarEvaluator;
 class Synergy;
@@ -227,6 +228,13 @@ template <>
 struct TypeNamer<LandmarkGraph *> {
     static std::string name() {
         return "LandmarkGraph";
+    }
+};
+
+template <>
+struct TypeNamer<GraphCreator *> {
+    static std::string name() {
+        return "symmetry graph";
     }
 };
 

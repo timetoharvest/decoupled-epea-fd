@@ -66,14 +66,14 @@ GraphCreator::~GraphCreator() {
     free_memory();
 }
 
-#ifdef USE_BLISS
+//#ifdef USE_BLISS
 bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     // Differ from create_bliss_graph() in (a) having one node per action (incoming arcs from pre, outgoing to eff),
     //                                 and (b) not having a node for goal, recoloring the respective values.
    // initialization
 
     int num_of_vertex = g_variable_domain.size();
-    for (int num_of_variable = 0; num_of_variable < g_variable_domain.size(); num_of_variable++){
+    for (size_t num_of_variable = 0; num_of_variable < g_variable_domain.size(); num_of_variable++){
         Permutation::dom_sum_by_var.push_back(num_of_vertex);
         num_of_vertex+=g_variable_domain[num_of_variable];
         for(int num_of_value = 0; num_of_value < g_variable_domain[num_of_variable]; num_of_value++){
@@ -86,11 +86,11 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     bliss::Digraph* g = new bliss::Digraph();
     int idx = 0;
     // add vertex for each varaible
-    for (int i = 0; i < g_variable_domain.size(); i++){
+    for (size_t i = 0; i < g_variable_domain.size(); i++){
        idx = g->add_vertex(PREDICATE_VERTEX);
     }
     // now add values vertices for each predicate
-    for (int i = 0; i < g_variable_domain.size(); i++){
+    for (size_t i = 0; i < g_variable_domain.size(); i++){
        for (int j = 0; j < g_variable_domain[i]; j++){
           idx = g->add_vertex(VALUE_VERTEX);
           g->add_edge(idx,i);
@@ -98,19 +98,19 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     }
 
     // now add vertices for operators
-    for (int i = 0; i < g_operators.size(); i++){
+    for (size_t i = 0; i < g_operators.size(); i++){
         const Operator& op = g_operators[i];
         add_operator_directed_graph(g, op);
     }
 
     // now add vertices for axioms
-    for (int i = 0; i < g_axioms.size(); i++){
+    for (size_t i = 0; i < g_axioms.size(); i++){
         const Operator& op = g_axioms[i];
         add_operator_directed_graph(g, op);
     }
 
     // Recoloring the goal values
-    for (int i = 0; i < g_goal.size(); i++){
+    for (size_t i = 0; i < g_goal.size(); i++){
         int var = g_goal[i].first;
         int val = g_goal[i].second;
         int goal_idx = Permutation::dom_sum_by_var[var] + val;
@@ -127,32 +127,20 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator
 
     int op_idx = g->add_vertex(OP_COLOR);
 
-    const std::vector<Prevail>& prevail = op.get_prevail();
-    for (int idx1 = 0; idx1 < prevail.size(); idx1++){
-        int var = prevail[idx1].var;
-        int val = prevail[idx1].prev;
-        int prv_idx = Permutation::dom_sum_by_var[var] + val;
+    for (const auto & cond : op.get_preconditions()){
+        int prv_idx = Permutation::dom_sum_by_var[cond.var] + cond.val;
         g->add_edge(prv_idx, op_idx);
     }
-    const std::vector<PrePost>& prepost = op.get_pre_post();
-    for (int idx1 = 0; idx1 < prepost.size(); idx1++){
-        int var = prepost[idx1].var;
-        int pre_val = prepost[idx1].pre;
 
-        if (pre_val!= -1){
-            int pre_idx = Permutation::dom_sum_by_var[var] + pre_val;
-            g->add_edge(pre_idx, op_idx);
-        }
+    for (const auto & eff : op.get_effects()){
+        int eff_idx = Permutation::dom_sum_by_var[eff.var] + eff.val;
 
-        //TODO: Add support for conditional effects
-        int eff_val = prepost[idx1].post;
-        int eff_idx = Permutation::dom_sum_by_var[var] + eff_val;
-
-        if (prepost[idx1].cond.size() == 0) {
+        if (eff.conditions.size() == 0) {
             g->add_edge(op_idx, eff_idx);
         } else {
+	    cerr << "Error: conditional effects are not implemented in this version (look at metis code)" << endl;
 //            	cout << "Adding a node for conditional effect" << endl;
-            // Adding a node for each condition. An edge from op to node, an edge from node to eff,
+/*            // Adding a node for each condition. An edge from op to node, an edge from node to eff,
             // for each cond, an edge from cond to node.
             color_t effect_color = CONDITIONAL_EFFECT_VERTEX;
             if (effect_can_be_overwritten(idx1, prepost)) {
@@ -162,18 +150,17 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator
             g->add_edge(op_idx, cond_op_idx); // Edge from operator to conditional effect
             g->add_edge(cond_op_idx, eff_idx); // Edge from conditional effect to effect
             // Adding edges for conds
-            for (int c = 0; c < prepost[idx1].cond.size(); c++){
-                int c_var = prepost[idx1].cond[c].var;
-                int c_val = prepost[idx1].cond[c].prev;
-                int c_idx = Permutation::dom_sum_by_var[c_var] + c_val;
+	    for (const auto & cond : eff.conditions){
+                int c_idx = Permutation::dom_sum_by_var[cond.var] + cond.value;
 
                 g->add_edge(c_idx, cond_op_idx); // Edge from condition to conditional effect
             }
-        }
+	    }*/
+	}
     }
 
 }
-
+/*
 bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const {
     // Checking whether the effect is a delete effect that can be overwritten by an add effect
     assert(ind < prepost.size());
@@ -193,7 +180,8 @@ bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>
     }
     return false;
 }
-#endif
+*/
+//#endif
 
 
 Permutation GraphCreator::create_permutation_from_state_to_state(const State& from_state, const State& to_state) {

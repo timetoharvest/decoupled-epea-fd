@@ -49,11 +49,11 @@ public:
 private:
     Group group;
 
-#ifdef USE_BLISS
+//#ifdef USE_BLISS
     bliss::Digraph* create_bliss_directed_graph() const;
     void add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const;
-    bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const;
-#endif
+    /* bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const; */
+//#endif
 };
 
 #endif

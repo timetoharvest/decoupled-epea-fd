@@ -4,6 +4,8 @@
 #include "causal_graph.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cpg_storage.h"
+#include "symmetries/graph_creator.h"
+
 #include "domain_transition_graph.h"
 #include "factoring.h"
 #include "heuristic.h"
@@ -467,3 +469,6 @@ Timer g_timer;
 string g_plan_filename = "sas_plan";
 RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
 StateRegistry *g_state_registry = 0;
+
+// Globals for symmetries
+std::unique_ptr<GraphCreator> g_symmetry_graph;

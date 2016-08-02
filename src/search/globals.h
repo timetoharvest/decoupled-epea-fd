@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <memory>
 
 #ifndef NDEBUG
 // #define DEBUG_SEARCH    // general debugging
@@ -22,6 +23,7 @@ class AxiomEvaluator;
 class CausalGraph;
 class DomainTransitionGraph;
 class Factoring;
+class GraphCreator;
 class IntPacker;
 class Operator;
 class RandomNumberGenerator;
@@ -108,6 +110,9 @@ extern CausalGraph *g_causal_graph;
 extern Timer g_timer;
 extern std::string g_plan_filename;
 extern RandomNumberGenerator g_rng;
+
+extern std::unique_ptr<GraphCreator> g_symmetry_graph;
+
 // Only one global object for now. Could later be changed to use one instance
 // for each problem in this case the method State::get_id would also have to be
 // changed.

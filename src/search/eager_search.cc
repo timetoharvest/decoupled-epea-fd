@@ -9,6 +9,7 @@
 #include "plugin.h"
 #include "factoring.h"
 #include "por/por_method.h"
+#include "symmetries/graph_creator.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -44,6 +45,12 @@ EagerSearch::EagerSearch(
     if (g_use_decoupled_search && reopen_closed_nodes){
         g_factoring->set_reopen_closed_nodes();
     }
+
+
+    if (opts.contains("symmetry")) {
+        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator *>("symmetry"));
+    }
+
 }
 
 void EagerSearch::initialize() {
@@ -108,6 +115,8 @@ void EagerSearch::initialize() {
     if (partial_order_reduction_method != 0){
         partial_order_reduction_method->dump_options();
     }
+
+    if(g_symmetry_graph) g_symmetry_graph->initialize();
 }
 
 EagerSearch::~EagerSearch() {
@@ -465,6 +474,7 @@ static SearchEngine *_parse(OptionParser &parser) {
         ("preferred",
         "use preferred operators of these heuristics", "[]");
     SearchEngine::add_options_to_parser(parser);
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
     Options opts = parser.parse();
 
     EagerSearch *engine = 0;
@@ -506,6 +516,7 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
                                        "partial order reduction method",
                                        "none");
     SearchEngine::add_options_to_parser(parser);
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
     Options opts = parser.parse();
 
     EagerSearch *engine = 0;
@@ -581,6 +592,7 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
         "boost",
         "boost value for preferred operator open lists", "0");
     SearchEngine::add_options_to_parser(parser);
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 
 
     Options opts = parser.parse();

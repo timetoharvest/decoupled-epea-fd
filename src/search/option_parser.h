@@ -44,6 +44,7 @@ If NT shall be predefinable:
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
+class GraphCreator;
 template<class Entry>
 class OpenList;
 class Pruning;
@@ -95,6 +96,12 @@ template <>
 class TokenParser<LandmarkGraph *> {
 public:
     static inline LandmarkGraph *parse(OptionParser &p);
+};
+
+template <>
+class TokenParser<GraphCreator *> {
+public:
+    static inline GraphCreator *parse(OptionParser &p);
 };
 
 template <>
@@ -399,6 +406,18 @@ LandmarkGraph *TokenParser<LandmarkGraph *>::parse(OptionParser &p) {
         return result;
     return lookup_in_registry<LandmarkGraph>(p);
 }
+
+GraphCreator *TokenParser<GraphCreator *>::parse(OptionParser &p) {
+    // HACK
+    if (p.get_parse_tree()->begin()->value == "0")
+        return 0;
+    bool predefined;
+    GraphCreator *result = lookup_in_predefinitions<GraphCreator>(p, predefined);
+    if (predefined)
+        return result;
+    return lookup_in_registry<GraphCreator>(p);
+}
+
 
 //TODO find a general way to handle parsing of superclasses (see also issue28)
 ScalarEvaluator *TokenParser<ScalarEvaluator *>::parse(OptionParser &p) {
