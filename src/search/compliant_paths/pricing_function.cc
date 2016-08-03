@@ -514,6 +514,8 @@ void Prices::dump() const {
 }
 
 bool Prices::apply_symmetry_permutation(const Permutation & /*permutation*/, bool /*if_less*/) {
+    //     std::vector<std::vector<int> > prices;
+
     cout << " BOOM " << endl;
     return false;
 }

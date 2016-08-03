@@ -9,7 +9,6 @@
 using namespace std;
 using namespace __gnu_cxx;
 typedef std::vector<short int> Trace;
-typedef std::vector<Permutation> Gens; // the generators for the automorphism
 
 class CompliantPathGraph;
 
@@ -39,9 +38,9 @@ public:
 						      CompliantPathGraph & leaves)  const;    
     
 private:
-     Gens generators;
-
-     mutable vector<int> tmp_state;
+    std::vector<Permutation> generators;
+     
+    mutable vector<int> tmp_state;
 
     static bool safe_to_add_generators;
     static int num_identity_generators;

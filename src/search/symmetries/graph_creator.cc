@@ -73,16 +73,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     //                                 and (b) not having a node for goal, recoloring the respective values.
    // initialization
 
-    int num_of_vertex = g_variable_domain.size();
-    for (size_t num_of_variable = 0; num_of_variable < g_variable_domain.size(); num_of_variable++){
-        Permutation::dom_sum_by_var.push_back(num_of_vertex);
-        num_of_vertex+=g_variable_domain[num_of_variable];
-        for(int num_of_value = 0; num_of_value < g_variable_domain[num_of_variable]; num_of_value++){
-            Permutation::var_by_val.push_back(num_of_variable);
-        }
-    }
-
-    Permutation::length = num_of_vertex;
+    Permutation::init_fact_index();
 
     bliss::Digraph* g = new bliss::Digraph();
     int idx = 0;
@@ -119,7 +110,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     for (size_t i = 0; i < g_goal.size(); i++){
         int var = g_goal[i].first;
         int val = g_goal[i].second;
-        int goal_idx = Permutation::dom_sum_by_var[var] + val;
+        int goal_idx = Permutation::findex.dom_sum_by_var[var] + val;
         g->change_color(goal_idx, GOAL_VERTEX);
     }
 
@@ -134,12 +125,12 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator
     int op_idx = g->add_vertex(OP_COLOR);
 
     for (const auto & cond : op.get_preconditions()){
-        int prv_idx = Permutation::dom_sum_by_var[cond.var] + cond.val;
+        int prv_idx = Permutation::findex.dom_sum_by_var[cond.var] + cond.val;
         g->add_edge(prv_idx, op_idx);
     }
 
     for (const auto & eff : op.get_effects()){
-        int eff_idx = Permutation::dom_sum_by_var[eff.var] + eff.val;
+        int eff_idx = Permutation::findex.dom_sum_by_var[eff.var] + eff.val;
 
         if (eff.conditions.size() == 0) {
             g->add_edge(op_idx, eff_idx);

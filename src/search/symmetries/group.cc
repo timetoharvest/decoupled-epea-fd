@@ -145,10 +145,10 @@ void Group::dump_generators() const {
     }
 
     cout << "Extra group info:" << endl;
-    cout << "Permutation length: " << Permutation::length << endl;
+    cout << "Permutation length: " << Permutation::findex.length << endl;
     cout << "Permutation variables by values (" << g_variable_domain.size() << "): " << endl;
-    for (size_t i = g_variable_domain.size(); i < Permutation::length; i++)
-        cout << Permutation::get_var_by_index(i) << "  " ;
+    for (size_t i = g_variable_domain.size(); i < Permutation::findex.length; i++)
+        cout << Permutation::findex.get_var_by_index(i) << "  " ;
     cout << endl;
 }
 
