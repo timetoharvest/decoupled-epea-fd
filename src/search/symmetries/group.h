@@ -11,11 +11,12 @@ using namespace __gnu_cxx;
 typedef std::vector<short int> Trace;
 typedef std::vector<Permutation> Gens; // the generators for the automorphism
 
+class CompliantPathGraph;
 
 class Group{
 public:
     Group(const Options &opts);
-    ~Group();
+    ~Group() = default;
     void initialize();
 
     static void add_permutation(void*, unsigned int, const unsigned int *);
@@ -28,23 +29,25 @@ public:
     void dump_generators() const;
 
     Permutation compose_permutation(Trace&) const;
-    const state_var_t* get_canonical_state(const state_var_t* state);
+    const vector<int> & get_canonical_state(const State & state) const;
     void get_trace(const State& state, Trace& full_trace);
 
     void free_memory();
     void statistics() const;
+
+    const vector<int> & get_canonical_decoupled_state(const State & center, 
+						      CompliantPathGraph & leaves)  const;    
+    
 private:
      Gens generators;
 
-    static state_var_t* original_state;
-    static state_var_t* res;
-    static bool safe_to_add_generators;
+     mutable vector<int> tmp_state;
 
+    static bool safe_to_add_generators;
     static int num_identity_generators;
     static int stop_after_false_generated;
 
     const Permutation& get_permutation(int) const;
-    void copy_buff(state_var_t* s1, const state_var_t* s2) const;
 };
 
 #endif

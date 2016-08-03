@@ -38,11 +38,18 @@ public:
         group.get_trace(state, full_trace);
     }
 
-    const state_var_t* get_canonical_state(const state_var_t* state)  {
+    const vector<int> & get_canonical_state(const State & state)  {
         return group.get_canonical_state(state);
     }
+    
 
-    Permutation create_permutation_from_state_to_state(const State& from_state, const State& to_state);
+    const std::vector<int> & get_canonical_decoupled_state(const State & center, 
+							   CompliantPathGraph & leaves)  const {
+        return group.get_canonical_decoupled_state (center, leaves);
+    }
+    
+    Permutation create_permutation_from_state_to_state(const State& from_state, 
+						       const State& to_state);
 
     static void add_options_to_parser(OptionParser &parser);
     void free_memory() { group.free_memory(); }

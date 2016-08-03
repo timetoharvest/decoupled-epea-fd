@@ -13,6 +13,7 @@ class LeafState;
 class LeafStateID;
 class State;
 class StateID;
+class Permutation;
 
 class CompliantPathGraph {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
@@ -83,7 +84,8 @@ public:
     virtual bool goal_reachable(int factor) const = 0;
     
     virtual void dump() const = 0;
-    
+
+    virtual bool apply_symmetry_permutation(const Permutation & permutation, bool if_less) = 0;  
      
     static void store_new_graph(const State &state);
     

@@ -22,7 +22,6 @@ void Permutation::_allocate() {
     affected.assign(g_variable_domain.size(), false);
 	vars_affected.clear();
 	from_vars.assign(g_variable_domain.size(), -1);
-	buff_for_state_copy = new state_var_t[g_variable_domain.size()];
 	affected_vars_cycles.clear();
 }
 
@@ -30,7 +29,6 @@ void Permutation::_deallocate() {
     if (!borrowed_buffer) {
         delete[] value;
         delete[] inverse_value;
-        delete[] buff_for_state_copy;
     }
 }
 
@@ -149,14 +147,14 @@ void Permutation::print_cycle_notation() const {
 	        int current = i;
 	        if(get_value(i) == (int)i) continue; //don't print cycles of size 1
 
-	        pair<int, state_var_t> varval = get_var_val_by_index(i);
+	        pair<int, int> varval = get_var_val_by_index(i);
 	        cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
 
 	        while(get_value(current) != (int)i){
 	            done.push_back(current);
 	            current = get_value(current);
 
-		        pair<int, state_var_t> currvarval = get_var_val_by_index(current);
+		        pair<int, int> currvarval = get_var_val_by_index(current);
 	            cout<< g_fact_names[currvarval.first][(int) currvarval.second] <<" ";
 	        }
 	        done.push_back(current);
@@ -181,7 +179,7 @@ void Permutation::print_cycle_notation() const {
 	cout << endl;
 }
 
-void Permutation::dump(){
+void Permutation::dump() const {
 	for(size_t i = 0; i < length; i++){
 	    if (get_value(i) != (int)i)
 			cout << setw(4) << i;
@@ -205,7 +203,7 @@ int Permutation::get_var_by_index(int ind) {
 	return var_by_val[ind-g_variable_domain.size()];
 }
 
-pair<int, state_var_t> Permutation::get_var_val_by_index(int ind) {
+pair<int, int> Permutation::get_var_val_by_index(int ind) {
 	assert(ind>=g_variable_domain.size());
 	int var =  var_by_val[ind-g_variable_domain.size()];
 	int val = ind - dom_sum_by_var[var];
@@ -214,7 +212,7 @@ pair<int, state_var_t> Permutation::get_var_val_by_index(int ind) {
 	return make_pair(var, val);
 }
 
-int Permutation::get_index_by_var_val_pair(int var, state_var_t val) {
+int Permutation::get_index_by_var_val_pair(int var, int val) {
 	return dom_sum_by_var[var] + val;
 }
 
@@ -246,13 +244,13 @@ void Permutation::set_affected(int ind, int val) {
 }
 
 
-pair<int, state_var_t> Permutation::get_new_var_val_by_old_var_val(const int var, const state_var_t val) {
+pair<int, int> Permutation::get_new_var_val_by_old_var_val(const int var, const int val) const {
 	int old_ind = get_index_by_var_val_pair(var, val);
 	int new_ind = get_value(old_ind);
 	return get_var_val_by_index(new_ind);
 }
 
-pair<int, state_var_t> Permutation::get_old_var_val_by_new_var_val(const int var, const state_var_t val) {
+pair<int, int> Permutation::get_old_var_val_by_new_var_val(const int var, const int val) const {
 	int new_ind = get_index_by_var_val_pair(var, val);
 	int old_ind = get_inverse_value(new_ind);
 	return get_var_val_by_index(old_ind);
@@ -262,9 +260,9 @@ pair<int, state_var_t> Permutation::get_old_var_val_by_new_var_val(const int var
 // This method compares the state to the state resulting from permuting it.
 // If the original state is bigger than the resulted one, it is rewritten with the latter and true is returned.
 ////////////////////  New version - no extra buffer is needed, faster copy ///////////////
-bool Permutation::replace_if_less(state_var_t* state) {
+cmp_t Permutation::replace_if_less(vector<int> & state)  const{
 	if (identity())
-		return false;
+	    return cmp_t::EQUAL;
 
 	int from_here = vars_affected.size(); // Will be set to value below vars_affected.size() if there is a need to overwrite the state,
 	// starting from that index in the vars_affected vector.
@@ -274,7 +272,7 @@ bool Permutation::replace_if_less(state_var_t* state) {
 		int to_var =  vars_affected[i];
 		int from_var = from_vars[to_var];
 
-		pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
+		pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
 		assert( to_pair.first == to_var);
 		short to_val = to_pair.second;
 
@@ -288,13 +286,13 @@ bool Permutation::replace_if_less(state_var_t* state) {
 		break;
 	}
 	if (from_here == (int)(vars_affected.size()))
-		return false;
+		return cmp_t::GREATER;
 
 	for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
 		if (affected_vars_cycles[i].size() == 1) {
 			int var = affected_vars_cycles[i][0];
-			state_var_t from_val = state[var];
-			pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(var, from_val);
+			int from_val = state[var];
+			pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
 			state[var] = to_pair.second;
 			continue;
 		}
@@ -306,24 +304,29 @@ bool Permutation::replace_if_less(state_var_t* state) {
 			// writing into variable affected_vars_cycles[i][j]
 			int to_var = affected_vars_cycles[i][j];
 			int from_var = affected_vars_cycles[i][j-1];
-			state_var_t from_val = state[from_var];
-			pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+			int from_val = state[from_var];
+			pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
 			state[to_var] = to_pair.second;
 		}
 		// writing the last one
-		pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(last_var, last_val);
+		pair<int, int> to_pair = get_new_var_val_by_old_var_val(last_var, last_val);
 		state[affected_vars_cycles[i][0]] = to_pair.second;
 	}
 
-	return true;
+	return cmp_t::LESS;
 }
 
-void Permutation::permute_state(const state_var_t* from_state, state_var_t* to_state) {
+bool Permutation::replace_if_less(CompliantPathGraph & /*leaves*/) const {
+    return false;
+}
+
+
+void Permutation::permute_state(const vector<int> & from_state, vector<int> & to_state) {
 	// Does not assume anything about to_state
 
 	for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
-		state_var_t from_val = from_state[from_var];
-		pair<int, state_var_t> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+		int from_val = from_state[from_var];
+		pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
 
 		// Copying the values to the new state
 		to_state[to_pair.first] = to_pair.second;

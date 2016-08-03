@@ -2,13 +2,12 @@
 #include "../globals.h"
 #include <iostream>
 
+#include "../compliant_paths/compliant_path_graph.h"
+
 #include <fstream>
 #include <algorithm>
 
 using namespace std;
-
-state_var_t* Group::original_state;
-state_var_t* Group::res;
 
 bool Group::safe_to_add_generators;
 int Group::num_identity_generators;
@@ -19,35 +18,21 @@ Group::Group(const Options &opts) {
 }
 
 void Group::initialize() {
-    if (!original_state)
-        original_state = new state_var_t[g_variable_domain.size()];
-
-    if (!res)
-        res = new state_var_t[g_variable_domain.size()];
+    if(g_use_decoupled_search) {
+	tmp_state.resize(g_center_vars.size());
+    } else {
+	tmp_state.resize(g_variable_domain.size());
+    }
 
     safe_to_add_generators = true;
     num_identity_generators = 0;
 }
 
-Group::~Group(){
-    //Empty - all vectors expected to be deleted by default destructor of vector
-}
-
 
 void Group::free_memory() {
-    if (original_state) {
-        delete original_state;
-        original_state = 0;
-    }
-    if (res) {
-        delete res;
-        res = 0;
-    }
-
     // Removing the permutations
     generators.clear();
 }
-
 
 /**
  * Add new permutation to the list of permutations
@@ -108,22 +93,46 @@ const Permutation& Group::get_permutation(int index) const {
     return generators[index];
 }
 
-const state_var_t* Group::get_canonical_state(const state_var_t* state) {
-    int size = get_num_generators();
-    if (size == 0)
-        return state;
+const vector<int> &  Group::get_canonical_state(const State & state) const {
+    for (size_t i = 0; i < g_variable_domain.size(); ++i) {
+	tmp_state[i] = state[i];
+    }
 
-    copy_buff(original_state, state);
     bool changed = true;
     while (changed) {
         changed = false;
-        for (int i=0; i < size; i++) {
-            if (generators[i].replace_if_less(original_state)) {
+        for (const auto & gen : generators) {
+            if (gen.replace_if_less(tmp_state) == cmp_t::LESS) {
                 changed =  true;
             }
         }
     }
-    return original_state;
+    return tmp_state;
+}
+
+const vector<int> & Group::get_canonical_decoupled_state(const State & center, 
+							 CompliantPathGraph & leaves)  const{
+    for (size_t i = 0; i < g_center_vars.size(); ++i) {
+	tmp_state[i] = center[g_center_vars[i]];
+    }
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (const auto & gen : generators) {
+	    cmp_t cmp = gen.replace_if_less(tmp_state);
+	    if (cmp == cmp_t::LESS) {
+		leaves.apply_symmetry_permutation(gen, false);
+                changed =  true;
+            } else if (cmp == cmp_t::EQUAL) {
+		if(leaves.apply_symmetry_permutation(gen, true)) {
+		    changed = true;
+		}
+	    }
+        }
+    }
+    return tmp_state;
+
 }
 
 
@@ -152,22 +161,18 @@ void Group::statistics() const {
     }
 }
 
-void Group::copy_buff(state_var_t* s1, const state_var_t* s2) const{
-    for(size_t i = 0; i < g_variable_domain.size(); ++i) s1[i] = s2[i];
-}
-
 void Group::get_trace(const State& state, Trace& full_trace) {
     int size = get_num_generators();
     if (size == 0)
         return;
 
     for(size_t i = 0; i < g_variable_domain.size(); ++i)
-        original_state[i] = state[i];
+        tmp_state[i] = state[i];
     bool changed = true;
     while (changed) {
         changed = false;
         for (int i=0; i < size; i++) {
-            if (generators[i].replace_if_less(original_state)) {
+            if (generators[i].replace_if_less(tmp_state) == cmp_t::LESS) {
                 full_trace.push_back(i);
                 changed = true;
             }

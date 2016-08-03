@@ -513,3 +513,7 @@ void Prices::dump() const {
     }
 }
 
+bool Prices::apply_symmetry_permutation(const Permutation & /*permutation*/, bool /*if_less*/) {
+    cout << " BOOM " << endl;
+    return false;
+}

@@ -4,7 +4,10 @@
 #include <vector>
 #include <fstream>
 
-typedef int state_var_t;
+enum class cmp_t {LESS, EQUAL, GREATER};
+
+class CompliantPathGraph;
+
 class Permutation{
 public:
     Permutation();
@@ -18,25 +21,27 @@ public:
 
     bool identity() const;
     // Michael: version for the trace_back
-    void permute_state(const state_var_t* from_state, state_var_t* to_state);
+    void permute_state(const std::vector<int> & from_state, std::vector<int> & to_state);
     void print_cycle_notation() const;
     void set_value(int ind, int val);
     int get_value(int ind) const { return value[ind]; }
     int get_inverse_value(int ind) const { return inverse_value[ind]; }
-    void dump();
+    void dump() const;
 
     static unsigned int length;
     static std::vector<int> var_by_val;
     static std::vector<int> dom_sum_by_var;
 
     static int get_var_by_index(int val);
-    static std::pair<int, state_var_t> get_var_val_by_index(const int ind);
-    static int get_index_by_var_val_pair(const int var, const state_var_t val);
+    static std::pair<int, int> get_var_val_by_index(const int ind);
+    static int get_index_by_var_val_pair(const int var, const int val);
 
-    std::pair<int, state_var_t> get_new_var_val_by_old_var_val(const int var, const state_var_t val);
-    std::pair<int, state_var_t> get_old_var_val_by_new_var_val(const int var, const state_var_t val);
+    std::pair<int, int> get_new_var_val_by_old_var_val(const int var, const int val) const;
+    std::pair<int, int> get_old_var_val_by_new_var_val(const int var, const int val) const ;
 
-    bool replace_if_less(state_var_t*);
+    cmp_t replace_if_less(std::vector<int> & state) const;
+
+    bool replace_if_less(CompliantPathGraph & leaves) const;
 
     bool affects_center() const;
     int num_leafs_affected() const;
@@ -50,7 +55,7 @@ private:
     bool borrowed_buffer;
     // Need to keep the connection between affected vars, ie which var goes into which.
     std::vector<int> from_vars;
-    state_var_t* buff_for_state_copy;
+
     // Affected vars by cycles
     std::vector<std::vector<int> > affected_vars_cycles;
 
