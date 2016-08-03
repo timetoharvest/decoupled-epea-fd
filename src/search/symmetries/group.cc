@@ -143,6 +143,15 @@ void Group::dump_generators() const {
     cout << endl;
 }
 
+
+void Group::statistics() const {
+    for (int i = 0; i < get_num_generators(); i++) {
+        cout << "Generator " << i 
+	     << " center: " <<  get_permutation(i).affects_center()
+	     << " num_leafs: " << get_permutation(i).num_leafs_affected() << endl;
+    }
+}
+
 void Group::copy_buff(state_var_t* s1, const state_var_t* s2) const{
     for(size_t i = 0; i < g_variable_domain.size(); ++i) s1[i] = s2[i];
 }

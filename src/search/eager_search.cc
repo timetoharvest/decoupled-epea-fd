@@ -116,7 +116,9 @@ void EagerSearch::initialize() {
         partial_order_reduction_method->dump_options();
     }
 
-    if(g_symmetry_graph) g_symmetry_graph->initialize();
+    if(g_symmetry_graph){
+	g_symmetry_graph->initialize();
+    }
 }
 
 EagerSearch::~EagerSearch() {

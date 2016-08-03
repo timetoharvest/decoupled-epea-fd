@@ -5,6 +5,8 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
+#include <set>
+
 
 using namespace std;
 #include <sstream>
@@ -326,4 +328,23 @@ void Permutation::permute_state(const state_var_t* from_state, state_var_t* to_s
 		// Copying the values to the new state
 		to_state[to_pair.first] = to_pair.second;
 	}
+}
+
+bool Permutation::affects_center() const {
+    for(int v : vars_affected) {
+	if (g_belongs_to_factor[v] == -1) {
+	    return true;
+	}
+    }
+    return false;
+}
+
+int Permutation::num_leafs_affected() const {
+    set<int> leafs; 
+    for(int v : vars_affected) {
+	if (g_belongs_to_factor[v] != -1) {
+	    leafs.insert(v);
+	}
+    }
+    return leafs.size();
 }

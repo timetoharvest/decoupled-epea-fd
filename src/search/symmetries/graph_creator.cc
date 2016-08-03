@@ -48,6 +48,7 @@ void GraphCreator::initialize() {
 
     group.default_direct_product();
     cout<<"Number of generators: "<< group.get_num_generators()<<endl;
+    group.statistics();
 
     // Deleting the graph
     delete graph;
@@ -87,7 +88,12 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     int idx = 0;
     // add vertex for each varaible
     for (size_t i = 0; i < g_variable_domain.size(); i++){
-       idx = g->add_vertex(PREDICATE_VERTEX);
+	if(g_factoring && g_belongs_to_factor[i] == -1) {
+	   idx = g->add_vertex(CENTER_FACTOR_VERTEX);
+       }else{
+	   idx = g->add_vertex(PREDICATE_VERTEX);
+
+       }
     }
     // now add values vertices for each predicate
     for (size_t i = 0; i < g_variable_domain.size(); i++){

@@ -38,6 +38,9 @@ public:
 
     bool replace_if_less(state_var_t*);
 
+    bool affects_center() const;
+    int num_leafs_affected() const;
+
 
 private:
     int* value;
@@ -59,7 +62,6 @@ private:
     void _deallocate();
     void _copy_value_from_permutation(const Permutation&);
     void _inverse_value_from_permutation(const Permutation &perm);
-
 };
 
 #endif
