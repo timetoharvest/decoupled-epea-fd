@@ -68,21 +68,27 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)
 	    int index = DecoupledPermutation::findex_leaves.get_index_by_var_val_pair(factor, s);	    
 	    int symm_index = DecoupledPermutation::findex_leaves.get_index_by_var_val_pair(symm_factor, symm_id);
 
+	    //set_value(index, symm_index);
 	    value [index] = symm_index;
 	    inverse_value[symm_index] = index;
 	}
     }
+
+    finalize();
 }
-
-
 
 CenterPermutation::CenterPermutation (const Permutation & per) : 
     Permutation(per) {
     //Remove leaf vars from vars_affected
     vars_affected.erase(std::remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
-				       [](int x){return g_belongs_to_factor[x] >= 0;}),
-			vars_affected.end());    
+				       [&](int x){ 
+					   if(g_belongs_to_factor[x] >= 0) {
+					       affected[x] = false;
+					       return true;
+					   }
+					   return false;}),
+			vars_affected.end());
 }
 
 

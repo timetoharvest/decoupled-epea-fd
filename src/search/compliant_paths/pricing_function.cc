@@ -513,9 +513,18 @@ void Prices::dump() const {
     }
 }
 
-bool Prices::apply_symmetry_permutation(const LeavesPermutation & /*permutation*/, bool /*if_less*/) {
-    //     std::vector<std::vector<int> > prices;
+bool Prices::apply_symmetry_permutation(const LeavesPermutation & // permutation
+					, bool if_less) {
+    if (if_less) {
+	//Check whether we should apply this
+	return false;
+    }
+    
+    // for(int factor : per.affected_vars) {
+    // 	// for (int s 
+    // }
+    
 
-    cout << " BOOM " << endl;
+
     return false;
 }

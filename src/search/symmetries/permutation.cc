@@ -359,10 +359,10 @@ int FactIndex::get_var_by_index(int ind)  const {
 }
 
 pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
-	assert(ind>=g_variable_domain.size());
+    assert(ind>=(int)g_variable_domain.size());
 	int var =  var_by_val[ind-g_variable_domain.size()];
 	int val = ind - dom_sum_by_var[var];
-	assert(val >=0 && val<g_variable_domain.size());
+	assert(val >=0 && val<(int)g_variable_domain.size());
 
 	return make_pair(var, val);
 }
