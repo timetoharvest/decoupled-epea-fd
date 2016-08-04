@@ -5,6 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../por/simple_stubborn_sets.h"
+#include "../pruning/prunable.h"
 
 #include <vector>
 
@@ -13,7 +14,6 @@ class LeafStateID;
 class LeavesPermutation;
 class State;
 class StateID;
-class Prunable;
 
 class CompliantPathGraph : public Prunable {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors

@@ -2,6 +2,7 @@
 #define GLOBALS_H
 
 #include <iosfwd>
+#include <memory>
 #include <string>
 #include <vector>
 
