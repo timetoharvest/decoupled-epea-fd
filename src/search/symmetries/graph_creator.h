@@ -4,6 +4,7 @@
 #ifdef USE_BLISS
 #include <graph.hh>
 #endif
+#include "decoupled_group.h"
 #include "group.h"
 #include "../plugin.h"
 #include "../state.h"
@@ -31,31 +32,32 @@ public:
     void initialize();
 
     Permutation create_permutation_from_trace(Trace& auth) const {
-        return group.compose_permutation(auth);
+        return group->compose_permutation(auth);
     }
 
     void get_trace(const State& state, Trace& full_trace) {
-        group.get_trace(state, full_trace);
+        group->get_trace(state, full_trace);
     }
 
     const vector<int> & get_canonical_state(const State & state)  {
-        return group.get_canonical_state(state);
+        return group->get_canonical_state(state);
     }
     
 
     const std::vector<int> & get_canonical_decoupled_state(const State & center, 
 							   CompliantPathGraph & leaves)  const {
-        return group.get_canonical_decoupled_state (center, leaves);
+        return decoupled_group->get_canonical_decoupled_state (center, leaves);
     }
     
     Permutation create_permutation_from_state_to_state(const State& from_state, 
 						       const State& to_state);
 
     static void add_options_to_parser(OptionParser &parser);
-    void free_memory() { group.free_memory(); }
+    void free_memory() { group->free_memory(); }
 
 private:
-    Group group;
+    unique_ptr<Group> group;
+    unique_ptr<DecoupledGroup> decoupled_group;
 
 //#ifdef USE_BLISS
     bliss::Digraph* create_bliss_directed_graph() const;

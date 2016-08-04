@@ -73,7 +73,7 @@ public:
     
     virtual void dump() const;
 
-    virtual bool apply_symmetry_permutation(const Permutation & permutation, bool if_less);
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & permutation, bool if_less);
 
     static void create_init_state_prices();
 

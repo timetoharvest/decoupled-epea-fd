@@ -1,6 +1,9 @@
 #include "permutation.h"
+
+#include "decoupled_permutation.h"
 #include "../globals.h"
 #include "../state_registry.h"
+
 
 #include <iomanip>
 #include <iostream>
@@ -13,7 +16,7 @@
 using namespace std;
 #include <sstream>
 
-FactIndex Permutation::findex_decoupled_leaves;
+
 FactIndex Permutation::findex;
 
 
@@ -22,9 +25,9 @@ void Permutation::_allocate() {
     value.resize(findex.length);
     inverse_value.resize(findex.length);
     affected.assign(g_variable_domain.size(), false);
-	vars_affected.clear();
-	from_vars.assign(g_variable_domain.size(), -1);
-	affected_vars_cycles.clear();
+    vars_affected.clear();
+    from_vars.assign(g_variable_domain.size(), -1);
+    affected_vars_cycles.clear();
 }
 
 void Permutation::_copy_value_from_permutation(const Permutation &perm) {
@@ -317,9 +320,6 @@ int Permutation::num_leafs_affected() const {
 
 void Permutation::init_fact_index() {
     findex.init();
-    if (g_use_decoupled_search) {
-	findex_decoupled_leaves.init_decoupled();
-    } 
 }
 
 void FactIndex::init() {

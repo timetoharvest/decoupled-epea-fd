@@ -65,7 +65,7 @@ public:
     
     virtual void dump() const;
 
-    virtual bool apply_symmetry_permutation(const Permutation & /*permutation*/, bool /*if_less*/) {
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/, bool /*if_less*/) {
 	cerr << "Symmetries not supported for satisficing search" << endl;
 	cerr << "Look at compliant_paths/reachability_function.h" << endl;
 	exit_with(EXIT_CRITICAL_ERROR);

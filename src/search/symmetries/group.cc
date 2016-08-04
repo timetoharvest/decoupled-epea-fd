@@ -1,9 +1,6 @@
 #include "group.h"
 #include "../globals.h"
 #include <iostream>
-
-#include "../compliant_paths/compliant_path_graph.h"
-
 #include <fstream>
 #include <algorithm>
 
@@ -83,14 +80,10 @@ void Group::default_direct_product(){
 Permutation Group::compose_permutation(Trace& perm_index) const {
     Permutation new_perm;
     for (size_t i = 0; i < perm_index.size(); ++i) {
-        new_perm = Permutation(new_perm, get_permutation(perm_index[i]));
+        new_perm = Permutation(new_perm, generators[perm_index[i]]);
 
     }
     return new_perm;
-}
-
-const Permutation& Group::get_permutation(int index) const {
-    return generators[index];
 }
 
 const vector<int> &  Group::get_canonical_state(const State & state) const {
@@ -110,38 +103,13 @@ const vector<int> &  Group::get_canonical_state(const State & state) const {
     return tmp_state;
 }
 
-const vector<int> & Group::get_canonical_decoupled_state(const State & center, 
-							 CompliantPathGraph & leaves)  const{
-    for (size_t i = 0; i < g_center_vars.size(); ++i) {
-	tmp_state[i] = center[g_center_vars[i]];
-    }
-
-    bool changed = true;
-    while (changed) {
-        changed = false;
-        for (const auto & gen : generators) {
-	    cmp_t cmp = gen.replace_if_less(tmp_state);
-	    if (cmp == cmp_t::LESS) {
-		leaves.apply_symmetry_permutation(gen, false);
-                changed =  true;
-            } else if (cmp == cmp_t::EQUAL) {
-		if(leaves.apply_symmetry_permutation(gen, true)) {
-		    changed = true;
-		}
-	    }
-        }
-    }
-    return tmp_state;
-
-}
-
 
 void Group::dump_generators() const {
     if (get_num_generators() == 0)
         return;
     for (int i = 0; i < get_num_generators(); i++) {
         cout << "Generator " << i << endl;
-        get_permutation(i).print_cycle_notation();
+        generators[i].print_cycle_notation();
     }
 
     cout << "Extra group info:" << endl;
@@ -156,8 +124,8 @@ void Group::dump_generators() const {
 void Group::statistics() const {
     for (int i = 0; i < get_num_generators(); i++) {
         cout << "Generator " << i 
-	     << " center: " <<  get_permutation(i).affects_center()
-	     << " num_leafs: " << get_permutation(i).num_leafs_affected() << endl;
+	     << " center: " <<  generators[i].affects_center()
+	     << " num_leafs: " << generators[i].num_leafs_affected() << endl;
     }
 }
 

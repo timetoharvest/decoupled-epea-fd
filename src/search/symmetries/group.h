@@ -33,9 +33,6 @@ public:
 
     void free_memory();
     void statistics() const;
-
-    const vector<int> & get_canonical_decoupled_state(const State & center, 
-						      CompliantPathGraph & leaves)  const;    
     
 private:
     std::vector<Permutation> generators;
@@ -46,7 +43,7 @@ private:
     static int num_identity_generators;
     static int stop_after_false_generated;
 
-    const Permutation& get_permutation(int) const;
+    friend class DecoupledGroup;
 };
 
 #endif

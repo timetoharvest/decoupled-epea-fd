@@ -6,7 +6,8 @@
 
 using namespace std;
 
-GraphCreator::GraphCreator(const Options &opts) : group(opts) {
+GraphCreator::GraphCreator(const Options &opts) : 
+    group(new Group(opts)) {
     initialized = false;
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
@@ -20,11 +21,10 @@ void GraphCreator::initialize() {
 
     initialized = true;
     cout << "Initializing symmetry " << endl;
-    group.initialize();
+    group->initialize();
 
-    bliss::AbstractGraph* graph;
-    graph = create_bliss_directed_graph();
-    ((bliss::Digraph*)graph)->set_splitting_heuristic(bliss::Digraph::shs_flm);
+    unique_ptr<bliss::AbstractGraph> graph (create_bliss_directed_graph());
+    ((bliss::Digraph*)graph.get())->set_splitting_heuristic(bliss::Digraph::shs_flm);
 
     // Added in version 0.5. Needs to be removed in version 0.72
 #ifdef USE_BLISS05
@@ -43,15 +43,12 @@ void GraphCreator::initialize() {
 
     bliss::Stats stats1;
     cout << "Using Bliss to find group generators" << endl;
-    graph->canonical_form(stats1,&(Group::add_permutation),&group);
-    cout << "Got " << group.get_num_generators() << " group generators, time step: [t=" << g_timer << "]" << endl;
+    graph->canonical_form(stats1,&(Group::add_permutation),group.get());
+    cout << "Got " << group->get_num_generators() << " group generators, time step: [t=" << g_timer << "]" << endl;
 
-    group.default_direct_product();
-    cout<<"Number of generators: "<< group.get_num_generators()<<endl;
-    group.statistics();
-
-    // Deleting the graph
-    delete graph;
+    group->default_direct_product();
+    cout<<"Number of generators: "<< group->get_num_generators()<<endl;
+    group->statistics();
 
     cout << "Done initializing symmetries [t=" << g_timer << "]" << endl;
 #else

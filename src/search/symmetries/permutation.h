@@ -6,6 +6,9 @@
 
 enum class cmp_t {LESS, EQUAL, GREATER};
 
+struct forceempty_tag {};
+
+
 class CompliantPathGraph;
 
 class FactIndex {
@@ -26,7 +29,7 @@ public:
 
 class Permutation{
 public:
-    static FactIndex findex, findex_decoupled_leaves;
+    static FactIndex findex;
     static void init_fact_index();
 
     Permutation();
@@ -55,7 +58,9 @@ public:
     bool affects_center() const;
     int num_leafs_affected() const;
 
-private:
+protected:
+    Permutation(forceempty_tag) {}
+
     std::vector<int> value;
     std::vector<int> inverse_value;
     std::vector<int> vars_affected;
@@ -74,6 +79,9 @@ private:
     void _deallocate();
     void _copy_value_from_permutation(const Permutation&);
     void _inverse_value_from_permutation(const Permutation &perm);
+
+    friend class LeavesPermutation;
+    friend class CenterPermutation;
 };
 
 #endif

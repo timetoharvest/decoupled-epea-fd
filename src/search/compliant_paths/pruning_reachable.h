@@ -39,7 +39,6 @@ public:
     
     PruningReachable(){};
 
-
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     virtual void dump() const;    
