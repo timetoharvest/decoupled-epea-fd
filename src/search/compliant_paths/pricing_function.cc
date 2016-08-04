@@ -84,7 +84,7 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     return false;
 }
 
-Prunable& Prices::update_price_tags(const State &base_state,
+CompliantPathGraph& Prices::update_price_tags(const State &base_state,
                                     const Operator *op,
                                     const State &) const {
     
@@ -382,8 +382,7 @@ void Prices::dump() const {
     }
 }
 
-bool Prices::apply_symmetry_permutation(const LeavesPermutation & // permutation
-					, bool if_less) {
+bool Prices::apply_symmetry_permutation(const LeavesPermutation &, bool if_less) {
     if (if_less) {
 	//Check whether we should apply this
 	return false;

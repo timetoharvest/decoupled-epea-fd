@@ -55,7 +55,7 @@ bool Reachable::add_state(const LeafStateID &state) {
     return false;
 }
 
-Prunable& Reachable::update_price_tags(const State &base_state,
+CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                                        const Operator *op,
                                        const State &) const {
     

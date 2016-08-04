@@ -225,6 +225,11 @@ public:
     State get_center_state(const State &predecessor, int dup_counter);
     
     LeafState get_successor_leaf_state(const LeafState &predecessor, const Operator &op);
+    
+    /**
+     * NOTE: At least one leaf state in this factor has to exist
+     */
+    LeafState get_leaf_state(std::vector<int> facts, int factor);
 
     /*
       Returns the number of states registered so far.

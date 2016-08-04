@@ -39,7 +39,7 @@ protected:
     bool add_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual Prunable& update_price_tags(const State &base_state,
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
                                         const Operator *op,
                                         const State &predecessor) const;
     
@@ -69,7 +69,7 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation & permutation, bool if_less);
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less);
     
     virtual void dump() const;
 

@@ -61,7 +61,7 @@ protected:
     static void discard_leaf_price_cache();
     
     // returns the new duplicate counter
-    virtual Prunable& update_price_tags(const State &base_state,
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
                                         const Operator *op,
                                         const State &predecessor) const = 0;
     
@@ -83,7 +83,7 @@ public:
 
     virtual bool goal_reachable(int factor) const = 0;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation & permutation, bool if_less) = 0;  
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less) = 0;  
     
     virtual void dump() const = 0;
 
@@ -95,6 +95,8 @@ public:
     static bool is_leaf_goal_state(const LeafStateID &state);
     
     static void store_is_leaf_goal_state(const LeafState &state);
+    
+    static int get_leaf_state_id(std::vector<int> new_leaf_state, int factor);
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;

@@ -71,7 +71,7 @@ bool PruningPrices::add_effective_state(const LeafStateID &state, int cost) {
     return false;
 }
 
-Prunable& PruningPrices::update_price_tags(const State &base_state,
+CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                                            const Operator *op,
                                            const State &predecessor) const {
     

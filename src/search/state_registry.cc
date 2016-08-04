@@ -6,6 +6,7 @@
 #include "operator.h"
 #include "search_engine.h"
 #include "successor_generator.h"
+#include "symmetries/graph_creator.h"
 
 #include <limits>
 #include <stdint.h>
@@ -186,26 +187,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 g_state_packer->set(buffer, effect.var, effect.val);
             }
         }
+        g_axiom_evaluator->evaluate(buffer);
     } else {
         const vector<const Effect*> &effects = op.get_effects(-1);
         for (size_t i = 0; i < effects.size(); i++){
             // no need to check does_fire here, because no conditional effects allowed (yet)
             g_state_packer->set(buffer, g_new_index[effects[i]->var], effects[i]->val);
         }
-    }
-    
-    vector<int> values;
-    if (g_use_decoupled_search){
         g_state_packer->set(buffer, g_center_vars.size(), 0);
-        
-        values.resize(g_center_vars.size());
-        for (size_t i = 0; i < values.size(); i++){
-            values[i] = g_state_packer->get(buffer, i);
-        }
-    } else {
-        g_axiom_evaluator->evaluate(buffer);
     }
-    
+
     StateID id = insert_id_or_pop_state();
     
     if (g_use_decoupled_search){
@@ -222,8 +213,37 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
         
-        Prunable &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
-        // TODO do symmetry pruning here
+        CompliantPathGraph &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
+        
+        if (g_symmetry_graph){
+            vector<int> new_center = g_symmetry_graph->get_canonical_decoupled_state(s, new_cpg);
+
+            bool changed = false;
+            for (size_t var = 0; var < g_center_vars.size(); ++var){
+                if (s[g_center_vars[var]] != new_center[var]){
+                    changed = true;
+                    break;
+                }
+            }
+            
+            if (changed){
+                state_data_pool.push_back(s.get_packed_buffer());
+                PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
+                for (size_t var = 0; var < g_center_vars.size(); ++var){
+                    g_state_packer->set(buffer, var, new_center[var]);
+                }
+                g_state_packer->set(sym_buffer, g_center_vars.size(), 0);
+                        
+                id = insert_id_or_pop_state();
+                s = lookup_state(id);                
+                    
+                old_dup_counter = -1;
+                DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
+                if (pos != state_duplicate_counter.end()){
+                    old_dup_counter = pos->second;
+                }
+            }
+        }
         
         if (old_dup_counter == -1){ // is new center state
             new_cpg.store_new_graph(s);
@@ -231,12 +251,8 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         } else {
             int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, g, predecessor);
             
-            state_data_pool.push_back(predecessor.get_packed_buffer());
+            state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
-            
-            for (size_t i = 0; i < values.size(); i++){
-                g_state_packer->set(buffer, i, values[i]);
-            }
             g_state_packer->set(buffer, g_center_vars.size(), new_dup_counter);
             
             size_t base_state_id = id.hash();
@@ -296,6 +312,25 @@ LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, 
     for (size_t i = 0; i < effects.size(); ++i){
         // no need to check does_fire here, because no conditional effects allowed (yet)
         g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[i]->var], effects[i]->val);
+    }
+    
+    // not supported (yet)
+    // g_axiom_evaluator->evaluate(buffer);
+    
+    LeafStateID id = insert_id_or_pop_leaf_state(factor);
+
+    return lookup_leaf_state(id);
+}
+
+LeafState StateRegistry::get_leaf_state(vector<int> facts, int factor) {
+    assert(g_factors[factor].size() == facts.size());
+    
+    leaf_state_data_pool[factor]->push_back((*leaf_state_data_pool[factor])[0]);
+    PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
+
+    for (size_t var = 0; var < facts.size(); ++var){
+        // no need to check does_fire here, because no conditional effects allowed (yet)
+        g_leaf_factor_packers[factor]->set(buffer, var, facts[var]);
     }
     
     // not supported (yet)

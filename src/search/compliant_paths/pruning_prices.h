@@ -40,7 +40,7 @@ protected:
     bool add_effective_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual Prunable& update_price_tags(const State &base_state,
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
                                         const Operator *op,
                                         const State &predecessor) const;
     

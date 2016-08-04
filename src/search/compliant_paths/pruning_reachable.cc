@@ -34,7 +34,7 @@ PruningReachable::PruningReachable(const PruningReachable *tag) {
     }
 }
 
-Prunable& PruningReachable::update_price_tags(const State &base_state,
+CompliantPathGraph& PruningReachable::update_price_tags(const State &base_state,
                                               const Operator *op,
                                               const State &) const {
     

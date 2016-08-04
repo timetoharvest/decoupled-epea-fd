@@ -20,8 +20,8 @@ enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
  */
 
 class GraphCreator  {
+    
     bool initialized;
-
     int time_bound;
     int generators_bound;
 public:
@@ -43,16 +43,16 @@ public:
         return group->get_canonical_state(state);
     }
     
-
-    const std::vector<int> & get_canonical_decoupled_state(const State & center, 
-							   CompliantPathGraph & leaves)  const {
+    const std::vector<int> & get_canonical_decoupled_state(const State & center,
+                                                           CompliantPathGraph &leaves)  const {
         return decoupled_group->get_canonical_decoupled_state (center, leaves);
     }
     
-    Permutation create_permutation_from_state_to_state(const State& from_state, 
-						       const State& to_state);
+    Permutation create_permutation_from_state_to_state(const State &from_state, 
+                                                       const State &to_state);
 
     static void add_options_to_parser(OptionParser &parser);
+    
     void free_memory() { group->free_memory(); }
 
 private:

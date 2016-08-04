@@ -63,9 +63,9 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)
 		symm_leaf_state[g_new_index[symm_var]] = symm_val;
 	    }
 
-	    int symm_id = 0; //CompliantPathGraph::get_leaf_state_id (symm_leaf_state, symm_factor);
+	    int symm_id = CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
 
-	    int index = DecoupledPermutation::findex_leaves.get_index_by_var_val_pair(factor, s);	    
+	    int index = DecoupledPermutation::findex_leaves.get_index_by_var_val_pair(factor, s);
 	    int symm_index = DecoupledPermutation::findex_leaves.get_index_by_var_val_pair(symm_factor, symm_id);
 
 	    //set_value(index, symm_index);
@@ -92,7 +92,7 @@ CenterPermutation::CenterPermutation (const Permutation & per) :
 }
 
 
-bool DecoupledPermutation::replace_if_less(vector<int> & center, CompliantPathGraph & leaves) const {
+bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves) const {
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
 	if (cmp == cmp_t::LESS) {
