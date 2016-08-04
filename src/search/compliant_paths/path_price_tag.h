@@ -39,9 +39,9 @@ public:
       
     const PathPriceTagInfo &get_path_info_for_fact(int id, int factor) const;
     
-    virtual void update_price_tags(const State &base_state);
+    void update_price_tags(const State &base_state);
     
-    virtual void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
     
 };
 

@@ -10,9 +10,16 @@
 
 #include <vector>
 
+class PruningReachableStorage;
+
 class PruningReachable : public Reachable {
     
     static PruningReachable tmp_p_reach;
+    
+    static PruningReachableStorage *cpg_storage;
+    
+    
+    void compute_frontier();
     
 protected:
     
@@ -27,27 +34,24 @@ protected:
                         int g_value, const State &predecessor);
 
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
-    
-    void compute_frontier();
+    virtual Prunable& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const;
     
 public:
     
     PruningReachable(){};
 
-
+    virtual void store_new_graph(const State &state) const;
+    
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     virtual void dump() const;
     
     
-    static void store_new_graph(const State &state);
+    static void register_cpg_storage(PruningReachableStorage *storage);
     
-    static void create_init_state_reachable();
+    static void create_init_state_reachable(const State &init_state);
  
 };
 

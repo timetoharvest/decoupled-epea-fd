@@ -333,15 +333,17 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::create_init_state_reachable();
-    } else {
-        Prices::create_init_state_prices();
-    }
-    
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "leaving calculate_min_goal_cost function" << endl;
 #endif
+}
+
+void CompliantPathGraph::create_and_store_init_state_cpg(const State &init_state) {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        Reachable::create_init_state_reachable(init_state);
+    } else {
+        Prices::create_init_state_prices(init_state);
+    }
 }
 
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
@@ -364,16 +366,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-void CompliantPathGraph::store_new_graph(const State &state) {
-    cache_leaf_price_tags(state);
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::store_new_graph(state);
-    } else {
-        Prices::store_new_graph(state);
-    }
-}
-
-void CompliantPathGraph::discard_new_graph() {
+void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 

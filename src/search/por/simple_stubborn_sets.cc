@@ -286,7 +286,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 }
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && !tag->goal_reachable(factor)){
@@ -558,7 +558,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         
         bool is_applicable = false;
         
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         size_t number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
@@ -1321,7 +1321,7 @@ void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const S
     // we cannot know which open center precondition actually is achievable, i.e. can be used to
     // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
     
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         vector<vector<pair<const Operator*, size_t> > > &leaf_successors = CompliantPathGraph::leaf_state_successors[factor];
         

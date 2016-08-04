@@ -443,7 +443,7 @@ endif
 
 #BLISS_LINKOPT = -L$(BLISS_DIR) -Wl,-Bstatic -lbliss
 BLISS_LINKOPT = -L$(BLISS_DIR)
-ifeq ($(LINK_RELEASE_STATICALLY), 0)
+ifeq ($(DOWNWARD_LINK_RELEASE_STATICALLY), 0)
 BLISS_LINKOPT += -lbliss
 else
 BLISS_LINKOPT += -Wl,-Bstatic -lbliss

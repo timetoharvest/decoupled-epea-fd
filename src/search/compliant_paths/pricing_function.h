@@ -9,11 +9,14 @@
 
 #include <vector>
 
+class PriceStorage;
 
-class Prices : public CompliantPathGraph, public Prunable {
+class Prices : public CompliantPathGraph {
     friend class CompliantPathGraph;
     
     static Prices tmp_price;
+    
+    static PriceStorage *cpg_storage;
     
 protected:  
 
@@ -30,28 +33,23 @@ protected:
     // of a search node
     void reduce_cost_by(int factor, int cost);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
+    virtual Prunable& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const;
     
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
     
 public:
     
     Prices(){};
+    
+    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_leaf_state(int id, int factor) const;
     
@@ -65,18 +63,18 @@ public:
 
     virtual size_t get_number_effective_states(int factor) const;
     
-    virtual int get_goal_cost(int factor) const;
-    
     virtual bool goal_reachable(int factor) const;
+    
+    virtual int get_goal_cost(int factor) const;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     virtual void dump() const;
 
     
-    static void create_init_state_prices();
-
-    static void store_new_graph(const State &state);
+    static void register_cpg_storage(PriceStorage *storage);
+    
+    static void create_init_state_prices(const State &init_state);
     
 };
 

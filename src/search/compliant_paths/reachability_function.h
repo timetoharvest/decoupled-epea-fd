@@ -10,9 +10,13 @@
 
 #include <vector>
 
-class Reachable : public CompliantPathGraph, public Prunable {
+class ReachableStorage;
+
+class Reachable : public CompliantPathGraph {
     
     static Reachable tmp_reach;
+    
+    static ReachableStorage *cpg_storage;
     
 protected:
     
@@ -22,28 +26,23 @@ protected:
         
     Reachable(const Reachable *tag);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact);
     
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
+    virtual Prunable& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const;
     
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
     
 public:
     
     Reachable(){};
+    
+    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_leaf_state(int id, int factor) const;
     
@@ -66,9 +65,9 @@ public:
     virtual void dump() const;
     
     
-    static void store_new_graph(const State &state);
+    static void register_cpg_storage(ReachableStorage *storage);
     
-    static void create_init_state_reachable();
+    static void create_init_state_reachable(const State &init_state);
  
 };
 

@@ -118,7 +118,7 @@ bool Operator::is_applicable(const State& state) const {
             // in fork topology, center actions don't have leaf preconditions
             return true;
         }
-        const CompliantPathGraph *price_tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *price_tag = CPGStorage::storage->get_cpg(state);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (has_precondition_on(factor)){
                 bool applicable = false;

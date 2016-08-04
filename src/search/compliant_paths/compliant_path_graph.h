@@ -5,6 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../por/simple_stubborn_sets.h"
+#include "../pruning/prunable.h"
 
 #include <vector>
 
@@ -14,11 +15,18 @@ class LeafStateID;
 class State;
 class StateID;
 
-class CompliantPathGraph {
+class CompliantPathGraph : public Prunable {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
     friend class SimulationRelation; // access to leaf_state_pre/successors
-    friend class StateRegistry;
+    friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class SuccessorGeneratorSwitch; // access to center_successors
+    
+    /*
+      this builds all entire leaf state spaces and stores them
+    */
+    static void build_leaf_state_spaces();
+    
+    static void create_and_store_init_state_cpg(const State &init_state);
     
 protected:
     
@@ -52,17 +60,10 @@ protected:
     
     static void discard_leaf_price_cache();
     
-    /*
-      this builds all entire leaf state spaces and stores them
-    */
-    static void build_leaf_state_spaces();
-    
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const = 0;
+    virtual Prunable& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const = 0;
     
 public:
     
@@ -84,14 +85,12 @@ public:
     
     virtual void dump() const = 0;
     
-     
-    static void store_new_graph(const State &state);
+    virtual void discard_new_graph() const;
     
-    static void discard_new_graph();    
+    
+    static void initialize();
     
     static bool is_leaf_goal_state(const LeafStateID &state);
-    
-    static void initialize();    
     
     static void store_is_leaf_goal_state(const LeafState &state);
     

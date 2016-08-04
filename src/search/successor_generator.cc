@@ -84,7 +84,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
         
         vector<int> counter(g_operators.size(), 0);
 
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(curr);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(curr);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (!g_factoring->has_successors(factor)){
                 continue;       // is fork leaf

@@ -101,14 +101,14 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
             }
             all_goals_reached = false;
         }
-        if (reference->get_number_effective_states(factor) > check->get_number_states(factor)){
+        if (reference->get_number_effective_states(factor) > check->get_number_effective_states(factor)){
             new_is_smaller = true;
             sizes_equal = false;
-        } else if (reference->get_number_effective_states(factor) < check->get_number_states(factor)){
+        } else if (reference->get_number_effective_states(factor) < check->get_number_effective_states(factor)){
             new_is_larger = true;
             sizes_equal = false;
         }
-        if (check->get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
+        if (check->get_number_effective_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
             all_leaves_max_size = false;
         }
     }

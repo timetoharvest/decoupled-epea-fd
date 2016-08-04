@@ -134,9 +134,11 @@ const State &StateRegistry::get_initial_state() {
                 insert_id_or_pop_leaf_state(factor);
             }
             
+            CPGStorage::initialize();
+            
             CompliantPathGraph::build_leaf_state_spaces();
             
-            CompliantPathGraph::store_new_graph(*cached_initial_state);
+            CompliantPathGraph::create_and_store_init_state_cpg(*cached_initial_state);
             
             state_duplicate_counter[0] = 0;
         }
@@ -220,12 +222,15 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
         
-        int new_dup_counter = CPGStorage::get_cpg(predecessor)->update_price_tags(old_dup_counter, s, g, predecessor, &op);
+        Prunable &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
+        // TODO do symmetry pruning here
         
         if (old_dup_counter == -1){ // is new center state
-            CompliantPathGraph::store_new_graph(s);
+            new_cpg.store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
-        } else {                       
+        } else {
+            int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, g, predecessor);
+            
             state_data_pool.push_back(predecessor.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
             
@@ -240,10 +245,10 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             s = lookup_state(id);
             
             if (new_dup_counter > old_dup_counter){    // is a new decoupled state
-                CompliantPathGraph::store_new_graph(s);
+                new_cpg.store_new_graph(s);
                 state_duplicate_counter[base_state_id] = new_dup_counter;
             } else {
-                CompliantPathGraph::discard_new_graph();
+                new_cpg.discard_new_graph();
             }
         }
         
@@ -320,7 +325,7 @@ void StateRegistry::output_decoupled_state_space_size() const {
     }
     
     for (size_t i = 0; i < size(); ++i){
-        const CompliantPathGraph *cpg = CPGStorage::get_cpg(lookup_state(StateID(i)));
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             size_t number_states = cpg->get_number_states(factor);
             dec_size_1 += g_factors[factor].size() * number_states;

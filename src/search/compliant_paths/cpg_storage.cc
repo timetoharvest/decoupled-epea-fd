@@ -1,10 +1,36 @@
 #include "cpg_storage.h"
 
+CPGStorage* CPGStorage::storage;
 
-using namespace std;
+void CPGStorage::initialize() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        if (Prunable::do_pruning()){
+            storage = new PruningReachableStorage();
+        } else {
+            storage = new ReachableStorage();
+        }
+    } else {
+        if (Prunable::do_pruning()){
+            storage = new PruningPriceStorage();
+        } else {
+            storage = new PriceStorage();
+        }
+    }
+    storage->register_at_compliant_path_graph();
+}
 
+void PriceStorage::register_at_compliant_path_graph() {
+    Prices::register_cpg_storage(this);
+}
 
-PerStateInformation<Prices> CPGStorage::price_tags;
-PerStateInformation<PruningPrices> CPGStorage::pruning_prices;
-PerStateInformation<PruningReachable> CPGStorage::pruning_reachable;
-PerStateInformation<Reachable> CPGStorage::reach_tags;
+void PruningPriceStorage::register_at_compliant_path_graph() {
+    PruningPrices::register_cpg_storage(this);
+}
+
+void ReachableStorage::register_at_compliant_path_graph() {
+    Reachable::register_cpg_storage(this);
+}
+
+void PruningReachableStorage::register_at_compliant_path_graph() {
+    PruningReachable::register_cpg_storage(this);
+}

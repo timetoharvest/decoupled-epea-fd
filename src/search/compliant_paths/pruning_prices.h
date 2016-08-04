@@ -10,10 +10,20 @@
 
 #include <vector>
 
+class PruningPriceStorage;
 
 class PruningPrices : public Prices {
     
     static PruningPrices tmp_p_price;
+    
+    static PruningPriceStorage *cpg_storage;
+    
+    
+    void compute_cost_frontier();
+
+    void goal_price_propagation();
+
+    void propagate_dominance_prices(); 
     
 protected:  
     
@@ -29,28 +39,17 @@ protected:
     
     bool add_effective_state(const LeafStateID &fact, int cost);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
-
-    void compute_cost_frontier();
-
-    void goal_price_propagation();
-
-    void propagate_dominance_prices(); 
+    virtual Prunable& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const;
     
 public:
     
     PruningPrices(){};
     
+    
+    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_effective_leaf_state(int id, int factor) const;
 
@@ -63,9 +62,9 @@ public:
     virtual void dump() const;
 
     
-    static void create_init_state_prices();
+    static void register_cpg_storage(PruningPriceStorage *storage);
 
-    static void store_new_graph(const State &state);
+    static void create_init_state_prices(const State &state);
     
 };
 
