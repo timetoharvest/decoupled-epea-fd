@@ -13,6 +13,7 @@
 #include "state.h"
 #include "state_registry.h"
 #include "successor_generator.h"
+#include "symmetries/graph_creator.h"
 #include "timer.h"
 #include "utilities.h"
 
@@ -467,3 +468,6 @@ Timer g_timer;
 string g_plan_filename = "sas_plan";
 RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
 StateRegistry *g_state_registry = 0;
+
+// Globals for symmetries
+unique_ptr<GraphCreator> g_symmetry_graph;

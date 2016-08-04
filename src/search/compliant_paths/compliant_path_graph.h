@@ -5,15 +5,15 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../por/simple_stubborn_sets.h"
-#include "../pruning/prunable.h"
 
 #include <vector>
 
-
 class LeafState;
 class LeafStateID;
+class LeavesPermutation;
 class State;
 class StateID;
+class Prunable;
 
 class CompliantPathGraph : public Prunable {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
@@ -82,9 +82,11 @@ public:
     virtual size_t get_number_states(int factor) const = 0;
 
     virtual bool goal_reachable(int factor) const = 0;
+
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & permutation, bool if_less) = 0;  
     
     virtual void dump() const = 0;
-    
+
     virtual void discard_new_graph() const;
     
     

@@ -4,6 +4,7 @@
 #include "factoring.h"
 #include "globals.h"
 #include "option_parser.h"
+#include "symmetries/graph_creator.h"
 
 #include <cassert>
 #include <iostream>
@@ -26,6 +27,10 @@ SearchEngine::SearchEngine(const Options &opts)
     bound = opts.get<int>("bound");
     if (g_use_decoupled_search){
 	g_factoring->set_cost_type(cost_type);
+    }
+
+    if (opts.contains("symmetry")) {
+        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator *>("symmetry"));
     }
 }
 
@@ -55,6 +60,11 @@ void SearchEngine::set_plan(const Plan &p) {
 
 void SearchEngine::search() {
     initialize();
+
+    if(g_symmetry_graph){
+	g_symmetry_graph->initialize();
+    }
+    
     CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
         status = step();
@@ -164,4 +174,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 }

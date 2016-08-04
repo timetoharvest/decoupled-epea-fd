@@ -1,14 +1,10 @@
 #include "group.h"
 #include "../globals.h"
 #include <iostream>
-
 #include <fstream>
 #include <algorithm>
 
 using namespace std;
-
-state_var_t* Group::original_state;
-state_var_t* Group::res;
 
 bool Group::safe_to_add_generators;
 int Group::num_identity_generators;
@@ -19,35 +15,21 @@ Group::Group(const Options &opts) {
 }
 
 void Group::initialize() {
-    if (!original_state)
-        original_state = new state_var_t[g_variable_domain.size()];
-
-    if (!res)
-        res = new state_var_t[g_variable_domain.size()];
+    if(g_use_decoupled_search) {
+	tmp_state.resize(g_center_vars.size());
+    } else {
+	tmp_state.resize(g_variable_domain.size());
+    }
 
     safe_to_add_generators = true;
     num_identity_generators = 0;
 }
 
-Group::~Group(){
-    //Empty - all vectors expected to be deleted by default destructor of vector
-}
-
 
 void Group::free_memory() {
-    if (original_state) {
-        delete original_state;
-        original_state = 0;
-    }
-    if (res) {
-        delete res;
-        res = 0;
-    }
-
     // Removing the permutations
     generators.clear();
 }
-
 
 /**
  * Add new permutation to the list of permutations
@@ -98,32 +80,27 @@ void Group::default_direct_product(){
 Permutation Group::compose_permutation(Trace& perm_index) const {
     Permutation new_perm;
     for (size_t i = 0; i < perm_index.size(); ++i) {
-        new_perm = Permutation(new_perm, get_permutation(perm_index[i]));
+        new_perm = Permutation(new_perm, generators[perm_index[i]]);
 
     }
     return new_perm;
 }
 
-const Permutation& Group::get_permutation(int index) const {
-    return generators[index];
-}
+const vector<int> &  Group::get_canonical_state(const State & state) const {
+    for (size_t i = 0; i < g_variable_domain.size(); ++i) {
+	tmp_state[i] = state[i];
+    }
 
-const state_var_t* Group::get_canonical_state(const state_var_t* state) {
-    int size = get_num_generators();
-    if (size == 0)
-        return state;
-
-    copy_buff(original_state, state);
     bool changed = true;
     while (changed) {
         changed = false;
-        for (int i=0; i < size; i++) {
-            if (generators[i].replace_if_less(original_state)) {
+        for (const auto & gen : generators) {
+            if (gen.replace_if_less(tmp_state) == cmp_t::LESS) {
                 changed =  true;
             }
         }
     }
-    return original_state;
+    return tmp_state;
 }
 
 
@@ -132,19 +109,24 @@ void Group::dump_generators() const {
         return;
     for (int i = 0; i < get_num_generators(); i++) {
         cout << "Generator " << i << endl;
-        get_permutation(i).print_cycle_notation();
+        generators[i].print_cycle_notation();
     }
 
     cout << "Extra group info:" << endl;
-    cout << "Permutation length: " << Permutation::length << endl;
+    cout << "Permutation length: " << Permutation::findex.length << endl;
     cout << "Permutation variables by values (" << g_variable_domain.size() << "): " << endl;
-    for (size_t i = g_variable_domain.size(); i < Permutation::length; i++)
-        cout << Permutation::get_var_by_index(i) << "  " ;
+    for (size_t i = g_variable_domain.size(); i < Permutation::findex.length; i++)
+        cout << Permutation::findex.get_var_by_index(i) << "  " ;
     cout << endl;
 }
 
-void Group::copy_buff(state_var_t* s1, const state_var_t* s2) const{
-    for(size_t i = 0; i < g_variable_domain.size(); ++i) s1[i] = s2[i];
+
+void Group::statistics() const {
+    for (int i = 0; i < get_num_generators(); i++) {
+        cout << "Generator " << i 
+	     << " center: " <<  generators[i].affects_center()
+	     << " num_leafs: " << generators[i].num_leafs_affected() << endl;
+    }
 }
 
 void Group::get_trace(const State& state, Trace& full_trace) {
@@ -153,12 +135,12 @@ void Group::get_trace(const State& state, Trace& full_trace) {
         return;
 
     for(size_t i = 0; i < g_variable_domain.size(); ++i)
-        original_state[i] = state[i];
+        tmp_state[i] = state[i];
     bool changed = true;
     while (changed) {
         changed = false;
         for (int i=0; i < size; i++) {
-            if (generators[i].replace_if_less(original_state)) {
+            if (generators[i].replace_if_less(tmp_state) == cmp_t::LESS) {
                 full_trace.push_back(i);
                 changed = true;
             }

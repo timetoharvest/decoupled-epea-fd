@@ -32,7 +32,7 @@ protected:
     // used when including part of the leaf cost into the g-value
     // of a search node
     void reduce_cost_by(int factor, int cost);
-    
+
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
@@ -62,12 +62,14 @@ public:
     virtual size_t get_number_states(int factor) const;
 
     virtual size_t get_number_effective_states(int factor) const;
-    
+
     virtual bool goal_reachable(int factor) const;
     
     virtual int get_goal_cost(int factor) const;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & permutation, bool if_less);
     
     virtual void dump() const;
 

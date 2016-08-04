@@ -107,6 +107,8 @@ HEADERS = \
 HEADERS += symmetries/graph_creator.h \
            symmetries/permutation.h \
            symmetries/group.h \
+           symmetries/decoupled_permutation.h \
+           symmetries/decoupled_group.h \
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
@@ -434,34 +436,36 @@ $(TARGET_RELEASE) $(OBJECTS_RELEASE): $(BLISS_DIR)/libbliss.a
 $(TARGET_DEBUG) $(OBJECTS_DEBUG): $(BLISS_DIR)/libbliss.a
 $(TARGET_PROFILE) $(OBJECTS_PROFILE): $(BLISS_DIR)/libbliss.a
 
-CCOPT += -DUSE_BLISS -I$(BLISS_DIR)
+CXXFLAGS += -DUSE_BLISS -I$(BLISS_DIR)
 
 ifeq ($(USE_BLISS),0.5)
-CCOPT += -DUSE_BLISS05
+CXXFLAGS += -DUSE_BLISS05
 endif
 
 
 #BLISS_LINKOPT = -L$(BLISS_DIR) -Wl,-Bstatic -lbliss
 BLISS_LINKOPT = -L$(BLISS_DIR)
 ifeq ($(DOWNWARD_LINK_RELEASE_STATICALLY), 0)
-BLISS_LINKOPT += -lbliss
+BLISS_LINKOPT_RELEASE = -lbliss
+BLISS_LINKOPT_DEBUG = -lbliss
 else
-BLISS_LINKOPT += -Wl,-Bstatic -lbliss
+BLISS_LINKOPT_RELEASE = -Wl,-Bstatic -lbliss
+BLISS_LINKOPT_DEBUG = -lbliss
 endif
 
 
-POSTLINKOPT_RELEASE += $(BLISS_LINKOPT)
-POSTLINKOPT_DEBUG += $(BLISS_LINKOPT)
+POSTLINKOPT_RELEASE += $(BLISS_LINKOPT) $(BLISS_LINKOPT_RELEASE)
+POSTLINKOPT_DEBUG += $(BLISS_LINKOPT) $(BLISS_LINKOPT_DEBUG)
 POSTLINKOPT_PROFILE += $(BLISS_LINKOPT)
 
 endif # BLISS code
 
 ifeq ($(CANONICAL), 1)
-CCOPT += -DCANONICAL
+CXXFLAGS += -DCANONICAL
 endif
 
 ifeq ($(DEBUGMODE), 1)
-CCOPT += -DDEBUGMODE
+CXXFLAGS += -DDEBUGMODE
 endif
 
 

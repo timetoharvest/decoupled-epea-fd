@@ -4,13 +4,15 @@
 #ifdef USE_BLISS
 #include <graph.hh>
 #endif
+#include "decoupled_group.h"
 #include "group.h"
 #include "../plugin.h"
 #include "../state.h"
 
 //TODO: Add vertex for axioms.
 enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
-              GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX, CONDITIONAL_DELETE_EFFECT_VERTEX, MAX_VALUE};
+              GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
+	      CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, MAX_VALUE};
 
 /**
  * This class will create a bliss graph which will be used to find the
@@ -30,30 +32,38 @@ public:
     void initialize();
 
     Permutation create_permutation_from_trace(Trace& auth) const {
-        return group.compose_permutation(auth);
+        return group->compose_permutation(auth);
     }
 
     void get_trace(const State& state, Trace& full_trace) {
-        group.get_trace(state, full_trace);
+        group->get_trace(state, full_trace);
     }
 
-    const state_var_t* get_canonical_state(const state_var_t* state)  {
-        return group.get_canonical_state(state);
+    const vector<int> & get_canonical_state(const State & state)  {
+        return group->get_canonical_state(state);
     }
+    
 
-    Permutation create_permutation_from_state_to_state(const State& from_state, const State& to_state);
+    const std::vector<int> & get_canonical_decoupled_state(const State & center, 
+							   CompliantPathGraph & leaves)  const {
+        return decoupled_group->get_canonical_decoupled_state (center, leaves);
+    }
+    
+    Permutation create_permutation_from_state_to_state(const State& from_state, 
+						       const State& to_state);
 
     static void add_options_to_parser(OptionParser &parser);
-    void free_memory() { group.free_memory(); }
+    void free_memory() { group->free_memory(); }
 
 private:
-    Group group;
+    unique_ptr<Group> group;
+    unique_ptr<DecoupledGroup> decoupled_group;
 
-#ifdef USE_BLISS
+//#ifdef USE_BLISS
     bliss::Digraph* create_bliss_directed_graph() const;
     void add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const;
-    bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const;
-#endif
+    /* bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const; */
+//#endif
 };
 
 #endif

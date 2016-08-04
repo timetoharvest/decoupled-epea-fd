@@ -63,7 +63,12 @@ public:
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     virtual void dump() const;
-    
+
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/, bool /*if_less*/) {
+	cerr << "Symmetries not supported for satisficing search" << endl;
+	cerr << "Look at compliant_paths/reachability_function.h" << endl;
+	exit_with(EXIT_CRITICAL_ERROR);
+    }    
     
     static void register_cpg_storage(ReachableStorage *storage);
     

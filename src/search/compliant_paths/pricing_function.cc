@@ -382,3 +382,18 @@ void Prices::dump() const {
     }
 }
 
+bool Prices::apply_symmetry_permutation(const LeavesPermutation & // permutation
+					, bool if_less) {
+    if (if_less) {
+	//Check whether we should apply this
+	return false;
+    }
+    
+    // for(int factor : per.affected_vars) {
+    // 	// for (int s 
+    // }
+    
+
+
+    return false;
+}
