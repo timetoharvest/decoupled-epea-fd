@@ -17,7 +17,7 @@ public:
 							   CompliantPathGraph & leaves)  const;    
     
 private:
-    std::vector<DecoupledPermutation> generators;
+    std::vector<std::unique_ptr<DecoupledPermutation>> generators;
      
     mutable std::vector<int> tmp_state;
 };

@@ -50,6 +50,9 @@ void GraphCreator::initialize() {
     cout<<"Number of generators: "<< group->get_num_generators()<<endl;
     group->statistics();
 
+    if(g_use_decoupled_search) {
+	decoupled_group = unique_ptr<DecoupledGroup> (new DecoupledGroup(*group));
+    }
     cout << "Done initializing symmetries [t=" << g_timer << "]" << endl;
 #else
     cerr << "You must build the planner with the USE_BLISS symbol defined" << endl;

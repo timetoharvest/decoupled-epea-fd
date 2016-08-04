@@ -11,7 +11,7 @@ using namespace std;
 FactIndex DecoupledPermutation::findex_leaves;
 
 DecoupledPermutation::DecoupledPermutation(const Permutation & p) {
-    if (p.num_leafs_affected()) 
+     if (p.num_leafs_affected()) 
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
 
     if (p.affects_center()) 
@@ -41,6 +41,8 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)
 	from_vars[factor] = from_factor;
     }
 
+    value.resize(DecoupledPermutation::findex_leaves.length);
+    inverse_value.resize(DecoupledPermutation::findex_leaves.length);
 
     for(size_t factor = 0; factor < g_factors.size(); ++factor){
 	for(size_t s = 0; s < g_state_registry->size(factor); ++s) {

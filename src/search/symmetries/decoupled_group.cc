@@ -27,11 +27,18 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 		    }
 		    symm_leaf_state[g_new_index[symm_var]] = symm_val;
 		}
-
 		//CompliantPathGraph::get_leaf_state_id (symm_leaf_state, symm_factor);
 	    }
 	}
     }
+
+
+    DecoupledPermutation::findex_leaves.init_decoupled();
+
+    for(const Permutation & per : group.generators) {
+	generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
+    }    
+
 }
 
 
@@ -45,7 +52,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
     while (changed) {
         changed = false;
         for (const auto & gen : generators) {
-	    changed |= gen.replace_if_less(tmp_state, leaves);
+	    changed |= gen->replace_if_less(tmp_state, leaves);
         }
     }
     return tmp_state;
