@@ -10,6 +10,7 @@
 #include "../state_registry.h"
 #include "../successor_generator.h"
 #include "../utilities.h"
+#include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
 
@@ -59,7 +60,6 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
         ++curr_leaf_state_max_id[factor];
     }
     size_t leaf_id = leaf_state_id_map[factor][state.hash()];
-
     if (leaf_id >= prices[factor].size()){
         prices[factor].resize(leaf_id + 1, INF);
     }
@@ -382,17 +382,52 @@ void Prices::dump() const {
     }
 }
 
-bool Prices::apply_symmetry_permutation(const LeavesPermutation &, bool if_less) {
-    if (if_less) {
-	//Check whether we should apply this
+bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_less) {
+    //Check whether we should apply this
+    if (if_less && ! per.produces_less(*this)) {
 	return false;
     }
-    
-    // for(int factor : per.affected_vars) {
-    // 	// for (int s 
-    // }
-    
 
+    //Copy prices and reinitialize affected factors
+    std::vector<std::vector<int> > old_prices(g_factors.size());
+    std::vector<unsigned int> old_number_states (number_states);
 
-    return false;
+    for (int factor : per.get_factors_affected()) {
+	old_prices[factor] = std::move(prices [factor]);
+	number_states[factor] = 0;
+	prices[factor] = std::vector<int>();
+	goal_cost[factor] = INF;
+    }
+    
+    for(int i = per.get_factors_affected().size()-1; i>=0; i--) {
+	int to_factor =  per.get_factors_affected()[i];
+	int from_factor = per.get_from_factor(to_factor);
+
+	int id = 0;
+        size_t num_states = old_number_states[from_factor]; 
+	while  (num_states > 0){
+	    if (leaf_state_id_map[from_factor][id] == -1) {
+		id++;
+		continue; 
+	    }
+
+	    size_t leaf_state = leaf_state_id_map[from_factor][id];
+	    id++;
+	    if (leaf_state >= old_prices[from_factor].size() ||
+		old_prices[from_factor][leaf_state] == INF)  continue;
+
+	    num_states--;
+	    pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, leaf_state);
+	    assert(to_pair.first == to_factor);
+	    int to_val = to_pair.second;
+
+	    add_state(LeafStateID(to_val, to_factor), 
+		      old_prices[from_factor][leaf_state]);
+	}
+    }
+
+    return true; //We do not need to check whether the prices changed
+		 //because the return value is only relevant if
+		 //if_less is true and in that case we checked this in
+		 //per.produce_less(prices)
 }

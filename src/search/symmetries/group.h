@@ -32,7 +32,6 @@ public:
     void get_trace(const State& state, Trace& full_trace);
 
     void free_memory();
-    void statistics() const;
     
 private:
     std::vector<Permutation> generators;

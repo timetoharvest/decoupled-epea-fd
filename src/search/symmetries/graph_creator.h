@@ -45,6 +45,7 @@ public:
     
     const std::vector<int> & get_canonical_decoupled_state(const State & center,
                                                            CompliantPathGraph &leaves)  const {
+	assert(decoupled_group);
         return decoupled_group->get_canonical_decoupled_state (center, leaves);
     }
     

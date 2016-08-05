@@ -6,7 +6,6 @@
 #include "../compliant_paths/compliant_path_graph.h"
 
 DecoupledGroup::DecoupledGroup(const Group & group) {
-    
     //Ensure that all symmetry leaf states exists
     for(const Permutation & per : group.generators) {
 	for(size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -27,26 +26,27 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 		    }
 		    symm_leaf_state[g_new_index[symm_var]] = symm_val;
 		}
-		//CompliantPathGraph::get_leaf_state_id (symm_leaf_state, symm_factor);
+		CompliantPathGraph::get_leaf_state_id (symm_leaf_state, symm_factor);
 	    }
 	}
     }
 
-
-    DecoupledPermutation::findex_leaves.init_decoupled();
+    LeavesPermutation::findex_leaves.init_decoupled();
 
     for(const Permutation & per : group.generators) {
 	generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
     }    
-
+    tmp_state.resize(g_variable_domain.size());
 }
 
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & center, 
 								  CompliantPathGraph & leaves)  const{
     for (size_t i = 0; i < g_center_vars.size(); ++i) {
-	tmp_state[i] = center[g_center_vars[i]];
+	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
     }
+
+    // cout << "start" << endl;
 
     bool changed = true;
     while (changed) {
@@ -55,10 +55,20 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
 	    changed |= gen->replace_if_less(tmp_state, leaves);
         }
     }
-    return tmp_state;
 
+
+    // cout << "done" << endl;
+
+    return tmp_state;
 }
 
 
+void DecoupledGroup::statistics() const {
+    // for (int i = 0; i < get_num_generators(); i++) {
+    //     cout << "Generator " << i << endl;
+	// << " center: " <<  generators[i].affects_center()
+	// << " num_leafs: " << generators[i].num_leafs_affected() << endl;
+    // }
+}
 
 

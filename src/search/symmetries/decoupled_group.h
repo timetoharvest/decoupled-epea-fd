@@ -15,7 +15,8 @@ public:
 
     const std::vector<int> & get_canonical_decoupled_state(const State & center, 
 							   CompliantPathGraph & leaves)  const;    
-    
+
+    void statistics () const;
 private:
     std::vector<std::unique_ptr<DecoupledPermutation>> generators;
      

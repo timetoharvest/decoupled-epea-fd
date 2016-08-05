@@ -6,15 +6,13 @@
 
 enum class cmp_t {LESS, EQUAL, GREATER};
 
-struct forceempty_tag {};
-
-
 class CompliantPathGraph;
 
 class FactIndex {
 //Alvaro: Putting all the static data members in one class, so that it
 //is easier to have two separated instances for center and leaves.
 public: 
+    int initial_index;
     unsigned int length;
     std::vector<int> var_by_val;
     std::vector<int> dom_sum_by_var;
@@ -36,7 +34,7 @@ public:
     Permutation(const unsigned int*);
     Permutation(const Permutation&, bool invert=false);
     Permutation(const Permutation& perm1, const Permutation& perm2);
-    ~Permutation() = default;
+    virtual ~Permutation() = default;
 
     Permutation& operator =(const Permutation&);
     bool operator ==(const Permutation&) const;
@@ -59,7 +57,6 @@ public:
     int num_leafs_affected() const;
 
 protected:
-    Permutation(forceempty_tag) {}
 
     std::vector<int> value;
     std::vector<int> inverse_value;

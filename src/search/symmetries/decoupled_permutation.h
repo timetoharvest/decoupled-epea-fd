@@ -5,9 +5,39 @@
 
 #include "permutation.h" 
 
-class LeavesPermutation : public Permutation {
+class Prices;
+
+class LeavesPermutation {
 public:
+    static FactIndex findex_leaves;
+
     LeavesPermutation (const Permutation & per);
+    ~LeavesPermutation() = default;
+
+
+    bool produces_less (const Prices & prices) const;
+
+    const std::vector<int> & get_factors_affected() const {
+	return factors_affected;
+    }
+
+    int get_from_factor(int f) const {
+	return from_factors[f];
+    }
+
+    std::pair<int, int> get_new_factor_state_by_old_factor_state(const int factor, const int state) const;
+    std::pair<int, int> get_old_factor_state_by_new_factor_state(const int factor, const int state) const ;
+
+protected:
+    std::vector<int> value;
+    std::vector<int> inverse_value;
+    std::vector<int> factors_affected;
+    std::vector<bool> affected;
+
+    std::vector<int> from_factors;
+
+    // Affected factors by cycles
+    std::vector<std::vector<int> > affected_factors_cycles;
 };
 
 
@@ -19,7 +49,6 @@ public:
 class DecoupledPermutation {
 
 public:
-    static FactIndex findex_leaves;
 
     DecoupledPermutation(const Permutation & per);
     ~DecoupledPermutation() = default;

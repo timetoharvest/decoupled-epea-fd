@@ -15,11 +15,7 @@ Group::Group(const Options &opts) {
 }
 
 void Group::initialize() {
-    if(g_use_decoupled_search) {
-	tmp_state.resize(g_center_vars.size());
-    } else {
-	tmp_state.resize(g_variable_domain.size());
-    }
+    tmp_state.resize(g_variable_domain.size());
 
     safe_to_add_generators = true;
     num_identity_generators = 0;
@@ -118,15 +114,6 @@ void Group::dump_generators() const {
     for (size_t i = g_variable_domain.size(); i < Permutation::findex.length; i++)
         cout << Permutation::findex.get_var_by_index(i) << "  " ;
     cout << endl;
-}
-
-
-void Group::statistics() const {
-    for (int i = 0; i < get_num_generators(); i++) {
-        cout << "Generator " << i 
-	     << " center: " <<  generators[i].affects_center()
-	     << " num_leafs: " << generators[i].num_leafs_affected() << endl;
-    }
 }
 
 void Group::get_trace(const State& state, Trace& full_trace) {

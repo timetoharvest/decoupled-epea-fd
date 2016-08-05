@@ -48,7 +48,7 @@ void GraphCreator::initialize() {
 
     group->default_direct_product();
     cout<<"Number of generators: "<< group->get_num_generators()<<endl;
-    group->statistics();
+    //group->statistics();
 
     if(g_use_decoupled_search) {
 	decoupled_group = unique_ptr<DecoupledGroup> (new DecoupledGroup(*group));
