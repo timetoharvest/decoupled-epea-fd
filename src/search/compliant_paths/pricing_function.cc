@@ -388,31 +388,41 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 	return false;
     }
 
+    // cout << " APPLY SYMMETRY TO: " << endl;
+    // dump();
     //Copy prices and reinitialize affected factors
-    std::vector<std::vector<int> > old_prices(g_factors.size());
+    std::vector<std::vector<int> > old_prices(prices);//g_factors.size());
     std::vector<unsigned int> old_number_states (number_states);
+    std::vector<int> old_goal_cost (goal_cost);
 
     for (int factor : per.get_factors_affected()) {
-	old_prices[factor] = std::move(prices [factor]);
+	//old_prices[factor] = std::move(prices [factor]);
 	number_states[factor] = 0;
 	prices[factor] = std::vector<int>();
 	goal_cost[factor] = INF;
     }
     
-    for(int i = per.get_factors_affected().size()-1; i>=0; i--) {
-	int to_factor =  per.get_factors_affected()[i];
+    for(int to_factor : per.get_factors_affected()) {
 	int from_factor = per.get_from_factor(to_factor);
 
-	int id = 0;
+	// cout << " from: " << from_factor << " to " << to_factor << endl;
+
+	assert(std::find(per.get_factors_affected().begin(), 
+			 per.get_factors_affected().end(), to_factor)
+	       != per.get_factors_affected().end());
+
+	assert(std::find(per.get_factors_affected().begin(), 
+			 per.get_factors_affected().end(), from_factor)
+	       != per.get_factors_affected().end());
+
         size_t num_states = old_number_states[from_factor]; 
-	while  (num_states > 0){
+	for  (size_t id = 0; num_states > 0; ++ id){
+	    assert (id < leaf_state_id_map[from_factor].size());
 	    if (leaf_state_id_map[from_factor][id] == -1) {
-		id++;
 		continue; 
 	    }
 
 	    size_t leaf_state = leaf_state_id_map[from_factor][id];
-	    id++;
 	    if (leaf_state >= old_prices[from_factor].size() ||
 		old_prices[from_factor][leaf_state] == INF)  continue;
 
@@ -421,10 +431,24 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 	    assert(to_pair.first == to_factor);
 	    int to_val = to_pair.second;
 
-	    add_state(LeafStateID(to_val, to_factor), 
-		      old_prices[from_factor][leaf_state]);
+	    // cout << "Set from_val: " << id << " from_factor " << from_factor
+	    // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
+	    
+	    add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state]);
 	}
     }
+
+
+    // cout << " NUMBER STATES: " << if_less << endl;
+    // for (int i : old_number_states) cout << i << " "; cout << endl;
+    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
+
+    // cout << " GOAL COST" << endl;
+    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
+    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl;
+
+    //cout << " APPLIED SYMMETRY: " << endl;
+    //dump();
 
     return true; //We do not need to check whether the prices changed
 		 //because the return value is only relevant if

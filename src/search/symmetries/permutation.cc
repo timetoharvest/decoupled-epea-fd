@@ -1,6 +1,5 @@
 #include "permutation.h"
 
-#include "decoupled_permutation.h"
 #include "../globals.h"
 #include "../state_registry.h"
 

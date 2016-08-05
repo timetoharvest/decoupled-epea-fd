@@ -11,20 +11,17 @@ using namespace std;
 
 FactIndex LeavesPermutation::findex_leaves;
 
-DecoupledPermutation::DecoupledPermutation(const Permutation & p) {
-   
-    if(!p.num_leafs_affected()) {
-	cout <<"YES " << endl;
-	if (p.num_leafs_affected())  
-	    leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
+DecoupledPermutation::DecoupledPermutation(const Permutation & p) { 
+    if (p.num_leafs_affected())  
+	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
     
-	if (p.affects_center()) 
-	    center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
-    }
-
+    if (p.affects_center()) 
+	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
 }
 
+
 LeavesPermutation::LeavesPermutation (const Permutation & per)  {
+
     affected.assign (g_factors.size(), false);
    
     for (int v : per.vars_affected) {
@@ -52,11 +49,11 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
     inverse_value.resize(findex_leaves.length);
  
     for(size_t factor = 0; factor < g_factors.size(); ++factor){
+
 	for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
 	    LeafState l = g_state_registry->lookup_leaf_state(LeafStateID(s, factor));
 	    int symm_factor = -1;
 	    vector<int> symm_leaf_state;
-
 	    for(int v : g_factors[factor]) {
 		auto mapped_to = per.get_new_var_val_by_old_var_val(v, l[v]);
 		int symm_var = mapped_to.first;
@@ -68,6 +65,7 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 		    symm_leaf_state.resize(g_factors[symm_factor].size());
 		}
 		symm_leaf_state[g_new_index[symm_var]] = symm_val;
+
 	    }
 
 	    int symm_id = CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
@@ -80,6 +78,7 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 	    inverse_value[symm_index] = index;
 	}
     }
+
 
 
     // Sorting the vector of affected factoriables
@@ -105,6 +104,9 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
         // Get here when from_factors[current] == i.
         affected_factors_cycles.push_back(cycle);
     }
+
+    //cout << "Factor permutation: "; for (int f : from_factors) cout << f << " "; cout << endl;
+    //cout << "Value permutation: "; for (int v : value) cout << v << " "; cout << endl;
 }
 
 CenterPermutation::CenterPermutation (const Permutation & per) : 
@@ -133,7 +135,6 @@ CenterPermutation::CenterPermutation (const Permutation & per) :
     // print_cycle_notation();
 }
 
-
 bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves) const {
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
@@ -150,29 +151,32 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
 }
 
 
-bool LeavesPermutation::produces_less (const Prices & /*prices*/ ) const {
+bool LeavesPermutation::produces_less (const Prices & prices ) const {
     // Going over the affected variables, comparing the resulted values with the state values.
-    // for(int i = vars_affected.size()-1; i>=0; i--) {
-    // 	int to_factor =  vars_affected[i];
-    // 	int from_factor = from_vars[to_factor];
+    for(int i = factors_affected.size()-1; i>=0; i--) {
+    	int to_factor =  factors_affected[i];
+    	int from_factor = from_factors[to_factor];
 
-    //     // TODO: This iteration order is inneficient because we may
-    //     // iterate over many INF prices. Think of a better way to
-    //     // iterate over leaf states that goes for the relevant prices
-    // 	for (int s = 0; s < FACTOR_SIZE[to_factor]; ++s) { 
-    // 	    pair<int, int> from_pair = get_old_var_val_by_new_var_val(to_factor, s);
+	if(prices.get_number_states(from_factor) < prices.get_number_states(to_factor)) return true;
+	if(prices.get_number_states(from_factor) > prices.get_number_states(to_factor)) return false;
 
-    // 	    assert( from_pair.first == from_factor);
-    // 	    int from_val = from_pair.second;
+        // TODO: This iteration order is inneficient because we may
+        // iterate over many INF prices. Think of a better way to
+        // iterate over leaf states that goes for the relevant prices
+    	// for (int s = 0; s < FACTOR_SIZE[to_factor]; ++s) { 
+    	//     pair<int, int> from_pair = get_old_var_val_by_new_var_val(to_factor, s);
 
-    // 	    // Check if the prices are the same, then continue to the next aff. var.
-    // 	    if (prices[from_factor][from_val] < prices[to_factor][s]) {
-    // 		return true;
-    // 	    } else if (prices[from_factor][from_val] > prices[to_factor][s]) {
-    // 		return false;
-    // 	    }
-    // 	}
-    // }
+    	//     assert( from_pair.first == from_factor);
+    	//     int from_val = from_pair.second;
+
+    	//     // Check if the prices are the same, then continue to the next aff. var.
+    	//     if (prices[from_factor][from_val] < prices[to_factor][s]) {
+    	// 	return true;
+    	//     } else if (prices[from_factor][from_val] > prices[to_factor][s]) {
+    	// 	return false;
+    	//     }
+    	// }
+    }
     return false; 
 }
 

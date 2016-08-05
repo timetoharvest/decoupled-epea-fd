@@ -48,7 +48,7 @@ void GraphCreator::initialize() {
 
     group->default_direct_product();
     cout<<"Number of generators: "<< group->get_num_generators()<<endl;
-    //group->statistics();
+    // group->dump_generators();
 
     if(g_use_decoupled_search) {
 	decoupled_group = unique_ptr<DecoupledGroup> (new DecoupledGroup(*group));
@@ -79,12 +79,11 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     int idx = 0;
     // add vertex for each varaible
     for (size_t i = 0; i < g_variable_domain.size(); i++){
-	if(g_factoring && g_belongs_to_factor[i] == -1) {
-	   idx = g->add_vertex(CENTER_FACTOR_VERTEX);
-       }else{
-	   idx = g->add_vertex(PREDICATE_VERTEX);
-
-       }
+	if(g_use_decoupled_search && g_belongs_to_factor[i] == -1) {
+	    idx = g->add_vertex(CENTER_FACTOR_VERTEX);
+        } else {
+	    idx = g->add_vertex(PREDICATE_VERTEX);
+        }
     }
     // now add values vertices for each predicate
     for (size_t i = 0; i < g_variable_domain.size(); i++){
@@ -114,6 +113,16 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
         g->change_color(goal_idx, GOAL_VERTEX);
     }
 
+    if (g_use_decoupled_search) {
+	for (const auto & gpf : g_goals_per_factor){
+	    for (const auto & gp : gpf) {
+		int var = gp.first;
+		int val = gp.second;
+		int goal_idx = Permutation::findex.dom_sum_by_var[var] + val;
+		g->change_color(goal_idx, GOAL_VERTEX);
+	    }
+	}
+    }
     return g;
 }
 
