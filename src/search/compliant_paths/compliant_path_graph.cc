@@ -344,6 +344,7 @@ void CompliantPathGraph::create_and_store_init_state_cpg(const State &init_state
     } else {
         Prices::create_init_state_prices(init_state);
     }
+    discard_leaf_price_cache();
 }
 
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {

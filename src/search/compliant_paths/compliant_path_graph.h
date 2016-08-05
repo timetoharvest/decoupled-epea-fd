@@ -74,6 +74,10 @@ public:
     // TODO has_leaf_state and get_number_states are mainly used to iterate 
     // over leaf state IDs, what about having some kind of iterator providing
     // this functionality?
+    
+    virtual void store_new_graph(const State &state) const = 0;
+
+    virtual void discard_new_graph() const;
 
     virtual bool has_leaf_state(int id, int factor) const = 0;
     
@@ -86,8 +90,6 @@ public:
     virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less) = 0;  
     
     virtual void dump() const = 0;
-
-    virtual void discard_new_graph() const;
     
     
     static void initialize();

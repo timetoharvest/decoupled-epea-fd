@@ -141,6 +141,8 @@ const State &StateRegistry::get_initial_state() {
             
             CompliantPathGraph::create_and_store_init_state_cpg(*cached_initial_state);
             
+            // TODO apply symmetries to init state
+            
             state_duplicate_counter[0] = 0;
         }
         
@@ -216,10 +218,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         CompliantPathGraph &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
         
         if (g_symmetry_graph){
-            const vector<int> & new_center = 
-		g_symmetry_graph->get_canonical_decoupled_state(s, new_cpg);
+            const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, new_cpg);
 
-	    bool changed = false;
+            bool changed = false;
             for (size_t var : g_center_vars){
                 if (s[var] != new_center[var]){
                     changed = true;
@@ -228,7 +229,13 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             }
             
             if (changed){
-                state_data_pool.push_back(s.get_packed_buffer());
+                if (old_dup_counter != -1){
+                    // remove the newly added state if we do not need it later
+                    state_data_pool.push_back(predecessor.get_packed_buffer());
+                } else {
+                    registered_states.erase(id);
+                }
+                
                 PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
                 for (size_t var = 0; var < g_center_vars.size(); ++var){
                     g_state_packer->set(sym_buffer, var, new_center[g_center_vars[var]]);
@@ -264,10 +271,10 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             if (new_dup_counter > old_dup_counter){    // is a new decoupled state
                 new_cpg.store_new_graph(s);
                 state_duplicate_counter[base_state_id] = new_dup_counter;
-            } else {
-                new_cpg.discard_new_graph();
             }
         }
+        
+        new_cpg.discard_new_graph();
         
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;
@@ -283,32 +290,33 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         }
 #endif
         return s;
-    } else {
-        if (g_symmetry_graph){
-	    State s = lookup_state(id);
+    } else if (g_symmetry_graph){
+        State s = lookup_state(id);
 
-            const vector<int> & new_state = g_symmetry_graph->get_canonical_state(s);
+        const vector<int> &new_state = g_symmetry_graph->get_canonical_state(s);
 
-	    bool changed = false;
-            for (size_t var = 0; var < g_variable_domain.size(); ++var){
-                if (s[var] != new_state[var]){
-                    changed = true;
-                    break;
-                }
-            }
-            
-            if (changed){
-                state_data_pool.push_back(s.get_packed_buffer());
-                PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
-                for (size_t var = 0; var < g_variable_domain.size(); ++var){
-                    g_state_packer->set(sym_buffer, var, new_state[var]);
-                }
-                        
-                id = insert_id_or_pop_state();
-                // s = lookup_state(id);
+        bool changed = false;
+        for (size_t var = 0; var < g_variable_domain.size(); ++var){
+            if (s[var] != new_state[var]){
+                changed = true;
+                break;
             }
         }
-
+        
+        if (changed){
+            if (id.hash() + 1 != state_data_pool.size()){
+                state_data_pool.push_back(s.get_packed_buffer());
+            } else {
+                registered_states.erase(id);
+            }
+            
+            PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
+            for (size_t var = 0; var < g_variable_domain.size(); ++var){
+                g_state_packer->set(sym_buffer, var, new_state[var]);
+            }
+                    
+            id = insert_id_or_pop_state();
+        }
     }
     return lookup_state(id);
 }

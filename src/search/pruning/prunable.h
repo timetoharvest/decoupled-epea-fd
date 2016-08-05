@@ -20,8 +20,6 @@ public:
     
     virtual ~Prunable() = default;
     
-    virtual void store_new_graph(const State &state) const = 0;
-    
     virtual int get_goal_cost(int factor) const = 0;
     
     virtual bool has_effective_leaf_state(int id, int factor) const = 0;
@@ -31,8 +29,6 @@ public:
     virtual size_t get_number_effective_states(int factor) const = 0;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
-    
-    virtual void discard_new_graph() const = 0;
     
     
     // returns the duplicate counter for this base state and compliant path graph 

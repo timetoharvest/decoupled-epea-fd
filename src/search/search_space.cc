@@ -212,8 +212,10 @@ void SearchSpace::trace_path(const State &goal_state,
 	} 
 	const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(goal_state);
 	for (size_t factor = 0; factor < g_factors.size(); ++factor){
-	    cost += cpg->get_goal_cost(factor);
-	}
+            if (!g_goals_per_factor[factor].empty()){
+                cost += cpg->get_goal_cost(factor);
+            }
+        }
 
 	cout << "Plan of cost " << cost << " found." << endl;  
         

@@ -121,7 +121,7 @@ CenterPermutation::CenterPermutation (const Permutation & per) :
 			vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
-	if (g_belongs_to_factor[from_vars[i]] >= 0) {
+	if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] >= 0) {
 	    from_vars[i] = -1;
 	}
     }
