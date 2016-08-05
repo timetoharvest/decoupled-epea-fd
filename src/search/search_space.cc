@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "operator.h"
 #include "compliant_paths/path_price_tag.h"
+#include "compliant_paths/cpg_storage.h"
 #include "search_node_info.h"
 #include "state.h"
 
@@ -200,11 +201,21 @@ void SearchSpace::trace_path(const State &goal_state,
     
     reverse(path.begin(), path.end());
     
-    
     if (g_use_decoupled_search){
 #ifdef DEBUG_PLAN_EXTRACTION
         cout << "##################### STARTING TRACE_PATH" << endl;
 #endif
+
+	int cost = 0;
+	for (const auto op : path) {
+	    cost += op->get_cost();
+	} 
+	const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(goal_state);
+	for (size_t factor = 0; factor < g_factors.size(); ++factor){
+	    cost += cpg->get_goal_cost(factor);
+	}
+
+	cout << "Plan of cost " << cost << " found." << endl;  
         
         reverse(states.begin(), states.end());
         

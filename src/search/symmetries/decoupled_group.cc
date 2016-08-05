@@ -45,8 +45,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
     for (size_t i = 0; i < g_center_vars.size(); ++i) {
 	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
     }
-
-    // cout << "start" << endl;
+    //cout << "start" << endl;
 
     bool changed = true;
     while (changed) {
@@ -56,8 +55,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
         }
     }
 
-
-    // cout << "done" << endl;
+    //cout << "done" << endl;
 
     return tmp_state;
 }

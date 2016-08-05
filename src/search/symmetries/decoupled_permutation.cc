@@ -138,14 +138,15 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
 	if (cmp == cmp_t::LESS) {
-	    leaves.apply_symmetry_permutation(*leaves_permutation, false);
+	    if (leaves_permutation)
+		leaves.apply_symmetry_permutation(*leaves_permutation, false);
 	    return true;
 	} else if (cmp == cmp_t::GREATER) {
 	    return false;	    
 	}
     }
     
-    return (leaves.apply_symmetry_permutation(*leaves_permutation, true));    
+    return (leaves_permutation && leaves.apply_symmetry_permutation(*leaves_permutation, true));    
 }
 
 
