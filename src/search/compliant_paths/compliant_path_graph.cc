@@ -371,8 +371,9 @@ int CompliantPathGraph::get_leaf_state_id(vector<int> new_leaf_state, int factor
     
     const LeafState &state = g_state_registry->get_leaf_state(new_leaf_state, factor);
     
-    if (leaf_state_successors[factor][state.get_id().hash()].empty() &&
-        precompute_leaf_state_spaces[factor]){ // TODO that's a bit of a hack.. could also be a dead-end leaf state!
+    if ((leaf_state_successors[factor].size() <= state.get_id().hash() ||
+        leaf_state_successors[factor][state.get_id().hash()].empty()) && // TODO that's a bit of a hack.. could also be a dead-end leaf state!
+        precompute_leaf_state_spaces[factor]){
         
 
         size_t num_leaf_states_before = g_state_registry->size(factor);
