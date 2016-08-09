@@ -357,7 +357,7 @@ LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, 
     return lookup_leaf_state(id);
 }
 
-LeafState StateRegistry::get_leaf_state(vector<int> facts, int factor) {
+LeafState StateRegistry::get_leaf_state(const vector<int> &facts, int factor) {
     assert(g_factors[factor].size() == facts.size());
     
     leaf_state_data_pool[factor]->push_back((*leaf_state_data_pool[factor])[0]);

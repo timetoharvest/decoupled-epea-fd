@@ -229,7 +229,7 @@ public:
     /**
      * NOTE: At least one leaf state in this factor has to exist
      */
-    LeafState get_leaf_state(std::vector<int> facts, int factor);
+    LeafState get_leaf_state(const std::vector<int> &facts, int factor);
 
     /*
       Returns the number of states registered so far.
