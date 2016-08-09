@@ -7,9 +7,10 @@
 
 DecoupledGroup::DecoupledGroup(const Group & group) {
     //Ensure that all symmetry leaf states exists
-    for(const Permutation & per : group.generators) {
-	for(size_t factor = 0; factor < g_factors.size(); ++factor){
-	    for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
+    for(size_t factor = 0; factor < g_factors.size(); ++factor){
+        for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
+            for(const Permutation &per : group.generators) {
+
 		LeafState l = g_state_registry->lookup_leaf_state(LeafStateID(s, factor));
 		int symm_factor = -1;
 		vector<int> symm_leaf_state;
@@ -26,15 +27,15 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 		    }
 		    symm_leaf_state[g_new_index[symm_var]] = symm_val;
 		}
-		CompliantPathGraph::get_leaf_state_id (symm_leaf_state, symm_factor);
+		CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
 	    }
 	}
     }
 
     LeavesPermutation::findex_leaves.init_decoupled();
 
-    for(const Permutation & per : group.generators) {
-	generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
+    for(const Permutation &per : group.generators){
+        generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
     }    
     tmp_state.resize(g_variable_domain.size());
 }
