@@ -367,7 +367,9 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-int CompliantPathGraph::get_leaf_state_id(vector<int> new_leaf_state, int factor) {
+int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, int factor) {
+
+    size_t num_leaf_states_before = g_state_registry->size(factor);
     
     const LeafState &state = g_state_registry->get_leaf_state(new_leaf_state, factor);
     
@@ -375,10 +377,11 @@ int CompliantPathGraph::get_leaf_state_id(vector<int> new_leaf_state, int factor
         leaf_state_successors[factor][state.get_id().hash()].empty()) && // TODO that's a bit of a hack.. could also be a dead-end leaf state!
         precompute_leaf_state_spaces[factor]){
         
-
-        size_t num_leaf_states_before = g_state_registry->size(factor);
-        
         Prices goal_price_tag(0);
+    
+        if (leaf_state_id_map[factor].size() <= state.get_id().hash()){
+            leaf_state_id_map[factor].resize(state.get_id().hash() + 1, -1);
+        }
         
         goal_price_tag.add_state(state.get_id(), 0);
         

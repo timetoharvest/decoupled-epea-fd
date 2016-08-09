@@ -98,7 +98,7 @@ public:
     
     static void store_is_leaf_goal_state(const LeafState &state);
     
-    static int get_leaf_state_id(std::vector<int> new_leaf_state, int factor);
+    static int get_leaf_state_id(const std::vector<int> &new_leaf_state, int factor);
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;
