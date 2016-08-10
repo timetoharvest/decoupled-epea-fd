@@ -391,14 +391,14 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
     // cout << " APPLY SYMMETRY TO: " << endl;
     // dump();
     //Copy prices and reinitialize affected factors
-    std::vector<std::vector<int> > old_prices(prices);//g_factors.size());
-    std::vector<unsigned int> old_number_states (number_states);
-    std::vector<int> old_goal_cost (goal_cost);
+    vector<vector<int> > old_prices(prices);//g_factors.size());
+    vector<unsigned int> old_number_states (number_states);
+    vector<int> old_goal_cost (goal_cost);
 
     for (int factor : per.get_factors_affected()) {
-	//old_prices[factor] = std::move(prices [factor]);
+	//old_prices[factor] = move(prices [factor]);
 	number_states[factor] = 0;
-	prices[factor] = std::vector<int>();
+	prices[factor] = vector<int>();
 	goal_cost[factor] = INF;
     }
     
@@ -407,11 +407,11 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 
 	// cout << " from: " << from_factor << " to " << to_factor << endl;
 
-	assert(std::find(per.get_factors_affected().begin(), 
+	assert(find(per.get_factors_affected().begin(), 
 			 per.get_factors_affected().end(), to_factor)
 	       != per.get_factors_affected().end());
 
-	assert(std::find(per.get_factors_affected().begin(), 
+	assert(find(per.get_factors_affected().begin(), 
 			 per.get_factors_affected().end(), from_factor)
 	       != per.get_factors_affected().end());
 
