@@ -13,10 +13,13 @@
 class PruningReachableStorage;
 
 class PruningReachable : public Reachable {
+    friend class Reachable; // to get init state cpg
     
     static PruningReachable tmp_p_reach;
     
     static PruningReachableStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_reachable();
     
     
     void compute_frontier();
@@ -50,8 +53,6 @@ public:
     
     
     static void register_cpg_storage(PruningReachableStorage *storage);
-    
-    static void create_init_state_reachable(const State &init_state);
  
 };
 

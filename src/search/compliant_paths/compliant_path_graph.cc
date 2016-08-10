@@ -338,13 +338,12 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #endif
 }
 
-void CompliantPathGraph::create_and_store_init_state_cpg(const State &init_state) {
+CompliantPathGraph& CompliantPathGraph::get_init_state_cpg() {
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::create_init_state_reachable(init_state);
+        return Reachable::get_init_state_reachable();
     } else {
-        Prices::create_init_state_prices(init_state);
+        return Prices::get_init_state_prices();
     }
-    discard_leaf_price_cache();
 }
 
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {

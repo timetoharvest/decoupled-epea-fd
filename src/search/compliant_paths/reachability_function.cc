@@ -392,12 +392,13 @@ const vector< boost::dynamic_bitset< long unsigned int > >& Reachable::get_front
 }
 
 void Reachable::store_new_graph(const State &state) const {
-    cpg_storage->reachable[state] = tmp_reach;
+    discard_new_graph();
+    cpg_storage->store_cpg(state, *this);
 }
 
-void Reachable::create_init_state_reachable(const State &init_state) {
+CompliantPathGraph& Reachable::get_init_state_reachable() {
     if (do_pruning()){
-        PruningReachable::create_init_state_reachable(init_state);        
+        return PruningReachable::get_init_state_reachable();        
     } else {
         Reachable reach(0);
             
@@ -407,7 +408,7 @@ void Reachable::create_init_state_reachable(const State &init_state) {
             
         reach.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
         
-        tmp_reach.store_new_graph(init_state);
+        return tmp_reach;
     }
 }
 

@@ -102,6 +102,7 @@
 class PerStateInformationBase;
 
 class StateRegistry {
+    friend class SearchEngine; // to permute initial state
     
     struct StateIDSemanticHash {
         const SegmentedArrayVector<PackedStateBin> &state_data_pool;
@@ -189,6 +190,8 @@ class StateRegistry {
     StateID insert_id_or_pop_state();
     
     LeafStateID insert_id_or_pop_leaf_state(int factor);
+    
+    void permute_initial_state();
     
 public:
     StateRegistry();

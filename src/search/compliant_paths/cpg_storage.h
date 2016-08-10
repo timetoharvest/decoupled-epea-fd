@@ -9,10 +9,14 @@
 
 
 class CPGStorage {
+    friend class StateRegistry; // to get non-const cpg
+    friend class Prunable; // to get non-const cpg
     
 protected:
     
     virtual void register_at_compliant_path_graph() = 0;
+    
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) = 0;
 
 public:
     
@@ -22,8 +26,6 @@ public:
 
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
     
-    virtual Prunable* get_prunable(const State &state) = 0;
-
 };
 
 class PriceStorage : public CPGStorage {
@@ -40,13 +42,13 @@ protected:
     
     virtual void register_at_compliant_path_graph();
     
-public:
-    
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
         return &prices[state];
     }
     
-    virtual Prunable* get_prunable(const State &state) {
+public:
+    
+    virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &prices[state];
     }
     
@@ -65,13 +67,13 @@ protected:
     
     virtual void register_at_compliant_path_graph();
     
-public:
-    
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
         return &pruning_prices[state];
     }
     
-    virtual Prunable* get_prunable(const State &state) {
+public:
+    
+    virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &pruning_prices[state];
     }
     
@@ -90,13 +92,13 @@ protected:
     
     virtual void register_at_compliant_path_graph();
     
-public:
-    
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
         return &reachable[state];
     }
     
-    virtual Prunable* get_prunable(const State &state) {
+public:
+    
+    virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &reachable[state];
     }
     
@@ -115,13 +117,13 @@ protected:
     
     virtual void register_at_compliant_path_graph();
     
-public:
-    
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
         return &pruning_reachable[state];
     }
     
-    virtual Prunable* get_prunable(const State &state) {
+public:
+    
+    virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &pruning_reachable[state];
     }
     

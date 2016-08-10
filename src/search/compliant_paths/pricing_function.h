@@ -18,6 +18,8 @@ class Prices : public CompliantPathGraph {
     
     static PriceStorage *cpg_storage;
     
+    static CompliantPathGraph& get_init_state_prices();
+    
 protected:  
 
     std::vector<std::vector<int> > prices;
@@ -75,8 +77,6 @@ public:
 
     
     static void register_cpg_storage(PriceStorage *storage);
-    
-    static void create_init_state_prices(const State &init_state);
     
 };
 

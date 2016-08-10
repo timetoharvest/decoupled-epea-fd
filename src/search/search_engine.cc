@@ -62,11 +62,13 @@ void SearchEngine::set_plan(const Plan &p) {
 }
 
 void SearchEngine::search() {
-    initialize();
-
     if(g_symmetry_graph){
+        g_state_registry->get_initial_state();
 	g_symmetry_graph->initialize();
+        g_state_registry->permute_initial_state();
     }
+    
+    initialize();
     
     CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {

@@ -139,9 +139,9 @@ const State &StateRegistry::get_initial_state() {
             
             CompliantPathGraph::build_leaf_state_spaces();
             
-            CompliantPathGraph::create_and_store_init_state_cpg(*cached_initial_state);
+            CompliantPathGraph &init_state_cpg = CompliantPathGraph::get_init_state_cpg();
             
-            // TODO apply symmetries to init state
+            init_state_cpg.store_new_graph(*cached_initial_state);
             
             state_duplicate_counter[0] = 0;
         }
@@ -152,6 +152,38 @@ const State &StateRegistry::get_initial_state() {
 #endif
     }
     return *cached_initial_state;
+}
+
+void StateRegistry::permute_initial_state() {
+    cout << "permuting init state " << endl;
+    CompliantPathGraph *cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
+    const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
+
+    bool changed = false;
+    for (size_t var : g_center_vars){
+        if ((*cached_initial_state)[var] != new_center[var]){
+            changed = true;
+            break;
+        }
+    }
+    
+    if (changed){
+        cout << "permuting init state " << endl;
+        registered_states.erase(cached_initial_state->get_id());
+        
+        PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
+        for (size_t var = 0; var < g_center_vars.size(); ++var){
+            g_state_packer->set(sym_buffer, var, new_center[g_center_vars[var]]);
+        }
+        g_state_packer->set(sym_buffer, g_center_vars.size(), 0);
+                
+        StateID id = insert_id_or_pop_state();
+        
+        delete cached_initial_state;
+        cached_initial_state = new State(lookup_state(id));
+    }
+    
+    cpg->store_new_graph(*cached_initial_state);
 }
 
 //TODO it would be nice to move the actual state creation (and operator application)

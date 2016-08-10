@@ -315,10 +315,11 @@ void PruningReachable::compute_frontier() {
 }
 
 void PruningReachable::store_new_graph(const State &state) const {
-    cpg_storage->pruning_reachable[state] = tmp_p_reach;
+    discard_new_graph();
+    cpg_storage->store_cpg(state, *this);
 }
 
-void PruningReachable::create_init_state_reachable(const State &init_state) {
+CompliantPathGraph& PruningReachable::get_init_state_reachable() {
     PruningReachable reach(0);
         
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -327,7 +328,7 @@ void PruningReachable::create_init_state_reachable(const State &init_state) {
         
     reach.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
     
-    tmp_p_reach.store_new_graph(init_state);
+    return tmp_p_reach;
 }
 
 void PruningReachable::dump() const {

@@ -346,12 +346,13 @@ const vector<boost::dynamic_bitset<> > & Prices::get_frontier() {
 }
 
 void Prices::store_new_graph(const State &state) const {
-    cpg_storage->store_cpg(state, &tmp_price);
+    discard_new_graph();
+    cpg_storage->store_cpg(state, *this);
 }
 
-void Prices::create_init_state_prices(const State &init_state) {
+CompliantPathGraph& Prices::get_init_state_prices() {
     if (do_pruning()){
-        PruningPrices::create_init_state_prices(init_state);
+        return PruningPrices::get_init_state_prices();
     } else {
         Prices prices(0);
             
@@ -361,7 +362,7 @@ void Prices::create_init_state_prices(const State &init_state) {
             
         prices.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
         
-        tmp_price.store_new_graph(init_state);
+        return tmp_price;
     }
 }
 

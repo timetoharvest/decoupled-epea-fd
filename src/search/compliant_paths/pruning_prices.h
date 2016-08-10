@@ -13,10 +13,13 @@
 class PruningPriceStorage;
 
 class PruningPrices : public Prices {
+    friend class Prices; // to get init state cpg
     
     static PruningPrices tmp_p_price;
     
     static PruningPriceStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_prices();
     
     
     void compute_cost_frontier();
@@ -69,8 +72,6 @@ public:
     
     
     static void register_cpg_storage(PruningPriceStorage *storage);
-
-    static void create_init_state_prices(const State &state);
     
 };
 

@@ -59,7 +59,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_prunable(s)); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -84,7 +84,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_prunable(s));
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
@@ -116,7 +116,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_prunable(s), DOMINATES);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -145,7 +145,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_prunable(s), DOMINATED);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one

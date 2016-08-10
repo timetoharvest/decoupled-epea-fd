@@ -26,7 +26,7 @@ class CompliantPathGraph : public Prunable {
     */
     static void build_leaf_state_spaces();
     
-    static void create_and_store_init_state_cpg(const State &init_state);
+    static CompliantPathGraph& get_init_state_cpg();
     
 protected:
     

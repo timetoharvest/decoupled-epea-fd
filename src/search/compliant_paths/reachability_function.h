@@ -13,10 +13,13 @@
 class ReachableStorage;
 
 class Reachable : public CompliantPathGraph {
+    friend class CompliantPathGraph; // to get init state cpg
     
     static Reachable tmp_reach;
     
     static ReachableStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_reachable();
     
 protected:
     
@@ -71,8 +74,6 @@ public:
     }    
     
     static void register_cpg_storage(ReachableStorage *storage);
-    
-    static void create_init_state_reachable(const State &init_state);
  
 };
 
