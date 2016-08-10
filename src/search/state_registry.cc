@@ -155,25 +155,30 @@ const State &StateRegistry::get_initial_state() {
 }
 
 void StateRegistry::permute_initial_state() {
-    cout << "permuting init state " << endl;
-    CompliantPathGraph *cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
-    const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
+    CompliantPathGraph *cpg = 0;
+    const vector<int> *new_center;
+    
+    if (g_use_decoupled_search){
+        cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
+        new_center = &g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
+    } else {
+        new_center = &g_symmetry_graph->get_canonical_state(*cached_initial_state);
+    }
 
     bool changed = false;
     for (size_t var : g_center_vars){
-        if ((*cached_initial_state)[var] != new_center[var]){
+        if ((*cached_initial_state)[var] != (*new_center)[var]){
             changed = true;
             break;
         }
     }
     
     if (changed){
-        cout << "permuting init state " << endl;
         registered_states.erase(cached_initial_state->get_id());
         
         PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
         for (size_t var = 0; var < g_center_vars.size(); ++var){
-            g_state_packer->set(sym_buffer, var, new_center[g_center_vars[var]]);
+            g_state_packer->set(sym_buffer, var, (*new_center)[g_center_vars[var]]);
         }
         g_state_packer->set(sym_buffer, g_center_vars.size(), 0);
                 
@@ -183,7 +188,9 @@ void StateRegistry::permute_initial_state() {
         cached_initial_state = new State(lookup_state(id));
     }
     
-    cpg->store_new_graph(*cached_initial_state);
+    if (g_use_decoupled_search){
+        cpg->store_new_graph(*cached_initial_state);
+    }
 }
 
 //TODO it would be nice to move the actual state creation (and operator application)
