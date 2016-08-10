@@ -205,19 +205,6 @@ void SearchSpace::trace_path(const State &goal_state,
 #ifdef DEBUG_PLAN_EXTRACTION
         cout << "##################### STARTING TRACE_PATH" << endl;
 #endif
-
-	int cost = 0;
-	for (const auto op : path) {
-	    cost += op->get_cost();
-	} 
-	const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(goal_state);
-	for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (!g_goals_per_factor[factor].empty()){
-                cost += cpg->get_goal_cost(factor);
-            }
-        }
-
-	cout << "Plan of cost " << cost << " found." << endl;  
         
         reverse(states.begin(), states.end());
         
