@@ -5,6 +5,7 @@
 
 #include "permutation.h" 
 
+class LexicographicOrdering;
 class Prices;
 
 class LeavesPermutation {
@@ -31,6 +32,11 @@ public:
 
     std::pair<int, int> get_new_factor_state_by_old_factor_state(const int factor, const int state) const;
     std::pair<int, int> get_old_factor_state_by_new_factor_state(const int factor, const int state) const ;
+
+
+    cmp_t cmp_num_states (const CompliantPathGraph & cpg) const;
+    cmp_t cmp_goal_cost (const CompliantPathGraph & cpg) const;
+    cmp_t cmp_prices (const CompliantPathGraph & cpg) const;
 
 protected:
     std::vector<int> value;
@@ -71,7 +77,9 @@ public:
 
     ~DecoupledPermutation() = default;
 
-    bool replace_if_less(std::vector<int> & center, CompliantPathGraph & leaves) const;
+    bool replace_if_less(std::vector<int> & center, 
+			 CompliantPathGraph & leaves, 
+			 const LexicographicOrdering & lex_ordering) const;
 
     void permute_decoupled_state(std::vector<int> & center, 
 				 CompliantPathGraph & leaves) const;

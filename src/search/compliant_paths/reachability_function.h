@@ -69,7 +69,7 @@ public:
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/, bool /*if_less*/) {
+    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/) {
 	cerr << "Symmetries not supported for satisficing search" << endl;
 	cerr << "Look at compliant_paths/reachability_function.h" << endl;
 	exit_with(EXIT_CRITICAL_ERROR);

@@ -1,5 +1,7 @@
 #include "decoupled_permutation.h"
 
+#include "lexicographic_ordering.h"
+
 #include "../globals.h"
 #include "../state_registry.h"
 #include "../compliant_paths/compliant_path_graph.h"
@@ -212,19 +214,22 @@ CenterPermutation::CenterPermutation (const CenterPermutation & p1,
 
 
 
-bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves) const {
+bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves,
+					   const LexicographicOrdering & lex_ordering) const {
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
 	if (cmp == cmp_t::LESS) {
 	    if (leaves_permutation)
-		leaves.apply_symmetry_permutation(*leaves_permutation, false);
+		leaves.apply_symmetry_permutation(*leaves_permutation);
 	    return true;
 	} else if (cmp == cmp_t::GREATER) {
 	    return false;	    
 	}
     }
     
-    return (leaves_permutation && leaves.apply_symmetry_permutation(*leaves_permutation, true));    
+    return (leaves_permutation && 
+	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
+	    leaves.apply_symmetry_permutation(*leaves_permutation));    
 }
 
 
@@ -235,39 +240,8 @@ void DecoupledPermutation::permute_decoupled_state(vector<int> &center,
 	center_permutation->permute(center);
     
     if (leaves_permutation)
-	leaves.apply_symmetry_permutation(*leaves_permutation, false);
+	leaves.apply_symmetry_permutation(*leaves_permutation);
 }
-
-
-bool LeavesPermutation::produces_less (const Prices & prices ) const {
-    // Going over the affected variables, comparing the resulted values with the state values.
-    for(int i = factors_affected.size()-1; i>=0; i--) {
-    	int to_factor =  factors_affected[i];
-    	int from_factor = from_factors[to_factor];
-
-	if(prices.get_number_states(from_factor) < prices.get_number_states(to_factor)) return true;
-	if(prices.get_number_states(from_factor) > prices.get_number_states(to_factor)) return false;
-
-        // TODO: This iteration order is inneficient because we may
-        // iterate over many INF prices. Think of a better way to
-        // iterate over leaf states that goes for the relevant prices
-    	// for (int s = 0; s < FACTOR_SIZE[to_factor]; ++s) { 
-    	//     pair<int, int> from_pair = get_old_var_val_by_new_var_val(to_factor, s);
-
-    	//     assert( from_pair.first == from_factor);
-    	//     int from_val = from_pair.second;
-
-    	//     // Check if the prices are the same, then continue to the next aff. var.
-    	//     if (prices[from_factor][from_val] < prices[to_factor][s]) {
-    	// 	return true;
-    	//     } else if (prices[from_factor][from_val] > prices[to_factor][s]) {
-    	// 	return false;
-    	//     }
-    	// }
-    }
-    return false; 
-}
-
 
 pair<int, int> LeavesPermutation::get_new_factor_state_by_old_factor_state(const int factor, const int state) const {
 	int old_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
@@ -279,4 +253,52 @@ pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(const
 	int new_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
 	int old_ind = inverse_value[new_ind];
 	return findex_leaves.get_var_val_by_index(old_ind);
+}
+
+
+cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph & cpg) const {
+    for(int to_factor : factors_affected) {
+	int from_factor = from_factors[to_factor];
+
+	if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
+	if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
+    }
+    return cmp_t::EQUAL;
+}
+
+cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph & cpg) const {
+    for(int to_factor : factors_affected) {
+	int from_factor = from_factors[to_factor];
+
+	if(cpg.get_goal_cost(from_factor) < cpg.get_goal_cost(to_factor)) return cmp_t::GREATER;
+	if(cpg.get_goal_cost(from_factor) > cpg.get_goal_cost(to_factor)) return cmp_t::LESS;
+    }
+    return cmp_t::EQUAL;
+}
+
+cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph & cpg) const {
+    for(int to_factor : factors_affected) {	
+	int from_factor = from_factors[to_factor];
+	assert (g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
+
+	for  (size_t from_id = 0; from_id < g_state_registry->size(from_factor); ++from_id){
+	    pair<int, int> to_pair = get_new_factor_state_by_old_factor_state(from_factor,
+									      from_id);
+	    assert(to_pair.first == to_factor);
+	    int to_id = to_pair.second;
+
+	    bool has_from = cpg.has_leaf_state (from_id, from_factor); 
+	    bool has_to = cpg.has_leaf_state (from_id, from_factor); 
+
+	    if(!has_from && has_to) return cmp_t::LESS;
+	    if(has_from && !has_to) return cmp_t::GREATER;
+	    
+	    int cost_from = cpg.get_cost_of_state(from_id, from_factor);
+	    int cost_to = cpg.get_cost_of_state(to_id, to_factor);
+
+	    if(cost_from < cost_to) return cmp_t::GREATER;
+	    if(cost_from > cost_to) return cmp_t::LESS;
+	}
+    }
+    return cmp_t::EQUAL;
 }

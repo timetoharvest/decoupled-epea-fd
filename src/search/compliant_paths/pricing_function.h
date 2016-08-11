@@ -71,7 +71,7 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less);
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation);
     
     virtual void dump() const;
 

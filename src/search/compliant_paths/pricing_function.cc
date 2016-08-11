@@ -384,12 +384,7 @@ void Prices::dump() const {
     }
 }
 
-bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_less) {
-    //Check whether we should apply this
-    if (if_less && ! per.produces_less(*this)) {
-	return false;
-    }
-
+bool Prices::apply_symmetry_permutation(const LeavesPermutation & per) {
     // cout << " APPLY SYMMETRY TO: " << endl;
     // dump();
     //Copy prices and reinitialize affected factors

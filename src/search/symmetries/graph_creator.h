@@ -5,6 +5,7 @@
 #include <graph.hh>
 #endif
 #include "decoupled_group.h"
+#include "lexicographic_ordering.h"
 #include "group.h"
 #include "../plugin.h"
 #include "../state.h"
@@ -36,9 +37,9 @@ public:
     }
     
     const std::vector<int> & get_canonical_decoupled_state(const State & center,
-                                                           CompliantPathGraph &leaves)  const {
+							   CompliantPathGraph &leaves)  const {
 	assert(decoupled_group);
-        return decoupled_group->get_canonical_decoupled_state (center, leaves);
+        return decoupled_group->get_canonical_decoupled_state (center, leaves, lex_ordering);
     }
     
     
@@ -54,6 +55,8 @@ public:
     void free_memory() { group->free_memory(); }
 
 private:
+
+    const LexicographicOrdering lex_ordering;
     unique_ptr<Group> group;
     unique_ptr<DecoupledGroup> decoupled_group;
 

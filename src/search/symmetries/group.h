@@ -11,6 +11,7 @@ using namespace __gnu_cxx;
 typedef std::vector<short int> Trace;
 
 class CompliantPathGraph;
+class LexicographicOrdering;
 
 class Group{
 public:

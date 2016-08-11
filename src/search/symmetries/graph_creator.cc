@@ -2,11 +2,14 @@
 #include <vector>
 #include "../operator.h"
 #include "permutation.h"
+#include "lexicographic_ordering.h"
+
 #include "../timer.h"
 
 using namespace std;
 
 GraphCreator::GraphCreator(const Options &opts) : 
+    lex_ordering(opts), 
     group(new Group(opts)) {
     initialized = false;
     time_bound = opts.get<int>("time_bound");
@@ -210,8 +213,8 @@ GraphCreator::create_permutation_from_state_to_state(const State &state,
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
 
-    Trace curr_trace = decoupled_group->get_trace(state, cpg);
-    Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg);
+    Trace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
+    Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
 
     DecoupledPermutation p1 (decoupled_group->compose_permutation(new_trace), true);
     DecoupledPermutation p2 = decoupled_group->compose_permutation(curr_trace);
@@ -234,6 +237,8 @@ void GraphCreator::add_options_to_parser(OptionParser &parser) {
 
 static GraphCreator *_parse(OptionParser &parser) {
     GraphCreator::add_options_to_parser(parser);
+    LexicographicOrdering::add_options_to_parser(parser);
+
     Options opts = parser.parse();
 
     if (!parser.dry_run()) {

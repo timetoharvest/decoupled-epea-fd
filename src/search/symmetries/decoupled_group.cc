@@ -1,5 +1,6 @@
 #include "decoupled_group.h"
 
+#include "lexicographic_ordering.h"
 #include "group.h"
 #include "../state_registry.h"
 
@@ -45,7 +46,8 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & center, 
-								  CompliantPathGraph & leaves)  const{
+								  CompliantPathGraph & leaves, 
+								  const LexicographicOrdering & lex_ordering)  const{
 
     for (size_t i = 0; i < g_center_vars.size(); ++i) {
 	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
@@ -59,7 +61,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
     while (changed) {
         changed = false;
         for (const auto & gen : generators) {
-	    changed |= gen->replace_if_less(tmp_state, leaves);
+	    changed |= gen->replace_if_less(tmp_state, leaves, lex_ordering);
         }
     }
 
@@ -83,7 +85,8 @@ void DecoupledGroup::statistics() const {
 
 
 Trace DecoupledGroup::get_trace(const State & center, 
-				const CompliantPathGraph & leaves)  const {
+				    const CompliantPathGraph & leaves, 
+				    const LexicographicOrdering & lex_ordering)  const {
     Trace res;
 
     unique_ptr<CompliantPathGraph> leaves_copy = leaves.clone();
@@ -96,7 +99,7 @@ Trace DecoupledGroup::get_trace(const State & center,
     while (changed) {
         changed = false;
         for (size_t i = 0; i < generators.size(); ++i) {
-	    if(generators[i]->replace_if_less(tmp_state, *leaves_copy)) {
+if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
 		changed = true;
 		res.push_back(i);
 	    }

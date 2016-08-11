@@ -109,6 +109,7 @@ HEADERS += symmetries/graph_creator.h \
            symmetries/group.h \
            symmetries/decoupled_permutation.h \
            symmetries/decoupled_group.h \
+           symmetries/lexicographic_ordering.h \
 
 
 ## Each of the following "HEADERS += ..." constructs defines a

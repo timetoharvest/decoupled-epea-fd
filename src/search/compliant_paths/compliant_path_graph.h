@@ -87,7 +87,7 @@ public:
 
     virtual bool goal_reachable(int factor) const = 0;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less) = 0;  
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;  
     
     virtual void dump() const = 0;
  
