@@ -14,6 +14,8 @@
 
 #include <limits>
 
+#include <algorithm>
+
 
 using namespace std;
 
@@ -428,13 +430,20 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 		old_prices[from_factor][leaf_state] == INF)  continue;
 
 	    num_states--;
-	    pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, leaf_state);
+	    pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
 	    assert(to_pair.first == to_factor);
 	    int to_val = to_pair.second;
 
-	    // cout << "Set from_val: " << id << " from_factor " << from_factor
-	    // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
+	     // cout << "Set from_val: " << id << " from_factor " << from_factor
+	     // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
 	    
+	     // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+	     // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+
+	     // state_print_from.dump_pddl(); 
+	     // cout <<  " -> "; 
+	     // state_print_to.dump_pddl(); 
+
 	    add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state]);
 	}
     }
@@ -446,7 +455,11 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 
     // cout << " GOAL COST" << endl;
     // for (int i : old_goal_cost) cout << i << " "; cout << endl;
-    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl;
+    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
+    assert (std::accumulate(number_states.begin(), number_states.end(), 0) == std::accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert (std::accumulate(goal_cost.begin(), goal_cost.end(), 0) == std::accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+
+
 
     //cout << " APPLIED SYMMETRY: " << endl;
     //dump();

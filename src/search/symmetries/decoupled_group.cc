@@ -35,7 +35,10 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
     LeavesPermutation::findex_leaves.init_decoupled();
 
     for(const Permutation &per : group.generators){
-        generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
+	// if(per.affects_center()){
+	//     per.print_cycle_notation();
+	    generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
+	// }
     }    
     tmp_state.resize(g_variable_domain.size());
 }
@@ -43,10 +46,14 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & center, 
 								  CompliantPathGraph & leaves)  const{
+
     for (size_t i = 0; i < g_center_vars.size(); ++i) {
 	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
     }
-    //cout << "start" << endl;
+    // cout << endl << endl<< "start" << endl;
+    // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][center[g_center_vars[i]]] << "       ";
+    // cout << endl;
+    // leaves.dump();
 
     bool changed = true;
     while (changed) {
@@ -56,7 +63,11 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
         }
     }
 
-    //cout << "done" << endl;
+    // cout << "done" << endl;
+    // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][tmp_state[g_center_vars[i]]] << "       ";
+    // cout << endl;
+    // leaves.dump();
+    // cout << endl << endl;
 
     return tmp_state;
 }
