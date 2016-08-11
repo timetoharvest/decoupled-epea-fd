@@ -86,7 +86,7 @@ void SearchEngine::search() {
 
 bool SearchEngine::check_goal_and_set_plan(const State &state) {
     if (test_goal(state)) {
-        if (g_use_decoupled_search){           
+        if (g_use_decoupled_search){         
             const SearchNode &info = search_space.get_node(state);
             int solution_cost = info.get_g();
             const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);

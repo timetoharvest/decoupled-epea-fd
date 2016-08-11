@@ -13,8 +13,7 @@
 #include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
-
-#include <algorithm>
+#include <numeric>
 
 
 using namespace std;
@@ -375,7 +374,7 @@ void Prices::dump() const {
             if (has_leaf_state(id, factor)){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << endl;
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << (is_a_leaf_goal_state[factor][id] ? ", is goal" : "") << endl;
                 } else {
                     state.dump_pddl();
                     cout << " with price " << get_cost_of_state(id, factor) << endl;
@@ -456,8 +455,8 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
     // cout << " GOAL COST" << endl;
     // for (int i : old_goal_cost) cout << i << " "; cout << endl;
     // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
-    assert (std::accumulate(number_states.begin(), number_states.end(), 0) == std::accumulate(old_number_states.begin(), old_number_states.end(), 0));
-    assert (std::accumulate(goal_cost.begin(), goal_cost.end(), 0) == std::accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+    assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 
 
 
