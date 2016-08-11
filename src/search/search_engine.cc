@@ -95,13 +95,14 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                     solution_cost += cpg->get_goal_cost(factor);
                 }
             }
+            cout << "found a plan of cost " << solution_cost;
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
                 if (!is_optimal_leaf_plan(*cpg)){
-                    cout << "found plan is not optimal, cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
+                    cout << ", cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
                     exit_with(EXIT_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
@@ -116,31 +117,23 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                         solution_found = true;
                         bound = solution_cost;
                         cheapest_goal_state = state.get_id();
-                    }
-                    cout << "found a plan of cost " << solution_cost 
-                            << " that is not leaf-optimal => continue search [t=" << g_timer << "]" << endl;
-                            
+                    }                    
+                    cout << ", not leaf-optimal => continue search [t=" << g_timer << "]" << endl;                            
                     return false;
                 }
-            } else if (g_factoring->get_search_type() == SDA){
-                cout << "found a plan of cost " << solution_cost;
-                
+            } else if (g_factoring->get_search_type() == SDA){                
                 if (!found_solution()){
-                    cout << " [t=" << g_timer << "]" << endl;
                     solution_found = true;
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
                 } else if (solution_cost < bound){
-                    cout << ", is cheaper than current best plan => replace [t=" << g_timer << "]" << endl;
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
-                } else {
-                    cout << ", not cheaper than current best plan (cost=" << bound 
-                            << ") => ignore [t=" << g_timer << "]" << endl;
                 }
+                cout << " [t=" << g_timer << "]" << endl;
                 return false;
             }
-            cout << "Solution found!" << endl;
+            cout << " [t=" << g_timer << "]" << endl;
             return true;
 	}
 	Plan plan;
