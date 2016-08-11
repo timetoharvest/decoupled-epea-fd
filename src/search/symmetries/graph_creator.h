@@ -31,14 +31,6 @@ public:
 
     void initialize();
 
-    Permutation create_permutation_from_trace(Trace& auth) const {
-        return group->compose_permutation(auth);
-    }
-
-    void get_trace(const State& state, Trace& full_trace) {
-        group->get_trace(state, full_trace);
-    }
-
     const vector<int> & get_canonical_state(const State & state)  {
         return group->get_canonical_state(state);
     }
@@ -49,11 +41,13 @@ public:
         return decoupled_group->get_canonical_decoupled_state (center, leaves);
     }
     
-//     const Operator* get_real_action(const State &state, const CompliantPathGraph &cpg, const Operator *op,
-//     TODO implement this             const State &succ_state, const CompliantPathGraph &succ_cpg) const;
     
     Permutation create_permutation_from_state_to_state(const State &from_state, 
                                                        const State &to_state);
+
+    DecoupledPermutation
+	create_permutation_from_state_to_state(const State &state, const CompliantPathGraph &cpg,
+			const State &succ_state, const CompliantPathGraph &succ_cpg) const;
 
     static void add_options_to_parser(OptionParser &parser);
     

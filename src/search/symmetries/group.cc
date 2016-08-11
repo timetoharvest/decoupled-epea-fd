@@ -123,6 +123,7 @@ void Group::get_trace(const State& state, Trace& full_trace) {
 
     for(size_t i = 0; i < g_variable_domain.size(); ++i)
         tmp_state[i] = state[i];
+
     bool changed = true;
     while (changed) {
         changed = false;

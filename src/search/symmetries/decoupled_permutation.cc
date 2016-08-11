@@ -19,6 +19,34 @@ DecoupledPermutation::DecoupledPermutation(const Permutation & p) {
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
 }
 
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & per) : 
+    center_permutation(new CenterPermutation(*(per.center_permutation))), 
+    leaves_permutation(new LeavesPermutation(*(per.leaves_permutation))) {
+    }
+
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & per, bool invert) : 
+    center_permutation(new CenterPermutation(*(per.center_permutation), invert)), 
+    leaves_permutation(new LeavesPermutation(*(per.leaves_permutation), invert)) {
+    }
+
+
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & p1, const DecoupledPermutation & p2) { 
+    if (p1.center_permutation && p2.center_permutation) 
+	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation), *(p2.center_permutation)));
+    else if (p1.center_permutation) 
+	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation)));
+    else if (p2.center_permutation) 
+	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p2.center_permutation)));
+
+    if (p1.leaves_permutation && p2.leaves_permutation) 
+	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation), *(p2.leaves_permutation)));
+    else if (p1.leaves_permutation) 
+	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation)));
+    else if (p2.leaves_permutation) 
+	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
+    
+}
+
 
 LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 
@@ -79,7 +107,13 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 	}
     }
 
+    finalize();
+    //cout << "Factor permutation: "; for (int f : from_factors) cout << f << " "; cout << endl;
+    //cout << "Value permutation: "; for (int v : value) cout << v << " "; cout << endl;
+}
 
+
+void LeavesPermutation::finalize(){
 
     // Sorting the vector of affected factoriables
     ::sort(factors_affected.begin(), factors_affected.end());
@@ -105,12 +139,50 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
         affected_factors_cycles.push_back(cycle);
     }
 
-    //cout << "Factor permutation: "; for (int f : from_factors) cout << f << " "; cout << endl;
-    //cout << "Value permutation: "; for (int v : value) cout << v << " "; cout << endl;
 }
 
-CenterPermutation::CenterPermutation (const Permutation & per) : 
-    Permutation(per) {
+LeavesPermutation::LeavesPermutation (const LeavesPermutation & perm1, 
+				      const LeavesPermutation & perm2)  {
+    for (size_t i = 0; i < findex_leaves.length; i++) {
+	set_value(i, perm2.value[perm1.value[i]]);
+    }
+    finalize();
+}
+
+LeavesPermutation::LeavesPermutation (const LeavesPermutation & perm, 
+				      bool invert)  {
+    if(invert) {
+	for (size_t i = 0; i < findex_leaves.length; i++)
+	    set_value(perm.value[i], i);
+    } else {
+	for (size_t i = 0; i < findex_leaves.length; i++)
+	    set_value(i, perm.value[i]);
+    }
+
+    finalize();
+}
+
+void LeavesPermutation::set_value(int ind, int val) {
+	value[ind] = val;
+	inverse_value[val] = ind;
+
+	int var = findex_leaves.get_var_by_index(ind);
+	int to_var = findex_leaves.get_var_by_index(val);
+
+	if (!affected[var]) {
+	    factors_affected.push_back(var);
+	    affected[var] = true;
+	}
+	if (!affected[to_var]) {
+	    factors_affected.push_back(to_var);
+	    affected[to_var] = true;
+	}
+	// Keeping the orig. var for each var.
+	from_factors[to_var] = var;
+}
+
+CenterPermutation::CenterPermutation (const Permutation & per, bool invert) : 
+    Permutation(per, invert) {
     //Remove leaf vars from vars_affected
     vars_affected.erase(std::remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
@@ -131,9 +203,14 @@ CenterPermutation::CenterPermutation (const Permutation & per) :
     affected_vars_cycles.clear();
 
     finalize();
-
-    // print_cycle_notation();
 }
+
+CenterPermutation::CenterPermutation (const CenterPermutation & p1, 
+				      const CenterPermutation & p2) : 
+    Permutation(p1, p2) {
+}
+
+
 
 bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves) const {
     if(center_permutation){
@@ -148,6 +225,17 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
     }
     
     return (leaves_permutation && leaves.apply_symmetry_permutation(*leaves_permutation, true));    
+}
+
+
+
+void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
+						   CompliantPathGraph &leaves) const {
+    if(center_permutation)
+	center_permutation->permute(center);
+    
+    if (leaves_permutation)
+	leaves.apply_symmetry_permutation(*leaves_permutation, false);
 }
 
 

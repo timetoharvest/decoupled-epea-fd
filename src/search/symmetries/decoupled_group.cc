@@ -82,3 +82,34 @@ void DecoupledGroup::statistics() const {
 }
 
 
+Trace DecoupledGroup::get_trace(const State & center, 
+				const CompliantPathGraph & leaves)  const {
+    Trace res;
+
+    unique_ptr<CompliantPathGraph> leaves_copy = leaves.clone();
+
+    for (size_t i = 0; i < g_center_vars.size(); ++i) {
+	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
+    }
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (size_t i = 0; i < generators.size(); ++i) {
+	    if(generators[i]->replace_if_less(tmp_state, *leaves_copy)) {
+		changed = true;
+		res.push_back(i);
+	    }
+        }
+    }
+
+    return res;
+}
+
+DecoupledPermutation DecoupledGroup::compose_permutation(const Trace& trace) const {
+    unique_ptr<DecoupledPermutation> new_perm (new DecoupledPermutation());
+    for (size_t i : trace) {
+        new_perm.reset(new DecoupledPermutation(*new_perm, *(generators[i])));
+    }
+    return *new_perm;
+}

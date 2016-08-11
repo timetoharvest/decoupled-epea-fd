@@ -75,7 +75,8 @@ public:
     
     virtual void dump() const;
 
-    
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+   
     static void register_cpg_storage(PriceStorage *storage);
     
 };

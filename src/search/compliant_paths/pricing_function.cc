@@ -468,3 +468,7 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per, bool if_l
 		 //if_less is true and in that case we checked this in
 		 //per.produce_less(prices)
 }
+
+unique_ptr<CompliantPathGraph> Prices::clone() const {
+    return unique_ptr<CompliantPathGraph> (new Prices(this));
+}

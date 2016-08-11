@@ -190,15 +190,32 @@ bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>
 //#endif
 
 
-Permutation GraphCreator::create_permutation_from_state_to_state(const State& from_state, const State& to_state) {
+Permutation GraphCreator::create_permutation_from_state_to_state(const State& from_state, 
+								 const State& to_state) {
     Trace new_trace;
     Trace curr_trace;
-    get_trace(from_state, curr_trace);
-    get_trace(to_state, new_trace);
+    group->get_trace(from_state, curr_trace);
+    group->get_trace(to_state, new_trace);
 
-    Permutation p1(create_permutation_from_trace(new_trace), true);  //inverse
-    Permutation p2 = create_permutation_from_trace(curr_trace);
+    Permutation p1i = group->compose_permutation(new_trace);
+    Permutation p1(p1i, true);  //inverse
+    Permutation p2 = group->compose_permutation(curr_trace);
     return  Permutation(p2, p1);
+}
+
+
+DecoupledPermutation
+GraphCreator::create_permutation_from_state_to_state(const State &state, 
+						     const CompliantPathGraph &cpg,
+						     const State &succ_state, 
+						     const CompliantPathGraph &succ_cpg) const {
+
+    Trace curr_trace = decoupled_group->get_trace(state, cpg);
+    Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg);
+
+    DecoupledPermutation p1 (decoupled_group->compose_permutation(new_trace), true);
+    DecoupledPermutation p2 = decoupled_group->compose_permutation(curr_trace);
+    return  DecoupledPermutation(p2, p1);
 }
 
 

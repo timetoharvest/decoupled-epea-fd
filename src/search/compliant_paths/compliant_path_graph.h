@@ -90,8 +90,9 @@ public:
     virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation, bool if_less) = 0;  
     
     virtual void dump() const = 0;
-    
-    
+ 
+    virtual unique_ptr<CompliantPathGraph> clone() const = 0;
+       
     static void initialize();
     
     static bool is_leaf_goal_state(const LeafStateID &state);

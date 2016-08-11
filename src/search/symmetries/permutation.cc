@@ -36,7 +36,7 @@ void Permutation::_copy_value_from_permutation(const Permutation &perm) {
 
 void Permutation::_inverse_value_from_permutation(const Permutation &perm) {
     for (size_t i = 0; i < findex.length; i++)
-		set_value(perm.get_value(i), i);
+	set_value(perm.get_value(i), i);
 }
 
 Permutation &Permutation::operator=(const Permutation &other) {
@@ -258,37 +258,43 @@ cmp_t Permutation::replace_if_less(vector<int> & state)  const{
 	if (from_here == (int)(vars_affected.size()))
 	    return (greater ? cmp_t::GREATER : cmp_t::EQUAL); 
 
-	for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
-		if (affected_vars_cycles[i].size() == 1) {
-			int var = affected_vars_cycles[i][0];
-			int from_val = state[var];
-			pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
-			state[var] = to_pair.second;
-			continue;
-		}
-		// Remembering one value to be rewritten last
-		int last_var = affected_vars_cycles[i][affected_vars_cycles[i].size()-1];
-		int last_val = state[last_var];
-
-		for (int j=affected_vars_cycles[i].size()-1; j>0; j--) {
-			// writing into variable affected_vars_cycles[i][j]
-			int to_var = affected_vars_cycles[i][j];
-			int from_var = affected_vars_cycles[i][j-1];
-			int from_val = state[from_var];
-			pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
-			state[to_var] = to_pair.second;
-		}
-		// writing the last one
-		pair<int, int> to_pair = get_new_var_val_by_old_var_val(last_var, last_val);
-		state[affected_vars_cycles[i][0]] = to_pair.second;
-	}
-
+	permute(state);
 	// cout << "less: " << endl; 
 	// for (size_t v = 0; v < g_variable_domain.size(); ++v) {
 	//     cout << state[v];
 	// }
 	// cout << endl;
 	return cmp_t::LESS;
+}
+
+
+
+void Permutation::permute(vector<int> & state)  const{
+    if (identity()) return;
+    for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
+	if (affected_vars_cycles[i].size() == 1) {
+	    int var = affected_vars_cycles[i][0];
+	    int from_val = state[var];
+	    pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
+	    state[var] = to_pair.second;
+	    continue;
+	}
+	// Remembering one value to be rewritten last
+	int last_var = affected_vars_cycles[i][affected_vars_cycles[i].size()-1];
+	int last_val = state[last_var];
+
+	for (int j=affected_vars_cycles[i].size()-1; j>0; j--) {
+	    // writing into variable affected_vars_cycles[i][j]
+	    int to_var = affected_vars_cycles[i][j];
+	    int from_var = affected_vars_cycles[i][j-1];
+	    int from_val = state[from_var];
+	    pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+	    state[to_var] = to_pair.second;
+	}
+	// writing the last one
+	pair<int, int> to_pair = get_new_var_val_by_old_var_val(last_var, last_val);
+	state[affected_vars_cycles[i][0]] = to_pair.second;
+    }
 }
 
 

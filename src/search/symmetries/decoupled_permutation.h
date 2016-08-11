@@ -12,6 +12,10 @@ public:
     static FactIndex findex_leaves;
 
     LeavesPermutation (const Permutation & per);
+    LeavesPermutation (const LeavesPermutation & per, 
+		       const LeavesPermutation & per2);
+    LeavesPermutation (const LeavesPermutation & per, bool invert);
+
     ~LeavesPermutation() = default;
 
 
@@ -38,22 +42,41 @@ protected:
 
     // Affected factors by cycles
     std::vector<std::vector<int> > affected_factors_cycles;
+
+    void finalize();
+    void set_value(int ind, int val);
 };
 
 
 class CenterPermutation : public Permutation {
 public:
-    CenterPermutation (const Permutation & per);
+    //CenterPermutation (const Permutation & per);
+
+    CenterPermutation (const CenterPermutation & p1, 
+		       const CenterPermutation & p2);
+
+    CenterPermutation (const Permutation & per, bool invert = false);
+    virtual ~CenterPermutation() = default;
+
 };
 
 class DecoupledPermutation {
 
 public:
-
+    DecoupledPermutation() {}
     DecoupledPermutation(const Permutation & per);
+    DecoupledPermutation(const DecoupledPermutation & per);
+    DecoupledPermutation(const DecoupledPermutation & per, bool invert);
+    DecoupledPermutation(const DecoupledPermutation& perm1, const DecoupledPermutation& perm2);
+
     ~DecoupledPermutation() = default;
 
     bool replace_if_less(std::vector<int> & center, CompliantPathGraph & leaves) const;
+
+    void permute_decoupled_state(std::vector<int> & center, 
+				 CompliantPathGraph & leaves) const;
+
+    void invert();
 
 private:
     std::unique_ptr<CenterPermutation> center_permutation;
