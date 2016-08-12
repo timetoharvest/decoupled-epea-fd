@@ -210,7 +210,7 @@ void SearchSpace::trace_path(const State &goal_state,
             State new_state = g_initial_state();
             if (op != 0) {
                 parent_state = g_state_registry->lookup_state(info.parent_state_id);
-                new_state = g_state_registry->get_successor_state(parent_state, *op);
+                new_state = g_state_registry->get_successor_state(parent_state, *op, false);
             }
             Permutation p;
             if (new_state.get_id() != current_state.get_id()){
@@ -254,7 +254,7 @@ void SearchSpace::trace_path(const State &goal_state,
 
             for (size_t o = 0; o < applicable_ops.size(); o++) {
                 const Operator *op = applicable_ops[o];
-                State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op);
+                State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op, false);
                 if (succ_state.get_id() == states[i-1]) {
                     found = true;
                     if (op->get_cost() < min_cost) {

@@ -232,7 +232,7 @@ State StateRegistry::get_state_permutation(const State &state, Permutation &perm
 //TODO it would be nice to move the actual state creation (and operator application)
 //     out of the StateRegistry. This could for example be done by global functions
 //     operating on state buffers (PackedStateBin *).
-State StateRegistry::get_successor_state(const State &predecessor, const Operator &op) {
+State StateRegistry::get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical) {
     g_inc_g_by = 0;
     
     assert(op.get_affected_factor() == -1);
@@ -292,7 +292,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         
         CompliantPathGraph &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
         
-        if (g_symmetry_graph){
+        if (g_symmetry_graph && compute_canonical){
             const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, new_cpg);
 
             bool changed = false;
@@ -365,7 +365,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         }
 #endif
         return s;
-    } else if (g_symmetry_graph){
+    } else if (g_symmetry_graph && compute_canonical){
         State s = lookup_state(id);
 
         const vector<int> &new_state = g_symmetry_graph->get_canonical_state(s);
@@ -411,7 +411,7 @@ State StateRegistry::get_center_state(const vector<int> &facts) {
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_state(const State& predecessor, int dup_counter) {
+State StateRegistry::get_center_state(const State &predecessor, int dup_counter) {
     assert(dup_counter >= 0);
     assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
     

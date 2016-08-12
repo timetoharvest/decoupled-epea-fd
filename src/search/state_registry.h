@@ -226,7 +226,7 @@ public:
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
     */
-    State get_successor_state(const State &predecessor, const Operator &op);
+    State get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical = true);
     
     State get_center_state(const std::vector<int> &facts);
     
