@@ -38,9 +38,12 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
     for(const Permutation &per : group.generators){
 	// if(per.affects_center()){
 	//     per.print_cycle_notation();
-	    generators.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(per)));
-	// }
-    }    
+	DecoupledPermutation * gen = new DecoupledPermutation(per);
+	generators.push_back(unique_ptr<DecoupledPermutation>(gen));
+	if(gen->affects_center()) generators_center.push_back(gen);
+	else generators_only_leaves.push_back(gen);
+    }
+
     tmp_state.resize(g_variable_domain.size());
 }
 
@@ -58,18 +61,33 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
     // cout << endl;
     // leaves.dump();
 
+    // Center state optimization
     bool changed = true;
+    vector<DecoupledPermutation *> generators_stable_center;
     while (changed) {
         changed = false;
-        for (const auto & gen : generators) {
-	    changed |= gen->replace_if_less(tmp_state, leaves, lex_ordering);
-	    
-		// for (size_t i = 0; i < g_center_vars.size(); ++i) 
-		//     cout << tmp_state[g_center_vars[i]] << " ";
-		// cout << "     "; 
-		// lex_ordering.print_ordering(leaves);
-	
-        }	
+	generators_stable_center.clear();
+        for (auto gen : generators_center) {
+	    cmp_t cmp =gen->replace_if_less_center(tmp_state, leaves); 
+	    if (cmp == cmp_t::LESS) changed = true;
+	    else if (cmp == cmp_t::EQUAL && gen->affects_leaves()) 
+		generators_stable_center.push_back(gen);
+        }
+    }
+
+    // Leaves optimization
+    if(lex_ordering.optimize_leaves()){
+	// Leaves optimization
+	bool changed = true;
+	while (changed) {
+	    changed = false;
+	    for (const auto & gen : generators_only_leaves) {
+		changed |= gen->replace_if_less_leaves(leaves, lex_ordering);
+	    }
+	    for (const auto & gen : generators_stable_center) {
+		changed |= gen->replace_if_less_leaves(leaves, lex_ordering);
+	    }
+	}
     }
 
     // cout << "done" << endl;

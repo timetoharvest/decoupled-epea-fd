@@ -30,8 +30,10 @@ public:
 	return from_factors[f];
     }
 
-    std::pair<int, int> get_new_factor_state_by_old_factor_state(const int factor, const int state) const;
-    std::pair<int, int> get_old_factor_state_by_new_factor_state(const int factor, const int state) const ;
+    std::pair<int, int> get_new_factor_state_by_old_factor_state(const int factor, 
+								 const int state) const;
+    std::pair<int, int> get_old_factor_state_by_new_factor_state(const int factor, 
+								 const int state) const ;
 
 
     cmp_t cmp_num_states (const CompliantPathGraph & cpg) const;
@@ -77,9 +79,25 @@ public:
 
     ~DecoupledPermutation() = default;
 
+    bool affects_center () const {
+	return center_permutation.get() != nullptr;
+    }
+
+    bool affects_leaves () const {
+	return leaves_permutation.get() != nullptr;
+    }
+
     bool replace_if_less(std::vector<int> & center, 
 			 CompliantPathGraph & leaves, 
 			 const LexicographicOrdering & lex_ordering) const;
+
+    cmp_t replace_if_less_center(std::vector<int> & center, 
+				CompliantPathGraph & leaves) const;
+    
+    bool replace_if_less_leaves(CompliantPathGraph & leaves, 
+				const LexicographicOrdering & lex_ordering) const;
+
+    bool stable_center(std::vector<int> & center) const;
 
     void permute_decoupled_state(std::vector<int> & center, 
 				 CompliantPathGraph & leaves) const;

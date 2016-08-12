@@ -29,6 +29,9 @@ public:
     void statistics () const;
 private:
     std::vector<std::unique_ptr<DecoupledPermutation>> generators;
+
+    std::vector<DecoupledPermutation *> generators_center;
+    std::vector<DecoupledPermutation *> generators_only_leaves;
      
     mutable std::vector<int> tmp_state;
 };

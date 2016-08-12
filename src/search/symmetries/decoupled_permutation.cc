@@ -49,7 +49,6 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & p1, cons
     
 }
 
-
 LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 
     affected.assign (g_factors.size(), false);
@@ -230,6 +229,23 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
     return (leaves_permutation && 
 	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
 	    leaves.apply_symmetry_permutation(*leaves_permutation));    
+}
+
+
+cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
+						  CompliantPathGraph &leaves) const {
+    assert (center_permutation); 
+    cmp_t cmp = center_permutation->replace_if_less(center);
+    if (cmp == cmp_t::LESS && leaves_permutation) 
+	leaves.apply_symmetry_permutation(*leaves_permutation);
+    return cmp;
+}
+
+bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves, 
+						  const LexicographicOrdering & lex_ordering) const {   
+    return (leaves_permutation && 
+	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
+	    leaves.apply_symmetry_permutation(*leaves_permutation));
 }
 
 
