@@ -281,23 +281,23 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph & cpg) const {
 	int from_factor = from_factors[to_factor];
 	assert (g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
 
-	for  (size_t from_id = 0; from_id < g_state_registry->size(from_factor); ++from_id){
-	    pair<int, int> to_pair = get_new_factor_state_by_old_factor_state(from_factor,
-									      from_id);
-	    assert(to_pair.first == to_factor);
-	    int to_id = to_pair.second;
-
-	    bool has_from = cpg.has_leaf_state (from_id, from_factor); 
-	    bool has_to = cpg.has_leaf_state (from_id, from_factor); 
-
-	    if(!has_from && has_to) return cmp_t::LESS;
-	    if(has_from && !has_to) return cmp_t::GREATER;
+	for  (size_t to_id = 0; to_id < g_state_registry->size(from_factor); ++to_id){
+	    pair<int, int> from_pair = get_old_factor_state_by_new_factor_state(to_factor, to_id);
+	    assert(from_pair.first == from_factor);
+	    int from_id = from_pair.second;
 	    
-	    int cost_from = cpg.get_cost_of_state(from_id, from_factor);
-	    int cost_to = cpg.get_cost_of_state(to_id, to_factor);
+	    bool has_from = cpg.has_leaf_state (from_id, from_factor); 
+	    bool has_to = cpg.has_leaf_state (to_id, to_factor); 
 
-	    if(cost_from < cost_to) return cmp_t::GREATER;
-	    if(cost_from > cost_to) return cmp_t::LESS;
+	    if(has_from && !has_to) return cmp_t::LESS;
+	    if(!has_from && has_to) return cmp_t::GREATER;
+	    if(has_from && has_to) {	    
+		int cost_from = cpg.get_cost_of_state(from_id, from_factor);
+		int cost_to = cpg.get_cost_of_state(to_id, to_factor);
+
+		if(cost_from < cost_to) return cmp_t::LESS;
+		if(cost_from > cost_to) return cmp_t::GREATER;
+	    }
 	}
     }
     return cmp_t::EQUAL;

@@ -18,6 +18,8 @@ public:
     bool produces_less(const LeavesPermutation & per, 
 		       const CompliantPathGraph & p) const;
 
+    void print_ordering(const CompliantPathGraph & p) const;
+
     static void add_options_to_parser(OptionParser &parser);
 };
 

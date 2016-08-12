@@ -52,6 +52,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
     for (size_t i = 0; i < g_center_vars.size(); ++i) {
 	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
     }
+
     // cout << endl << endl<< "start" << endl;
     // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][center[g_center_vars[i]]] << "       ";
     // cout << endl;
@@ -62,7 +63,13 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
         changed = false;
         for (const auto & gen : generators) {
 	    changed |= gen->replace_if_less(tmp_state, leaves, lex_ordering);
-        }
+	    
+		// for (size_t i = 0; i < g_center_vars.size(); ++i) 
+		//     cout << tmp_state[g_center_vars[i]] << " ";
+		// cout << "     "; 
+		// lex_ordering.print_ordering(leaves);
+	
+        }	
     }
 
     // cout << "done" << endl;

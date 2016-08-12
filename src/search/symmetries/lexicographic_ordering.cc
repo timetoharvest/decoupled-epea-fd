@@ -2,6 +2,7 @@
 
 #include "../compliant_paths/compliant_path_graph.h"
 #include "decoupled_permutation.h"
+#include "../state_registry.h"
 
 #include "../option_parser.h"
 
@@ -34,6 +35,32 @@ bool LexicographicOrdering::produces_less(const LeavesPermutation & per,
 
     return false;
 } 
+
+
+void LexicographicOrdering::print_ordering(const CompliantPathGraph & cpg) const { 
+    if(apply_goal_cost) {
+	for(size_t factor = 0; factor < g_factors.size(); ++ factor) 
+	    cout << cpg.get_goal_cost(factor) << " "; 
+    }
+
+    if(apply_num_states) {
+	for(size_t factor = 0; factor < g_factors.size(); ++ factor) 
+	    cout << cpg.get_number_states(factor) << " "; 
+    }
+
+
+    if(apply_prices) {
+	for(size_t factor = 0; factor < g_factors.size(); ++ factor) 
+	    for  (size_t from_id = 0; from_id < g_state_registry->size(factor); ++from_id)
+		if (cpg.has_leaf_state (from_id, factor)) 
+		    cout << cpg.get_cost_of_state (from_id, factor) << " "; 
+		else 
+		    cout << "inf ";
+    }
+    cout << endl;
+
+} 
+
 
 void LexicographicOrdering::add_options_to_parser(OptionParser &parser) {
     parser.add_option<bool>("lex_goal_cost",
