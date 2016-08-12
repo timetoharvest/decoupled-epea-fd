@@ -64,11 +64,11 @@ Permutation::Permutation(){
 
 
 Permutation::Permutation(const unsigned int* full_permutation){
-	_allocate();
-	for (size_t i = 0; i < findex.length; i++){
-    	set_value(i,full_permutation[i]);
-	}
-	finalize();
+    _allocate();
+    for (size_t i = 0; i < findex.length; i++){
+    set_value(i,full_permutation[i]);
+    }
+    finalize();
 }
 
 Permutation::Permutation(const Permutation& perm, bool invert){
@@ -82,7 +82,8 @@ Permutation::Permutation(const Permutation& perm, bool invert){
 }
 
 // New constructor to use instead of * operator
-Permutation::Permutation(const Permutation& perm1, const Permutation& perm2){
+Permutation::Permutation(const Permutation &perm1, const Permutation &perm2){
+    _allocate();
     for (size_t i = 0; i < findex.length; i++) {
 	set_value(i, perm2.get_value(perm1.get_value(i)));
     }
@@ -298,16 +299,20 @@ void Permutation::permute(vector<int> & state)  const{
 }
 
 
-void Permutation::permute_state(const vector<int> & from_state, vector<int> & to_state) {
-	// Does not assume anything about to_state
+void Permutation::permute_state(const State &from_state, vector<int> &to_state) const {
+    // Does not assume anything about to_state
+    for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
+        int from_val = from_state[from_var];
+        pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
 
-	for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
-		int from_val = from_state[from_var];
-		pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+        // Copying the values to the new state
+        to_state[to_pair.first] = to_pair.second;
+    }
+}
 
-		// Copying the values to the new state
-		to_state[to_pair.first] = to_pair.second;
-	}
+void Permutation::permute_decoupled_state(const State &, CompliantPathGraph& , vector<int> &) const {
+    // TODO implement this
+    exit(EXIT_CRITICAL_ERROR);
 }
 
 bool Permutation::affects_center() const {

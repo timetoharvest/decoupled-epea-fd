@@ -41,7 +41,8 @@ public:
 
     bool identity() const;
     // Michael: version for the trace_back
-    void permute_state(const std::vector<int> & from_state, std::vector<int> & to_state);
+    void permute_state(const State &from_state, std::vector<int> &to_state) const;
+    void permute_decoupled_state(const State &from_state, CompliantPathGraph &cpg, std::vector<int> &to_state) const;
     void print_cycle_notation() const;
     void set_value(int ind, int val);
     int get_value(int ind) const { return value[ind]; }

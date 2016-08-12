@@ -7,6 +7,8 @@
 #include "compliant_paths/cpg_storage.h"
 #include "search_node_info.h"
 #include "state.h"
+#include "symmetries/graph_creator.h"
+#include "symmetries/permutation.h"
 
 #include <cassert>
 #include <limits>
@@ -160,6 +162,27 @@ SearchSpace::SearchSpace(OperatorCost cost_type_)
     }
 }
 
+bool SearchSpace::is_equal(const State& s1, const CompliantPathGraph& cpg1, const State& s2, const CompliantPathGraph& cpg2) const {
+    for (size_t i = 0; i < g_center_vars.size(); ++i){
+        if (s1[i] !=  s2[i]){
+            return false;
+        }
+    }
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            bool has_state = cpg1.has_leaf_state(id, factor);
+            if (has_state ^ cpg2.has_leaf_state(id, factor)){
+                return false;
+            }
+            if (has_state && cpg1.get_cost_of_state(id, factor) != cpg2.get_cost_of_state(id, factor)){
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
 SearchNode SearchSpace::get_node(const State &state) {
     return SearchNode(state.get_id(), search_node_infos[state], cost_type);
 }
@@ -167,18 +190,10 @@ SearchNode SearchSpace::get_node(const State &state) {
 void SearchSpace::trace_path(const State &goal_state,
                              vector<const Operator *> &path) const {
                                  
-    // TODO in decoupled search, before actually reconstructing the plan,
-    // check if the new plan is actually cheaper! sum(cost(a_center)) + sum_leaves(goal_cost)
-    // at this point, we already know if the globalcost of the found
-    // plan will be lower than the currently best solution. if this is not
-    // the case, just skip the reconstruction of the path and return some
-    // path whose cost is higher than the current optimum
-    // keep the Reachabiliy Function in mind that does *not* store the cost
-    // of cheapest compliant paths!
-
     State current_state = goal_state;
     
-    vector<StateID> states;
+    vector<Permutation> permutations; // needed for orbit search
+    vector<StateID> states; // needed for decoupled search
     
     assert(path.empty());
     
@@ -186,8 +201,22 @@ void SearchSpace::trace_path(const State &goal_state,
         const SearchNodeInfo &info = search_node_infos[current_state];
         const Operator *op = info.creating_operator;
         
-        if (g_use_decoupled_search){
+        if (g_use_decoupled_search || g_symmetry_graph){
             states.push_back(current_state.get_id());
+        }
+        
+        if (g_symmetry_graph && !g_use_decoupled_search){
+            State parent_state = g_initial_state();
+            State new_state = g_initial_state();
+            if (op != 0) {
+                parent_state = g_state_registry->lookup_state(info.parent_state_id);
+                new_state = g_state_registry->get_successor_state(parent_state, *op);
+            }
+            Permutation p;
+            if (new_state.get_id() != current_state.get_id()){
+                p = g_symmetry_graph->create_permutation_from_state_to_state(current_state, new_state);
+            }
+            permutations.push_back(p);
         }
 
         if (op == 0) {  // reached initial state => done
@@ -195,11 +224,57 @@ void SearchSpace::trace_path(const State &goal_state,
             break;
         }
 
-        path.push_back(op);
+        if (!g_symmetry_graph || g_use_decoupled_search){
+            path.push_back(op);
+        }
         current_state = g_state_registry->lookup_state(info.parent_state_id);
     }
     
     reverse(path.begin(), path.end());
+    
+    if (g_symmetry_graph && !g_use_decoupled_search){
+        vector<Permutation> reverse_permutations;
+        Permutation temp_p, p;
+        while (permutations.begin() != permutations.end()) {
+            p = permutations.back();
+            temp_p = Permutation(p, temp_p);
+            reverse_permutations.push_back(temp_p);
+            permutations.pop_back();
+        }
+        for(size_t i = 0; i < states.size(); ++i){
+            Permutation &permutation = reverse_permutations[states.size() - i-1];
+            states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
+        }
+        for (size_t i = states.size() - 1; i > 0; i--) {
+            vector<const Operator *> applicable_ops;
+            g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), applicable_ops);
+            bool found = false;
+            int min_cost_op=0;
+            int min_cost=numeric_limits<int>::max();
+
+            for (size_t o = 0; o < applicable_ops.size(); o++) {
+                const Operator *op = applicable_ops[o];
+                State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op);
+                if (succ_state.get_id() == states[i-1]) {
+                    found = true;
+                    if (op->get_cost() < min_cost) {
+                        min_cost = op->get_cost();
+                        min_cost_op = o;
+                    }
+                }
+            }
+            if (!found) {
+                cout << "No operator is found!!!" << endl
+                    << "Cannot reach the state " << endl;
+                g_state_registry->lookup_state(states[i-1]).dump_pddl();
+                cout << endl << "From the state" << endl;
+                g_state_registry->lookup_state(states[i]).dump_pddl();
+                exit_with(EXIT_CRITICAL_ERROR);
+            }
+            path.push_back(applicable_ops[min_cost_op]);
+        }
+        return;
+    }
     
     if (g_use_decoupled_search){
 #ifdef DEBUG_PLAN_EXTRACTION
@@ -208,23 +283,91 @@ void SearchSpace::trace_path(const State &goal_state,
         
         reverse(states.begin(), states.end());
         
-        // reconstruct leaf paths
         vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
         
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
-        }
-        price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
-        
-        for (size_t i = 1; i < states.size(); ++i){
-            PathPriceTag &tag = price_tags[i];
+        if (g_symmetry_graph){
+            vector<int> init_center(g_center_vars.size(), -1);
+            for (size_t i = 0; i < g_center_vars.size(); ++i){
+                init_center[i] = g_initial_state_data[g_center_vars[i]];
+            }            
+            State permuted_state = g_state_registry->get_initial_state();
+            State real_state = g_state_registry->get_center_state(init_center);
             
-            if (g_factoring->get_profile() != FORK){
-                tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
-            } else {
-                tag = PathPriceTag(&price_tags[i - 1]);
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
             }
-            tag.update_price_tags(g_state_registry->lookup_state(states[i]));
+            
+            Permutation overall_permutation;
+            for (size_t i = 0; i < states.size(); ++i){
+                if (i > 0){
+                    permuted_state = g_state_registry->lookup_state(states[i]);
+                    
+                    State predecessor = g_state_registry->lookup_state(states[i-1]);
+                    
+                    vector<const Operator*> applicable_ops;
+                    g_successor_generator->generate_applicable_ops(predecessor, applicable_ops, price_tags[i-1]);
+                    bool found = false;
+                    int min_cost_op = 0;
+                    int min_cost = numeric_limits<int>::max();
+
+                    for (size_t o = 0; o < applicable_ops.size(); o++) {
+                        const Operator *op = applicable_ops[o];
+                        State succ_state = g_state_registry->get_center_successor(predecessor, *op);
+                        PathPriceTag succ_cpg(&price_tags[i-1]);
+                        succ_cpg.update_price_tags(succ_state);
+                        if (is_equal(succ_state, succ_cpg, permuted_state, *CPGStorage::storage->get_cpg(permuted_state))) {
+                            found = true;
+                            if (op->get_cost() < min_cost) {
+                                min_cost = op->get_cost();
+                                min_cost_op = o;
+                            }
+                        }
+                    }
+                    if (!found) {
+                        cout << "No operator is found!!!" << endl
+                            << "Cannot reach the state " << endl;
+                        g_state_registry->lookup_state(states[i]).dump_pddl();
+                        cout << endl << "From the state" << endl;
+                        predecessor.dump_pddl();
+                        exit_with(EXIT_CRITICAL_ERROR);
+                    }
+                    path.push_back(applicable_ops[min_cost_op]);
+                    
+                    real_state = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i-1]), *path[i-1]);
+                }
+                
+                price_tags[i].update_price_tags(real_state);
+                
+                PathPriceTag tmp(&price_tags[i]);
+                g_symmetry_graph->get_canonical_decoupled_state(permuted_state, tmp);
+                
+                Permutation p;
+                if (!is_equal(permuted_state, tmp, real_state, price_tags[i])){
+                    p = g_symmetry_graph->create_permutation_from_state_to_state(permuted_state, real_state);
+                    overall_permutation = Permutation(overall_permutation, p);
+                }
+                
+                states[i] = g_state_registry->get_state_permutation(permuted_state, overall_permutation).get_id();// TODO need some decoupled function for that
+            }
+        } else {
+        
+            // reconstruct leaf paths
+            
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
+            }
+            price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
+            
+            for (size_t i = 1; i < states.size(); ++i){
+                PathPriceTag &tag = price_tags[i];
+                
+                if (g_factoring->get_profile() != FORK){
+                    tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
+                } else {
+                    tag = PathPriceTag(&price_tags[i - 1]);
+                }
+                tag.update_price_tags(g_state_registry->lookup_state(states[i]));
+            }
         }
 
 #ifdef DEBUG_PLAN_EXTRACTION

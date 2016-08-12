@@ -99,6 +99,8 @@
     to store for each state and each landmark whether it was reached in this state.
 */
 
+class CompliantPathGraph;
+class Permutation;
 class PerStateInformationBase;
 
 class StateRegistry {
@@ -214,6 +216,10 @@ public:
       done before. The result is cached internally so subsequent calls are cheap.
     */
     const State &get_initial_state();
+    
+    State get_state_permutation(const State &state, Permutation &permutation);
+    
+    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, Permutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and
@@ -221,11 +227,16 @@ public:
       as it includes duplicate checking.
     */
     State get_successor_state(const State &predecessor, const Operator &op);
+    
+    State get_center_state(const std::vector<int> &facts);
+    
     /*
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
     */
-    State get_center_state(const State &predecessor, int dup_counter);
+    State get_center_state(const State &center, int dup_counter);
+    
+    State get_center_successor(const State &center, const Operator &op);
     
     LeafState get_successor_leaf_state(const LeafState &predecessor, const Operator &op);
     

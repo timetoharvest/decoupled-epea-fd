@@ -9,6 +9,7 @@
 #include <vector>
 
 
+class CompliantPathGraph;
 class Operator;
 
 class SearchNode {    
@@ -57,6 +58,7 @@ class SearchSpace {
     PerStateInformation<SearchNodeInfo> search_node_infos;
 
     OperatorCost cost_type;
+    bool is_equal(const State &s1, const CompliantPathGraph &cpg1, const State &s2, const CompliantPathGraph &cpg2) const;
 public:
     SearchSpace(OperatorCost cost_type_);
     SearchNode get_node(const State &state);
