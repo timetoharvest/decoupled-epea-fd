@@ -32,21 +32,31 @@ public:
 
     Permutation();
     Permutation(const unsigned int*);
-    Permutation(const Permutation&, bool invert=false);
-    Permutation(const Permutation& perm1, const Permutation& perm2);
+    Permutation(const Permutation &perm, bool invert = false);
+    Permutation(const Permutation &perm1, const Permutation& perm2);
     virtual ~Permutation() = default;
 
-    Permutation& operator =(const Permutation&);
-    bool operator ==(const Permutation&) const;
+    Permutation& operator=(const Permutation &perm);
+    
+    bool operator==(const Permutation&) const;
 
     bool identity() const;
+    
     // Michael: version for the trace_back
     void permute_state(const State &from_state, std::vector<int> &to_state) const;
-    void permute_decoupled_state(const State &from_state, CompliantPathGraph &cpg, std::vector<int> &to_state) const;
+    
     void print_cycle_notation() const;
+    
     void set_value(int ind, int val);
-    int get_value(int ind) const { return value[ind]; }
-    int get_inverse_value(int ind) const { return inverse_value[ind]; }
+    
+    int get_value(int ind) const { 
+        return value[ind];
+    }
+    
+    int get_inverse_value(int ind) const {
+        return inverse_value[ind];
+    }
+    
     void dump() const;
 
     std::pair<int, int> get_new_var_val_by_old_var_val(const int var, const int val) const;
@@ -76,7 +86,7 @@ protected:
     void finalize();
     void _allocate();
     void _deallocate();
-    void _copy_value_from_permutation(const Permutation&);
+    void _copy_value_from_permutation(const Permutation &perm);
     void _inverse_value_from_permutation(const Permutation &perm);
 
     friend class LeavesPermutation;

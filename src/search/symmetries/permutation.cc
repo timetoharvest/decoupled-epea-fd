@@ -62,7 +62,6 @@ Permutation::Permutation(){
     finalize();
 }
 
-
 Permutation::Permutation(const unsigned int* full_permutation){
     _allocate();
     for (size_t i = 0; i < findex.length; i++){
@@ -92,7 +91,7 @@ Permutation::Permutation(const Permutation &perm1, const Permutation &perm2){
 
 void Permutation::finalize(){
     // Sorting the vector of affected variables
-    ::sort(vars_affected.begin(), vars_affected.end());
+    sort(vars_affected.begin(), vars_affected.end());
     // Going over the vector from_vars of the mappings of the variables and finding cycles
     vector<bool> marked;
     marked.assign(g_variable_domain.size(), false);
@@ -120,93 +119,90 @@ bool Permutation::identity() const{
 	return vars_affected.size() == 0;
 }
 
-bool Permutation::operator ==(const Permutation &other) const{
-
-	for(size_t i = 0; i < findex.length; i++) {
+bool Permutation::operator ==(const Permutation &other) const {
+    for(size_t i = 0; i < findex.length; i++) {
         if (get_value(i) != other.get_value(i)) return false;
     }
 
-	return true;
+    return true;
 }
 
 
 void Permutation::print_cycle_notation() const {
-	vector<int> done;
-	for (size_t i = g_variable_domain.size(); i < findex.length; i++){
-		if (find(done.begin(), done.end(), i) == done.end()){
-	        int current = i;
-	        if(get_value(i) == (int)i) continue; //don't print cycles of size 1
+    vector<int> done;
+    for (size_t i = g_variable_domain.size(); i < findex.length; i++){
+        if (find(done.begin(), done.end(), i) == done.end()){
+            int current = i;
+            if(get_value(i) == (int)i) continue; //don't print cycles of size 1
 
-	        pair<int, int> varval = findex.get_var_val_by_index(i);
-	        cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
+            pair<int, int> varval = findex.get_var_val_by_index(i);
+            cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
 
-	        while(get_value(current) != (int)i){
-	            done.push_back(current);
-	            current = get_value(current);
+            while(get_value(current) != (int)i){
+                done.push_back(current);
+                current = get_value(current);
 
-		    pair<int, int> currvarval = findex.get_var_val_by_index(current);
-	            cout<< g_fact_names[currvarval.first][(int) currvarval.second] <<" ";
-	        }
-	        done.push_back(current);
-	        cout<<") ";
-		}
-	}
-	cout << endl << "Variables:  ";
-	for(size_t i = 0; i < vars_affected.size(); i++) cout << vars_affected[i] << "  ";
-	cout << endl << "Variables permuted:  ";
+                pair<int, int> currvarval = findex.get_var_val_by_index(current);
+                cout<< g_fact_names[currvarval.first][(int) currvarval.second] <<" ";
+            }
+            done.push_back(current);
+            cout<<") ";
+        }
+    }
+    cout << endl << "Variables:  ";
+    for(size_t i = 0; i < vars_affected.size(); i++) cout << vars_affected[i] << "  ";
+    cout << endl << "Variables permuted:  ";
 
-	for(size_t i = 0; i < vars_affected.size(); i++) cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
-	cout << endl;
+    for(size_t i = 0; i < vars_affected.size(); i++) cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
+    cout << endl;
 
-	cout << "Affected variables by cycles: " << endl;
-	for (size_t i=0; i < affected_vars_cycles.size(); i++) {
-		cout << "( " ;
-		for (size_t j=0; j < affected_vars_cycles[i].size(); j++) {
-			cout << affected_vars_cycles[i][j] << " ";
-		}
-		cout << ")  ";
-	}
-	cout << endl;
+    cout << "Affected variables by cycles: " << endl;
+    for (size_t i=0; i < affected_vars_cycles.size(); i++) {
+        cout << "( " ;
+        for (size_t j=0; j < affected_vars_cycles[i].size(); j++) {
+            cout << affected_vars_cycles[i][j] << " ";
+        }
+        cout << ")  ";
+    }
+    cout << endl;
 }
 
 void Permutation::dump() const {
-	for(size_t i = 0; i < findex.length; i++){
-	    if (get_value(i) != (int)i)
-			cout << setw(4) << i;
-	}
-	cout << endl;
-	for(size_t i = 0; i < findex.length; i++){
-	    if (get_value(i) != (int)i)
-			cout << setw(4) << get_value(i);
-	}
-	cout << endl;
+    for(size_t i = 0; i < findex.length; i++){
+        if (get_value(i) != (int)i)
+            cout << setw(4) << i;
+    }
+    cout << endl;
+    for(size_t i = 0; i < findex.length; i++){
+        if (get_value(i) != (int)i)
+            cout << setw(4) << get_value(i);
+    }
+    cout << endl;
 }
 
 void Permutation::set_value(int ind, int val) {
-	value[ind] = val;
-	inverse_value[val] = ind;
-	set_affected(ind, val);
+    value[ind] = val;
+    inverse_value[val] = ind;
+    set_affected(ind, val);
 }
 
 void Permutation::set_affected(int ind, int val) {
-
     if (ind < (int)(g_variable_domain.size()) || ind == val)
-		return;
+        return;
 
+    int var = findex.get_var_by_index(ind);
+    int to_var = findex.get_var_by_index(val);
 
-	int var = findex.get_var_by_index(ind);
-	int to_var = findex.get_var_by_index(val);
-
-	if (!affected[var]) {
-		vars_affected.push_back(var);
-		affected[var] = true;
-	}
-	if (!affected[to_var]) {
-		vars_affected.push_back(to_var);
-		affected[to_var] = true;
-	}
-	// Keeping the orig. var for each var.
-	from_vars[to_var] = var;
+    if (!affected[var]) {
+        vars_affected.push_back(var);
+        affected[var] = true;
+    }
+    if (!affected[to_var]) {
+        vars_affected.push_back(to_var);
+        affected[to_var] = true;
+    }
+    // Keeping the orig. var for each var.
+    from_vars[to_var] = var;
 }
 
 
@@ -227,45 +223,45 @@ pair<int, int> Permutation::get_old_var_val_by_new_var_val(const int var, const 
 // If the original state is bigger than the resulted one, it is rewritten with the latter and true is returned.
 ////////////////////  New version - no extra buffer is needed, faster copy ///////////////
 cmp_t Permutation::replace_if_less(vector<int> & state)  const{
-	if (identity())
-	    return cmp_t::EQUAL;
+    if (identity())
+        return cmp_t::EQUAL;
 
-	int from_here = vars_affected.size(); 
-	bool greater = false;
-        // Will be set to value below vars_affected.size() if there is a need to overwrite the state,
-	// starting from that index in the vars_affected vector.
+    int from_here = vars_affected.size(); 
+    bool greater = false;
+    // Will be set to value below vars_affected.size() if there is a need to overwrite the state,
+    // starting from that index in the vars_affected vector.
 
-	// Going over the affected variables, comparing the resulted values with the state values.
-	for(int i = vars_affected.size()-1; i>=0; i--) {
-		int to_var =  vars_affected[i];
-		int from_var = from_vars[to_var];
+    // Going over the affected variables, comparing the resulted values with the state values.
+    for(int i = vars_affected.size()-1; i>=0; i--) {
+        int to_var =  vars_affected[i];
+        int from_var = from_vars[to_var];
 
-		pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
-		assert( to_pair.first == to_var);
-		short to_val = to_pair.second;
+        pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
+        assert( to_pair.first == to_var);
+        short to_val = to_pair.second;
 
-		// Check if the values are the same, then continue to the next aff. var.
-		if (to_val == state[to_var])
-			continue;
+        // Check if the values are the same, then continue to the next aff. var.
+        if (to_val == state[to_var])
+            continue;
 
-		if (to_val < state[to_var]){
-		    from_here = i;
-		} else {
-		    greater = true;
-		}
-		break;
-	}
+        if (to_val < state[to_var]){
+            from_here = i;
+        } else {
+            greater = true;
+        }
+        break;
+    }
 
-	if (from_here == (int)(vars_affected.size()))
-	    return (greater ? cmp_t::GREATER : cmp_t::EQUAL); 
+    if (from_here == (int)(vars_affected.size()))
+        return (greater ? cmp_t::GREATER : cmp_t::EQUAL); 
 
-	permute(state);
-	// cout << "less: " << endl; 
-	// for (size_t v = 0; v < g_variable_domain.size(); ++v) {
-	//     cout << state[v];
-	// }
-	// cout << endl;
-	return cmp_t::LESS;
+    permute(state);
+    // cout << "less: " << endl; 
+    // for (size_t v = 0; v < g_variable_domain.size(); ++v) {
+    //     cout << state[v];
+    // }
+    // cout << endl;
+    return cmp_t::LESS;
 }
 
 
@@ -298,7 +294,6 @@ void Permutation::permute(vector<int> & state)  const{
     }
 }
 
-
 void Permutation::permute_state(const State &from_state, vector<int> &to_state) const {
     // Does not assume anything about to_state
     for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
@@ -308,11 +303,6 @@ void Permutation::permute_state(const State &from_state, vector<int> &to_state) 
         // Copying the values to the new state
         to_state[to_pair.first] = to_pair.second;
     }
-}
-
-void Permutation::permute_decoupled_state(const State &, CompliantPathGraph& , vector<int> &) const {
-    // TODO implement this
-    exit(EXIT_CRITICAL_ERROR);
 }
 
 bool Permutation::affects_center() const {
@@ -352,7 +342,6 @@ void FactIndex::init() {
     length = num_of_vertex;
 }
 
-
 void FactIndex::init_decoupled() {
     length = 0;
     initial_index = 0;
@@ -378,15 +367,15 @@ int FactIndex::get_var_by_index(int ind)  const {
 
 pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
     assert(ind>=(int)initial_index);
-	int var =  var_by_val[ind-initial_index];
-	int val = ind - dom_sum_by_var[var];
+    int var =  var_by_val[ind-initial_index];
+    int val = ind - dom_sum_by_var[var];
 
 //	assert(var >=0 && var<(int)g_variable_domain.size());
 //	assert(val >=0 && val<(int)g_variable_domain[var]);
 
-	return make_pair(var, val);
+    return make_pair(var, val);
 }
 
 int FactIndex::get_index_by_var_val_pair(int var, int val) const {
-	return dom_sum_by_var[var] + val;
+    return dom_sum_by_var[var] + val;
 }
