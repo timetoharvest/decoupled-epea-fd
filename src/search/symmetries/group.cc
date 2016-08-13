@@ -21,7 +21,6 @@ void Group::initialize() {
     num_identity_generators = 0;
 }
 
-
 void Group::free_memory() {
     // Removing the permutations
     generators.clear();
@@ -98,7 +97,6 @@ const vector<int> &  Group::get_canonical_state(const State & state) const {
     }
     return tmp_state;
 }
-
 
 void Group::dump_generators() const {
     if (get_num_generators() == 0)
