@@ -542,7 +542,7 @@ static inline pair<int, int> find_unsatisfied_precondition_forward(const Operato
 
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const Operator &op, 
-                                                                   const State &state) {
+                                                                           const State &state) {
     
     if (op.get_affected_factor() != -1){
         // in fork-factoring, an op can only have preconditions on one leaf + center
