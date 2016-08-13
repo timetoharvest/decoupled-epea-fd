@@ -5,9 +5,11 @@
 #include "../operator_cost.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
+#include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
 #include <iostream>
+#include <numeric>
 
 
 using namespace std;
@@ -264,4 +266,90 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         cout << "min_price of factor " << factor << " = " << min_price << endl;
 #endif
     }
+}
+
+bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
+    // cout << " APPLY SYMMETRY TO: " << endl;
+    // dump();
+    //Copy prices and reinitialize affected factors
+    vector<vector<int> > old_prices(prices);//g_factors.size());
+    vector<unsigned int> old_number_states (number_states);
+    vector<int> old_goal_cost (goal_cost);
+    vector<vector<PathPriceTagInfo> > old_paths(paths);
+
+    for (int factor : per.get_factors_affected()) {
+        //old_prices[factor] = move(prices [factor]);
+        number_states[factor] = 0;
+        prices[factor] = vector<int>();
+        goal_cost[factor] = INF;
+        paths[factor] = vector<PathPriceTagInfo>();
+    }
+    
+    for(int to_factor : per.get_factors_affected()) {
+        int from_factor = per.get_from_factor(to_factor);
+
+        // cout << " from: " << from_factor << " to " << to_factor << endl;
+
+        assert(find(per.get_factors_affected().begin(), 
+                         per.get_factors_affected().end(), to_factor)
+               != per.get_factors_affected().end());
+
+        assert(find(per.get_factors_affected().begin(), 
+                         per.get_factors_affected().end(), from_factor)
+               != per.get_factors_affected().end());
+
+        size_t num_states = old_number_states[from_factor]; 
+        for  (size_t id = 0; num_states > 0; ++ id){
+            assert (id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1) {
+                continue; 
+            }
+
+            size_t leaf_state = leaf_state_id_map[from_factor][id];
+            if (leaf_state >= old_prices[from_factor].size() ||
+                old_prices[from_factor][leaf_state] == INF)  continue;
+
+            num_states--;
+            pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+            assert(to_pair.first == to_factor);
+            int to_val = to_pair.second;
+
+             // cout << "Set from_val: " << id << " from_factor " << from_factor
+             //          <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
+            
+             // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+             // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+
+             // state_print_from.dump_pddl(); 
+             // cout <<  " -> "; 
+             // state_print_to.dump_pddl(); 
+
+            add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state], old_paths[from_factor][leaf_state].best_supporter, old_paths[from_factor][leaf_state].predecessor);
+        }
+    }
+
+
+    // cout << " NUMBER STATES: " << if_less << endl;
+    // for (int i : old_number_states) cout << i << " "; cout << endl;
+    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
+
+    // cout << " GOAL COST" << endl;
+    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
+    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
+    assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+
+
+
+    //cout << " APPLIED SYMMETRY: " << endl;
+    //dump();
+
+    return true; //We do not need to check whether the prices changed
+                 //because the return value is only relevant if
+                 //if_less is true and in that case we checked this in
+                 //per.produce_less(prices)
+}
+
+unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
+    return unique_ptr<CompliantPathGraph> (new PathPriceTag(this));
 }
