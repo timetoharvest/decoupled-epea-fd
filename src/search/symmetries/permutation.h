@@ -1,6 +1,8 @@
 #ifndef SYMMETRIES_PERMUTATION_H
 #define SYMMETRIES_PERMUTATION_H
+
 #include "../state.h"
+
 #include <vector>
 #include <fstream>
 
@@ -25,7 +27,33 @@ public:
     int get_index_by_var_val_pair(const int var, const int val) const;
 };
 
-class Permutation{
+class Permutation {
+    friend class LeavesPermutation;
+    friend class CenterPermutation;
+    
+protected:
+    
+    std::vector<int> value;
+    std::vector<int> inverse_value;
+    std::vector<int> vars_affected;
+    std::vector<bool> affected;
+    
+    bool borrowed_buffer;// TODO apparently, this is never used?!
+    
+    // Need to keep the connection between affected vars, ie which var goes into which.
+    std::vector<int> from_vars;
+
+    // Affected vars by cycles
+    std::vector<std::vector<int> > affected_vars_cycles;
+
+    void set_affected(int ind, int val);
+
+    void finalize();
+    void _allocate();
+    void _deallocate();
+    void _copy_value_from_permutation(const Permutation &perm);
+    void _inverse_value_from_permutation(const Permutation &perm);
+    
 public:
     static FactIndex findex;
     static void init_fact_index();
@@ -36,9 +64,9 @@ public:
     Permutation(const Permutation &perm1, const Permutation& perm2);
     virtual ~Permutation() = default;
 
-    Permutation& operator=(const Permutation &perm);
+    Permutation& operator=(const Permutation &perm); // TODO do we really need this?
     
-    bool operator==(const Permutation&) const;
+    bool operator==(const Permutation&) const; // TODO do we really need this?
 
     bool identity() const;
     
@@ -62,35 +90,12 @@ public:
     std::pair<int, int> get_new_var_val_by_old_var_val(const int var, const int val) const;
     std::pair<int, int> get_old_var_val_by_new_var_val(const int var, const int val) const ;
 
-    cmp_t replace_if_less(std::vector<int> & state) const;
-    void permute(std::vector<int> & state) const;
+    cmp_t replace_if_less(std::vector<int> &state) const;
+    void permute(std::vector<int> &state) const;
 
     bool affects_center() const;
     int num_leafs_affected() const;
-
-protected:
-
-    std::vector<int> value;
-    std::vector<int> inverse_value;
-    std::vector<int> vars_affected;
-    std::vector<bool> affected;
-    bool borrowed_buffer;
-    // Need to keep the connection between affected vars, ie which var goes into which.
-    std::vector<int> from_vars;
-
-    // Affected vars by cycles
-    std::vector<std::vector<int> > affected_vars_cycles;
-
-    void set_affected(int ind, int val);
-
-    void finalize();
-    void _allocate();
-    void _deallocate();
-    void _copy_value_from_permutation(const Permutation &perm);
-    void _inverse_value_from_permutation(const Permutation &perm);
-
-    friend class LeavesPermutation;
-    friend class CenterPermutation;
+    
 };
 
 #endif

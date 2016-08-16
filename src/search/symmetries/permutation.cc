@@ -3,17 +3,15 @@
 #include "../globals.h"
 #include "../state_registry.h"
 
-
 #include <iomanip>
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <cassert>
 #include <set>
-
+#include <sstream>
 
 using namespace std;
-#include <sstream>
 
 
 FactIndex Permutation::findex;
@@ -62,7 +60,7 @@ Permutation::Permutation(){
     finalize();
 }
 
-Permutation::Permutation(const unsigned int* full_permutation){
+Permutation::Permutation(const unsigned int *full_permutation){
     _allocate();
     for (size_t i = 0; i < findex.length; i++){
     set_value(i,full_permutation[i]);
@@ -70,7 +68,7 @@ Permutation::Permutation(const unsigned int* full_permutation){
     finalize();
 }
 
-Permutation::Permutation(const Permutation& perm, bool invert){
+Permutation::Permutation(const Permutation &perm, bool invert){
     _allocate();
     if (invert) {
     	_inverse_value_from_permutation(perm);
@@ -119,7 +117,7 @@ bool Permutation::identity() const{
 	return vars_affected.size() == 0;
 }
 
-bool Permutation::operator ==(const Permutation &other) const {
+bool Permutation::operator==(const Permutation &other) const {
     for(size_t i = 0; i < findex.length; i++) {
         if (get_value(i) != other.get_value(i)) return false;
     }
@@ -207,22 +205,22 @@ void Permutation::set_affected(int ind, int val) {
 
 
 pair<int, int> Permutation::get_new_var_val_by_old_var_val(const int var, const int val) const {
-	int old_ind = findex.get_index_by_var_val_pair(var, val);
-	int new_ind = get_value(old_ind);
-	return findex.get_var_val_by_index(new_ind);
+    int old_ind = findex.get_index_by_var_val_pair(var, val);
+    int new_ind = get_value(old_ind);
+    return findex.get_var_val_by_index(new_ind);
 }
 
 pair<int, int> Permutation::get_old_var_val_by_new_var_val(const int var, const int val) const {
-	int new_ind = findex.get_index_by_var_val_pair(var, val);
-	int old_ind = get_inverse_value(new_ind);
-	return findex.get_var_val_by_index(old_ind);
+    int new_ind = findex.get_index_by_var_val_pair(var, val);
+    int old_ind = get_inverse_value(new_ind);
+    return findex.get_var_val_by_index(old_ind);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // This method compares the state to the state resulting from permuting it.
 // If the original state is bigger than the resulted one, it is rewritten with the latter and true is returned.
 ////////////////////  New version - no extra buffer is needed, faster copy ///////////////
-cmp_t Permutation::replace_if_less(vector<int> & state)  const{
+cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     if (identity())
         return cmp_t::EQUAL;
 
@@ -266,7 +264,7 @@ cmp_t Permutation::replace_if_less(vector<int> & state)  const{
 
 
 
-void Permutation::permute(vector<int> & state)  const{
+void Permutation::permute(vector<int> &state) const {
     if (identity()) return;
     for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
 	if (affected_vars_cycles[i].size() == 1) {
@@ -329,7 +327,6 @@ void Permutation::init_fact_index() {
 }
 
 void FactIndex::init() {
-
     int num_of_vertex = g_variable_domain.size();
     for (size_t num_of_variable = 0; num_of_variable < g_variable_domain.size(); num_of_variable++){
         dom_sum_by_var.push_back(num_of_vertex);
