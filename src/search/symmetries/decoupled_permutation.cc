@@ -1,7 +1,6 @@
 #include "decoupled_permutation.h"
 
 #include "lexicographic_ordering.h"
-
 #include "../globals.h"
 #include "../state_registry.h"
 #include "../compliant_paths/compliant_path_graph.h"
@@ -21,18 +20,18 @@ DecoupledPermutation::DecoupledPermutation(const Permutation & p) {
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & per) : 
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) : 
     center_permutation(new CenterPermutation(*(per.center_permutation))), 
     leaves_permutation(new LeavesPermutation(*(per.leaves_permutation))) {
-    }
+}
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & per, bool invert) : 
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) : 
     center_permutation(new CenterPermutation(*(per.center_permutation), invert)), 
     leaves_permutation(new LeavesPermutation(*(per.leaves_permutation), invert)) {
-    }
+}
 
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & p1, const DecoupledPermutation & p2) { 
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const DecoupledPermutation &p2) {
     if (p1.center_permutation && p2.center_permutation) 
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation), *(p2.center_permutation)));
     else if (p1.center_permutation) 
@@ -46,7 +45,6 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation & p1, cons
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation)));
     else if (p2.leaves_permutation) 
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
-    
 }
 
 LeavesPermutation::LeavesPermutation (const Permutation & per)  {
@@ -117,7 +115,7 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 void LeavesPermutation::finalize(){
 
     // Sorting the vector of affected factoriables
-    ::sort(factors_affected.begin(), factors_affected.end());
+    sort(factors_affected.begin(), factors_affected.end());
     // Going over the vector from_factors of the mappings of the variables and finding cycles
     vector<bool> marked;
     marked.assign(from_factors.size(), false);
@@ -142,16 +140,15 @@ void LeavesPermutation::finalize(){
 
 }
 
-LeavesPermutation::LeavesPermutation (const LeavesPermutation & perm1, 
-				      const LeavesPermutation & perm2)  {
+LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1, 
+				      const LeavesPermutation &perm2) {
     for (size_t i = 0; i < findex_leaves.length; i++) {
 	set_value(i, perm2.value[perm1.value[i]]);
     }
     finalize();
 }
 
-LeavesPermutation::LeavesPermutation (const LeavesPermutation & perm, 
-				      bool invert)  {
+LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)  {
     if(invert) {
 	for (size_t i = 0; i < findex_leaves.length; i++)
 	    set_value(perm.value[i], i);
@@ -164,25 +161,25 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation & perm,
 }
 
 void LeavesPermutation::set_value(int ind, int val) {
-	value[ind] = val;
-	inverse_value[val] = ind;
+    value[ind] = val;
+    inverse_value[val] = ind;
 
-	int var = findex_leaves.get_var_by_index(ind);
-	int to_var = findex_leaves.get_var_by_index(val);
+    int var = findex_leaves.get_var_by_index(ind);
+    int to_var = findex_leaves.get_var_by_index(val);
 
-	if (!affected[var]) {
-	    factors_affected.push_back(var);
-	    affected[var] = true;
-	}
-	if (!affected[to_var]) {
-	    factors_affected.push_back(to_var);
-	    affected[to_var] = true;
-	}
-	// Keeping the orig. var for each var.
-	from_factors[to_var] = var;
+    if (!affected[var]) {
+        factors_affected.push_back(var);
+        affected[var] = true;
+    }
+    if (!affected[to_var]) {
+        factors_affected.push_back(to_var);
+        affected[to_var] = true;
+    }
+    // Keeping the orig. var for each var.
+    from_factors[to_var] = var;
 }
 
-CenterPermutation::CenterPermutation (const Permutation & per, bool invert) : 
+CenterPermutation::CenterPermutation (const Permutation &per, bool invert) : 
     Permutation(per, invert) {
     //Remove leaf vars from vars_affected
     vars_affected.erase(std::remove_if(vars_affected.begin(), 
@@ -214,7 +211,7 @@ CenterPermutation::CenterPermutation (const CenterPermutation & p1,
 
 
 bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves,
-					   const LexicographicOrdering & lex_ordering) const {
+					   const LexicographicOrdering &lex_ordering) const {
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
 	if (cmp == cmp_t::LESS) {
@@ -248,8 +245,6 @@ bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves,
 	    leaves.apply_symmetry_permutation(*leaves_permutation));
 }
 
-
-
 void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
 						   CompliantPathGraph &leaves) const {
     if(center_permutation)
@@ -257,6 +252,11 @@ void DecoupledPermutation::permute_decoupled_state(vector<int> &center,
     
     if (leaves_permutation)
 	leaves.apply_symmetry_permutation(*leaves_permutation);
+}
+
+void DecoupledPermutation::permute_center_state(vector<int> &center) const {
+    if(center_permutation)
+        center_permutation->permute(center);
 }
 
 pair<int, int> LeavesPermutation::get_new_factor_state_by_old_factor_state(const int factor, const int state) const {
@@ -272,7 +272,7 @@ pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(const
 }
 
 
-cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph & cpg) const {
+cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
 
@@ -282,7 +282,7 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph & cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph & cpg) const {
+cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
 
@@ -292,8 +292,8 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph & cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph & cpg) const {
-    for(int to_factor : factors_affected) {	
+cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
+    for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
 	assert (g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
 
