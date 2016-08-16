@@ -1,5 +1,7 @@
 #include "group.h"
+
 #include "../globals.h"
+
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -15,7 +17,7 @@ Group::Group(const Options &opts) {
 }
 
 void Group::initialize() {
-    tmp_state.resize(g_variable_domain.size());
+    tmp_state.resize(g_variable_domain.size(), -1);
 
     safe_to_add_generators = true;
     num_identity_generators = 0;
@@ -72,7 +74,7 @@ void Group::default_direct_product(){
 //    dump_generators();
 }
 
-Permutation Group::compose_permutation(Trace& perm_index) const {
+Permutation Group::compose_permutation(Trace &perm_index) const {
     Permutation new_perm;
     for (size_t i = 0; i < perm_index.size(); ++i) {
         new_perm = Permutation(new_perm, generators[perm_index[i]]);
@@ -81,7 +83,7 @@ Permutation Group::compose_permutation(Trace& perm_index) const {
     return new_perm;
 }
 
-const vector<int> &  Group::get_canonical_state(const State & state) const {
+const vector<int> &  Group::get_canonical_state(const State &state) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
 	tmp_state[i] = state[i];
     }
