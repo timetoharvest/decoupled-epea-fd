@@ -3,18 +3,17 @@
 #include "../compliant_paths/compliant_path_graph.h"
 #include "decoupled_permutation.h"
 #include "../state_registry.h"
-
 #include "../option_parser.h"
 
 
-LexicographicOrdering::LexicographicOrdering(const Options & opts) : 
-    apply_goal_cost (opts.get<bool>("lex_goal_cost")), 
-    apply_num_states (opts.get<bool>("lex_num_states")), 
-    apply_prices (opts.get<bool>("lex_prices")) {
+LexicographicOrdering::LexicographicOrdering(const Options &opts) : 
+    apply_goal_cost(opts.get<bool>("lex_goal_cost")),
+    apply_num_states(opts.get<bool>("lex_num_states")), 
+    apply_prices(opts.get<bool>("lex_prices")) {
 }
 
-bool LexicographicOrdering::produces_less(const LeavesPermutation & per, 
-					  const CompliantPathGraph & p) const { 
+bool LexicographicOrdering::produces_less(const LeavesPermutation &per, 
+					  const CompliantPathGraph &p) const { 
     if(apply_goal_cost) {
 	cmp_t cmp = per.cmp_goal_cost(p);
 	if(cmp == cmp_t::LESS) return true;
@@ -37,7 +36,7 @@ bool LexicographicOrdering::produces_less(const LeavesPermutation & per,
 } 
 
 
-void LexicographicOrdering::print_ordering(const CompliantPathGraph & cpg) const { 
+void LexicographicOrdering::print_ordering(const CompliantPathGraph &cpg) const { 
     if(apply_goal_cost) {
 	for(size_t factor = 0; factor < g_factors.size(); ++ factor) 
 	    cout << cpg.get_goal_cost(factor) << " "; 
