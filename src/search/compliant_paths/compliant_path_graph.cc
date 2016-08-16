@@ -367,6 +367,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
 }
 
 int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, int factor) {
+    assert(new_leaf_state.size() == g_factors[factor].size());
 
     size_t num_leaf_states_before = g_state_registry->size(factor);
     
