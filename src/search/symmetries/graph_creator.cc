@@ -1,12 +1,15 @@
 #include "graph_creator.h"
-#include <vector>
+
 #include "../operator.h"
 #include "permutation.h"
 #include "lexicographic_ordering.h"
-
 #include "../timer.h"
+#include "../compliant_paths/compliant_path_graph.h"
+
+#include <vector>
 
 using namespace std;
+
 
 GraphCreator::GraphCreator(const Options &opts) : 
     lex_ordering(opts), 
@@ -15,7 +18,6 @@ GraphCreator::GraphCreator(const Options &opts) :
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
 }
-
 
 void GraphCreator::initialize() {
 #ifdef USE_BLISS
@@ -193,8 +195,8 @@ bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>
 //#endif
 
 
-Permutation GraphCreator::create_permutation_from_state_to_state(const State& from_state, 
-								 const State& to_state) {
+Permutation GraphCreator::create_permutation_from_state_to_state(const State &from_state, 
+								 const State &to_state) {
     Trace new_trace;
     Trace curr_trace;
     group->get_trace(from_state, curr_trace);
@@ -207,18 +209,24 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State& fr
 }
 
 
-DecoupledPermutation
-GraphCreator::create_permutation_from_state_to_state(const State &state, 
+DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const State &state, 
 						     const CompliantPathGraph &cpg,
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
+                                                         
+//     cout << "from state:" << endl;
+//     state.dump_pddl();
+//     cpg.dump();
+//     cout << "to state:" << endl;
+//     succ_state.dump_pddl();
+//     succ_cpg.dump();
 
     Trace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
 
-    DecoupledPermutation p1 (decoupled_group->compose_permutation(new_trace), true);
-    DecoupledPermutation p2 = decoupled_group->compose_permutation(curr_trace);
-    return  DecoupledPermutation(p2, p1);
+    DecoupledPermutation p1(decoupled_group->compose_permutation(new_trace), true);
+    DecoupledPermutation p2(decoupled_group->compose_permutation(curr_trace));
+    return DecoupledPermutation(p2, p1);
 }
 
 
