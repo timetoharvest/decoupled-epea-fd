@@ -12,7 +12,7 @@ using namespace std;
 
 FactIndex LeavesPermutation::findex_leaves;
 
-DecoupledPermutation::DecoupledPermutation(const Permutation & p) { 
+DecoupledPermutation::DecoupledPermutation(const Permutation &p) { 
     if (p.num_leafs_affected())  
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
     
@@ -20,14 +20,22 @@ DecoupledPermutation::DecoupledPermutation(const Permutation & p) {
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) : 
-    center_permutation(new CenterPermutation(*(per.center_permutation))), 
-    leaves_permutation(new LeavesPermutation(*(per.leaves_permutation))) {
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
+    if (per.center_permutation)
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(per.center_permutation)));
+
+    if (per.leaves_permutation) 
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation)));
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) : 
-    center_permutation(new CenterPermutation(*(per.center_permutation), invert)), 
-    leaves_permutation(new LeavesPermutation(*(per.leaves_permutation), invert)) {
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {    
+    if (per.center_permutation){
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(per.center_permutation), invert));
+    }
+
+    if (per.leaves_permutation) {
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation), invert));
+    }
 }
 
 
@@ -47,9 +55,9 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
 }
 
-LeavesPermutation::LeavesPermutation (const Permutation & per)  {
+LeavesPermutation::LeavesPermutation(const Permutation &per) {
 
-    affected.assign (g_factors.size(), false);
+    affected.assign(g_factors.size(), false);
    
     for (int v : per.vars_affected) {
 	int factor = g_belongs_to_factor[v];
@@ -101,7 +109,7 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 	    int symm_index = findex_leaves.get_index_by_var_val_pair(symm_factor, symm_id);
 
 	    //set_value(index, symm_index);
-	    value [index] = symm_index;
+	    value[index] = symm_index;
 	    inverse_value[symm_index] = index;
 	}
     }
@@ -113,7 +121,6 @@ LeavesPermutation::LeavesPermutation (const Permutation & per)  {
 
 
 void LeavesPermutation::finalize(){
-
     // Sorting the vector of affected factoriables
     sort(factors_affected.begin(), factors_affected.end());
     // Going over the vector from_factors of the mappings of the variables and finding cycles
@@ -137,11 +144,15 @@ void LeavesPermutation::finalize(){
         // Get here when from_factors[current] == i.
         affected_factors_cycles.push_back(cycle);
     }
-
 }
 
 LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1, 
 				      const LeavesPermutation &perm2) {
+    affected.resize(g_factors.size(), false);
+    value.resize(findex_leaves.length, -1);
+    from_factors.resize(g_factors.size(), -1);
+    inverse_value.resize(findex_leaves.length, -1);
+    
     for (size_t i = 0; i < findex_leaves.length; i++) {
 	set_value(i, perm2.value[perm1.value[i]]);
     }
@@ -149,14 +160,18 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1,
 }
 
 LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)  {
+    affected.resize(g_factors.size(), false);
+    value.resize(findex_leaves.length, -1);
+    from_factors.resize(g_factors.size(), -1);
+    inverse_value.resize(findex_leaves.length, -1);
+
     if(invert) {
-	for (size_t i = 0; i < findex_leaves.length; i++)
+        for (size_t i = 0; i < findex_leaves.length; i++)
 	    set_value(perm.value[i], i);
     } else {
 	for (size_t i = 0; i < findex_leaves.length; i++)
 	    set_value(i, perm.value[i]);
     }
-
     finalize();
 }
 

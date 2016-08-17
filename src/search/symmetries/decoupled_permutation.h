@@ -86,11 +86,11 @@ public:
 
     ~DecoupledPermutation() = default;
 
-    bool affects_center () const {
+    bool affects_center() const {
 	return center_permutation.get() != nullptr;
     }
 
-    bool affects_leaves () const {
+    bool affects_leaves() const {
 	return leaves_permutation.get() != nullptr;
     }
 
