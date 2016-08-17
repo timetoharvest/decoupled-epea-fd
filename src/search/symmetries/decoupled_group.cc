@@ -1,13 +1,13 @@
 #include "decoupled_group.h"
 
+#include "../compliant_paths/compliant_path_graph.h"
 #include "lexicographic_ordering.h"
 #include "group.h"
 #include "../state_registry.h"
 
-#include "../compliant_paths/compliant_path_graph.h"
 
-DecoupledGroup::DecoupledGroup(const Group & group) {
-    //Ensure that all symmetry leaf states exists
+DecoupledGroup::DecoupledGroup(const Group &group) {
+    // Ensure that all symmetry leaf states exists
     for(size_t factor = 0; factor < g_factors.size(); ++factor){
         for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
             for(const Permutation &per : group.generators) {
@@ -44,16 +44,17 @@ DecoupledGroup::DecoupledGroup(const Group & group) {
 	else generators_only_leaves.push_back(gen);
     }
 
-    tmp_state.resize(g_variable_domain.size());
+    tmp_state.resize(g_variable_domain.size(), -1);
 }
 
 
-const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & center, 
-								  CompliantPathGraph & leaves, 
-								  const LexicographicOrdering & lex_ordering)  const{
+const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &center, 
+								  CompliantPathGraph &leaves, 
+								  const LexicographicOrdering &lex_ordering)  const{
 
-    for (size_t i = 0; i < g_center_vars.size(); ++i) {
-	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
+
+    for (int var : g_center_vars) {
+	tmp_state[var] = center[var];
     }
 
     // cout << endl << endl<< "start" << endl;
@@ -68,7 +69,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State & 
         changed = false;
 	generators_stable_center.clear();
         for (auto gen : generators_center) {
-	    cmp_t cmp =gen->replace_if_less_center(tmp_state, leaves); 
+	    cmp_t cmp = gen->replace_if_less_center(tmp_state, leaves); 
 	    if (cmp == cmp_t::LESS) changed = true;
 	    else if (cmp == cmp_t::EQUAL && gen->affects_leaves()) 
 		generators_stable_center.push_back(gen);
@@ -109,22 +110,22 @@ void DecoupledGroup::statistics() const {
 }
 
 
-Trace DecoupledGroup::get_trace(const State & center, 
-				    const CompliantPathGraph & leaves, 
-				    const LexicographicOrdering & lex_ordering)  const {
+Trace DecoupledGroup::get_trace(const State &center, 
+                                const CompliantPathGraph &leaves, 
+                                const LexicographicOrdering &lex_ordering) const {
     Trace res;
 
     unique_ptr<CompliantPathGraph> leaves_copy = leaves.clone();
 
-    for (size_t i = 0; i < g_center_vars.size(); ++i) {
-	tmp_state[g_center_vars[i]] = center[g_center_vars[i]];
+    for (int var : g_center_vars) {
+        tmp_state[var] = center[var];
     }
 
     bool changed = true;
     while (changed) {
         changed = false;
         for (size_t i = 0; i < generators.size(); ++i) {
-if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
+            if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
 		changed = true;
 		res.push_back(i);
 	    }
@@ -134,8 +135,8 @@ if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
     return res;
 }
 
-DecoupledPermutation DecoupledGroup::compose_permutation(const Trace& trace) const {
-    unique_ptr<DecoupledPermutation> new_perm (new DecoupledPermutation());
+DecoupledPermutation DecoupledGroup::compose_permutation(const Trace &trace) const {
+    unique_ptr<DecoupledPermutation> new_perm(new DecoupledPermutation());
     for (size_t i : trace) {
         new_perm.reset(new DecoupledPermutation(*new_perm, *(generators[i])));
     }
