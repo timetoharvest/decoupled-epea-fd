@@ -161,7 +161,7 @@ void StateRegistry::permute_initial_state() {
         const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
         
         bool changed = false;
-        for (size_t var : g_center_vars){
+        for (int var : g_center_vars){
             if ((*cached_initial_state)[var] != new_center[var]){
                 changed = true;
                 break;
@@ -224,6 +224,50 @@ State StateRegistry::get_state_permutation(const State &state, Permutation &perm
     for (size_t var = 0; var < permuted.size(); ++var) {
         g_state_packer->set(buffer, var, permuted[var]);
     }
+    
+    StateID id = insert_id_or_pop_state();
+    return lookup_state(id);
+}
+
+State StateRegistry::get_state_permutation(const State &state, DecoupledPermutation &permutation) {
+    assert(g_symmetry_graph);
+    assert(g_use_decoupled_search);
+    
+    vector<int> permuted(g_variable_domain.size(), -1);
+    for (int var : g_center_vars){
+        permuted[var] = state[var];
+    }
+    permutation.permute_center_state(permuted);
+    
+    state_data_pool.push_back(state.get_packed_buffer());
+    PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
+    
+    for (size_t var = 0; var < g_center_vars.size(); ++var) {
+        g_state_packer->set(buffer, var, permuted[g_center_vars[var]]);
+    }
+    g_state_packer->set(buffer, g_center_vars.size(), 0);
+    
+    StateID id = insert_id_or_pop_state();
+    return lookup_state(id);
+}
+
+State StateRegistry::get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, DecoupledPermutation &permutation) {
+    assert(g_symmetry_graph);
+    assert(g_use_decoupled_search);
+    
+    vector<int> permuted(g_variable_domain.size(), -1);
+    for (int var : g_center_vars){
+        permuted[var] = state[var];
+    }
+    permutation.permute_decoupled_state(permuted, cpg);
+    
+    state_data_pool.push_back(state.get_packed_buffer());
+    PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
+    
+    for (size_t var = 0; var < g_center_vars.size(); ++var) {
+        g_state_packer->set(buffer, var, permuted[g_center_vars[var]]);
+    }
+    g_state_packer->set(buffer, g_center_vars.size(), 0);
     
     StateID id = insert_id_or_pop_state();
     return lookup_state(id);
@@ -397,13 +441,13 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
 }
 
 State StateRegistry::get_center_state(const vector<int> &facts) {
-    assert(facts.size() == g_center_vars.size());
+    assert(facts.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
     
     state_data_pool.push_back(cached_initial_state->get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
     
-    for (size_t var = 0; var < facts.size(); ++var) {
-        g_state_packer->set(buffer, var, facts[var]);
+    for (size_t var = 0; var < g_center_vars.size(); ++var) {
+        g_state_packer->set(buffer, var, facts[g_center_vars[var]]);
     }
     g_state_packer->set(buffer, g_center_vars.size(), 0);
     
@@ -411,11 +455,11 @@ State StateRegistry::get_center_state(const vector<int> &facts) {
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_state(const State &predecessor, int dup_counter) {
+State StateRegistry::get_center_state(const State &base_state, int dup_counter) {
     assert(dup_counter >= 0);
     assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
     
-    state_data_pool.push_back(predecessor.get_packed_buffer());
+    state_data_pool.push_back(base_state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
     
     g_state_packer->set(buffer, g_center_vars.size(), dup_counter);

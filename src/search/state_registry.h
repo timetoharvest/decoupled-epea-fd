@@ -100,6 +100,7 @@
 */
 
 class CompliantPathGraph;
+class DecoupledPermutation;
 class Permutation;
 class PerStateInformationBase;
 
@@ -219,7 +220,9 @@ public:
     
     State get_state_permutation(const State &state, Permutation &permutation);
     
-    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, Permutation &permutation);
+    State get_state_permutation(const State &state, DecoupledPermutation &permutation);
+    
+    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, DecoupledPermutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and
