@@ -213,13 +213,6 @@ DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const 
 						     const CompliantPathGraph &cpg,
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
-                                                         
-//     cout << "from state:" << endl;
-//     state.dump_pddl();
-//     cpg.dump();
-//     cout << "to state:" << endl;
-//     succ_state.dump_pddl();
-//     succ_cpg.dump();
 
     Trace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
