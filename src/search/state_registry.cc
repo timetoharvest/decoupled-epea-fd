@@ -440,6 +440,20 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     return lookup_state(id);
 }
 
+State StateRegistry::get_state(const vector<int> &facts) {
+    assert(facts.size() == g_variable_domain.size());
+    
+    state_data_pool.push_back(cached_initial_state->get_packed_buffer());
+    PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
+    
+    for (size_t var = 0; var < g_variable_domain.size(); ++var) {
+        g_state_packer->set(buffer, var, facts[var]);
+    }
+    
+    StateID id = insert_id_or_pop_state();    
+    return lookup_state(id);
+}
+
 State StateRegistry::get_center_state(const vector<int> &facts) {
     assert(facts.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
     

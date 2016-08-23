@@ -211,6 +211,8 @@ void SearchSpace::trace_path(const State &goal_state,
             if (op != 0) {
                 parent_state = g_state_registry->lookup_state(info.parent_state_id);
                 new_state = g_state_registry->get_successor_state(parent_state, *op, false);
+            } else {
+                new_state = g_state_registry->get_state(g_initial_state_data);;
             }
             Permutation p;
             if (new_state.get_id() != current_state.get_id()){

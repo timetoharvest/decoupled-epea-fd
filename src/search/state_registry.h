@@ -231,6 +231,8 @@ public:
     */
     State get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical = true);
     
+    State get_state(const std::vector<int> &facts);
+    
     State get_center_state(const std::vector<int> &facts);
     
     /*
