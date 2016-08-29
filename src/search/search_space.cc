@@ -288,7 +288,12 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
         
         if (g_symmetry_graph){
-            // TODO need to handle center actions that touch leaves correctly!
+            
+            if (g_factoring->get_profile() != FORK){
+                // TODO need to handle center actions that touch leaves correctly!
+                return;
+            }
+            
             vector<int> init_center(g_variable_domain.size(), -1);
             for (int var : g_center_vars){
                 init_center[var] = g_initial_state_data[var];
