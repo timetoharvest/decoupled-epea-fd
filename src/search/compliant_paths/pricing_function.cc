@@ -389,7 +389,7 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation & per) {
     // dump();
     //Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);//g_factors.size());
-    vector<unsigned int> old_number_states (number_states);
+    vector<unsigned int> old_number_states(number_states);
     vector<int> old_goal_cost (goal_cost);
 
     for (int factor : per.get_factors_affected()) {
