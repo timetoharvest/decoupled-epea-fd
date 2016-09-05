@@ -26,6 +26,8 @@ public:
 
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
     
+    virtual size_t size(const StateRegistry *registry) const = 0;
+    
 };
 
 class PriceStorage : public CPGStorage {
@@ -50,6 +52,10 @@ public:
     
     virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &prices[state];
+    }
+    
+    virtual size_t size(const StateRegistry *registry) const {
+        return prices.size(registry);
     }
     
 };
@@ -77,6 +83,10 @@ public:
         return &pruning_prices[state];
     }
     
+    virtual size_t size(const StateRegistry *registry) const {
+        return pruning_prices.size(registry);
+    }
+    
 };
 
 class ReachableStorage : public CPGStorage {
@@ -102,6 +112,10 @@ public:
         return &reachable[state];
     }
     
+    virtual size_t size(const StateRegistry *registry) const {
+        return reachable.size(registry);
+    }
+    
 };
 
 class PruningReachableStorage : public CPGStorage {
@@ -125,6 +139,10 @@ public:
     
     virtual const CompliantPathGraph* get_cpg(const State &state) const {
         return &pruning_reachable[state];
+    }
+    
+    virtual size_t size(const StateRegistry *registry) const {
+        return pruning_reachable.size(registry);
     }
     
 };

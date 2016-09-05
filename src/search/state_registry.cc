@@ -557,7 +557,11 @@ void StateRegistry::output_decoupled_state_space_size() const {
         dec_size_4 += size(factor) * g_factors[factor].size();
     }
     
-    for (size_t i = 0; i < size(); ++i){
+    // in orbit search, when reconstructing the plan, there are center states created
+    // for which no CompliantPathGraph is stored
+    assert(size() == CPGStorage::storage->size(this) || g_symmetry_graph);
+    
+    for (size_t i = 0; i < CPGStorage::storage->size(this); ++i){
         const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             size_t number_states = cpg->get_number_states(factor);
@@ -577,6 +581,6 @@ void StateRegistry::subscribe(PerStateInformationBase *psi) const {
     subscribers.insert(psi);
 }
 
-void StateRegistry::unsubscribe(PerStateInformationBase *const psi) const {
+void StateRegistry::unsubscribe(PerStateInformationBase *psi) const {
     subscribers.erase(psi);
 }
