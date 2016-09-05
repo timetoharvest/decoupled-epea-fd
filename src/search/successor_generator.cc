@@ -27,8 +27,9 @@ public:
     
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre) const;
-    virtual void generate_applicable_ops(const State &curr, std::vector<const Operator *> &ops, 
+    virtual void generate_applicable_ops(const State &curr,
                                          const CompliantPathGraph &cpg,
+                                          std::vector<const Operator *> &ops,
                                          bool ignore_leaf_pre = false) const;
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
                                          vector<const Operator *> &ops, bool only_center_ops) const;
@@ -50,8 +51,9 @@ public:
     
     virtual void generate_applicable_ops(const State &curr,
                                          vector<const Operator *> &ops, bool ignore_leaf_pre) const;
-    virtual void generate_applicable_ops(const State &curr, std::vector<const Operator *> &ops, 
+    virtual void generate_applicable_ops(const State &curr,
                                          const CompliantPathGraph &cpg,
+                                         std::vector<const Operator *> &ops,
                                          bool ignore_leaf_pre = false) const;
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
 					 vector<const Operator *> &ops, bool only_center_ops) const;
@@ -141,11 +143,14 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
     default_generator->generate_applicable_ops(curr, ops, ignore_leaf_pre);
 }
 
-void SuccessorGeneratorSwitch::generate_applicable_ops(const State& curr, vector< const Operator*> &ops, const CompliantPathGraph &cpg, bool ignore_leaf_pre) const {
+void SuccessorGeneratorSwitch::generate_applicable_ops(const State &curr,
+                                                       const CompliantPathGraph &cpg,
+                                                       vector<const Operator*> &ops,
+                                                       bool ignore_leaf_pre) const {
     // TODO refactor this
     if (g_factoring->get_profile() != FORK && !ignore_leaf_pre){
         vector<const Operator*> center_ops;
-        generate_applicable_ops(curr, center_ops, cpg, true);
+        generate_applicable_ops(curr, cpg, center_ops, true);
         
         vector<int> counter(g_operators.size(), 0);
 
@@ -186,17 +191,17 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(const State& curr, vector
         }
         return;
     }
-    immediate_ops->generate_applicable_ops(curr, ops, cpg, ignore_leaf_pre);
+    immediate_ops->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
     if (!g_use_decoupled_search || g_belongs_to_factor[switch_var] == -1){
         if (!generator_for_value.empty()){
-            generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, ops, cpg, ignore_leaf_pre);
+            generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
         }
     } else if (ignore_leaf_pre){
         for (size_t val = 0; val < generator_for_value.size(); ++val){
-            generator_for_value[val]->generate_applicable_ops(curr, ops, cpg, ignore_leaf_pre);
+            generator_for_value[val]->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
         }
     }
-    default_generator->generate_applicable_ops(curr, ops, cpg, ignore_leaf_pre);
+    default_generator->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
 }
 
 void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
@@ -313,9 +318,9 @@ void SuccessorGeneratorGenerate::generate_applicable_ops(const State &,
     ops.insert(ops.end(), operators.begin(), operators.end());
 }
 
-void SuccessorGeneratorGenerate::generate_applicable_ops(const State&, 
-                                                         vector< const Operator* > &ops, 
-                                                         const CompliantPathGraph&, 
+void SuccessorGeneratorGenerate::generate_applicable_ops(const State&,
+                                                         const CompliantPathGraph&,
+                                                         vector< const Operator* > &ops,
                                                          bool) const {
     ops.insert(ops.end(), operators.begin(), operators.end());
 }

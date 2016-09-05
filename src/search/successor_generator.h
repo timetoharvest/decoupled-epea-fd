@@ -21,8 +21,8 @@ public:
                                          bool ignore_leaf_pre = false) const = 0;
                                          
     // used to generate successors when reconstructing decoupled plans in orbit search
-    virtual void generate_applicable_ops(const State &curr, std::vector<const Operator *> &ops, 
-                                         const CompliantPathGraph &cpg,
+    virtual void generate_applicable_ops(const State &curr, const CompliantPathGraph &cpg,
+                                         std::vector<const Operator *> &ops,
                                          bool ignore_leaf_pre = false) const = 0;
                                          
     // only used for precomputing leaf factor goal cost; does not respect preconditions from center/other leaves
