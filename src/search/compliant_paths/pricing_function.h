@@ -14,6 +14,8 @@ class PriceStorage;
 class Prices : public CompliantPathGraph {
     friend class CompliantPathGraph;
     
+    // TODO get rid of this in all CPG classes! 
+    // might be needed for init state, then make this an exception
     static Prices tmp_price;
     
     static PriceStorage *cpg_storage;
