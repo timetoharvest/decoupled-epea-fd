@@ -11,6 +11,7 @@
 
 class CompliantPathGraph;
 class Operator;
+class PathPriceTag;
 
 class SearchNode {    
     StateID state_id;
@@ -58,7 +59,18 @@ class SearchSpace {
     PerStateInformation<SearchNodeInfo> search_node_infos;
 
     OperatorCost cost_type;
+    
     bool is_equal(const State &s1, const CompliantPathGraph &cpg1, const State &s2, const CompliantPathGraph &cpg2) const;
+    
+    void trace_decoupled_path(std::vector<const Operator*> &path, std::vector<StateID> &states) const;
+    
+    void trace_symmetric_path(std::vector<const Operator*> &path, std::vector<StateID> &states, std::vector<Permutation> &permutations) const;
+    
+    void trace_symmetric_path(std::vector<const Operator*> &path,
+                              std::vector<StateID> &states, 
+                              std::vector<PathPriceTag> &cpgs,
+                              std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
+    
 public:
     SearchSpace(OperatorCost cost_type_);
     SearchNode get_node(const State &state);

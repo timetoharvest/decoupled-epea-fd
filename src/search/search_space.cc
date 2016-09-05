@@ -193,7 +193,9 @@ void SearchSpace::trace_path(const State &goal_state,
     State current_state = goal_state;
     
     vector<Permutation> permutations; // needed for orbit search
-    vector<StateID> states; // needed for decoupled search
+    vector<StateID> states; // needed for decoupled search and orbit search
+    vector<unique_ptr<DecoupledPermutation> > decoupled_permutations; // needed for decoupled orbit search
+    vector<PathPriceTag> cpgs; // needed for decoupled orbit search
     
     assert(path.empty());
     
@@ -203,22 +205,59 @@ void SearchSpace::trace_path(const State &goal_state,
         
         if (g_use_decoupled_search || g_symmetry_graph){
             states.push_back(current_state.get_id());
+            if (g_use_decoupled_search && g_symmetry_graph){
+                cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
+            }
         }
         
-        if (g_symmetry_graph && !g_use_decoupled_search){
-            State parent_state = g_initial_state();
+        if (g_symmetry_graph){
             State new_state = g_initial_state();
+            PathPriceTag new_cpg;
             if (op != 0) {
-                parent_state = g_state_registry->lookup_state(info.parent_state_id);
+                State parent_state = g_state_registry->lookup_state(info.parent_state_id);         
                 new_state = g_state_registry->get_successor_state(parent_state, *op, false);
+                
+                if (g_use_decoupled_search){
+                    if (g_factoring->get_profile() != FORK){
+                        new_cpg = PathPriceTag(0);
+                        new_cpg.apply_center_op_to_leaves(*CPGStorage::storage->get_cpg(parent_state), *op);
+                    } else {
+                        new_cpg = PathPriceTag(*CPGStorage::storage->get_cpg(parent_state));
+                    }
+                    new_cpg.update_price_tags(new_state);
+                }
             } else {
-                new_state = g_state_registry->get_state(g_initial_state_data);
+                if (g_use_decoupled_search){
+                    new_state = g_state_registry->get_center_state(g_initial_state_data);
+                    
+                    new_cpg = PathPriceTag(0);
+                    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                        new_cpg.add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
+                    }
+                    new_cpg.update_price_tags(new_state);
+                } else {
+                    new_state = g_state_registry->get_state(g_initial_state_data);
+                }
             }
+            
             Permutation p;
-            if (new_state.get_id() != current_state.get_id()){
-                p = g_symmetry_graph->create_permutation_from_state_to_state(current_state, new_state);
+            unique_ptr<DecoupledPermutation> dp;
+            if (g_use_decoupled_search){
+                const CompliantPathGraph *current_cpg = CPGStorage::storage->get_cpg(current_state);
+                if (!is_equal(current_state, *current_cpg, new_state, new_cpg)){
+                    dp.reset(new DecoupledPermutation(g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, new_cpg)));
+                }
+                if (dp){
+                    decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*dp)));
+                } else {
+                    decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation()));
+                }
+            } else {
+                if (new_state.get_id() != current_state.get_id()){
+                    p = g_symmetry_graph->create_permutation_from_state_to_state(current_state, new_state);
+                }
+                permutations.push_back(p);
             }
-            permutations.push_back(p);
         }
 
         if (op == 0) {  // reached initial state => done
@@ -226,7 +265,7 @@ void SearchSpace::trace_path(const State &goal_state,
             break;
         }
 
-        if (!g_symmetry_graph || g_use_decoupled_search){
+        if (!g_symmetry_graph){
             path.push_back(op);
         }
         current_state = g_state_registry->lookup_state(info.parent_state_id);
@@ -235,421 +274,385 @@ void SearchSpace::trace_path(const State &goal_state,
     reverse(path.begin(), path.end());
     
     if (g_symmetry_graph && !g_use_decoupled_search){
-        vector<Permutation> reverse_permutations;
-        Permutation temp_p, p;
-        while (permutations.begin() != permutations.end()) {
-            p = permutations.back();
-            temp_p = Permutation(p, temp_p);
-            reverse_permutations.push_back(temp_p);
-            permutations.pop_back();
-        }
-        for(size_t i = 0; i < states.size(); ++i){
-            Permutation &permutation = reverse_permutations[states.size() - i - 1];
-            states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
-        }
-        for (size_t i = states.size() - 1; i > 0; i--) {
-            vector<const Operator *> applicable_ops;
-            g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), applicable_ops);
-            bool found = false;
-            int min_cost_op = 0;
-            int min_cost = numeric_limits<int>::max();
-
-            for (size_t o = 0; o < applicable_ops.size(); ++o) {
-                const Operator *op = applicable_ops[o];
-                State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op, false);
-                if (succ_state.get_id() == states[i-1]) {
-                    found = true;
-                    if (op->get_cost() < min_cost) {
-                        min_cost = op->get_cost();
-                        min_cost_op = o;
-                    }
-                }
-            }
-            if (!found) {
-                cout << "No operator is found!!!" << endl
-                    << "Cannot reach the state " << endl;
-                g_state_registry->lookup_state(states[i-1]).dump_pddl();
-                cout << endl << "From the state" << endl;
-                g_state_registry->lookup_state(states[i]).dump_pddl();
-                exit_with(EXIT_CRITICAL_ERROR);
-            }
-            path.push_back(applicable_ops[min_cost_op]);
-        }
-        return;
+        trace_symmetric_path(path, states, permutations);
     }
     
     if (g_use_decoupled_search){
-#ifdef DEBUG_PLAN_EXTRACTION
-        cout << "##################### STARTING TRACE_PATH" << endl;
-#endif
-        
-        reverse(states.begin(), states.end());
-        
-        vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
-        
         if (g_symmetry_graph){
-            
-            if (g_factoring->get_profile() != FORK){
-                // TODO need to handle center actions that touch leaves correctly!
-                return;
-            }
-            
-            vector<int> init_center(g_variable_domain.size(), -1);
-            for (int var : g_center_vars){
-                init_center[var] = g_initial_state_data[var];
-            }
-            State real_state = g_state_registry->get_center_state(init_center);
-            states[0] = real_state.get_id();
-            
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
-            }
-            price_tags[0].update_price_tags(real_state);
-            
-            State permuted_state = g_state_registry->get_initial_state();
-            PathPriceTag permuted_cpg(&price_tags[0]);
-            
-            unique_ptr<DecoupledPermutation> overall_permutation(new DecoupledPermutation());
-            for (size_t i = 0; i < states.size(); ++i){
-                if (i > 0){
-                    real_state = g_state_registry->get_center_successor(permuted_state, *path[i-1]);
-                    permuted_state = g_state_registry->lookup_state(states[i]);
-                    permuted_cpg.update_price_tags(permuted_state);
-                }
-                
-                PathPriceTag tmp(&permuted_cpg);
-                const vector<int> &permuted_center_facts = g_symmetry_graph->get_canonical_decoupled_state(real_state, tmp);
-                const State permuted_center = g_state_registry->get_center_state(permuted_center_facts);
-                
-#ifndef NDEBUG
-//                 permuted_center.dump_pddl();
-//                 permuted_state.dump_pddl();
-                for (int var : g_center_vars){
-                    assert(permuted_center[var] == permuted_state[var]);
-                }
-#endif
-                
-                if (!is_equal(permuted_center, tmp, real_state, permuted_cpg)){
-                    DecoupledPermutation p(g_symmetry_graph->create_permutation_from_state_to_state(permuted_center, tmp, real_state, permuted_cpg));
-                    overall_permutation.reset(new DecoupledPermutation(*overall_permutation, p));
-                    
-                    if (i > 0){
-                        states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), p).get_id();
-                        price_tags[i] = PathPriceTag(&price_tags[i-1]);
-                        price_tags[i].update_price_tags(g_state_registry->lookup_state(states[i]));
-                    }
-                } else {
-                    if (i > 0){
-                        price_tags[i] = PathPriceTag(&price_tags[i-1]);
-                        price_tags[i].update_price_tags(g_state_registry->lookup_state(states[i]));
-                    }
-                }
-                
-//                 cout << "_____________________________________________" << endl;
-//                 g_state_registry->lookup_state(states[i]).dump_pddl();
-//                 price_tags[i].dump();
-//                 cout << "_____________________________________________" << endl;
-                
-                if (i + 1 < states.size()){
-                    states[i+1] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i+1]), permuted_cpg, *overall_permutation).get_id();
-                }
-                
-                if (i > 0){
-                    State predecessor = g_state_registry->lookup_state(states[i-1]);
-                    State current = g_state_registry->lookup_state(states[i]);
-                    
-                    vector<const Operator*> applicable_ops;
-                    g_successor_generator->generate_applicable_ops(predecessor, applicable_ops, price_tags[i-1]);
-                    bool found = false;
-                    int min_cost_op = 0;
-                    int min_cost = numeric_limits<int>::max();
+            trace_symmetric_path(path, states, cpgs, decoupled_permutations);
+        }
+        trace_decoupled_path(path, states);
+    }
+}
 
-                    for (size_t o = 0; o < applicable_ops.size(); ++o) {
-                        const Operator *op = applicable_ops[o];
-                        State succ_state = g_state_registry->get_center_successor(predecessor, *op);
-                        PathPriceTag succ_cpg(&price_tags[i-1]);
-                        succ_cpg.update_price_tags(succ_state);
-                        if (is_equal(succ_state, succ_cpg, current, price_tags[i])) {
-                            found = true;
-                            if (op->get_cost() < min_cost) {
-                                min_cost = op->get_cost();
-                                min_cost_op = o;
-                            }
-                        }
-                    }
-                    if (!found) {
-                        cout << "No operator is found!!!" << endl
-                            << "Cannot reach the state " << endl;
-                        current.dump_pddl();
-                        cout << endl << "From the state" << endl;
-                        predecessor.dump_pddl();
-                        exit_with(EXIT_CRITICAL_ERROR);
-                    }
-                    path[i-1] = applicable_ops[min_cost_op];
-                }
-            }
+void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<StateID> &states) const {
+#ifdef DEBUG_PLAN_EXTRACTION
+    cout << "##################### STARTING TRACE_PATH" << endl;
+#endif
+    
+    reverse(states.begin(), states.end());
+    
+    vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
+    
+    // reconstruct leaf paths    
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
+    }
+    price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
+    
+    for (size_t i = 1; i < states.size(); ++i){
+        PathPriceTag &tag = price_tags[i];
+        
+        if (g_factoring->get_profile() != FORK){
+            tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
         } else {
-        
-            // reconstruct leaf paths
-            
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
-            }
-            price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
-            
-            for (size_t i = 1; i < states.size(); ++i){
-                PathPriceTag &tag = price_tags[i];
-                
-                if (g_factoring->get_profile() != FORK){
-                    tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
-                } else {
-                    tag = PathPriceTag(&price_tags[i - 1]);
-                }
-                tag.update_price_tags(g_state_registry->lookup_state(states[i]));
-            }
+            tag = PathPriceTag(&price_tags[i - 1]);
         }
+        tag.update_price_tags(g_state_registry->lookup_state(states[i]));
+    }
 
 #ifdef DEBUG_PLAN_EXTRACTION
-        cout << "done reconstructing leaf paths" << endl;
+    cout << "done reconstructing leaf paths" << endl;
 #endif
-        
-        // start from goal state
-        reverse(path.begin(), path.end());
-        reverse(price_tags.begin(), price_tags.end());
-        
+    
+    // start from goal state
+    reverse(path.begin(), path.end());
+    reverse(price_tags.begin(), price_tags.end());
+    
 #ifdef DEBUG_PLAN_EXTRACTION
-        reverse(states.begin(), states.end());
+    reverse(states.begin(), states.end());
 #endif        
-        
-        vector<set<int> > marked_leaf_states(g_factors.size());       
-        
-        // mark leaf goal states
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (!g_goals_per_factor[factor].empty()){
-                int min_cost = numeric_limits<int>::max();
-                int best_leaf_state_id = -1;
-                
-                size_t number_states = price_tags[0].get_number_states(factor);
-                size_t id = 0;
-                while (number_states > 0) {
-                    if (price_tags[0].has_leaf_state(id, factor)){
-                        --number_states;
-                        if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
-                            int new_cost = price_tags[0].get_cost_of_state(id, factor);
-                            if (min_cost > new_cost){
-                                min_cost = new_cost;
-                                best_leaf_state_id = id;
-                                if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-                                    break;
-                                }
+    
+    vector<set<int> > marked_leaf_states(g_factors.size());       
+    
+    // mark leaf goal states
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_goals_per_factor[factor].empty()){
+            int min_cost = numeric_limits<int>::max();
+            int best_leaf_state_id = -1;
+            
+            size_t number_states = price_tags[0].get_number_states(factor);
+            size_t id = 0;
+            while (number_states > 0) {
+                if (price_tags[0].has_leaf_state(id, factor)){
+                    --number_states;
+                    if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+                        int new_cost = price_tags[0].get_cost_of_state(id, factor);
+                        if (min_cost > new_cost){
+                            min_cost = new_cost;
+                            best_leaf_state_id = id;
+                            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                                break;
                             }
                         }
                     }
-                    ++id;
                 }
-                assert(best_leaf_state_id != -1);
-                marked_leaf_states[factor].insert(best_leaf_state_id);
+                ++id;
+            }
+            assert(best_leaf_state_id != -1);
+            marked_leaf_states[factor].insert(best_leaf_state_id);
 
 #ifdef DEBUG_PLAN_EXTRACTION
-                cout << "marked goal fact: " << best_leaf_state_id << " for cost " << min_cost << endl;
-                g_state_registry->lookup_leaf_state(LeafStateID(best_leaf_state_id, factor)).dump_pddl();
+            cout << "marked goal fact: " << best_leaf_state_id << " for cost " << min_cost << endl;
+            g_state_registry->lookup_leaf_state(LeafStateID(best_leaf_state_id, factor)).dump_pddl();
 #endif
+        }
+    }
+    
+#ifdef DEBUG_PLAN_EXTRACTION        
+    cout << "start backtracing plan" << endl;
+#endif
+    
+    vector<const Operator*> decoupled_plan;
+    
+    vector<set<int> > center_preconditions(g_factors.size());
+    vector<int> best_center_supporter(g_factors.size());
+    
+    // go through center path and fill in leaf actions
+    for (size_t step = 0; step < price_tags.size(); step++){
+    
+        const Operator *op = 0;
+        if (step < path.size()){
+            op = path[step];
+        }
+        
+        // collect leaf preconditions of center op
+        vector<vector<pair<int, int> > > leaf_pre_by_factor;
+        if (g_factoring->get_profile() != FORK && step < path.size()){
+            leaf_pre_by_factor.resize(g_factors.size());
+            for (size_t pre = 0; pre < op->get_preconditions().size(); pre++){
+                const Condition &prev = op->get_preconditions()[pre];
+                int factor = g_belongs_to_factor[prev.var];
+                if (factor != -1){
+                    leaf_pre_by_factor[factor].push_back(make_pair(prev.var, prev.val));
+#ifdef DEBUG_PLAN_EXTRACTION
+                    cout << "added center precondition " << g_fact_names[prev.var][prev.val] << endl;
+#endif
+                }
             }
         }
         
-#ifdef DEBUG_PLAN_EXTRACTION        
-        cout << "start backtracing plan" << endl;
-#endif
         
-        vector<const Operator*> decoupled_plan;
-        
-        vector<set<int> > center_preconditions(g_factors.size());
-        vector<int> best_center_supporter(g_factors.size());
-        
-        // go through center path and fill in leaf actions
-        for (size_t step = 0; step < price_tags.size(); step++){
-        
-            const Operator *op = 0;
-            if (step < path.size()){
-                op = path[step];
-            }
-            
-            // collect leaf preconditions of center op
-            vector<vector<pair<int, int> > > leaf_pre_by_factor;
-            if (g_factoring->get_profile() != FORK && step < path.size()){
-                leaf_pre_by_factor.resize(g_factors.size());
-                for (size_t pre = 0; pre < op->get_preconditions().size(); pre++){
-                    const Condition &prev = op->get_preconditions()[pre];
-                    int factor = g_belongs_to_factor[prev.var];
-                    if (factor != -1){
-                        leaf_pre_by_factor[factor].push_back(make_pair(prev.var, prev.val));
 #ifdef DEBUG_PLAN_EXTRACTION
-                        cout << "added center precondition " << g_fact_names[prev.var][prev.val] << endl;
-#endif
+        cout << "current root state: " << states[step] << endl;
+        g_state_registry->lookup_state(states[step]).dump_pddl();
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (size_t i = 0; i < g_state_registry->size(factor); ++i){
+                if (price_tags[step].has_leaf_state(i, factor)){
+                    if (price_tags[step].get_path_info_for_fact(i, factor).is_new){
+                        cout << "is new:" << endl;
                     }
+                    g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
                 }
             }
-            
-            
-#ifdef DEBUG_PLAN_EXTRACTION
-            cout << "current root state: " << states[step] << endl;
-            g_state_registry->lookup_state(states[step]).dump_pddl();
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                for (size_t i = 0; i < g_state_registry->size(factor); ++i){
-                    if (price_tags[step].has_leaf_state(i, factor)){
-                        if (price_tags[step].get_path_info_for_fact(i, factor).is_new){
-                            cout << "is new:" << endl;
-                        }
-                        g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
-                    }
-                }
-            }
-            cout << endl;
+        }
+        cout << endl;
 #endif      
+        
+        // iterate over leaf factors
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
             
-            // iterate over leaf factors
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                
-                bool change = true;
-                while (change){
-                    change = false;
+            bool change = true;
+            while (change){
+                change = false;
 
-                    size_t number_states = price_tags[step].get_number_states(factor);
-                    size_t id = 0;
-                    while (number_states > 0){          // iterate over all new leaf states
-                        if (price_tags[step].has_leaf_state(id, factor)){
-                            --number_states;
-                            if (price_tags[step].get_path_info_for_fact(id, factor).is_new){
-                        
-                                const PathPriceTagInfo &fact = price_tags[step].get_path_info_for_fact(id, factor);
+                size_t number_states = price_tags[step].get_number_states(factor);
+                size_t id = 0;
+                while (number_states > 0){          // iterate over all new leaf states
+                    if (price_tags[step].has_leaf_state(id, factor)){
+                        --number_states;
+                        if (price_tags[step].get_path_info_for_fact(id, factor).is_new){
+                    
+                            const PathPriceTagInfo &fact = price_tags[step].get_path_info_for_fact(id, factor);
 
-                                if (marked_leaf_states[factor].erase(id) > 0){
-                                    if (center_preconditions[factor].find(id) != center_preconditions[factor].end()){
+                            if (marked_leaf_states[factor].erase(id) > 0){
+                                if (center_preconditions[factor].find(id) != center_preconditions[factor].end()){
+                                    // if a leaf precondition fulfills the center precondition => center pre is achieved
+                                    center_preconditions[factor] = set<int>();
+#ifdef DEBUG_PLAN_EXTRACTION
+                                    cout << "center precondition fulfilled" << endl;
+#endif
+                                }
+#ifdef DEBUG_PLAN_EXTRACTION
+                                cout << "handling fact " << id << ":" << endl;
+                                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+                                cout << "added op to plan: ";
+                                if (g_factoring->get_profile() == FORK){
+                                    if (fact.best_supporter != 0){
+                                        cout << fact.best_supporter->get_name() << endl;
+                                        cout << "marked predecessor: " << fact.predecessor << endl;
+                                        g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
+                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
+                                    } else {
+                                        cout << "is init state" << endl;
+                                    }
+                                } else if (fact.best_supporter == 0) {
+                                    if (fact.predecessor != LeafStateID::no_state){
+                                        cout << "no-op (affects center)" << endl;
+                                        cout << "marked predecessor: " << fact.predecessor << " in predecessor pricetag" << endl;
+                                        g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
+                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
+                                        cout << "predecessor in predecessor pricetag? => " << (price_tags[step+1].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
+                                    }
+                                } else {
+                                    cout << fact.best_supporter->get_name() << endl;
+                                    cout << "marked predecessor: " << fact.predecessor << endl;
+                                    g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
+                                    cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
+                                }
+#endif
+
+                                if (fact.best_supporter != 0){
+                                    marked_leaf_states[factor].insert(fact.predecessor.hash());
+                                    decoupled_plan.push_back(fact.best_supporter);
+                                    if (center_preconditions[factor].find(fact.predecessor.hash()) != center_preconditions[factor].end()){
                                         // if a leaf precondition fulfills the center precondition => center pre is achieved
                                         center_preconditions[factor] = set<int>();
 #ifdef DEBUG_PLAN_EXTRACTION
                                         cout << "center precondition fulfilled" << endl;
 #endif
                                     }
-#ifdef DEBUG_PLAN_EXTRACTION
-                                    cout << "handling fact " << id << ":" << endl;
-                                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-                                    cout << "added op to plan: ";
-                                    if (g_factoring->get_profile() == FORK){
-                                        if (fact.best_supporter != 0){
-                                            cout << fact.best_supporter->get_name() << endl;
-                                            cout << "marked predecessor: " << fact.predecessor << endl;
-                                            g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
-                                        } else {
-                                            cout << "is init state" << endl;
-                                        }
-                                    } else if (fact.best_supporter == 0) {
-                                        if (fact.predecessor != LeafStateID::no_state){
-                                            cout << "no-op (affects center)" << endl;
-                                            cout << "marked predecessor: " << fact.predecessor << " in predecessor pricetag" << endl;
-                                            g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                            cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
-                                            cout << "predecessor in predecessor pricetag? => " << (price_tags[step+1].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
-                                        }
-                                    } else {
-                                        cout << fact.best_supporter->get_name() << endl;
-                                        cout << "marked predecessor: " << fact.predecessor << endl;
-                                        g_state_registry->lookup_leaf_state(fact.predecessor).dump_pddl();
-                                        cout << "predecessor in this pricetag? => " << (price_tags[step].get_cost_of_state(fact.predecessor.hash(), factor) != -1) << endl;
-                                    }
-#endif
-
-                                    if (fact.best_supporter != 0){
-                                        marked_leaf_states[factor].insert(fact.predecessor.hash());
-                                        decoupled_plan.push_back(fact.best_supporter);
-                                        if (center_preconditions[factor].find(fact.predecessor.hash()) != center_preconditions[factor].end()){
-                                            // if a leaf precondition fulfills the center precondition => center pre is achieved
-                                            center_preconditions[factor] = set<int>();
-#ifdef DEBUG_PLAN_EXTRACTION
-                                            cout << "center precondition fulfilled" << endl;
-#endif
-                                        }
-                                        change = true;
-                                    } else if (fact.predecessor != LeafStateID::no_state){
-                                        // can happen for center factoring when center op changed leaf
-                                        marked_leaf_states[factor].insert(fact.predecessor.hash());
-                                    }
+                                    change = true;
+                                } else if (fact.predecessor != LeafStateID::no_state){
+                                    // can happen for center factoring when center op changed leaf
+                                    marked_leaf_states[factor].insert(fact.predecessor.hash());
                                 }
                             }
                         }
-                        id++;
                     }
-                    
-                    if (!change && !center_preconditions[factor].empty()){
-                        // all necessary leaf preconditions marked, but none of them fulfills center precondition
-                        // => needs to be handled separately
-                        marked_leaf_states[factor].insert(best_center_supporter[factor]);
-#ifdef DEBUG_PLAN_EXTRACTION
-                        cout << "marked predecessor " << best_center_supporter[factor] << " for center op" << endl;
-                        g_state_registry->lookup_leaf_state(LeafStateID(best_center_supporter[factor], factor)).dump_pddl();;
-#endif
-                        change = true;
-                        center_preconditions[factor] = set<int>();
-                    }
-                    
+                    id++;
                 }
                 
-                if (!leaf_pre_by_factor.empty() && !leaf_pre_by_factor[factor].empty()){       // mark leaf preconditions of center op
-                    
-                    int best_price = numeric_limits<int>::max();
-                    LeafStateID best_predecessor = LeafStateID::no_state;
-                    
-                    size_t number_states = price_tags[step + 1].get_number_states(factor);
-                    size_t id = 0;
-                    while (number_states > 0) {
-                        if (price_tags[step + 1].has_leaf_state(id, factor)){
-                            --number_states;
-                            bool fulfills_pre = true;
-                            LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                            for (size_t pre = 0; pre < leaf_pre_by_factor[factor].size(); pre++){
-                                int var = leaf_pre_by_factor[factor][pre].first;
-                                int val = leaf_pre_by_factor[factor][pre].second;
-                                if (leaf_state[var] != val){
-                                    fulfills_pre = false;
-                                    break;
-                                }
-                            }
-                            if (fulfills_pre){
-                                center_preconditions[factor].insert(leaf_state.get_id().hash());
-                                int cost = price_tags[step + 1].get_cost_of_state(leaf_state.get_id().hash(), factor);
-                                if (cost < best_price){
-                                    best_price = cost;
-                                    best_predecessor = leaf_state.get_id();
-                                }
+                if (!change && !center_preconditions[factor].empty()){
+                    // all necessary leaf preconditions marked, but none of them fulfills center precondition
+                    // => needs to be handled separately
+                    marked_leaf_states[factor].insert(best_center_supporter[factor]);
+#ifdef DEBUG_PLAN_EXTRACTION
+                    cout << "marked predecessor " << best_center_supporter[factor] << " for center op" << endl;
+                    g_state_registry->lookup_leaf_state(LeafStateID(best_center_supporter[factor], factor)).dump_pddl();;
+#endif
+                    change = true;
+                    center_preconditions[factor] = set<int>();
+                }
+                
+            }
+            
+            if (!leaf_pre_by_factor.empty() && !leaf_pre_by_factor[factor].empty()){       // mark leaf preconditions of center op
+                
+                int best_price = numeric_limits<int>::max();
+                LeafStateID best_predecessor = LeafStateID::no_state;
+                
+                size_t number_states = price_tags[step + 1].get_number_states(factor);
+                size_t id = 0;
+                while (number_states > 0) {
+                    if (price_tags[step + 1].has_leaf_state(id, factor)){
+                        --number_states;
+                        bool fulfills_pre = true;
+                        LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                        for (size_t pre = 0; pre < leaf_pre_by_factor[factor].size(); pre++){
+                            int var = leaf_pre_by_factor[factor][pre].first;
+                            int val = leaf_pre_by_factor[factor][pre].second;
+                            if (leaf_state[var] != val){
+                                fulfills_pre = false;
+                                break;
                             }
                         }
-                        ++id;
+                        if (fulfills_pre){
+                            center_preconditions[factor].insert(leaf_state.get_id().hash());
+                            int cost = price_tags[step + 1].get_cost_of_state(leaf_state.get_id().hash(), factor);
+                            if (cost < best_price){
+                                best_price = cost;
+                                best_predecessor = leaf_state.get_id();
+                            }
+                        }
                     }
-                    
-                    assert(best_predecessor != LeafStateID::no_state);
-                    best_center_supporter[factor] = best_predecessor.hash();
+                    ++id;
+                }
+                
+                assert(best_predecessor != LeafStateID::no_state);
+                best_center_supporter[factor] = best_predecessor.hash();
+            }
+        }
+        
+        if (step < path.size()){
+            decoupled_plan.push_back(path[step]);
+#ifdef DEBUG_PLAN_EXTRACTION
+            cout << "added root op: " << decoupled_plan.back()->get_name() << endl;
+#endif
+        }
+        
+    }
+    
+#ifndef NDEBUG
+    for (size_t i = 0; i < g_factors.size(); ++i){
+        assert(marked_leaf_states[i].empty());
+    }
+#endif
+    
+    path.swap(decoupled_plan);
+    reverse(path.begin(), path.end());
+}
+
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, vector<Permutation> &permutations) const {
+    vector<Permutation> reverse_permutations;
+    Permutation temp_p, p;
+    while (permutations.begin() != permutations.end()) {
+        p = permutations.back();
+        temp_p = Permutation(p, temp_p);
+        reverse_permutations.push_back(temp_p);
+        permutations.pop_back();
+    }
+    for(size_t i = 0; i < states.size(); ++i){
+        Permutation &permutation = reverse_permutations[states.size() - i - 1];
+        states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
+    }
+    for (size_t i = states.size() - 1; i > 0; --i) {
+        vector<const Operator *> applicable_ops;
+        g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), applicable_ops);
+        bool found = false;
+        int min_cost_op = 0;
+        int min_cost = numeric_limits<int>::max();
+
+        for (size_t o = 0; o < applicable_ops.size(); ++o) {
+            const Operator *op = applicable_ops[o];
+            State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op, false);
+            if (succ_state.get_id() == states[i-1]) {
+                found = true;
+                if (op->get_cost() < min_cost) {
+                    min_cost = op->get_cost();
+                    min_cost_op = o;
                 }
             }
+        }
+        if (!found) {
+            cout << "No operator is found!!!" << endl
+                << "Cannot reach the state " << endl;
+            g_state_registry->lookup_state(states[i-1]).dump_pddl();
+            cout << endl << "From the state" << endl;
+            g_state_registry->lookup_state(states[i]).dump_pddl();
+            exit_with(EXIT_CRITICAL_ERROR);
+        }
+        path.push_back(applicable_ops[min_cost_op]);
+    }
+}
+
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, vector<PathPriceTag> &cpgs, 
+                                       vector<unique_ptr<DecoupledPermutation> > &permutations) const {
+    vector<unique_ptr<DecoupledPermutation> > reverse_permutations;
+    unique_ptr<DecoupledPermutation> temp_p, p;
+    while (permutations.begin() != permutations.end()) {
+        p.reset(new DecoupledPermutation(*permutations.back()));
+        if (temp_p){
+            temp_p.reset(new DecoupledPermutation(*p, *temp_p));
+        } else {
+            temp_p.reset(new DecoupledPermutation(*p, DecoupledPermutation()));
+        }
+        reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
+        permutations.pop_back();
+    }
+    for(size_t i = 0; i < states.size(); ++i){
+        DecoupledPermutation &permutation = *reverse_permutations[states.size() - i - 1];
+        states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
+    }
+    for (size_t i = states.size() - 1; i > 0; --i) {
+        vector<const Operator *> applicable_ops;
+        g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
+        bool found = false;
+        int min_cost_op = 0;
+        int min_cost = numeric_limits<int>::max();
+
+        for (size_t o = 0; o < applicable_ops.size(); ++o) {
+            const Operator *op = applicable_ops[o];
+            State succ_state = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *op);
             
-            if (step < path.size()){
-                decoupled_plan.push_back(path[step]);
-#ifdef DEBUG_PLAN_EXTRACTION
-                cout << "added root op: " << decoupled_plan.back()->get_name() << endl;
-#endif
+            PathPriceTag succ_cpg;
+            if (g_factoring->get_profile() != FORK){
+                succ_cpg = PathPriceTag(0);
+                succ_cpg.apply_center_op_to_leaves(cpgs[i], *op);
+            } else {
+                succ_cpg = PathPriceTag(&cpgs[i]);
             }
+            succ_cpg.update_price_tags(succ_state);
             
+            if (is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], succ_state, succ_cpg)) {
+                found = true;
+                if (op->get_cost() < min_cost) {
+                    min_cost = op->get_cost();
+                    min_cost_op = o;
+                }
+            }
         }
-        
-#ifndef NDEBUG
-        for (size_t i = 0; i < g_factors.size(); ++i){
-            assert(marked_leaf_states[i].empty());
+        if (!found) {
+            cout << "No operator is found!!!" << endl
+                << "Cannot reach the state " << endl;
+            g_state_registry->lookup_state(states[i-1]).dump_pddl();
+            cpgs[i-1].dump();
+            cout << endl << "From the state" << endl;
+            g_state_registry->lookup_state(states[i]).dump_pddl();
+            cpgs[i].dump();
+            exit_with(EXIT_CRITICAL_ERROR);
         }
-#endif
-        
-        path.swap(decoupled_plan);
-        reverse(path.begin(), path.end());
-        
+        path.push_back(applicable_ops[min_cost_op]);
     }
 }
 
