@@ -28,22 +28,37 @@ void PathPriceTagInfo::dump() const {
 }
 
 
-PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
-    if (tag == 0){
+PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
+    if (cpg == 0){
         number_states = vector<size_t>(g_factors.size(), 0);
         prices = vector<vector<int> >(g_factors.size());
         goal_cost = vector<int>(g_factors.size(), INF);
         paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
     } else {
-        number_states = tag->number_states;
-        goal_cost = tag->goal_cost;
-        prices = tag->prices;
-        paths = tag->paths;
+        number_states = cpg->number_states;
+        goal_cost = cpg->goal_cost;
+        prices = cpg->prices;
+        paths = cpg->paths;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             for (size_t state = 0; state < prices[factor].size(); ++state){
                 if (prices[factor][state] != INF){
                     paths[factor][state].is_new = false;
                 }
+            }
+        }
+    }
+}
+
+PathPriceTag::PathPriceTag(const CompliantPathGraph &cpg) {
+    number_states = vector<size_t>(g_factors.size(), 0);
+    prices = vector<vector<int> >(g_factors.size());
+    goal_cost = vector<int>(g_factors.size(), INF);
+    paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
+    
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            if (cpg.has_leaf_state(id, factor)){
+                add_state(LeafStateID(id, factor), cpg.get_cost_of_state(id, factor), 0, LeafStateID::no_state);
             }
         }
     }
@@ -336,18 +351,18 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
     // cout << " GOAL COST" << endl;
     // for (int i : old_goal_cost) cout << i << " "; cout << endl;
     // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
-    assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
-    assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+    assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 
 
 
     //cout << " APPLIED SYMMETRY: " << endl;
     //dump();
 
-    return true; //We do not need to check whether the prices changed
-                 //because the return value is only relevant if
-                 //if_less is true and in that case we checked this in
-                 //per.produce_less(prices)
+    return true; // We do not need to check whether the prices changed
+                 // because the return value is only relevant if
+                 // if_less is true and in that case we checked this in
+                 // per.produce_less(prices)
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {

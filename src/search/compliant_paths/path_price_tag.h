@@ -31,7 +31,9 @@ class PathPriceTag : public Prices {
     bool add_state(const LeafStateID &fact, int cost, const Operator *bs, 
                    const LeafStateID &predecessor);
     
-    PathPriceTag(const PathPriceTag *tag);
+    PathPriceTag(const PathPriceTag *cpg);
+    
+    PathPriceTag(const CompliantPathGraph &cpg);
     
 public:
     
