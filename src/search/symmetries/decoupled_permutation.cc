@@ -13,19 +13,23 @@ using namespace std;
 FactIndex LeavesPermutation::findex_leaves;
 
 DecoupledPermutation::DecoupledPermutation(const Permutation &p) { 
-    if (p.num_leafs_affected())  
+    if (p.num_leafs_affected()){
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
+    }
     
-    if (p.affects_center()) 
+    if (p.affects_center()){
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
+    }
 }
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
-    if (per.center_permutation)
+    if (per.center_permutation){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(per.center_permutation)));
+    }
 
-    if (per.leaves_permutation) 
+    if (per.leaves_permutation){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation)));
+    }
 }
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {    
@@ -37,7 +41,6 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation), invert));
     }
 }
-
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const DecoupledPermutation &p2) {
     if (p1.center_permutation && p2.center_permutation) 
@@ -118,7 +121,6 @@ LeavesPermutation::LeavesPermutation(const Permutation &per) {
     //cout << "Factor permutation: "; for (int f : from_factors) cout << f << " "; cout << endl;
     //cout << "Value permutation: "; for (int v : value) cout << v << " "; cout << endl;
 }
-
 
 void LeavesPermutation::finalize(){
     // Sorting the vector of affected factoriables
@@ -218,11 +220,10 @@ CenterPermutation::CenterPermutation (const Permutation &per, bool invert) :
     finalize();
 }
 
-CenterPermutation::CenterPermutation (const CenterPermutation & p1, 
-				      const CenterPermutation & p2) : 
+CenterPermutation::CenterPermutation (const CenterPermutation &p1, 
+				      const CenterPermutation &p2) : 
     Permutation(p1, p2) {
 }
-
 
 
 bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves,

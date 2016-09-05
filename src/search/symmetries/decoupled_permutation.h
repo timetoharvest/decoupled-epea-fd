@@ -1,9 +1,9 @@
 #ifndef SYMMETRIES_DECOUPLED_PERMUTATION_H
 #define SYMMETRIES_DECOUPLED_PERMUTATION_H
 
-#include <memory>
+#include "permutation.h"
 
-#include "permutation.h" 
+#include <memory>
 
 class LexicographicOrdering;
 class Prices;
@@ -36,9 +36,6 @@ public:
 
     ~LeavesPermutation() = default;
 
-
-    bool produces_less(const Prices &prices) const;
-
     const std::vector<int> & get_factors_affected() const {
 	return factors_affected;
     }
@@ -47,11 +44,11 @@ public:
 	return from_factors[f];
     }
 
-    std::pair<int, int> get_new_factor_state_by_old_factor_state(const int factor, 
-								 const int state) const;
-    std::pair<int, int> get_old_factor_state_by_new_factor_state(const int factor, 
-								 const int state) const ;
-
+    std::pair<int, int> get_new_factor_state_by_old_factor_state(int factor, 
+                                                                 int state) const;
+                                                                
+    std::pair<int, int> get_old_factor_state_by_new_factor_state(int factor, 
+                                                                 int state) const;
 
     cmp_t cmp_num_states (const CompliantPathGraph &cpg) const;
     cmp_t cmp_goal_cost (const CompliantPathGraph &cpg) const;

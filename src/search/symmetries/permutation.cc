@@ -354,7 +354,7 @@ void FactIndex::init_decoupled() {
 ///////////////////////////////////////////////////////////////////////////////
 // Changes added by Michael on 30.1.12
 int FactIndex::get_var_by_index(int ind)  const {
-	// In case of ind < g_variable_domain.size(), returns the index itself, as this is the variable part of the permutation.
+    // In case of ind < g_variable_domain.size(), returns the index itself, as this is the variable part of the permutation.
     if (ind < initial_index) {
 	cout << "=====> WARNING!!!! Check that this is done on purpose!" << endl;
 	return ind;
@@ -363,8 +363,8 @@ int FactIndex::get_var_by_index(int ind)  const {
 }
 
 pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
-    assert(ind>=(int)initial_index);
-    int var =  var_by_val[ind-initial_index];
+    assert(ind >= initial_index);
+    int var =  var_by_val[ind - initial_index];
     int val = ind - dom_sum_by_var[var];
 
 //	assert(var >=0 && var<(int)g_variable_domain.size());
