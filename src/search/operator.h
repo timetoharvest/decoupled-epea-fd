@@ -12,6 +12,26 @@
 #include <string>
 #include <vector>
 
+template<class T>
+class OpsLeafProps {
+    
+    const typename std::vector<T>::iterator begin;
+    const typename std::vector<T>::iterator end;
+    
+public:
+    OpsLeafProps(typename std::vector<T>::iterator begin, typename std::vector<T>::iterator end)
+        : begin(begin), end(end) {}
+    
+    size_t size() const {
+        return end - begin;
+    }
+    
+    const T& operator[](size_t index) const {
+        return *(begin + index);
+    }
+    
+};
+
 struct Condition {
     int var;
     int val;
@@ -59,12 +79,14 @@ class Operator {
     
     bool is_an_axiom;
     
+    // in decoupled search, the following two are sorted by factor, center first
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
-    std::map<int, std::vector<const Condition*> > pre_by_factor;
-    std::map<int, std::vector<const Effect*> > eff_by_factor;
-    const static std::vector<const Condition*> empty_pre;// HACK
-    const static std::vector<const Effect*> empty_eff;// HACK
+    
+    // 0 is center factors, leaves shifted by for center actions 
+    // 1 is affects_factor for leaf actions
+    std::vector<std::vector<Condition>::iterator > pre_by_factor;
+    std::vector<std::vector<Effect>::iterator > eff_by_factor;
     
     std::string name;
     int cost;
@@ -107,9 +129,9 @@ public:
         return dead;
     }
 
-    const std::vector<const Condition*> &get_preconditions(int factor) const;
+    const OpsLeafProps<Condition> get_preconditions(int factor) const;
     
-    const std::vector<const Effect*> &get_effects(int factor) const;
+    const OpsLeafProps<Effect> get_effects(int factor) const;
     
     bool is_applicable(const State &state) const;
     
@@ -142,14 +164,23 @@ public:
     }
     
     bool has_precondition_on(int factor) const {
-        return pre_by_factor.find(factor) != pre_by_factor.end();
+        if (affects_factor == -1){
+            return !pre_by_factor[factor + 1].empty();
+        }
+        return affects_factor == factor && !pre_by_factor[1].empty();
     }
     
     int get_number_pre_factors() const {
-        if (has_precondition_on(-1)){
-            return pre_by_factor.size() - 1;
+        if (affects_factor == -1){
+            size_t num = 0;
+            for (size_t i = 1; i < pre_by_factor.size(); ++i){
+                if (!pre_by_factor[i].empty()){
+                    ++num;
+                }
+            }
+            return num;
         }
-        return pre_by_factor.size();
+        return 1;
     }
 
     int get_cost() const {
