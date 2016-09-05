@@ -7,6 +7,7 @@
 #include "state_registry.h"
 
 #include <iostream>
+
 using namespace std;
 
 Condition::Condition(istream &in) {
@@ -40,7 +41,7 @@ void Operator::read_pre_post(istream &in) {
     effects.push_back(Effect(var, post, conditions));
 }
 
-Operator::Operator(istream &in, bool axiom, int index) {
+Operator::Operator(istream &in, bool axiom) {
     marked = false;
     dead = false;
 
@@ -74,8 +75,6 @@ Operator::Operator(istream &in, bool axiom, int index) {
     }
     
     affects_factor = -1;	// -1 => center factor
-    
-    this->index = index;
 }
 
 void Condition::dump() const {
@@ -109,7 +108,7 @@ const vector<const Effect*> &Operator::get_effects(int factor) const {
     return it->second;
 }
 
-bool Operator::is_applicable(const State& state) const {
+bool Operator::is_applicable(const State &state) const {
     if (g_use_decoupled_search){    // not really efficient, but how to do it better?
         if (!is_center_applicable(state)){
             return false;

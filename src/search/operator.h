@@ -56,7 +56,9 @@ struct Effect {
 };
 
 class Operator {
+    
     bool is_an_axiom;
+    
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
     std::map<int, std::vector<const Condition*> > pre_by_factor;
@@ -70,18 +72,24 @@ class Operator {
     // the following two are only needed for decoupled search
     int affects_factor;
 
-    size_t index;
-
     mutable bool marked; // Used for short-term marking of preferred operators
+    
     bool dead;
 
     void read_pre_post(std::istream &in);
+    
 public:
-    explicit Operator(std::istream &in, bool is_axiom, int index);
+    explicit Operator(std::istream &in, bool is_axiom);
+    
     void dump() const;
-    std::string get_name() const {return name; }
+    
+    std::string get_name() const {
+        return name;
+    }
 
-    bool is_axiom() const {return is_an_axiom; }
+    bool is_axiom() const {
+        return is_an_axiom;
+    }
     
     const std::vector<Condition> &get_preconditions() const {
         return preconditions;
@@ -92,11 +100,11 @@ public:
     }
 
     void set_dead() {
-	dead = true;
+        dead = true;
     }
 
-    bool is_dead() const{
-	return dead;
+    bool is_dead() const {
+        return dead;
     }
 
     const std::vector<const Condition*> &get_preconditions(int factor) const;
@@ -112,15 +120,19 @@ public:
     bool is_marked() const {
         return marked;
     }
+    
     void mark() const {
         marked = true;
     }
+    
     void unmark() const {
         marked = false;
     }
     
-    int get_index() const {
-        return index;
+    size_t get_index() const {
+        int op_index = this - &*g_operators.begin();
+        assert(op_index >= 0 && (size_t) op_index < g_operators.size());
+        return op_index;
     }
     
     void set_affected_factor(int factor);
@@ -140,7 +152,9 @@ public:
         return pre_by_factor.size();
     }
 
-    int get_cost() const {return cost; }
+    int get_cost() const {
+        return cost;
+    }
 };
 
 #endif
