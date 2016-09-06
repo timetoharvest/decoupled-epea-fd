@@ -233,7 +233,6 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     for(int i = vars_affected.size()-1; i>=0; i--) {
         int to_var =  vars_affected[i];
         int from_var = from_vars[to_var];
-
         pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
         assert( to_pair.first == to_var);
         short to_val = to_pair.second;
@@ -278,11 +277,23 @@ void Permutation::permute(vector<int> &state) const {
 	int last_var = affected_vars_cycles[i][affected_vars_cycles[i].size()-1];
 	int last_val = state[last_var];
 
+	if(last_val == -1) { //Permuting a center
+	    assert(g_use_decoupled_search);
+#ifndef NDEBUG	    
+	    for (int j=affected_vars_cycles[i].size()-1; j>0; j--) {
+		assert(state[affected_vars_cycles[i][j-1]] == -1);
+	    }
+#endif
+	    continue;
+	}
+
 	for (int j=affected_vars_cycles[i].size()-1; j>0; j--) {
 	    // writing into variable affected_vars_cycles[i][j]
 	    int to_var = affected_vars_cycles[i][j];
 	    int from_var = affected_vars_cycles[i][j-1];
 	    int from_val = state[from_var];
+	    assert (from_val >= 0);  
+    
 	    pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
 	    state[to_var] = to_pair.second;
 	}
@@ -336,6 +347,7 @@ void FactIndex::init() {
         }
     }
     initial_index = g_variable_domain.size();
+
     length = num_of_vertex;
 }
 
@@ -374,5 +386,8 @@ pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
 }
 
 int FactIndex::get_index_by_var_val_pair(int var, int val) const {
+    assert (var >= 0 && var < (int)g_variable_domain.size()); 
+    assert (val >= 0 && val < (int)g_variable_domain[var]);  
+    
     return dom_sum_by_var[var] + val;
 }
