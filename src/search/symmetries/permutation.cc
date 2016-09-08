@@ -224,6 +224,7 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     if (identity())
         return cmp_t::EQUAL;
 
+
     int from_here = vars_affected.size(); 
     bool greater = false;
     // Will be set to value below vars_affected.size() if there is a need to overwrite the state,
@@ -269,8 +270,10 @@ void Permutation::permute(vector<int> &state) const {
 	if (affected_vars_cycles[i].size() == 1) {
 	    int var = affected_vars_cycles[i][0];
 	    int from_val = state[var];
-	    pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
-	    state[var] = to_pair.second;
+	    if (from_val >= 0) {  
+		pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
+		state[var] = to_pair.second;
+	    }
 	    continue;
 	}
 	// Remembering one value to be rewritten last
@@ -304,14 +307,18 @@ void Permutation::permute(vector<int> &state) const {
 }
 
 void Permutation::permute_state(const State &from_state, vector<int> &to_state) const {
+
     // Does not assume anything about to_state
     for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
         int from_val = from_state[from_var];
-        pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+        assert (from_val >= 0);
+	pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
+	
 
         // Copying the values to the new state
         to_state[to_pair.first] = to_pair.second;
     }
+
 }
 
 bool Permutation::affects_center() const {
