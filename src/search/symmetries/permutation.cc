@@ -387,7 +387,10 @@ pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
 
 int FactIndex::get_index_by_var_val_pair(int var, int val) const {
     assert (var >= 0 && var < (int)g_variable_domain.size()); 
-    assert (val >= 0 && val < (int)g_variable_domain[var]);  
+    assert (val >= 0 && (val < (int)g_variable_domain[var] || 
+			 (g_use_decoupled_search &&
+			  val < (int) g_state_registry->size(var) )));  
+  
     
     return dom_sum_by_var[var] + val;
 }
