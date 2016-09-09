@@ -214,8 +214,11 @@ DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const 
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
 
-    Trace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
-    Trace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
+    DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
+    DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
+    assert (curr_trace.canonical_center == new_trace.canonical_center);
+    //assert (curr_trace.cpg == new_trace.cpg);
+    
 
     DecoupledPermutation p1(decoupled_group->compose_permutation(new_trace), true);
     DecoupledPermutation p2(decoupled_group->compose_permutation(curr_trace));

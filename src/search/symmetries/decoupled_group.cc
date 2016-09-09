@@ -110,35 +110,85 @@ void DecoupledGroup::statistics() const {
 }
 
 
-Trace DecoupledGroup::get_trace(const State &center, 
+DecoupledTrace DecoupledGroup::get_trace(const State &center, 
                                 const CompliantPathGraph &leaves, 
                                 const LexicographicOrdering &lex_ordering) const {
-    Trace res;
+    
+    DecoupledTrace res;
 
-    unique_ptr<CompliantPathGraph> leaves_copy = leaves.clone();
-
+    cout << " :( " << endl;
+    res.canonical_cpg = leaves.clone();
+    res.canonical_center.resize(g_variable_domain.size(), -1);
     for (int var : g_center_vars) {
-        tmp_state[var] = center[var];
+        res.canonical_center[var] = center[var];
     }
 
+    // Center state optimization
     bool changed = true;
+    vector<DecoupledPermutation *> generators_stable_center;
     while (changed) {
         changed = false;
-        for (size_t i = 0; i < generators.size(); ++i) {
-            if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
+	generators_stable_center.clear();
+        for (auto gen : generators_center) {
+	    cmp_t cmp = gen->replace_if_less_center(res.canonical_center, *(res.canonical_cpg)); 
+	    if (cmp == cmp_t::LESS) {
+		res.trace.push_back(gen);
 		changed = true;
-		res.push_back(i);
+	    } else if (cmp == cmp_t::EQUAL && gen->affects_leaves()) {
+		generators_stable_center.push_back(gen);
 	    }
         }
     }
 
+    // Leaves optimization
+    if(lex_ordering.optimize_leaves()){
+	// Leaves optimization
+	bool changed = true;
+	while (changed) {
+	    changed = false;
+	    for (auto gen : generators_only_leaves) {
+		if(gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
+		    changed = true;
+		    res.trace.push_back(gen);
+		}
+	    }
+	    for (const auto & gen : generators_stable_center) {
+		if (gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
+		    changed = true;
+		    res.trace.push_back(gen);   
+		}
+	    }
+	}
+    }
+
+    // cout << "done" << endl;
+    // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][tmp_state[g_center_vars[i]]] << "       ";
+    // cout << endl;
+    // leaves.dump();
+    // cout << endl << endl;
+
+    cout << " :) " << endl;
+
     return res;
+
+
+    // bool changed = true;
+    // while (changed) {
+    //     changed = false;
+    //     for (size_t i = 0; i < generators.size(); ++i) {
+    //         if(generators[i]->replace_if_less(tmp_state, *leaves_copy, lex_ordering)) {
+    // 		changed = true;
+    // 		res.push_back(i);
+    // 	    }
+    //     }
+    // }
+
 }
 
-DecoupledPermutation DecoupledGroup::compose_permutation(const Trace &trace) const {
+DecoupledPermutation DecoupledGroup::compose_permutation(const DecoupledTrace &trace) const {
     unique_ptr<DecoupledPermutation> new_perm(new DecoupledPermutation());
-    for (size_t i : trace) {
-        new_perm.reset(new DecoupledPermutation(*new_perm, *(generators[i])));
+    for (auto perm  : trace.trace) {
+        new_perm.reset(new DecoupledPermutation(*new_perm, *perm));
     }
     return *new_perm;
 }

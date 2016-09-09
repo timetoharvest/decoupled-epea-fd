@@ -9,7 +9,13 @@ class CompliantPathGraph;
 class Group;
 class State;
 
-typedef std::vector<short int> Trace;
+
+class DecoupledTrace {
+public: 
+    std::vector<DecoupledPermutation *> trace;
+    std::vector<int> canonical_center; 
+    std::unique_ptr<CompliantPathGraph> canonical_cpg;
+};
 
 class DecoupledGroup{
     
@@ -24,10 +30,10 @@ public:
     DecoupledGroup(const Group & group);
     ~DecoupledGroup() = default;
 
-    Trace get_trace(const State &center, const CompliantPathGraph &leaves, 
-		    const LexicographicOrdering &lex_ordering) const;
+    DecoupledTrace get_trace(const State &center, const CompliantPathGraph &leaves, 
+			     const LexicographicOrdering &lex_ordering) const;
 
-    DecoupledPermutation compose_permutation(const Trace &trace) const;
+    DecoupledPermutation compose_permutation(const DecoupledTrace &trace) const;
 
     const std::vector<int> & 
 	get_canonical_decoupled_state(const State &center, 
