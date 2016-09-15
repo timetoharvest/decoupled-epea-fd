@@ -273,7 +273,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                     
                     LeafStateID lid(id, factor);
                     
-                    if (!has_pre_on_factor || op.is_applicable(lid)){
+                    if (!has_pre_on_factor || op.is_applicable(lid)){ // TODO there should be a more efficient way to check this!
                         
                         int cost = old_tag.get_cost_of_state(id, factor);
                         
