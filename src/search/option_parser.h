@@ -153,9 +153,9 @@ public:
 };
 
 template <>
-class TokenParser<POR::PORMethod *> {
+class TokenParser<PORMethod *> {
 public:
-    static inline POR::PORMethod *parse(OptionParser &p);
+    static inline PORMethod *parse(OptionParser &p);
 };
 
 
@@ -420,10 +420,10 @@ SearchEngine *TokenParser<SearchEngine *>::parse(OptionParser &p) {
     return lookup_in_registry<SearchEngine>(p);
 }
 
-POR::PORMethod *TokenParser<POR::PORMethod *>::parse(OptionParser &p) {
+PORMethod *TokenParser<PORMethod *>::parse(OptionParser &p) {
     ParseTree::iterator pt = p.get_parse_tree()->begin();
-    if (Registry<POR::PORMethod *>::instance()->contains(pt->value)) {
-        return Registry<POR::PORMethod *>::instance()->get(pt->value) (p);
+    if (Registry<PORMethod *>::instance()->contains(pt->value)) {
+        return Registry<PORMethod *>::instance()->get(pt->value) (p);
     }
     p.error("POR method not found");
     return 0;

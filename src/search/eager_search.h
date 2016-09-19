@@ -12,14 +12,12 @@
 
 #include "open_lists/open_list.h"
 
-class Operator;
 class Heuristic;
+class Operator;
 class Options;
+class PORMethod;
 class ScalarEvaluator;
 
-namespace POR {
-class PORMethod;
-}
 
 class EagerSearch : public SearchEngine {
 protected: // TODO: Remove this hack (added for POR integration)
@@ -33,7 +31,7 @@ protected: // TODO: Remove this hack (added for POR integration)
     // used for upper bound pruning in anytime decoupled search
     Heuristic *pruning_heuristic;
     
-    POR::PORMethod *partial_order_reduction_method;
+    PORMethod *partial_order_reduction_method;
     
     bool insert_state(const SearchNode &succ_node);
 

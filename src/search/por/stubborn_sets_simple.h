@@ -1,0 +1,33 @@
+#ifndef STUBBORN_SETS_SIMPLE_H
+#define STUBBORN_SETS_SIMPLE_H
+
+#include "stubborn_sets.h"
+
+namespace stubborn_sets_simple {
+class StubbornSetsSimple : public stubborn_sets::StubbornSets {
+    
+    void add_necessary_enabling_set(const std::pair<int, int> &fact);
+
+    void compute_interference_relation();
+protected:
+    /* interference_relation[op1_no] contains all operator indices
+       of operators that interfere with op1. */
+    std::vector<std::vector<int>> interference_relation;
+    
+    inline bool interfere(int op1_no, int op2_no) {
+        return can_disable(op1_no, op2_no) ||
+               can_conflict(op1_no, op2_no) ||
+               can_disable(op2_no, op1_no);
+    }
+
+    void add_interfering(int op_no);
+    
+    virtual void initialize_stubborn_set(const State &state) override;
+    virtual void handle_stubborn_operator(const State &state, int op_no) override;
+public:
+    StubbornSetsSimple();
+    virtual ~StubbornSetsSimple() = default;
+};
+}
+
+#endif

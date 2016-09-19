@@ -41,15 +41,12 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
-          compliant_paths/compliant_path_graph.h \
           countdown_timer.h \
-          compliant_paths/cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
           equivalence_relation.h \
           exact_timer.h \
-          factoring.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
@@ -68,7 +65,6 @@ HEADERS = \
           per_state_information.h \
           por/por_method.h \
           pref_evaluator.h \
-          pruning/pruning.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -100,9 +96,6 @@ HEADERS = \
 ## As with all changes to the Makefile, you will have to force a
 ## rebuild after such a change. Deleting the executable and running
 ## "make" to relink is enough; no need to do a complete rebuild.
-
-## Needed for factoring the variables
-HEADERS += ../preprocess/scc.h
 
 HEADERS += additive_heuristic.h
 HEADERS += blind_search_heuristic.h
@@ -164,21 +157,29 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
-# TODO check how to decouple this from the POR interface, so we can comment
-# this out here
-HEADERS += por/expansion_core.h \
-           por/simple_stubborn_sets.h \
-           por/sss_expansion_core.h \
+HEADERS += por/stubborn_sets.h \
+           por/stubborn_sets_decoupled.h \
+           por/stubborn_sets_simple.h \
+           por/stubborn_sets_ec.h
+
+# TODO make decoupled search plugable
+HEADERS += factoring.h \
+           ../preprocess/scc.h
            
+
 HEADERS += pruning/cost_frontier.h \
            pruning/simulation_relation.h \
-           pruning/prunable.h
+           pruning/prunable.h \
+           pruning/pruning.h
 
-HEADERS += compliant_paths/path_price_tag.h \
+HEADERS += compliant_paths/compliant_path_graph.h \
+           compliant_paths/cpg_storage.h \
+           compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
            compliant_paths/pruning_prices.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h
+           
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward

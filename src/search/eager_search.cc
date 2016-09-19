@@ -28,7 +28,7 @@ EagerSearch::EagerSearch(
         f_evaluator = 0;
     }
     if (opts.contains("partial_order_reduction")){
-        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
+        partial_order_reduction_method = opts.get<PORMethod*>("partial_order_reduction");
     } else {
         partial_order_reduction_method = 0;
     }
@@ -105,9 +105,6 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_options();
-    }
 }
 
 EagerSearch::~EagerSearch() {
@@ -119,7 +116,7 @@ void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
     if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_statistics();
+        partial_order_reduction_method->print_statistics();
     }
 }
 
@@ -502,9 +499,10 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
-    parser.add_option<POR::PORMethod*>("partial_order_reduction", 
-                                       "partial order reduction method",
-                                       "none");
+    parser.add_option<PORMethod*>("partial_order_reduction", 
+                                  "partial order reduction method",
+                                  "",
+                                  OptionFlags(false));
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 

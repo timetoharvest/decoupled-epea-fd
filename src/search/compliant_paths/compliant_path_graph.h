@@ -4,7 +4,6 @@
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "../factoring.h"
 #include "../globals.h"
-#include "../por/simple_stubborn_sets.h"
 
 #include <vector>
 
@@ -14,8 +13,12 @@ class LeafStateID;
 class State;
 class StateID;
 
+namespace stubborn_sets_decoupled {
+class StubbornSetsDecoupled;
+}
+
 class CompliantPathGraph {
-    friend class POR::SimpleStubbornSets; // access to leaf_state_successors
+    friend class stubborn_sets_decoupled::StubbornSetsDecoupled; // access to leaf_state_pre/successors
     friend class SimulationRelation; // access to leaf_state_pre/successors
     friend class StateRegistry;
     friend class SuccessorGeneratorSwitch; // access to center_successors
@@ -81,6 +84,8 @@ public:
     virtual size_t get_number_states(int factor) const = 0;
 
     virtual bool goal_reachable(int factor) const = 0;
+    
+    virtual int get_goal_cost(int factor) const = 0;
     
     virtual void dump() const = 0;
     
