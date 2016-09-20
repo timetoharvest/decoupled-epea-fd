@@ -287,13 +287,13 @@ pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(const
 	return findex_leaves.get_var_val_by_index(old_ind);
 }
 
-
 cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
+	if(from_factor <= to_factor) continue; // This has been compared in the other directionor is the same factor
 
-	if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
 	if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
+	if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
     }
     return cmp_t::EQUAL;
 }
@@ -301,9 +301,21 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
 cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
+	if(from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
 
-	if(cpg.get_goal_cost(from_factor) < cpg.get_goal_cost(to_factor)) return cmp_t::GREATER;
-	if(cpg.get_goal_cost(from_factor) > cpg.get_goal_cost(to_factor)) return cmp_t::LESS;
+	int cost_from = cpg.get_goal_cost(from_factor);
+	int cost_to = cpg.get_goal_cost(to_factor);
+
+
+	bool has_from = cost_from >= 0; 
+	bool has_to = cost_to >= 0; 
+
+	if(has_from && !has_to) return cmp_t::LESS;
+	if(!has_from && has_to) return cmp_t::GREATER;
+
+	if(cost_from < cost_to) return cmp_t::LESS;
+	if(cost_from > cost_to) return cmp_t::GREATER;
+
     }
     return cmp_t::EQUAL;
 }
@@ -311,6 +323,8 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
 cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
 	int from_factor = from_factors[to_factor];
+	if(from_factor < to_factor) continue; // This has been compared in the other direction
+
 	assert (g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
 
 	for  (size_t to_id = 0; to_id < g_state_registry->size(from_factor); ++to_id){

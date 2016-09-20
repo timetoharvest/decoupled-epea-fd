@@ -116,7 +116,6 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
     
     DecoupledTrace res;
 
-    cout << " :( " << endl;
     res.canonical_cpg = leaves.clone();
     res.canonical_center.resize(g_variable_domain.size(), -1);
     for (int var : g_center_vars) {
@@ -167,10 +166,7 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
     // leaves.dump();
     // cout << endl << endl;
 
-    cout << " :) " << endl;
-
     return res;
-
 
     // bool changed = true;
     // while (changed) {
