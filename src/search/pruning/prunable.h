@@ -36,6 +36,13 @@ public:
     int check_dominance(const State &base_state, int curr_number_duplicates, 
                         int g_value, const State &predecessor);
     
+    // returns the duplicate counter for this base state and compliant path graph 
+    // i.e. the counter of the state subsuming that or the current max + 1
+    // this method will try to apply symmetries so that the given state is dominated
+    // by an existing one
+    int check_symmetric_dominance(const State &base_state, int curr_number_duplicates, 
+                                  int g_value, const State &predecessor);
+    
     static bool do_pruning() {
         return store_frontier || propagate_goal_prices || !SimulationRelation::simulated_states.empty();
     }
