@@ -17,6 +17,11 @@ GraphCreator::GraphCreator(const Options &opts) :
     initialized = false;
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
+    decoupled_symmetry_pruning = opts.get<bool>("decoupled_symmetry_pruning");
+    if (decoupled_symmetry_pruning && !g_use_decoupled_search){
+        cout << "decoupled symmetry pruning can only be used if decoupled search is enabled" << endl;
+        exit_with(EXIT_INPUT_ERROR);
+    }
 }
 
 void GraphCreator::initialize() {
@@ -56,7 +61,7 @@ void GraphCreator::initialize() {
     // group->dump_generators();
 
     if(g_use_decoupled_search) {
-	decoupled_group = unique_ptr<DecoupledGroup> (new DecoupledGroup(*group));
+	decoupled_group = unique_ptr<DecoupledGroup>(new DecoupledGroup(*group));
     }
     cout << "Done initializing symmetries [t=" << g_timer << "]" << endl;
 #else
@@ -236,6 +241,10 @@ void GraphCreator::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>("generators_bound",
                            "Stopping after the Bliss software reached the bound on the number of generators",
                            "0");
+    parser.add_option<bool>("decoupled_symmetry_pruning",
+                           "if this is set to true, dominance pruning in decoupled orbit search will try to"
+                           "optimize dominance by trying all possible leaf permutations",
+                           "false");
 }
 
 

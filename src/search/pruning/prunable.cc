@@ -164,3 +164,13 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
         return curr_number_duplicates + 1;
     }
 }
+
+int Prunable::check_symmetric_dominance(const State& /*base_state*/, int /*curr_number_duplicates*/, int /*g_value*/, const State& /*predecessor*/) {
+    // TODO Alvaro: implement this, check the above function for reference
+    // this function is called on the CompliantPathGraph object! In the end, you should return the duplicate counter of the
+    // dominated/dominating decoupled state, or "curr_number_duplicates + 1" if there is no such state. this object will be stored with
+    // the according center state, so change this object (, but nothing else :P)!
+    return -1;
+}
+
+

@@ -376,7 +376,12 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             new_cpg.store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
-            int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, g, predecessor);
+            int new_dup_counter;
+            if (g_symmetry_graph && g_symmetry_graph->is_decoupled_symmetry_pruning()){
+                new_dup_counter = new_cpg.check_symmetric_dominance(s, old_dup_counter, g, predecessor);
+            } else {
+                new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, g, predecessor);
+            }
             
             state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];

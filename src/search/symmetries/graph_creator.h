@@ -25,6 +25,7 @@ class GraphCreator  {
     bool initialized;
     int time_bound;
     int generators_bound;
+    bool decoupled_symmetry_pruning;
     
     const LexicographicOrdering lex_ordering;
     unique_ptr<Group> group;
@@ -62,6 +63,10 @@ public:
                                                                 const State &succ_state, 
                                                                 const CompliantPathGraph &succ_cpg) const;
 
+    bool is_decoupled_symmetry_pruning() const {
+        return decoupled_symmetry_pruning;
+    }
+                                                                
     static void add_options_to_parser(OptionParser &parser);
     
     void free_memory() { // TODO what is this good for??
