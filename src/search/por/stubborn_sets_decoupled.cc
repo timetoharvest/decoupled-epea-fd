@@ -153,8 +153,8 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     }
     
     // if all leaf goals reached, look for open center goal
-    for (size_t i = 0; i < g_center_vars.size(); ++i){
-        if (state[g_center_vars[i]] != g_goal[i].second){
+    for (size_t i = 0; i < g_goal.size(); ++i){
+        if (state[g_goal[i].first] != g_goal[i].second){
             add_necessary_enabling_set(g_goal[i]);
             return;
         }
