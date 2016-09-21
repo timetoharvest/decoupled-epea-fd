@@ -124,6 +124,8 @@ void StubbornSetsDecoupled::compute_interference_relation() {
     */
     for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
         if (g_factoring->get_profile() == FORK && ignore_leaf_interference && g_operators[op1_no].get_affected_factor() != -1){
+            // TODO possibly introduce this also for non-fork factorings
+            // (and add a check for competing leaf preconditions)
             continue;
         }
         vector<int> &interfere_op1 = interference_relation[op1_no];
