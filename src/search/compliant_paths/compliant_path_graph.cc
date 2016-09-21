@@ -218,7 +218,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
                         predecessor.dump_pddl();
 #endif
-                        size_t lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id().hash();
+                        size_t lid = g_state_registry->get_id_of_successor_leaf_state(predecessor, *op);
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;

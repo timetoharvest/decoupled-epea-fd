@@ -162,7 +162,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             
                             if (!effects.empty() && op->is_center_applicable(base_state)){
-                                size_t lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id().hash();
+                                size_t lid = g_state_registry->get_id_of_successor_leaf_state(predecessor, *op);
                                 
                                 if (lid >= leaf_state_id_map[factor].size()){
                                     // this can happen when using reachability functions in search, since here we might
@@ -217,7 +217,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             // center op completely overwrites leaf
             const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
 
-            size_t succ_state_id = g_state_registry->get_successor_leaf_state(predecessor, op).get_id().hash();
+            size_t succ_state_id = g_state_registry->get_id_of_successor_leaf_state(predecessor, op);
             
             add_state(succ_state_id, factor, 0, 0, LeafStateID::no_state);
             
@@ -244,7 +244,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                     } else {
                         const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
 
-                        size_t succ_id = g_state_registry->get_successor_leaf_state(state, op).get_id().hash();
+                        size_t succ_id = g_state_registry->get_id_of_successor_leaf_state(state, op);
             
                         add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), 0, LeafStateID(id, factor));
                     }

@@ -336,7 +336,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
 
-                                size_t lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id().hash();
+                                size_t lid = g_state_registry->get_id_of_successor_leaf_state(predecessor, *op);
                                 
                                 if (lid >= handled.size()){
                                     handled.resize(lid + 1, false);
@@ -418,7 +418,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
             
-            add_state(g_state_registry->get_successor_leaf_state(pred, op).get_id().hash(), factor);
+            add_state(g_state_registry->get_id_of_successor_leaf_state(pred, op), factor);
                
         } else {
             // check which leaf states satisfy center precondition and apply effects
@@ -436,7 +436,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
 
-                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id().hash(), factor);
+                            add_state(g_state_registry->get_id_of_successor_leaf_state(state, op), factor);
                         }
                     }
                 }

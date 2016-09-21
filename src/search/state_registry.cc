@@ -279,7 +279,7 @@ State StateRegistry::get_center_state(const State& predecessor, int dup_counter)
     return lookup_state(id);
 }
 
-LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, const Operator &op) {     
+size_t StateRegistry::get_id_of_successor_leaf_state(const LeafState &predecessor, const Operator &op) {     
     assert(!op.is_axiom());
 
     int factor = predecessor.get_id().get_factor();
@@ -295,10 +295,8 @@ LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, 
     
     // not supported (yet)
     // g_axiom_evaluator->evaluate(buffer);
-    
-    LeafStateID id = insert_id_or_pop_leaf_state(factor);
 
-    return lookup_leaf_state(id);
+    return insert_id_or_pop_leaf_state(factor).hash();
 }
 
 size_t StateRegistry::get_max_number_duplicates() const {

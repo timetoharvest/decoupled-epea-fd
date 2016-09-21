@@ -373,11 +373,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         if (eff_on_factor.size() == g_factors[factor].size()){
             // center op completely overwrites this leaf factor
                     
-            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
+            const LeafState &pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
             
-            size_t pid = g_state_registry->get_successor_leaf_state(pred, op).get_id().hash();
-            
-            add_state(pid, factor, 0);
+            add_state(g_state_registry->get_id_of_successor_leaf_state(pred, op), factor, 0);
             
             if (has_pre_on_factor){
                 size_t number_states = old_tag.get_number_states(factor);
@@ -409,9 +407,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                         if (eff_on_factor.empty()){
                             add_state(id, factor, cost);
                         } else {
-                            const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                            const LeafState &state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 
-                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id().hash(), factor, cost);
+                            add_state(g_state_registry->get_id_of_successor_leaf_state(state, op), factor, cost);
                         }
                     }
                 }
