@@ -16,8 +16,8 @@ namespace stubborn_sets_decoupled {
 
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 static inline vector<pair<int, int>> find_unsatisfied_preconditions(
-    const Operator &op, const State &state) {
-    
+    const Operator &op, const State &state, const CompliantPathGraph *current_cpg) {
+
     vector<pair<int, int>> res;
     
     // first handle open leaf preconditions, to get back to frontier states
@@ -35,19 +35,21 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
             bool applicable = false;
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                bool applicable_state = true;
-                for (size_t i = 0; i < preconds.size(); ++i){
-                    if (leaf_state[preconds[i]->var] != preconds[i]->val){
-                        unsat[i] = false;
-                        applicable_state = false;
-                    } else {
-                        sat[i] = true;
+                if (current_cpg->has_leaf_state(id, factor)){
+                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    bool applicable_state = true;
+                    for (size_t i = 0; i < preconds.size(); ++i){
+                        if (leaf_state[preconds[i]->var] != preconds[i]->val){
+                            unsat[i] = false;
+                            applicable_state = false;
+                        } else {
+                            sat[i] = true;
+                        }
                     }
-                }
-                if (applicable_state){
-                    applicable = true;
-                    break;
+                    if (applicable_state){
+                        applicable = true;
+                        break;
+                    }
                 }
             }
             if (!applicable){
@@ -135,7 +137,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     current_cpg = CPGStorage::get_cpg(state);
-    
+
     // if goal in a factor not reached, mark all ingoing transition to all
     // goal states as stubborn
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -176,7 +178,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
                                                      int op_no) {
     const Operator &op = g_operators[op_no];
     
-    vector<pair<int, int>> unsatisfied_preconditions = find_unsatisfied_preconditions(op, state);
+    vector<pair<int, int>> unsatisfied_preconditions = find_unsatisfied_preconditions(op, state, current_cpg);
     if (unsatisfied_preconditions.empty()) {
         /* no unsatisfied precondition found
         => operator is applicable
@@ -187,6 +189,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         // stubborn set, for all leaves this op has preconditions on
         // needed to capture improvements of the precondition's price
         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
+            // TODO only add frontier, if precondition can actually be improved!
             for (size_t factor = 0; factor < g_factors.size(); ++factor){
                 if (op.has_precondition_on(factor)){
                     mark_frontier_actions_as_stubborn(factor);
