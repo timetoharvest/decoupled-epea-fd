@@ -145,7 +145,7 @@ public:
         return pre_by_factor.find(factor) != pre_by_factor.end();
     }
     
-    int get_number_pre_factors() const {
+    int get_number_leaf_pre_factors() const {
         if (has_precondition_on(-1)){
             return pre_by_factor.size() - 1;
         }
