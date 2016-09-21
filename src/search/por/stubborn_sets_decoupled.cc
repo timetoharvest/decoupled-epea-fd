@@ -146,6 +146,8 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
                     assert(!current_cpg->has_leaf_state(id, factor));
                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
+                        // TODO maybe it's better not to mark all ingoing transitions, but to
+                        // add a NES for all open goal facts, similar to open preconditions
                         mark_as_stubborn(pred.first->get_index());
                     }
                 }
