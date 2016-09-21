@@ -27,7 +27,7 @@ vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
 
 vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
 
-vector<pair<int, int> > CompliantPathGraph::leaf_tags_to_cache;
+vector<pair<size_t, size_t> > CompliantPathGraph::leaf_tags_to_cache;
 
 vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
 
@@ -45,27 +45,27 @@ vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
 
 
 
-bool CompliantPathGraph::is_leaf_goal_state(const LeafStateID &fact) {
-    return is_a_leaf_goal_state[fact.get_factor()][fact.hash()];
+bool CompliantPathGraph::is_leaf_goal_state(size_t id, size_t factor) {
+    return is_a_leaf_goal_state[factor][id];
 }
 
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
         for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
             size_t leaf_id = leaf_tags_to_cache[i].first;
-            int factor = leaf_tags_to_cache[i].second;
+            size_t factor = leaf_tags_to_cache[i].second;
             if (leaf_price_cache[factor].size() <= leaf_id){
                 leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
             leaf_price_cache[factor][leaf_id] = state.get_id();
         }
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<pair<size_t, size_t> >().swap(leaf_tags_to_cache);
     }
 }
 
 void CompliantPathGraph::discard_leaf_price_cache() {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<pair<size_t, size_t> >().swap(leaf_tags_to_cache);
     }
 }
 
@@ -101,7 +101,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     Prices goal_price_tag(0);
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        goal_price_tag.add_state(LeafStateID(0, factor), 0);
+        goal_price_tag.add_state(0, factor, 0);
     }
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
@@ -218,7 +218,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
                         predecessor.dump_pddl();
 #endif
-                        LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();                        
+                        size_t lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id().hash();
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
@@ -229,11 +229,11 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                             op_cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
                         }
                         
-                        if (lid.hash() >= leaf_state_id_map[factor].size()){
-                            leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                        if (lid >= leaf_state_id_map[factor].size()){
+                            leaf_state_id_map[factor].resize(lid + 1, -1);
                         }
                         
-                        change |= goal_price_tag.add_state(lid, cost + op_cost);
+                        change |= goal_price_tag.add_state(lid, factor, cost + op_cost);
                         
                         // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
                         // that here, i.e. e.g. the goal states of fork leaves dont need successors
@@ -241,12 +241,12 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         // the last comment doesn't make too much sense..
                         
                         if (!is_center_op && first_time_seen){
-                            leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+                            leaf_state_successors[factor][id].push_back(make_pair(op, lid));
                             if (compute_leaf_backwards_graph) { 
-                                if (lid.hash() >= leaf_state_predecessors[factor].size()) {
-                                    leaf_state_predecessors[factor].resize(lid.hash() + 1);
+                                if (lid >= leaf_state_predecessors[factor].size()) {
+                                    leaf_state_predecessors[factor].resize(lid + 1);
                                 }
-                                leaf_state_predecessors[factor][lid.hash()].push_back(make_pair(op, id));
+                                leaf_state_predecessors[factor][lid].push_back(make_pair(op, id));
                             }
                         }
                     }

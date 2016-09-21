@@ -204,7 +204,7 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
-                            tmp_p_reach.add_state(LeafStateID(fact, factor));
+                            tmp_p_reach.add_state(fact, factor);
                             if (--number_states == 0){
                                 break;
                             }
@@ -260,7 +260,7 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                if(tmp_p_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                if(tmp_p_reach.add_state(leaf_state_successors[factor][id][o].second, factor)) {
                                     ++added;
                                 }
                             }
@@ -315,24 +315,24 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
 
-                                LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();
+                                size_t lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id().hash();
                                 
-                                if (lid.hash() >= handled.size()){
-                                    handled.resize(lid.hash() + 1, false);
+                                if (lid >= handled.size()){
+                                    handled.resize(lid + 1, false);
                                 }
                                 
-                                if (lid.hash() >= leaf_state_id_map[factor].size()){
-                                    leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                                if (lid >= leaf_state_id_map[factor].size()){
+                                    leaf_state_id_map[factor].resize(lid + 1, -1);
                                 }
                                 
                                 if(!fits_store || op->is_center_applicable(base_state)){
-                                    if (tmp_p_reach.add_state(lid)){
+                                    if (tmp_p_reach.add_state(lid, factor)){
                                         ++added;
                                     }
                                 }
                                 
                                 if (op->get_affected_factor() != -1 && fits_store){
-                                    leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+                                    leaf_state_successors[factor][id].push_back(make_pair(op, lid));
                                 }
                             }
                         }
@@ -409,7 +409,7 @@ void PruningReachable::create_init_state_reachable() {
     PruningReachable reach(0);
         
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        reach.add_state(LeafStateID(0, factor));
+        reach.add_state(0, factor);
     }
         
     reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);

@@ -248,9 +248,9 @@ void SimulationRelation::compute_simulation (int factor) {
     relation[factor].resize(num_states);
     for(size_t i = 0; i < num_states; i++){
         relation[factor][i].resize(num_states, true);
-        if(!CompliantPathGraph::is_leaf_goal_state(LeafStateID(i, factor))){
+        if(!CompliantPathGraph::is_leaf_goal_state(i, factor)){
             for (size_t j = 0; j < num_states; j++){
-                if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(j, factor)) || goal_distances[i] > goal_distances[j]){
+                if (CompliantPathGraph::is_leaf_goal_state(j, factor) || goal_distances[i] > goal_distances[j]){
                     relation[factor][i][j] = false;
                 }
             }

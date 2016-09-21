@@ -33,7 +33,7 @@ Prices::Prices(const Prices *tag) {
     }
 }
 
-void Prices::reduce_cost_by(int factor, int cost) {
+void Prices::reduce_cost_by(size_t factor, int cost) {
     assert(g_factoring->get_profile() != FORK);
     
     if (goal_cost[factor] != INF){
@@ -175,13 +175,12 @@ int Prices::check_duplicate(const State &base_state, int curr_number_duplicates,
     }
 }
 
-bool Prices::add_state(const LeafStateID &state, int cost) {
-    size_t factor = state.get_factor();
-    if (leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
-        leaf_state_id_map[factor][state.hash()] = curr_leaf_state_max_id[factor];
+bool Prices::add_state(size_t id, size_t factor, int cost) {
+    if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
+        leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
     }
-    size_t leaf_id = leaf_state_id_map[factor][state.hash()];
+    size_t leaf_id = leaf_state_id_map[factor][id];
 
     if (leaf_id >= prices[factor].size()){
         prices[factor].resize(leaf_id + 1, INF);
@@ -189,7 +188,7 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     if (prices[factor][leaf_id] == INF){
         prices[factor][leaf_id] = cost;
         ++number_states[factor];
-        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
+        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(id, factor)){
             if (goal_cost[factor] == INF || goal_cost[factor] > cost){
                 goal_cost[factor] = cost;
             }
@@ -197,7 +196,7 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
         return true;
     } else if (prices[factor][leaf_id] > cost){
         prices[factor][leaf_id] = cost;
-        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
+        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(id, factor)){
             if (goal_cost[factor] > cost){
                 goal_cost[factor] = cost;
             }
@@ -277,7 +276,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
                             int cost = tag_to_copy.get_cost_of_state(fact, factor);
-                            tmp_price.add_state(LeafStateID(fact, factor), cost + cost_delta);
+                            tmp_price.add_state(fact, factor, cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
@@ -315,7 +314,7 @@ int Prices::update_price_tags(int curr_number_duplicates,
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
-                            change |= tmp_price.add_state(LeafStateID(successor, factor), 
+                            change |= tmp_price.add_state(successor, factor,
                                                    cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                         }
                     }   
@@ -376,7 +375,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
             
-            add_state(g_state_registry->get_successor_leaf_state(pred, op).get_id(), 0);
+            size_t pid = g_state_registry->get_successor_leaf_state(pred, op).get_id().hash();
+            
+            add_state(pid, factor, 0);
             
             if (has_pre_on_factor){
                 size_t number_states = old_tag.get_number_states(factor);
@@ -399,20 +400,18 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                 if (old_tag.has_leaf_state(id, factor)){
                     --number_states;
                     
-                    LeafStateID lid(id, factor);
-                    
-                    if (!has_pre_on_factor || op.is_applicable(lid)){
+                    if (!has_pre_on_factor || op.is_applicable(LeafStateID(id, factor))){
                         
                         int cost = old_tag.get_cost_of_state(id, factor);
                         
                         min_price = min(min_price, cost);
                                 
                         if (eff_on_factor.empty()){
-                            add_state(lid, cost);
+                            add_state(id, factor, cost);
                         } else {
-                            const LeafState state = g_state_registry->lookup_leaf_state(lid);
+                            const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 
-                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id(), cost);
+                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id().hash(), factor, cost);
                         }
                     }
                 }
@@ -432,7 +431,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
     }
 }
 
-bool Prices::has_leaf_state(int id, int factor) const {
+bool Prices::has_leaf_state(size_t id, size_t factor) const {
     if (leaf_state_id_map[factor][id] == -1){
         return false;
     }
@@ -440,32 +439,32 @@ bool Prices::has_leaf_state(int id, int factor) const {
     return leaf_id < prices[factor].size() && prices[factor][leaf_id] != INF;
 }
 
-bool Prices::has_effective_leaf_state(int id, int factor) const {
+bool Prices::has_effective_leaf_state(size_t id, size_t factor) const {
     return has_leaf_state(id, factor);
 }
 
-int Prices::get_cost_of_state(int id, int factor) const {
+int Prices::get_cost_of_state(size_t id, size_t factor) const {
     assert((size_t) leaf_state_id_map[factor][id] < prices[factor].size());
     return prices[factor][leaf_state_id_map[factor][id]];
 }
 
-int Prices::get_effective_cost_of_state(int id, int factor) const {
+int Prices::get_effective_cost_of_state(size_t id, size_t factor) const {
     return get_cost_of_state(id, factor);
 }
 
-size_t Prices::get_number_states(int factor) const {
+size_t Prices::get_number_states(size_t factor) const {
     return number_states[factor];
 }
 
-size_t Prices::get_number_effective_states(int factor) const {
+size_t Prices::get_number_effective_states(size_t factor) const {
     return number_states[factor];
 }
 
-int Prices::get_goal_cost(int factor) const {
+int Prices::get_goal_cost(size_t factor) const {
     return goal_cost[factor];
 }
 
-bool Prices::goal_reachable(int factor) const {
+bool Prices::goal_reachable(size_t factor) const {
     return goal_cost[factor] != INF;
 }
 
@@ -489,7 +488,7 @@ void Prices::create_init_state_prices() {
         Prices prices(0);
             
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            prices.add_state(LeafStateID(0, factor), 0);
+            prices.add_state(0, factor, 0);
         }
             
         prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);

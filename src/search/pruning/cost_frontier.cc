@@ -46,7 +46,7 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
 	}
 
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+            if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
                 if (dominates && reference_frontier[factor][id]){
                     assert(reference->has_effective_leaf_state(id, factor));
                     

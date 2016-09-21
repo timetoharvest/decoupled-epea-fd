@@ -143,7 +143,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && !current_cpg->goal_reachable(factor)){
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+                if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
                     assert(!current_cpg->has_leaf_state(id, factor));
                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
                         mark_as_stubborn(pred.first->get_index());

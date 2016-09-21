@@ -212,7 +212,7 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
         
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            price_tags[0].add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
+            price_tags[0].add_state(0, factor, 0, 0, LeafStateID::no_state);
         }
         price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
         
@@ -252,7 +252,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 while (number_states > 0) {
                     if (price_tags[0].has_leaf_state(id, factor)){
                         --number_states;
-                        if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+                        if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
                             int new_cost = price_tags[0].get_cost_of_state(id, factor);
                             if (min_cost > new_cost){
                                 min_cost = new_cost;

@@ -28,7 +28,7 @@ protected:
       
     // used when including part of the leaf cost into the g-value
     // of a search node
-    void reduce_cost_by(int factor, int cost);
+    void reduce_cost_by(size_t factor, int cost);
     
     // returns the duplicate counter for this base state and price tag 
     // i.e. the counter of the subsuming that or the current max + 1
@@ -38,7 +38,7 @@ protected:
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    bool add_state(const LeafStateID &fact, int cost);
+    bool add_state(size_t id, size_t factor, int cost);
     
     // returns the new duplicate counter
     virtual int update_price_tags(int curr_number_duplicates,
@@ -53,21 +53,21 @@ public:
     
     Prices(){};
     
-    virtual bool has_leaf_state(int id, int factor) const;
+    virtual bool has_leaf_state(size_t id, size_t factor) const;
     
-    virtual bool has_effective_leaf_state(int id, int factor) const;
+    virtual bool has_effective_leaf_state(size_t id, size_t factor) const;
     
-    virtual int get_cost_of_state(int id, int factor) const;
+    virtual int get_cost_of_state(size_t id, size_t factor) const;
     
-    virtual int get_effective_cost_of_state(int id, int factor) const;
+    virtual int get_effective_cost_of_state(size_t id, size_t factor) const;
     
-    virtual size_t get_number_states(int factor) const;
+    virtual size_t get_number_states(size_t factor) const;
 
-    virtual size_t get_number_effective_states(int factor) const;
+    virtual size_t get_number_effective_states(size_t factor) const;
     
-    virtual int get_goal_cost(int factor) const;
+    virtual int get_goal_cost(size_t factor) const;
     
-    virtual bool goal_reachable(int factor) const;
+    virtual bool goal_reachable(size_t factor) const;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
     

@@ -33,17 +33,16 @@ PruningPrices::PruningPrices(const PruningPrices *tag) {
     }
 }
 
-bool PruningPrices::add_effective_state(const LeafStateID &state, int cost) {
-    size_t factor = state.get_factor();
-    if (leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
-        leaf_state_id_map[factor][state.hash()] = curr_leaf_state_max_id[factor];
+bool PruningPrices::add_effective_state(size_t id, size_t factor, int cost) {
+    if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
+        leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
     }
-    assert(leaf_state_id_map[factor][state.hash()] >= 0);
-    size_t leaf_id = leaf_state_id_map[factor][state.hash()];
+    assert(leaf_state_id_map[factor][id] >= 0);
+    size_t leaf_id = leaf_state_id_map[factor][id];
 
     if(effective_prices.empty()){
-        if (has_leaf_state(state.hash(), factor) && cost >= get_cost_of_state(state.hash(), factor)) {
+        if (has_leaf_state(id, factor) && cost >= get_cost_of_state(id, factor)) {
             return false;
         }
         effective_prices = prices;
@@ -278,7 +277,7 @@ int PruningPrices::update_price_tags(int curr_number_duplicates,
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
                             int cost = tag_to_copy.get_cost_of_state(fact, factor);
-                            tmp_p_price.add_state(LeafStateID(fact, factor), cost + cost_delta);
+                            tmp_p_price.add_state(fact, factor, cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
@@ -322,7 +321,7 @@ int PruningPrices::update_price_tags(int curr_number_duplicates,
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
-                            bool added = tmp_p_price.add_state(LeafStateID(successor, factor), 
+                            bool added = tmp_p_price.add_state(successor, factor, 
                                                    cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
                             change |= added;
                             if (store_frontier && added){
@@ -331,7 +330,7 @@ int PruningPrices::update_price_tags(int curr_number_duplicates,
                         } else if (store_frontier && !propagate_goal_prices) {
                             all_applicable = false;
                             int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                            int successor = leaf_state_successors[factor][id][o].second;
+                            size_t successor = leaf_state_successors[factor][id][o].second;
                             if (!tmp_p_price.has_leaf_state(successor, factor) || tmp_p_price.get_cost_of_state(successor, factor) > new_cost){
                                 tmp_p_price.frontier[factor][id] = true;
                             }
@@ -378,7 +377,7 @@ int PruningPrices::update_price_tags(int curr_number_duplicates,
     return tmp_p_price.check_duplicate(base_state, curr_number_duplicates, g_value, predecessor);
 }
 
-bool PruningPrices::has_effective_leaf_state(int id, int factor) const {
+bool PruningPrices::has_effective_leaf_state(size_t id, size_t factor) const {
     if (effective_prices.empty()){
         return has_leaf_state(id, factor);
     } else {
@@ -390,7 +389,7 @@ bool PruningPrices::has_effective_leaf_state(int id, int factor) const {
     }
 }
 
-int PruningPrices::get_effective_cost_of_state(int id, int factor) const {
+int PruningPrices::get_effective_cost_of_state(size_t id, size_t factor) const {
     if (effective_prices.empty()){
         return get_cost_of_state(id, factor);
     } else {
@@ -399,7 +398,7 @@ int PruningPrices::get_effective_cost_of_state(int id, int factor) const {
     }
 }
 
-size_t PruningPrices::get_number_effective_states(int factor) const {
+size_t PruningPrices::get_number_effective_states(size_t factor) const {
     if (number_effective_states.empty()){
         return get_number_states(factor);
     } else {
@@ -428,7 +427,7 @@ void PruningPrices::create_init_state_prices() {
     PruningPrices prices(0);
         
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        prices.add_state(LeafStateID(0, factor), 0);
+        prices.add_state(0, factor, 0);
     }
         
     prices.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
@@ -476,7 +475,7 @@ void PruningPrices::goal_price_propagation() {
             closed[state] = true;
             
             if (value != INF) {
-                add_effective_state(LeafStateID(state, factor), value);
+                add_effective_state(state, factor, value);
             }
 
             for (auto transition : leaf_state_predecessors[factor][state]) {
@@ -521,7 +520,7 @@ void PruningPrices::propagate_dominance_prices() {
                 for (size_t t : simulated_states[factor][s]) {
                     if (!has_effective_leaf_state(t, factor) || get_effective_cost_of_state(t, factor) > cost_s) {
 //                         cout << "Propagate cost " << cost_s << " from " << s << " to " << t << endl;
-                        if (add_effective_state(LeafStateID(t, factor), cost_s) && store_frontier){
+                        if (add_effective_state(t, factor, cost_s) && store_frontier){
                             frontier[factor][t] = false;
                         }
                     }

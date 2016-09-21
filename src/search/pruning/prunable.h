@@ -20,17 +20,17 @@ public:
     
     // TODO it's a bit ugly, that some of these functions are shared with CompliantPathGraph
     
-    virtual int get_goal_cost(int factor) const = 0;
+    virtual int get_goal_cost(size_t factor) const = 0;
     
-    virtual bool has_effective_leaf_state(int id, int factor) const = 0;
+    virtual bool has_effective_leaf_state(size_t id, size_t factor) const = 0;
     
-    virtual int get_cost_of_state(int id, int factor) const = 0;
+    virtual int get_cost_of_state(size_t id, size_t factor) const = 0;
     
-    virtual int get_effective_cost_of_state(int id, int factor) const = 0;
+    virtual int get_effective_cost_of_state(size_t id, size_t factor) const = 0;
     
-    virtual size_t get_number_states(int factor) const = 0;
+    virtual size_t get_number_states(size_t factor) const = 0;
 
-    virtual size_t get_number_effective_states(int factor) const = 0;
+    virtual size_t get_number_effective_states(size_t factor) const = 0;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
     
