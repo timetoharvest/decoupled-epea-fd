@@ -69,6 +69,9 @@ public:
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
+    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
+
+
     virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/) {
 	cerr << "Symmetries not supported for satisficing search" << endl;
 	cerr << "Look at compliant_paths/reachability_function.h" << endl;

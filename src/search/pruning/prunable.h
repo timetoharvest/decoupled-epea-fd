@@ -5,8 +5,10 @@
 #include "simulation_relation.h"
 
 #include <vector>
+#include <memory>
 
 class State;
+class LeavesPermutation;
 
 class Prunable {
     
@@ -29,7 +31,9 @@ public:
     virtual size_t get_number_effective_states(int factor) const = 0;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
-    
+
+    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const = 0;  
+
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1

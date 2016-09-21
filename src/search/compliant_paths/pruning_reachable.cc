@@ -347,3 +347,13 @@ void PruningReachable::dump() const {
     }
 }
 
+std::unique_ptr<CompliantPathGraph> PruningReachable::clone() const  {
+    cerr << "PruningReachable::clone not implemented" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+
+std::unique_ptr<Prunable> PruningReachable::get_permuted_cpg(const LeavesPermutation &) const {
+    cerr << "PruningReachable::get_permuted_cpg not implemented" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+    

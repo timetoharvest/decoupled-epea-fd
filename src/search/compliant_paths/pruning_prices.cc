@@ -455,3 +455,15 @@ void PruningPrices::dump() const {
     }
 }
 
+
+
+std::unique_ptr<CompliantPathGraph> PruningPrices::clone() const  {
+    cerr << "PruningPrices::clone not implemented" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+
+std::unique_ptr<Prunable> PruningPrices::get_permuted_cpg(const LeavesPermutation &) const {
+    cerr << "PruningPrices::get_permuted_cpg not implemented" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+    

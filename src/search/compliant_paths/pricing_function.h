@@ -78,6 +78,8 @@ public:
     virtual void dump() const;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
    
     static void register_cpg_storage(PriceStorage *storage);
     

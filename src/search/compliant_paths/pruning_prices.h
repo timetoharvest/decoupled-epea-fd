@@ -69,6 +69,10 @@ public:
 	cerr << "Look at compliant_paths/pruning_prices.h" << endl;
 	exit_with(EXIT_CRITICAL_ERROR);
     }    
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
+
+    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
     
     
     static void register_cpg_storage(PruningPriceStorage *storage);

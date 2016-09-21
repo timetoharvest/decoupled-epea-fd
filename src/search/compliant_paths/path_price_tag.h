@@ -45,10 +45,12 @@ public:
     
     void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
     
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation);
-    
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
-    
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
+
+    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
+       
 };
 
 #endif
