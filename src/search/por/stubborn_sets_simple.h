@@ -3,12 +3,11 @@
 
 #include "stubborn_sets.h"
 
+class Options;
+
 namespace stubborn_sets_simple {
 class StubbornSetsSimple : public stubborn_sets::StubbornSets {
-    
-    void add_necessary_enabling_set(const std::pair<int, int> &fact);
 
-    void compute_interference_relation();
 protected:
     /* interference_relation[op1_no] contains all operator indices
        of operators that interfere with op1. */
@@ -21,11 +20,14 @@ protected:
     }
 
     void add_interfering(int op_no);
+    void add_necessary_enabling_set(const std::pair<int, int> &fact);
     
+    virtual void compute_interference_relation();
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, int op_no) override;
 public:
     StubbornSetsSimple();
+    StubbornSetsSimple(const Options &opts);
     virtual ~StubbornSetsSimple() = default;
 };
 }

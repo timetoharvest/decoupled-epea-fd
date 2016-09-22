@@ -13,12 +13,10 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
     bool ignore_leaf_interference;
     
-    void add_necessary_enabling_set(const std::pair<int, int> &fact);
-    
     void mark_frontier_actions_as_stubborn(int factor);
 
-    void compute_interference_relation();
 protected:
+    virtual void compute_interference_relation() override;
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, int op_no) override;
 public:

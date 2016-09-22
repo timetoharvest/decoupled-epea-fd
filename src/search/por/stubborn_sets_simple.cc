@@ -36,6 +36,9 @@ static inline pair<int, int> find_unsatisfied_precondition(
 }
 
 StubbornSetsSimple::StubbornSetsSimple() {
+}
+
+StubbornSetsSimple::StubbornSetsSimple(const Options &) {
     compute_interference_relation();
     cout << "pruning method: stubborn sets simple" << endl;
 }
@@ -124,7 +127,7 @@ static PORMethod* _parse(OptionParser &parser) {
         return 0;
     }
 
-    return new StubbornSetsSimple();
+    return new StubbornSetsSimple(parser.parse());
 }
 
 static Plugin<PORMethod> _plugin("stubborn_sets_simple", _parse);

@@ -89,13 +89,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     CompliantPathGraph::set_compute_leaf_backwards_graph();
-}
-
-// Add all operators that achieve the fact (var, value) to stubborn set.
-void StubbornSetsDecoupled::add_necessary_enabling_set(const pair<int, int> &fact) {
-    for (int op_no : achievers[fact.first][fact.second]) {
-        mark_as_stubborn(op_no);
-    }
+    compute_interference_relation();
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(int factor) {
@@ -123,7 +117,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
     for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
-        if (g_factoring->get_profile() == FORK && ignore_leaf_interference && g_operators[op1_no].get_affected_factor() != -1){
+        if (ignore_leaf_interference && g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != -1){
             // TODO possibly introduce this also for non-fork factorings
             // (and add a check for competing leaf preconditions)
             continue;
@@ -144,6 +138,42 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     // goal states as stubborn
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && !current_cpg->goal_reachable(factor)){
+            
+            
+            
+            
+            
+//             vector<bool> unsat(g_goals_per_factor[factor].size(), true);
+//             vector<bool> sat(g_goals_per_factor[factor].size(), false);
+//             
+//             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+//                 if (current_cpg->has_leaf_state(id, factor)){
+//                     assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+//                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+//                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+//                         if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
+//                             unsat[i] = false;
+//                         } else {
+//                             sat[i] = true;
+//                         }
+//                     }
+//                 }
+//             }
+//             for (size_t i = 0; i < sat.size(); ++i){
+//                 if (!sat[i]){
+//                     add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+//                     return;
+//                 }
+//             }
+//             for (size_t i = 0; i < unsat.size(); ++i){
+//                 if (unsat[i]){
+//                     add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+//                 }
+//             }
+//             return;
+            
+            
+            
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
                     assert(!current_cpg->has_leaf_state(id, factor));
