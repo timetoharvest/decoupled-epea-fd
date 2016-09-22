@@ -143,48 +143,48 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             
             
             
-//             vector<bool> unsat(g_goals_per_factor[factor].size(), true);
-//             vector<bool> sat(g_goals_per_factor[factor].size(), false);
-//             
-//             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-//                 if (current_cpg->has_leaf_state(id, factor)){
-//                     assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
-//                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-//                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
-//                         if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
-//                             unsat[i] = false;
-//                         } else {
-//                             sat[i] = true;
-//                         }
-//                     }
-//                 }
-//             }
-//             for (size_t i = 0; i < sat.size(); ++i){
-//                 if (!sat[i]){
-//                     add_necessary_enabling_set(g_goals_per_factor[factor][i]);
-//                     return;
-//                 }
-//             }
-//             for (size_t i = 0; i < unsat.size(); ++i){
-//                 if (unsat[i]){
-//                     add_necessary_enabling_set(g_goals_per_factor[factor][i]);
-//                 }
-//             }
-//             return;
-            
-            
+            vector<bool> unsat(g_goals_per_factor[factor].size(), true);
+            vector<bool> sat(g_goals_per_factor[factor].size(), false);
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                    assert(!current_cpg->has_leaf_state(id, factor));
-                    for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
-                        // TODO maybe it's better not to mark all ingoing transitions, but to
-                        // add a NES for all open goal facts, similar to open preconditions
-                        mark_as_stubborn(pred.first->get_index());
+                if (current_cpg->has_leaf_state(id, factor)){
+                    assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+                        if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
+                            unsat[i] = false;
+                        } else {
+                            sat[i] = true;
+                        }
                     }
                 }
             }
+            for (size_t i = 0; i < sat.size(); ++i){
+                if (!sat[i]){
+                    add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                    return;
+                }
+            }
+            for (size_t i = 0; i < unsat.size(); ++i){
+                if (unsat[i]){
+                    add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                }
+            }
             return;
+            
+            
+            
+//             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+//                 if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
+//                     assert(!current_cpg->has_leaf_state(id, factor));
+//                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
+//                         // TODO maybe it's better not to mark all ingoing transitions, but to
+//                         // add a NES for all open goal facts, similar to open preconditions
+//                         mark_as_stubborn(pred.first->get_index());
+//                     }
+//                 }
+//             }
+//             return;
         }
     }
     
