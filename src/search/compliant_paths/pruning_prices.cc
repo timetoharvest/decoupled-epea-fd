@@ -10,9 +10,11 @@
 #include "../search_space.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../utilities.h"
 
 #include <limits>
+#include <numeric>
 
 
 using namespace std;
@@ -36,6 +38,8 @@ PruningPrices::PruningPrices(const PruningPrices *tag) {
         number_states = tag->number_states;
         prices = tag->prices;
         goal_cost = tag->goal_cost;
+        // TODO why dont we copy effective_prices/frontier/.. here?
+        // trying it out results in incomplete algorithm, just why??
     }
 }
 
@@ -455,11 +459,131 @@ void PruningPrices::dump() const {
     }
 }
 
+bool PruningPrices::apply_symmetry_permutation(const LeavesPermutation& per) {
+    // cout << " APPLY SYMMETRY TO: " << endl;
+    // dump();
+    
+    //Copy prices and reinitialize affected factors
+    vector<vector<int> > old_prices(prices);
+    vector<size_t> old_number_states(number_states);
+    vector<vector<int> > old_effective_prices(effective_prices);
+    vector<size_t> old_number_effective_states(number_effective_states);
+    
+#ifndef NDEBUG
+    vector<int> old_goal_cost (goal_cost); // TODO do this in pricing_function, too
+#endif
 
+    for (int factor : per.get_factors_affected()) {
+	number_states[factor] = 0;
+	prices[factor] = vector<int>();
+	goal_cost[factor] = INF;
+        if (!effective_prices.empty()){
+            effective_prices[factor] = vector<int>();
+            number_effective_states[factor] = 0;
+        }
+    }
+    
+    for(int to_factor : per.get_factors_affected()) {
+	int from_factor = per.get_from_factor(to_factor);
+
+	// cout << " from: " << from_factor << " to " << to_factor << endl;
+
+	assert(find(per.get_factors_affected().begin(), 
+			 per.get_factors_affected().end(), to_factor)
+	       != per.get_factors_affected().end());
+
+	assert(find(per.get_factors_affected().begin(), 
+			 per.get_factors_affected().end(), from_factor)
+	       != per.get_factors_affected().end());
+
+        size_t num_states = old_number_states[from_factor];
+	for  (size_t id = 0; num_states > 0; ++ id){
+	    assert (id < leaf_state_id_map[from_factor].size());
+	    if (leaf_state_id_map[from_factor][id] == -1) {
+		continue; 
+	    }
+
+	    size_t leaf_state = leaf_state_id_map[from_factor][id];
+	    if (leaf_state >= old_prices[from_factor].size() ||
+		old_prices[from_factor][leaf_state] == INF)  continue;
+
+	    num_states--;
+	    pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+	    assert(to_pair.first == to_factor);
+	    int to_val = to_pair.second;
+
+	     // cout << "Set from_val: " << id << " from_factor " << from_factor
+	     // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
+	    
+	     // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+	     // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+
+	     // state_print_from.dump_pddl(); 
+	     // cout <<  " -> "; 
+	     // state_print_to.dump_pddl(); 
+
+	    add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state]);
+	}
+	
+	if (!effective_prices.empty()){
+            size_t num_eff_states = old_number_effective_states[from_factor];
+            for  (size_t id = 0; num_eff_states > 0; ++ id){
+                assert (id < leaf_state_id_map[from_factor].size());
+                if (leaf_state_id_map[from_factor][id] == -1) {
+                    continue; 
+                }
+
+                size_t leaf_state = leaf_state_id_map[from_factor][id];
+                if (leaf_state >= old_effective_prices[from_factor].size() ||
+                    old_effective_prices[from_factor][leaf_state] == INF){
+                    continue;
+                }
+
+                --num_eff_states;
+                pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+                assert(to_pair.first == to_factor);
+                int to_val = to_pair.second;
+
+                // cout << "Set from_val: " << id << " from_factor " << from_factor
+                // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_effective_prices[from_factor][leaf_state] << endl;
+                
+                // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+                // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+
+                // state_print_from.dump_pddl(); 
+                // cout <<  " -> "; 
+                // state_print_to.dump_pddl(); 
+
+                add_effective_state(LeafStateID(to_val, to_factor), old_effective_prices[from_factor][leaf_state]);
+            }
+        }
+    }
+
+
+    // cout << " NUMBER STATES: " << if_less << endl;
+    // for (int i : old_number_states) cout << i << " "; cout << endl;
+    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
+
+    // cout << " GOAL COST" << endl;
+    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
+    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
+    assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+    assert (accumulate(number_effective_states.begin(), number_effective_states.end(), 0) == accumulate(old_number_effective_states.begin(), old_number_effective_states.end(), 0));
+
+
+
+    //cout << " APPLIED SYMMETRY: " << endl;
+    //dump();
+
+    return true; //We do not need to check whether the prices changed
+		 //because the return value is only relevant if
+		 //if_less is true and in that case we checked this in
+		 //per.produce_less(prices)
+}
 
 std::unique_ptr<CompliantPathGraph> PruningPrices::clone() const  {
-    cerr << "PruningPrices::clone not implemented" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+    return unique_ptr<CompliantPathGraph> (new PruningPrices(this));
 }
 
 std::unique_ptr<Prunable> PruningPrices::get_permuted_cpg(const LeavesPermutation &) const {

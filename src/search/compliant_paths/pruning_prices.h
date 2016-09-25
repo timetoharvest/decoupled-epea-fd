@@ -64,11 +64,7 @@ public:
     
     virtual void dump() const;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/, bool /*if_less*/) {
-	cerr << "Symmetries not supported for dominance pruning" << endl;
-	cerr << "Look at compliant_paths/pruning_prices.h" << endl;
-	exit_with(EXIT_CRITICAL_ERROR);
-    }    
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &per);
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
