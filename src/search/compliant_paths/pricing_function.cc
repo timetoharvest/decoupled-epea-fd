@@ -222,6 +222,10 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
 }
 
 void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op) {
+    // TODO store some tree that captures which leaf states satisfy a certain leaf condition
+    // then run only over the states that satisfy the leaf precondition of op.
+    // this should be a lot faster than running over all leaf states and check if the condition
+    // is achieved!
      
 #ifdef DEBUG_SEARCH
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
@@ -273,7 +277,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                     
                     LeafStateID lid(id, factor);
                     
-                    if (!has_pre_on_factor || op.is_applicable(lid)){ // TODO there should be a more efficient way to check this!
+                    if (!has_pre_on_factor || op.is_applicable(lid)){ // TODO there should be a more efficient way to check this! yep, cf above TODO 
                         
                         int cost = old_tag.get_cost_of_state(id, factor);
                         
@@ -384,7 +388,7 @@ void Prices::dump() const {
     }
 }
 
-bool Prices::apply_symmetry_permutation(const LeavesPermutation & per) {
+bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // cout << " APPLY SYMMETRY TO: " << endl;
     // dump();
     //Copy prices and reinitialize affected factors

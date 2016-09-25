@@ -36,6 +36,9 @@ public:
     
     virtual void init();
     
+    // TODO make this part of CompliantPathGraph, so that each subclass can have its own specific implementation
+    // then, have a PruningOptions class that encapsulates options like frontier/irrelevance and a class for effective price 
+    // like simulation and goal price propagation, that is used within PruningPrices/Reachable
     virtual DOMINATION check_dominance(const State &center, Prunable *check, Prunable *reference, DOMINATION needed = NONE) const = 0;
 
     static void add_options_to_parser(OptionParser &parser);
