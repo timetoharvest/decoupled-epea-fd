@@ -433,7 +433,7 @@ unique_ptr<CompliantPathGraph> Reachable::clone() const  {
 }
 
 
-std::unique_ptr<Prunable> Reachable::get_permuted_cpg(const LeavesPermutation &) const {
+std::unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutation &) const {
     cerr << "Reachable::get_permuted_cpg not implemented" << endl;
     exit_with(EXIT_CRITICAL_ERROR);
 }

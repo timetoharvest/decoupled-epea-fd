@@ -40,6 +40,11 @@ public:
 	return factors_affected;
     }
 
+
+    bool is_affected(int factor) const {
+	return affected[factor];
+    }
+
     int get_from_factor(int f) const {
 	return from_factors[f];
     }
@@ -101,7 +106,7 @@ public:
     bool replace_if_less_leaves(CompliantPathGraph &leaves, 
 				const LexicographicOrdering &lex_ordering) const;
 
-    bool stable_center(std::vector<int> &center) const;
+    bool stabilizes_center(const State &center) const;
 
     void permute_decoupled_state(std::vector<int> &center,
 				 CompliantPathGraph &leaves) const;
@@ -109,6 +114,12 @@ public:
     void permute_center_state(std::vector<int> &center) const;
 
     void invert();
+    
+
+    const LeavesPermutation & get_leaves_permutation() const {
+	return *leaves_permutation;
+    }
+
 
 };
 

@@ -520,3 +520,39 @@ void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 
+
+bool CompliantPathGraph::operator <(const CompliantPathGraph & other) const {
+        for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+	    bool gr = goal_reachable(factor);
+	    bool ogr = other.goal_reachable(factor);
+
+	    if (gr && !ogr) return false;
+	    else if (!gr && ogr) return true;
+
+	    size_t ns = get_number_states(factor);
+	    size_t ons = other.get_number_states(factor);
+
+	    if (ns > ons) return false;
+	    else if (ns < ons) return true;
+	}
+
+        for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+	    for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+
+		bool idr = has_leaf_state(id, factor);
+		bool oidr = other.has_leaf_state(id, factor);
+
+		if (idr && !oidr) return false;
+		else if (!idr && oidr) return true;
+
+		size_t cs = get_cost_of_state(id, factor);
+		size_t ocs = other.get_cost_of_state(id, factor);
+
+		if (cs < ocs) return false;
+		else if (cs > ocs) return true;
+	    }
+	}
+
+	return false;
+    
+}

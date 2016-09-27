@@ -586,7 +586,7 @@ std::unique_ptr<CompliantPathGraph> PruningPrices::clone() const  {
     return unique_ptr<CompliantPathGraph> (new PruningPrices(this));
 }
 
-std::unique_ptr<Prunable> PruningPrices::get_permuted_cpg(const LeavesPermutation &) const {
+std::unique_ptr<CompliantPathGraph> PruningPrices::get_permuted_cpg(const LeavesPermutation &) const {
     cerr << "PruningPrices::get_permuted_cpg not implemented" << endl;
     exit_with(EXIT_CRITICAL_ERROR);
 }

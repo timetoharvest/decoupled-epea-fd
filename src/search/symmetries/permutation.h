@@ -91,6 +91,7 @@ public:
     std::pair<int, int> get_old_var_val_by_new_var_val(const int var, const int val) const ;
 
     cmp_t replace_if_less(std::vector<int> &state) const;
+    bool stabilizes (const State &state) const;
     void permute(std::vector<int> &state) const;
 
     bool affects_center() const;

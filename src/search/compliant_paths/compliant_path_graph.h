@@ -113,6 +113,10 @@ public:
         return precompute_leaf_state_spaces[factor];
     }
     
+    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const = 0;  
+
+    bool operator < (const CompliantPathGraph & cpg2) const;
 };
+
 
 #endif

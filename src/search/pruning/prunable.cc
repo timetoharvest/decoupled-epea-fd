@@ -1,6 +1,9 @@
 #include "prunable.h"
 
+#include "../symmetries/graph_creator.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../compliant_paths/cpg_storage.h"
+#include "../compliant_paths/compliant_path_graph.h"
 #include "pruning.h"
 #include "../search_space.h"
 
@@ -12,9 +15,16 @@ bool Prunable::store_frontier = false;
 
 bool Prunable::propagate_goal_prices = false;
 
+int Prunable::check_dominance(const State &base_state, 
+			      int curr_number_duplicates, 
+			      int g_value, const State &predecessor) {
+    return check_dominance(base_state,
+			   CPGStorage::storage->get_mutable_cpg(base_state), 
+			   curr_number_duplicates, g_value, predecessor); 
+}
 
-
-int Prunable::check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
+int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
+			      int curr_number_duplicates, int g_value, const State &predecessor) {
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
@@ -59,7 +69,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -84,7 +94,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg);
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
@@ -116,7 +126,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg, DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -145,7 +155,7 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg, DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one
@@ -165,12 +175,51 @@ int Prunable::check_dominance(const State &base_state, int curr_number_duplicate
     }
 }
 
-int Prunable::check_symmetric_dominance(const State& /*base_state*/, int /*curr_number_duplicates*/, int /*g_value*/, const State& /*predecessor*/) {
-    // TODO Alvaro: implement this, check the above function for reference
-    // this function is called on the CompliantPathGraph object! In the end, you should return the duplicate counter of the
-    // dominated/dominating decoupled state, or "curr_number_duplicates + 1" if there is no such state. this object will be stored with
-    // the according center state, so change this object (, but nothing else :P)!
-    return -1;
+
+
+int Prunable::check_symmetric_dominance_recursive(const State &base_state,
+						  unique_ptr<CompliantPathGraph> cpg_own,
+						  int curr_number_duplicates, 
+						  int g_value, const State& predecessor,
+						  const std::vector<DecoupledPermutation *> & symmetry_permutations, 
+						  set<unique_ptr<CompliantPathGraph>, compare_cpg_pointers> & cpg_permutations) {
+    
+    //TODO: Avoid innecessary copy
+    CompliantPathGraph * cpg = cpg_own.get();
+//    cout << ".";
+    if (!cpg_permutations.insert(std::move(cpg_own)).second) return curr_number_duplicates + 1; 
+    int result = check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
+    if (result != curr_number_duplicates + 1) return result; //This state is dominated by another
+
+    for (auto p : symmetry_permutations) {
+	unique_ptr<CompliantPathGraph> permuted = cpg->get_permuted_cpg(p->get_leaves_permutation());
+	int result = check_symmetric_dominance_recursive(base_state, 
+							 std::move(permuted), 
+							 curr_number_duplicates, 
+							 g_value, 
+							 predecessor, 
+							 symmetry_permutations, 
+							 cpg_permutations); 
+	if (result != curr_number_duplicates + 1) {
+	    return result;
+	}
+    }
+    return curr_number_duplicates + 1;
+}
+
+int Prunable::check_symmetric_dominance(const State& base_state, int curr_number_duplicates, int g_value, const State& predecessor) {   
+    CompliantPathGraph * cpg = CPGStorage::storage->get_mutable_cpg(base_state);
+    set<unique_ptr<CompliantPathGraph>, compare_cpg_pointers> cpg_permutations; 
+    std::vector<DecoupledPermutation *> symmetry_permutations = g_symmetry_graph->get_stabilized_permutations(base_state);
+    
+    int result = check_symmetric_dominance_recursive(base_state, cpg->clone(), curr_number_duplicates, g_value, predecessor, symmetry_permutations, cpg_permutations);
+
+    //cout << "check symmetric dominance: " << (result !=curr_number_duplicates +1) << " generators: " << symmetry_permutations.size() << " permutations: " << cpg_permutations.size() << endl;
+    return result;
 }
 
 
+bool compare_cpg_pointers::operator() (const unique_ptr<CompliantPathGraph> & cpg1, 
+				       const unique_ptr<CompliantPathGraph> & cpg2) {
+    return *cpg1 < *cpg2;
+}

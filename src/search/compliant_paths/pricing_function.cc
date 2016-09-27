@@ -473,60 +473,81 @@ unique_ptr<CompliantPathGraph> Prices::clone() const {
 }
 
 
-unique_ptr<Prunable> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
+unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
     Prices * res = new Prices(nullptr);
 
-    for(int to_factor : per.get_factors_affected()) {
-        int from_factor = per.get_from_factor(to_factor);
+    for (size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor){
+	if(!per.is_affected(to_factor)) {
+	    size_t num_states = number_states[to_factor]; 
+	    for  (size_t id = 0; num_states > 0; ++ id){
+		if (leaf_state_id_map[to_factor][id] == -1) {
+		    continue; 
+		}
 
-        assert(find(per.get_factors_affected().begin(), 
-                         per.get_factors_affected().end(), to_factor)
-               != per.get_factors_affected().end());
+		size_t leaf_state = leaf_state_id_map[to_factor][id];
+		if (leaf_state >= prices[to_factor].size() ||
+		    prices[to_factor][leaf_state] == INF)  continue;
 
-        assert(find(per.get_factors_affected().begin(), 
-                         per.get_factors_affected().end(), from_factor)
-               != per.get_factors_affected().end());
+		num_states--;
+		res->add_state(LeafStateID(leaf_state, to_factor), prices[to_factor][leaf_state]);
+		
+	    }
+	} else {
+	    int from_factor = per.get_from_factor(to_factor);
 
-        size_t num_states = number_states[from_factor]; 
-        for  (size_t id = 0; num_states > 0; ++ id){
-            assert (id < leaf_state_id_map[from_factor].size());
-            if (leaf_state_id_map[from_factor][id] == -1) {
-                continue; 
-            }
+	    assert(find(per.get_factors_affected().begin(), 
+			per.get_factors_affected().end(), to_factor)
+		   != per.get_factors_affected().end());
 
-            size_t leaf_state = leaf_state_id_map[from_factor][id];
-            if (leaf_state >= prices[from_factor].size() ||
-                prices[from_factor][leaf_state] == INF)  continue;
+	    assert(find(per.get_factors_affected().begin(), 
+			per.get_factors_affected().end(), from_factor)
+		   != per.get_factors_affected().end());
 
-            num_states--;
-            pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-            assert(to_pair.first == to_factor);
-            int to_val = to_pair.second;
+	    size_t num_states = number_states[from_factor]; 
+	    for  (size_t id = 0; num_states > 0; ++ id){
+		assert (id < leaf_state_id_map[from_factor].size());
+		if (leaf_state_id_map[from_factor][id] == -1) {
+		    continue; 
+		}
 
-             // cout << "Set from_val: " << id << " from_factor " << from_factor
-             //          <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
+		size_t leaf_state = leaf_state_id_map[from_factor][id];
+		if (leaf_state >= prices[from_factor].size() ||
+		    prices[from_factor][leaf_state] == INF)  continue;
+
+		num_states--;
+		pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+		assert(to_pair.first == (int)to_factor);
+		int to_val = to_pair.second;
+
+		// cout << "Set from_val: " << id << " from_factor " << from_factor
+		//      <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << prices[from_factor][leaf_state] << endl;
             
-             // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
-             // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+		// LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+		// LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
 
-             // state_print_from.dump_pddl(); 
-             // cout <<  " -> "; 
-             // state_print_to.dump_pddl(); 
+		//   state_print_from.dump_pddl(); 
+		//   cout <<  " -> "; 
+		//   state_print_to.dump_pddl(); 
 
-            res->add_state(LeafStateID(to_val, to_factor), prices[from_factor][leaf_state]);
-        }
+		res->add_state(LeafStateID(to_val, to_factor), prices[from_factor][leaf_state]);
+	    }
+	}
     }
 
 
-    // cout << " NUMBER STATES: " << if_less << endl;
-    // for (int i : old_number_states) cout << i << " "; cout << endl;
-    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
+    // cout << " NUMBER STATES: " << endl;
+    // for (int i : number_states) cout << i << " "; 
+    // cout << endl;
+    // for (int i : res->number_states) cout << i << " ";  
+    // cout << endl << endl;
 
     // cout << " GOAL COST" << endl;
-    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
-    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
+    // for (int i : goal_cost) cout << i << " "; 
+    // cout << endl;
+    // for (int i : res->goal_cost) cout << i << " ";  
+    // cout << endl << endl;
     assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
     assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
 
-    return unique_ptr<Prunable> (res);
+    return unique_ptr<CompliantPathGraph> (res);
 }

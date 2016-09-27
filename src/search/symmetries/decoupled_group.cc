@@ -100,6 +100,18 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
     return tmp_state;
 }
 
+const std::vector<DecoupledPermutation *> 
+DecoupledGroup::get_stabilized_permutations(const State & center) const {
+    std::vector<DecoupledPermutation *> permutations = generators_only_leaves;
+    for (auto gen : generators_center) {
+	if (gen->affects_leaves() && gen->stabilizes_center(center)) {
+	    permutations.push_back(gen);
+	} 
+    }
+
+    return permutations;
+}
+
 
 void DecoupledGroup::statistics() const {
     // for (int i = 0; i < get_num_generators(); i++) {

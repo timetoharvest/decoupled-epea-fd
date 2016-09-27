@@ -5,10 +5,21 @@
 #include "simulation_relation.h"
 
 #include <vector>
+#include <set>
 #include <memory>
 
 class State;
 class LeavesPermutation;
+class CompliantPathGraph;
+class CPGStorage;
+class DecoupledPermutation;
+
+
+class compare_cpg_pointers {
+public:
+    bool operator() (const std::unique_ptr<CompliantPathGraph> & cpg1, 
+		     const std::unique_ptr<CompliantPathGraph> & cpg2);
+};
 
 class Prunable {
     
@@ -17,7 +28,13 @@ protected:
     static bool store_frontier;
     
     static bool propagate_goal_prices;            
-    
+
+    int check_symmetric_dominance_recursive(const State & base_state, 
+					    std::unique_ptr<CompliantPathGraph> cpg,
+					    int curr_number_duplicates, 
+					    int g_value, const State& predecessor,
+					    const std::vector<DecoupledPermutation *> & symmetry_permutations,
+					    std::set<std::unique_ptr<CompliantPathGraph>,compare_cpg_pointers> & permutations);    
 public:
     
     virtual ~Prunable() = default;
@@ -32,13 +49,14 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
 
-    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const = 0;  
-
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1
-    int check_dominance(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
+    int check_dominance(const State &base_state, CompliantPathGraph* cpg, int curr_number_duplicates, 
+			    int g_value, const State &predecessor);
+
+    int check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor);
+
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1

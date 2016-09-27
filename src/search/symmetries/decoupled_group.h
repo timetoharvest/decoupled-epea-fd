@@ -39,6 +39,9 @@ public:
 	get_canonical_decoupled_state(const State &center, 
 				      CompliantPathGraph &leaves, 
 				      const LexicographicOrdering &lex_ordering)  const;    
+
+    const std::vector<DecoupledPermutation *> get_stabilized_permutations(const State &center) const;
+
     
     void statistics () const;
     

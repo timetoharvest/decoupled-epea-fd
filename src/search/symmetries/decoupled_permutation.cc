@@ -348,3 +348,9 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
     }
     return cmp_t::EQUAL;
 }
+
+
+bool DecoupledPermutation::stabilizes_center(const State &center) const {
+    if(!center_permutation) return true;
+    return center_permutation->stabilizes(center);
+}

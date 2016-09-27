@@ -263,6 +263,25 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
 }
 
 
+bool Permutation::stabilizes(const State &state)  const {
+    if (identity()) return true;
+
+    // Going over the affected variables, comparing the resulted values with the state values.
+    for(int i = vars_affected.size()-1; i>=0; i--) {
+        int to_var =  vars_affected[i];
+        int from_var = from_vars[to_var];
+        pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
+        assert( to_pair.first == to_var);
+        short to_val = to_pair.second;
+
+        // Check if the values are the same, then continue to the next aff. var.
+        if (to_val != state[to_var]) return false;
+    }
+
+    return true;
+}
+
+
 
 void Permutation::permute(vector<int> &state) const {
     if (identity()) return;

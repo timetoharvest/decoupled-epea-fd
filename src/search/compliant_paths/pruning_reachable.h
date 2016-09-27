@@ -19,8 +19,7 @@ class PruningReachable : public Reachable {
     
     static PruningReachableStorage *cpg_storage;
     
-    static CompliantPathGraph& get_init_state_reachable();
-    
+    static CompliantPathGraph& get_init_state_reachable();   
     
     void compute_frontier();
     
@@ -53,7 +52,7 @@ public:
     
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
-    virtual std::unique_ptr<Prunable> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
+    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
 
     
     static void register_cpg_storage(PruningReachableStorage *storage);

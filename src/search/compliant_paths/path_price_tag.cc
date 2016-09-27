@@ -370,7 +370,7 @@ unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
 }
 
 
-unique_ptr<Prunable> PathPriceTag::get_permuted_cpg(const LeavesPermutation &per) const {
+unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermutation &per) const {
     PathPriceTag * res = new PathPriceTag(nullptr);
 
     for(int to_factor : per.get_factors_affected()) {
@@ -425,5 +425,5 @@ unique_ptr<Prunable> PathPriceTag::get_permuted_cpg(const LeavesPermutation &per
     assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
     assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
 
-    return unique_ptr<Prunable> (res);
+    return unique_ptr<CompliantPathGraph> (res);
 }
