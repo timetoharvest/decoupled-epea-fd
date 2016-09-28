@@ -49,6 +49,7 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
 
+    virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1

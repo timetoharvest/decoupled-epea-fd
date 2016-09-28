@@ -9,7 +9,7 @@
 #ifndef NDEBUG
 // #define DEBUG_SEARCH    // general debugging
 // #define DEBUG_FACTORING
-// #define DEBUG_PRUNING
+#define DEBUG_PRUNING
 // #define DEBUG_PLAN_EXTRACTION
 //#define DEBUG_SUCCESSOR_GENERATION
 // #define DEBUG_NEW_SG

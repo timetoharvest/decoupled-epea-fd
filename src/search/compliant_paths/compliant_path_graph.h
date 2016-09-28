@@ -91,7 +91,7 @@ public:
     
     virtual void dump() const = 0;
  
-    virtual unique_ptr<CompliantPathGraph> clone() const = 0;
+    virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
        
     static void initialize();
     
