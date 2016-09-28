@@ -186,13 +186,15 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
     
     //TODO: Avoid innecessary copy
     CompliantPathGraph * cpg = cpg_own.get();
-//    cout << ".";
     if (!cpg_permutations.insert(std::move(cpg_own)).second) return curr_number_duplicates + 1; 
-    int result = check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
-    if (result != curr_number_duplicates + 1) return result; //This state is dominated by another
 
+    int result = check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
+
+    if (result != curr_number_duplicates + 1) return result; //This state is dominated by another
+    
     for (auto p : symmetry_permutations) {
 	unique_ptr<CompliantPathGraph> permuted = cpg->get_permuted_cpg(p->get_leaves_permutation());
+
 	int result = check_symmetric_dominance_recursive(base_state, 
 							 std::move(permuted), 
 							 curr_number_duplicates, 
@@ -200,6 +202,7 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
 							 predecessor, 
 							 symmetry_permutations, 
 							 cpg_permutations); 
+
 	if (result != curr_number_duplicates + 1) {
 	    return result;
 	}
@@ -214,7 +217,7 @@ int Prunable::check_symmetric_dominance(const State& base_state, int curr_number
     
     int result = check_symmetric_dominance_recursive(base_state, cpg->clone(), curr_number_duplicates, g_value, predecessor, symmetry_permutations, cpg_permutations);
 
-    //cout << "check symmetric dominance: " << (result !=curr_number_duplicates +1) << " generators: " << symmetry_permutations.size() << " permutations: " << cpg_permutations.size() << endl;
+    cout << "check symmetric dominance: " << (result !=curr_number_duplicates +1) << " generators: " << symmetry_permutations.size() << " permutations: " << cpg_permutations.size() << endl;
     return result;
 }
 

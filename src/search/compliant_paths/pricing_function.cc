@@ -475,7 +475,6 @@ unique_ptr<CompliantPathGraph> Prices::clone() const {
 
 unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
     Prices * res = new Prices(nullptr);
-
     for (size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor){
 	if(!per.is_affected(to_factor)) {
 	    size_t num_states = number_states[to_factor]; 
@@ -489,8 +488,7 @@ unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation 
 		    prices[to_factor][leaf_state] == INF)  continue;
 
 		num_states--;
-		res->add_state(LeafStateID(leaf_state, to_factor), prices[to_factor][leaf_state]);
-		
+		res->add_state(LeafStateID(id, to_factor), prices[to_factor][leaf_state]);
 	    }
 	} else {
 	    int from_factor = per.get_from_factor(to_factor);

@@ -522,6 +522,7 @@ void CompliantPathGraph::discard_new_graph() const {
 
 
 bool CompliantPathGraph::operator <(const CompliantPathGraph & other) const {
+   
         for (size_t factor = 0; factor < g_factors.size(); ++factor) {
 	    bool gr = goal_reachable(factor);
 	    bool ogr = other.goal_reachable(factor);
@@ -542,6 +543,7 @@ bool CompliantPathGraph::operator <(const CompliantPathGraph & other) const {
 		bool idr = has_leaf_state(id, factor);
 		bool oidr = other.has_leaf_state(id, factor);
 
+		if(!idr && !oidr) continue;
 		if (idr && !oidr) return false;
 		else if (!idr && oidr) return true;
 
