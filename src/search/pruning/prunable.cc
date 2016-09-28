@@ -15,15 +15,7 @@ bool Prunable::store_frontier = false;
 
 bool Prunable::propagate_goal_prices = false;
 
-int Prunable::check_dominance(const State &base_state, 
-			      int curr_number_duplicates, 
-			      int g_value, const State &predecessor) {
-    return check_dominance(base_state,
-			   CPGStorage::storage->get_mutable_cpg(base_state), 
-			   curr_number_duplicates, g_value, predecessor); 
-}
-
-int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
+int Prunable::check_dominance(const State &base_state,
 			      int curr_number_duplicates, int g_value, const State &predecessor) {
     
 #ifdef DEBUG_PRUNING
@@ -69,7 +61,7 @@ int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg); 
+            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -94,7 +86,7 @@ int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg);
+                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
@@ -126,7 +118,7 @@ int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg, DOMINATES);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -155,7 +147,7 @@ int Prunable::check_dominance(const State &base_state, CompliantPathGraph* cpg,
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, cpg, DOMINATED);
+                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one
@@ -188,7 +180,7 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
     CompliantPathGraph * cpg = cpg_own.get();
     if (!cpg_permutations.insert(std::move(cpg_own)).second) return curr_number_duplicates + 1; 
 
-    int result = check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
+    int result = cpg->check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
 
     if (result != curr_number_duplicates + 1) return result; //This state is dominated by another
     

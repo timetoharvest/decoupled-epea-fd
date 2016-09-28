@@ -52,9 +52,6 @@ public:
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1
-    int check_dominance(const State &base_state, CompliantPathGraph* cpg, int curr_number_duplicates, 
-			    int g_value, const State &predecessor);
-
     int check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor);
 
     
