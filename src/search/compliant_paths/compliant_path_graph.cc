@@ -520,15 +520,17 @@ void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 
-
 bool CompliantPathGraph::operator <(const CompliantPathGraph & other) const {
    
         for (size_t factor = 0; factor < g_factors.size(); ++factor) {
-	    bool gr = goal_reachable(factor);
-	    bool ogr = other.goal_reachable(factor);
+            if (!g_goals_per_factor[factor].empty()){
+                bool gr = goal_reachable(factor);
+                bool ogr = other.goal_reachable(factor);
 
-	    if (gr && !ogr) return false;
-	    else if (!gr && ogr) return true;
+                if (gr && !ogr) return false;
+
+                else if (!gr && ogr) return true;
+            }
 
 	    size_t ns = get_number_states(factor);
 	    size_t ons = other.get_number_states(factor);
