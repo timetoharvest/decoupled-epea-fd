@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "operator_cost.h"
 #include "utilities.h"
+#include "mis.h"
 
 #include <set>
 #include <string>
@@ -28,7 +29,8 @@ enum PROFILE {
     INV_TPP_CONSTRAINED, // domain dependant factoring
     DOC_TRANSFER, // domain dependant factoring
     PEGSOL, // domain dependant factoring
-    INC_ARCS
+    INC_ARCS,
+    MAX_IND_SET
 };
 
 enum SEARCH_TYPE {

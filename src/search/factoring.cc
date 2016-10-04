@@ -147,6 +147,20 @@ public:
   
 };
 
+class MaxIndependentSetFactoring : public Factoring {
+
+public:
+
+    MaxIndependentSetFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = MAX_IND_SET;
+        cout << "using maximum independet set factoring profile" << endl;
+    };
+
+    virtual FactoredVars get_factoring();
+
+};
+
 class SokobanFactoring : public Factoring {
   
 public:
@@ -1344,6 +1358,42 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
     return is_frozen_factor;
 }
 
+Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
+    vector<int> vars;
+    for (size_t var = 0; var < g_variable_domain.size(); var++) {
+        vars.push_back(var);
+    }
+
+    // build neighbour representation of causal graph (easier to modify)
+    // graph of vars (var -> neighbours)
+    NGraph cg_g;
+    for (size_t i = 0; i < vars.size(); i++){
+        set<int> neighbours;
+        for (size_t pre = 0; pre < g_causal_graph->get_predecessors(vars[i]).size(); pre++){
+            int var = g_causal_graph->get_predecessors(vars[i])[pre];
+            neighbours.insert(var);
+        }
+        for (size_t succ = 0; succ < g_causal_graph->get_successors(vars[i]).size(); succ++) {
+            int var = g_causal_graph->get_successors(vars[i])[succ];
+            neighbours.insert(var);
+        }
+        cg_g.insert(NVertex(i,neighbours));
+    }
+
+    MIS mis(cg_g);
+    set<int> found_mis = mis.get_mis();
+
+    // generate factoring
+    FactoredVars max_ind_sets;
+    set<int>::iterator it;
+    for(it = found_mis.begin(); it != found_mis.end(); ++it){
+        set<int> s;
+        s.insert(*it);
+        max_ind_sets.push_back(s);
+    }
+    return max_ind_sets;
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////// domain specific factorings
 
@@ -1618,6 +1668,20 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
     return factoring;
 }
 
+static Factoring *_parse_maxindsets(OptionParser &parser) {
+    // TODO docu
+    MaxIndependentSetFactoring::add_options_to_parser(parser);
+
+    Options opts = parser.parse();
+
+    MaxIndependentSetFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new MaxIndependentSetFactoring(opts);
+    }
+
+    return factoring;
+}
+
 static Factoring *_parse_doctransfer(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
@@ -1650,6 +1714,7 @@ static Plugin<Factoring> _plugin_fork("fork", _parse_fork);
 static Plugin<Factoring> _plugin_ifork("ifork", _parse_ifork);
 static Plugin<Factoring> _plugin_xshape("xshape", _parse_xshape);
 static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
+static Plugin<Factoring> _plugin_maxindsets("maxindsets", _parse_maxindsets);
 // static Plugin<Factoring> _plugin_rand("rand", _parse_rand);
 // static Plugin<Factoring> _plugin_sokoban("sokoban", _parse_sokoban);
 // static Plugin<Factoring> _plugin_tpp_const("tpp_const", _parse_tpp_const);

@@ -50,6 +50,7 @@ HEADERS = \
           equivalence_relation.h \
           exact_timer.h \
           factoring.h \
+          mis.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
