@@ -474,22 +474,12 @@ unique_ptr<CompliantPathGraph> Prices::clone() const {
 
 
 unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
-    Prices * res = new Prices(nullptr);
+    Prices *res = new Prices(nullptr);
     for (size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor){
 	if(!per.is_affected(to_factor)) {
-	    size_t num_states = number_states[to_factor]; 
-	    for  (size_t id = 0; num_states > 0; ++ id){
-		if (leaf_state_id_map[to_factor][id] == -1) {
-		    continue; 
-		}
-
-		size_t leaf_state = leaf_state_id_map[to_factor][id];
-		if (leaf_state >= prices[to_factor].size() ||
-		    prices[to_factor][leaf_state] == INF)  continue;
-
-		num_states--;
-		res->add_state(LeafStateID(id, to_factor), prices[to_factor][leaf_state]);
-	    }
+            res->goal_cost[to_factor] = goal_cost[to_factor];
+            res->number_states[to_factor] = number_states[to_factor];
+            res->prices[to_factor] = prices[to_factor];
 	} else {
 	    int from_factor = per.get_from_factor(to_factor);
 
@@ -502,19 +492,14 @@ unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation 
 		   != per.get_factors_affected().end());
 
 	    size_t num_states = number_states[from_factor]; 
-	    for  (size_t id = 0; num_states > 0; ++ id){
-		assert (id < leaf_state_id_map[from_factor].size());
-		if (leaf_state_id_map[from_factor][id] == -1) {
-		    continue; 
-		}
+	    for  (size_t id = 0; num_states > 0; ++id){
+		if (!has_leaf_state(id, from_factor)){
+                    continue;
+                }
 
-		size_t leaf_state = leaf_state_id_map[from_factor][id];
-		if (leaf_state >= prices[from_factor].size() ||
-		    prices[from_factor][leaf_state] == INF)  continue;
-
-		num_states--;
+		--num_states;
 		pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-		assert(to_pair.first == (int)to_factor);
+		assert(to_pair.first == (int) to_factor);
 		int to_val = to_pair.second;
 
 		// cout << "Set from_val: " << id << " from_factor " << from_factor
@@ -527,7 +512,7 @@ unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation 
 		//   cout <<  " -> "; 
 		//   state_print_to.dump_pddl(); 
 
-		res->add_state(LeafStateID(to_val, to_factor), prices[from_factor][leaf_state]);
+		res->add_state(LeafStateID(to_val, to_factor), get_cost_of_state(id, from_factor));
 	    }
 	}
     }
@@ -547,5 +532,5 @@ unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation 
     assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
     assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
 
-    return unique_ptr<CompliantPathGraph> (res);
+    return unique_ptr<CompliantPathGraph>(res);
 }
