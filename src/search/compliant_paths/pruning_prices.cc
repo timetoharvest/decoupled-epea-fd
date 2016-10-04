@@ -586,8 +586,83 @@ std::unique_ptr<CompliantPathGraph> PruningPrices::clone() const  {
     return unique_ptr<CompliantPathGraph> (new PruningPrices(this));
 }
 
-std::unique_ptr<CompliantPathGraph> PruningPrices::get_permuted_cpg(const LeavesPermutation &) const {
-    cerr << "PruningPrices::get_permuted_cpg not implemented" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+std::unique_ptr<CompliantPathGraph> PruningPrices::get_permuted_cpg(const LeavesPermutation &per) const {
+    PruningPrices *res = new PruningPrices(nullptr);
+    for (size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor){
+	if(!per.is_affected(to_factor)) {
+	    res->goal_cost[to_factor] = goal_cost[to_factor];
+            res->number_states[to_factor] = number_states[to_factor];
+            res->prices[to_factor] = prices[to_factor];
+            if (!effective_prices.empty()){
+                res->number_effective_states[to_factor] = number_effective_states[to_factor];
+                res->effective_prices[to_factor] = effective_prices[to_factor];
+            }
+        } else {
+            int from_factor = per.get_from_factor(to_factor);
+
+            assert(find(per.get_factors_affected().begin(), 
+                        per.get_factors_affected().end(), to_factor)
+                    != per.get_factors_affected().end());
+
+            assert(find(per.get_factors_affected().begin(), 
+                        per.get_factors_affected().end(), from_factor)
+                    != per.get_factors_affected().end());
+
+            size_t num_states = number_states[from_factor];
+            size_t num_eff_states = effective_prices.empty() ? 1 : number_effective_states[to_factor];
+            for (size_t id = 0; num_states > 0 && num_eff_states > 0; ++id){
+                pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+                assert(to_pair.first == (int) to_factor);
+                int to_val = to_pair.second;
+                
+                if (!effective_prices.empty()){
+                    if (!has_effective_leaf_state(id, from_factor)){
+                        continue;
+                    }
+                    assert(num_eff_states > 0);
+                    --num_eff_states;
+                    
+                    res->add_effective_state(LeafStateID(to_val, to_factor), get_effective_cost_of_state(id, from_factor));
+                }
+                
+                if (!has_leaf_state(id, from_factor)){
+                    continue;
+                }
+                assert(num_states > 0);
+                --num_states;
+
+                // cout << "Set from_val: " << id << " from_factor " << from_factor
+                //      <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << prices[from_factor][leaf_state] << endl;
+            
+                // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
+                // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
+
+                //   state_print_from.dump_pddl(); 
+                //   cout <<  " -> "; 
+                //   state_print_to.dump_pddl(); 
+
+                res->add_state(LeafStateID(to_val, to_factor), get_cost_of_state(id, from_factor));
+            }
+        }
+    }
+
+
+    // cout << " NUMBER STATES: " << endl;
+    // for (int i : number_states) cout << i << " "; 
+    // cout << endl;
+    // for (int i : res->number_states) cout << i << " ";  
+    // cout << endl << endl;
+
+    // cout << " GOAL COST" << endl;
+    // for (int i : goal_cost) cout << i << " "; 
+    // cout << endl;
+    // for (int i : res->goal_cost) cout << i << " ";  
+    // cout << endl << endl;
+    assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
+    assert(effective_prices.empty() || 
+           accumulate(res->number_effective_states.begin(), res->number_effective_states.end(), 0) == accumulate(number_effective_states.begin(), number_effective_states.end(), 0));
+    assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
+
+    return unique_ptr<CompliantPathGraph>(res);
 }
     
