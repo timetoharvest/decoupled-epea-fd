@@ -207,8 +207,10 @@ int Prunable::check_symmetric_dominance(const State& base_state, int curr_number
     std::vector<DecoupledPermutation *> symmetry_permutations = g_symmetry_graph->get_stabilized_permutations(base_state);
     
     int result = check_symmetric_dominance_recursive(base_state, clone(), curr_number_duplicates, g_value, predecessor, symmetry_permutations, cpg_permutations);
+#ifdef DEBUG_PRUNING
     if(cpg_permutations.size() > 1 && result !=curr_number_duplicates +1)
 	cout << "check symmetric dominance: " << (result !=curr_number_duplicates +1) << " generators: " << symmetry_permutations.size() << " permutations: " << cpg_permutations.size() << endl;
+#endif
     return result;
 }
 
