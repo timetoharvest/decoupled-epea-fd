@@ -42,7 +42,7 @@ set<int> MIS::find_mis(NGraph g) {
         return mis_g_c;
     }
     // find candidates for A
-    size_t min = INTMAX_MAX;
+    size_t min = g.begin()->second.size();
     set<int> candidatesA;
 
     for (NGraph::iterator it = g.begin(); it != g.end(); ++it) {
@@ -424,8 +424,8 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
                 return find_mis(g);
             }
         }
-        int s1;
-        size_t min = INTMAX_MAX;
+        int s1 = 0;
+        size_t min = g[0].size();
         for (set<int>::iterator it = s.begin(); it != s.end(); ++it) {
             // find vertex with smallest degree
             if (g[*it].size() < min) {
