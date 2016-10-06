@@ -62,8 +62,8 @@ protected:
     
     // returns the new duplicate counter
     virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                        const Operator *op,
-                                        const State &predecessor) const = 0;
+                                                  const Operator *op,
+                                                  const State &predecessor) const = 0;
     
 public:
     
@@ -115,7 +115,7 @@ public:
     
     virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const = 0;  
 
-    bool operator < (const CompliantPathGraph & cpg2) const;
+    bool operator<(const CompliantPathGraph & cpg2) const;
 };
 
 
