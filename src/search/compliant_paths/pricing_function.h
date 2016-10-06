@@ -73,7 +73,8 @@ public:
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation);
+    // TODO add the override everywhere
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
     
     virtual void dump() const;
 
