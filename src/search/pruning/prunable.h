@@ -17,8 +17,8 @@ class DecoupledPermutation;
 
 class compare_cpg_pointers {
 public:
-    bool operator() (const std::unique_ptr<CompliantPathGraph> & cpg1, 
-		     const std::unique_ptr<CompliantPathGraph> & cpg2);
+    bool operator() (const std::unique_ptr<CompliantPathGraph> &cpg1, 
+		     const std::unique_ptr<CompliantPathGraph> &cpg2);
 };
 
 class Prunable {
