@@ -207,6 +207,17 @@ void SearchSpace::trace_path(const State &goal_state,
             states.push_back(current_state.get_id());
             if (g_use_decoupled_search && g_symmetry_graph){
                 cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
+                if (CompliantPathGraph::do_pruning()){
+                    // we need this when running a combination of decoupled orbit search
+                    // with frontier pruning and goal price propagation.
+                    // in this case, it can happen that goal price propagation detects that
+                    // we are done with a leaf (no possible way to improve goal cost)
+                    // resulting in an empty frontier. the trouble is due to the is_equal
+                    // check used in the orbit search solution reconstruction where then,
+                    // we compare an updated PathPriceTag with one that is not updated 
+                    // (just copied in the statement above from a CPG with empty frontier).
+                    cpgs.back().update_price_tags(current_state);
+                }
             }
         }
         
