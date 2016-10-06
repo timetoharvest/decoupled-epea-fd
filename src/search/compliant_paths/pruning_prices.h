@@ -23,6 +23,7 @@ class PruningPrices : public Prices {
     
     
     void compute_cost_frontier();
+    void compute_cost_frontier(size_t factor);
 
     void goal_price_propagation();
 
@@ -64,7 +65,7 @@ public:
     
     virtual void dump() const;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &per);
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &per) override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 

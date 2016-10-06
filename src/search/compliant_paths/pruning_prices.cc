@@ -80,6 +80,7 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                                            const State &predecessor) const {
     
     if (g_factoring->get_profile() != FORK && op != 0){
+        assert(false); // not supported, yet
         tmp_p_price = PruningPrices(0);                  // when updating initial state => op == 0
         tmp_p_price.apply_center_op_to_leaves(*this, *op);
     } else {                
@@ -96,20 +97,21 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
     
     if (store_frontier){
         PruningPrices &tag = cpg_storage->pruning_prices[predecessor];
-        if (tag.prices.empty()){
-            // is initial state
-            assert(predecessor.get_id().hash() == 0);
-            tmp_p_price.frontier.resize(g_factors.size());
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                tmp_p_price.frontier[factor].resize(g_state_registry->size(factor));
-                tmp_p_price.frontier[factor][0] = true;
-            }
+        if (tag.frontier.empty()){
+            tmp_p_price.compute_cost_frontier();
         } else {
-            tmp_p_price.frontier = tag.get_frontier();
+            tmp_p_price.frontier = vector<boost::dynamic_bitset<> >(g_factors.size(), boost::dynamic_bitset<>());
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                if (tag.frontier[factor].size() != 0){
+                    tmp_p_price.frontier[factor] = tag.frontier[factor];
+                } else {
+                    tmp_p_price.compute_cost_frontier(factor);
+                }
+            }
         }
     }
 
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         
         // skip fork leaves that don't have a goal!
         if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
@@ -289,8 +291,15 @@ const vector<boost::dynamic_bitset<> > & PruningPrices::get_frontier() {
         compute_cost_frontier();
 #ifdef DEBUG_PRUNING
         cout << "not precomputed" << endl;
+#endif
     } else {
-    cout << "precomputed" << endl;
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            if (frontier[factor].size() == 0){
+                compute_cost_frontier(factor);
+            }
+        }
+#ifdef DEBUG_PRUNING
+        cout << "precomputed" << endl;
 #endif
     }
     return frontier;
@@ -419,23 +428,29 @@ void PruningPrices::compute_cost_frontier() {
     
     frontier.resize(g_factors.size());
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
-        for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
-            if (!has_leaf_state(id, factor)){
-                continue;
+        compute_cost_frontier(factor);
+    }
+}
+
+void PruningPrices::compute_cost_frontier(size_t factor) {
+    assert(g_factoring->get_profile() == FORK);
+    
+    boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
+    for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
+        if (!has_leaf_state(id, factor)){
+            continue;
+        }
+        for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
+            int successor = leaf_state_successors[factor][id][o].second;
+            if (!has_effective_leaf_state(successor, factor)){
+                frontier[factor][id] = true;
+                break;
             }
-            for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                int successor = leaf_state_successors[factor][id][o].second;
-                if (!has_effective_leaf_state(successor, factor)){
-                    frontier[factor][id] = true;
-                    break;
-                }
-                int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
-                int new_cost = get_effective_cost_of_state(id, factor) + action_cost;
-                if (get_effective_cost_of_state(successor, factor) > new_cost){
-                    frontier[factor][id] = true;
-                    break;
-                }
+            int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
+            int new_cost = get_effective_cost_of_state(id, factor) + action_cost;
+            if (get_effective_cost_of_state(successor, factor) > new_cost){
+                frontier[factor][id] = true;
+                break;
             }
         }
     }
@@ -470,7 +485,7 @@ bool PruningPrices::apply_symmetry_permutation(const LeavesPermutation& per) {
     vector<size_t> old_number_effective_states(number_effective_states);
     
 #ifndef NDEBUG
-    vector<int> old_goal_cost (goal_cost); // TODO do this in pricing_function, too
+    vector<int> old_goal_cost(goal_cost);
 #endif
 
     for (int factor : per.get_factors_affected()) {
@@ -571,7 +586,7 @@ bool PruningPrices::apply_symmetry_permutation(const LeavesPermutation& per) {
     assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
     assert (accumulate(number_effective_states.begin(), number_effective_states.end(), 0) == accumulate(old_number_effective_states.begin(), old_number_effective_states.end(), 0));
 
-
+    frontier.clear();
 
     //cout << " APPLIED SYMMETRY: " << endl;
     //dump();
@@ -596,6 +611,12 @@ std::unique_ptr<CompliantPathGraph> PruningPrices::get_permuted_cpg(const Leaves
             if (!effective_prices.empty()){
                 res->number_effective_states[to_factor] = number_effective_states[to_factor];
                 res->effective_prices[to_factor] = effective_prices[to_factor];
+            }
+            if (store_frontier && !frontier.empty()){
+                if (res->frontier.empty()){
+                    res->frontier.resize(g_factors.size());
+                }
+                res->frontier[to_factor] = frontier[to_factor];
             }
         } else {
             int from_factor = per.get_from_factor(to_factor);
