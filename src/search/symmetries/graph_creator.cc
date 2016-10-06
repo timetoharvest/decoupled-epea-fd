@@ -33,7 +33,7 @@ void GraphCreator::initialize() {
     cout << "Initializing symmetry " << endl;
     group->initialize();
 
-    unique_ptr<bliss::AbstractGraph> graph (create_bliss_directed_graph());
+    unique_ptr<bliss::AbstractGraph> graph(create_bliss_directed_graph());
     ((bliss::Digraph*)graph.get())->set_splitting_heuristic(bliss::Digraph::shs_flm);
 
     // Added in version 0.5. Needs to be removed in version 0.72
@@ -81,7 +81,7 @@ GraphCreator::~GraphCreator() {
 bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     // Differ from create_bliss_graph() in (a) having one node per action (incoming arcs from pre, outgoing to eff),
     //                                 and (b) not having a node for goal, recoloring the respective values.
-   // initialization
+    // initialization
 
     Permutation::init_fact_index();
 
@@ -98,14 +98,14 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     // now add values vertices for each predicate
     for (size_t i = 0; i < g_variable_domain.size(); i++){
        for (int j = 0; j < g_variable_domain[i]; j++){
-          idx = g->add_vertex(VALUE_VERTEX);
-          g->add_edge(idx,i);
+           idx = g->add_vertex(VALUE_VERTEX);
+           g->add_edge(idx,i);
        }
     }
 
     // now add vertices for operators
     for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator& op = g_operators[i];
+        const Operator &op = g_operators[i];
         add_operator_directed_graph(g, op);
     }
 
@@ -124,8 +124,8 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     }
 
     if (g_use_decoupled_search) {
-	for (const auto & gpf : g_goals_per_factor){
-	    for (const auto & gp : gpf) {
+	for (const auto &gpf : g_goals_per_factor){
+	    for (const auto &gp : gpf) {
 		int var = gp.first;
 		int val = gp.second;
 		int goal_idx = Permutation::findex.dom_sum_by_var[var] + val;

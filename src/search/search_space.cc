@@ -597,9 +597,9 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
         }
         if (!found) {
             cout << "No operator is found!!!" << endl
-                << "Cannot reach the state " << endl;
+                 << "Cannot reach the state:" << endl;
             g_state_registry->lookup_state(states[i-1]).dump_pddl();
-            cout << endl << "From the state" << endl;
+            cout << endl << "From the state:" << endl;
             g_state_registry->lookup_state(states[i]).dump_pddl();
             exit_with(EXIT_CRITICAL_ERROR);
         }
@@ -655,10 +655,10 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
         }
         if (!found) {
             cout << "No operator is found!!!" << endl
-                << "Cannot reach the state " << endl;
+                 << "Cannot reach the state:" << endl;
             g_state_registry->lookup_state(states[i-1]).dump_pddl();
             cpgs[i-1].dump();
-            cout << endl << "From the state" << endl;
+            cout << endl << "From the state:" << endl;
             g_state_registry->lookup_state(states[i]).dump_pddl();
             cpgs[i].dump();
             exit_with(EXIT_CRITICAL_ERROR);
