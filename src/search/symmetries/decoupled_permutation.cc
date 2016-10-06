@@ -43,19 +43,21 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
 }
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const DecoupledPermutation &p2) {
-    if (p1.center_permutation && p2.center_permutation) 
+    if (p1.center_permutation && p2.center_permutation){
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation), *(p2.center_permutation)));
-    else if (p1.center_permutation) 
+    } else if (p1.center_permutation){
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation)));
-    else if (p2.center_permutation) 
+    } else if (p2.center_permutation){
 	center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p2.center_permutation)));
+    }
 
-    if (p1.leaves_permutation && p2.leaves_permutation) 
+    if (p1.leaves_permutation && p2.leaves_permutation){
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation), *(p2.leaves_permutation)));
-    else if (p1.leaves_permutation) 
+    } else if (p1.leaves_permutation){
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation)));
-    else if (p2.leaves_permutation) 
+    } else if (p2.leaves_permutation){
 	leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
+    }
 }
 
 LeavesPermutation::LeavesPermutation(const Permutation &per) {
@@ -76,10 +78,13 @@ LeavesPermutation::LeavesPermutation(const Permutation &per) {
 	int factor  = g_belongs_to_factor[v];
 	int from_factor  = g_belongs_to_factor[from_v];
 
-	if (factor == -1 || from_v == -1) continue;
+	if (factor == -1 || from_v == -1){
+            continue;
+        }
+        
 	assert(from_factor != -1);
-
 	assert(from_factors[factor] == -1 || from_factors[factor] == from_factor);
+        
 	from_factors[factor] = from_factor;
     }
 
@@ -103,7 +108,6 @@ LeavesPermutation::LeavesPermutation(const Permutation &per) {
 		    symm_leaf_state.resize(g_factors[symm_factor].size());
 		}
 		symm_leaf_state[g_new_index[symm_var]] = symm_val;
-
 	    }
 
 	    int symm_id = CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
@@ -129,8 +133,9 @@ void LeavesPermutation::finalize(){
     vector<bool> marked;
     marked.assign(from_factors.size(), false);
     for (size_t i = 0; i < from_factors.size(); i++) {
-	if (marked[i] || from_factors[i] == -1)
+	if (marked[i] || from_factors[i] == -1){
 	    continue;
+        }
 
 	int current = i;
 	marked[current] = true;
@@ -168,11 +173,13 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert
     inverse_value.resize(findex_leaves.length, -1);
 
     if(invert) {
-        for (size_t i = 0; i < findex_leaves.length; i++)
+        for (size_t i = 0; i < findex_leaves.length; i++){
 	    set_value(perm.value[i], i);
+        }
     } else {
-	for (size_t i = 0; i < findex_leaves.length; i++)
+	for (size_t i = 0; i < findex_leaves.length; i++){
 	    set_value(i, perm.value[i]);
+        }
     }
     finalize();
 }
@@ -196,7 +203,7 @@ void LeavesPermutation::set_value(int ind, int val) {
     from_factors[to_var] = var;
 }
 
-CenterPermutation::CenterPermutation (const Permutation &per, bool invert) : 
+CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
     //Remove leaf vars from vars_affected
     vars_affected.erase(std::remove_if(vars_affected.begin(), 
@@ -220,8 +227,8 @@ CenterPermutation::CenterPermutation (const Permutation &per, bool invert) :
     finalize();
 }
 
-CenterPermutation::CenterPermutation (const CenterPermutation &p1, 
-				      const CenterPermutation &p2) : 
+CenterPermutation::CenterPermutation(const CenterPermutation &p1, 
+				     const CenterPermutation &p2) : 
     Permutation(p1, p2) {
 }
 
@@ -231,8 +238,9 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
     if(center_permutation){
 	cmp_t cmp = center_permutation->replace_if_less(center);
 	if (cmp == cmp_t::LESS) {
-	    if (leaves_permutation)
+	    if (leaves_permutation){
 		leaves.apply_symmetry_permutation(*leaves_permutation);
+            }
 	    return true;
 	} else if (cmp == cmp_t::GREATER) {
 	    return false;	    
@@ -246,11 +254,12 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
 
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
-						  CompliantPathGraph &leaves) const {
+						   CompliantPathGraph &leaves) const {
     assert (center_permutation); 
     cmp_t cmp = center_permutation->replace_if_less(center);
-    if (cmp == cmp_t::LESS && leaves_permutation) 
+    if (cmp == cmp_t::LESS && leaves_permutation){
 	leaves.apply_symmetry_permutation(*leaves_permutation);
+    }
     return cmp;
 }
 
@@ -263,28 +272,31 @@ bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves,
 
 void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
 						   CompliantPathGraph &leaves) const {
-    if(center_permutation)
+    if(center_permutation){
 	center_permutation->permute(center);
+    }
     
-    if (leaves_permutation)
+    if (leaves_permutation){
 	leaves.apply_symmetry_permutation(*leaves_permutation);
+    }
 }
 
 void DecoupledPermutation::permute_center_state(vector<int> &center) const {
-    if(center_permutation)
+    if(center_permutation){
         center_permutation->permute(center);
+    }
 }
 
 pair<int, int> LeavesPermutation::get_new_factor_state_by_old_factor_state(const int factor, const int state) const {
-	int old_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
-	int new_ind = value[old_ind];
-	return findex_leaves.get_var_val_by_index(new_ind);
+    int old_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
+    int new_ind = value[old_ind];
+    return findex_leaves.get_var_val_by_index(new_ind);
 }
 
 pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(const int factor, const int state) const {
-	int new_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
-	int old_ind = inverse_value[new_ind];
-	return findex_leaves.get_var_val_by_index(old_ind);
+    int new_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
+    int old_ind = inverse_value[new_ind];
+    return findex_leaves.get_var_val_by_index(old_ind);
 }
 
 cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
@@ -337,7 +349,8 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
 
 	    if(has_from && !has_to) return cmp_t::LESS;
 	    if(!has_from && has_to) return cmp_t::GREATER;
-	    if(has_from && has_to) {	    
+            
+	    if(has_from && has_to) {
 		int cost_from = cpg.get_cost_of_state(from_id, from_factor);
 		int cost_to = cpg.get_cost_of_state(to_id, to_factor);
 
@@ -351,6 +364,8 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
 
 
 bool DecoupledPermutation::stabilizes_center(const State &center) const {
-    if(!center_permutation) return true;
+    if(!center_permutation){
+        return true;
+    }
     return center_permutation->stabilizes(center);
 }

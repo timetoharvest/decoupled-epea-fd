@@ -35,13 +35,14 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 
     LeavesPermutation::findex_leaves.init_decoupled();
 
-    for(const Permutation &per : group.generators){
-	// if(per.affects_center()){
-	//     per.print_cycle_notation();
+    for(const DecoupledPermutation &per : group.generators){
 	DecoupledPermutation * gen = new DecoupledPermutation(per);
 	generators.push_back(unique_ptr<DecoupledPermutation>(gen));
-	if(gen->affects_center()) generators_center.push_back(gen);
-	else generators_only_leaves.push_back(gen);
+	if(gen->affects_center()){
+            generators_center.push_back(gen);
+        } else {
+            generators_only_leaves.push_back(gen);
+        }
     }
 
     tmp_state.resize(g_variable_domain.size(), -1);
