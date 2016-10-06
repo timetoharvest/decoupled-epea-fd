@@ -1391,7 +1391,15 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         s.insert(*it);
         max_ind_sets.push_back(s);
     }
-    return max_ind_sets;
+
+    FactoredVars temp;
+    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+    for (size_t i = 0; i < frozen_leaves.size(); i++) {
+        if (!frozen_leaves[i]) {
+            temp.push_back(max_ind_sets[i]);
+        }
+    }
+    return temp;
 }
 
 
