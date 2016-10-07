@@ -35,7 +35,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 
     LeavesPermutation::findex_leaves.init_decoupled();
 
-    for(const DecoupledPermutation &per : group.generators){
+    for(const Permutation &per : group.generators){
 	DecoupledPermutation * gen = new DecoupledPermutation(per);
 	generators.push_back(unique_ptr<DecoupledPermutation>(gen));
 	if(gen->affects_center()){

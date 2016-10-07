@@ -81,7 +81,7 @@ class DecoupledPermutation {
 
 public:
     DecoupledPermutation() {}
-    DecoupledPermutation(const Permutation &per);
+    explicit DecoupledPermutation(const Permutation &per);
     DecoupledPermutation(const DecoupledPermutation &per);
     DecoupledPermutation(const DecoupledPermutation &per, bool invert);
     DecoupledPermutation(const DecoupledPermutation &perm1, const DecoupledPermutation &perm2);
