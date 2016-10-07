@@ -1,10 +1,10 @@
 #include "search_space.h"
 
+#include "compliant_paths/cpg_storage.h"
+#include "compliant_paths/path_price_tag.h"
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
-#include "compliant_paths/cpg_storage.h"
-#include "compliant_paths/path_price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
 #include "symmetries/graph_creator.h"
@@ -162,13 +162,19 @@ SearchSpace::SearchSpace(OperatorCost cost_type_)
     }
 }
 
-bool SearchSpace::is_equal(const State& s1, const CompliantPathGraph& cpg1, const State& s2, const CompliantPathGraph& cpg2) const {
+bool SearchSpace::is_equal(const State &s1, const CompliantPathGraph &cpg1, const State &s2, const CompliantPathGraph &cpg2) const {
     for (int var : g_center_vars){
         if (s1[var] !=  s2[var]){
             return false;
         }
     }
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        if (!g_goals_per_factor[factor].empty() && cpg1.get_goal_cost(factor) != cpg2.get_goal_cost(factor)){
+            return false;
+        }
+        if (cpg1.get_number_states(factor) != cpg2.get_number_states(factor)){
+            return false;
+        }
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             bool has_state = cpg1.has_leaf_state(id, factor);
             if (has_state ^ cpg2.has_leaf_state(id, factor)){
@@ -207,17 +213,6 @@ void SearchSpace::trace_path(const State &goal_state,
             states.push_back(current_state.get_id());
             if (g_use_decoupled_search && g_symmetry_graph){
                 cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
-                if (CompliantPathGraph::do_pruning()){
-                    // we need this when running a combination of decoupled orbit search
-                    // with frontier pruning and goal price propagation.
-                    // in this case, it can happen that goal price propagation detects that
-                    // we are done with a leaf (no possible way to improve goal cost)
-                    // resulting in an empty frontier. the trouble is due to the is_equal
-                    // check used in the orbit search solution reconstruction where then,
-                    // we compare an updated PathPriceTag with one that is not updated 
-                    // (just copied in the statement above from a CPG with empty frontier).
-                    cpgs.back().update_price_tags(current_state);
-                }
             }
         }
         
