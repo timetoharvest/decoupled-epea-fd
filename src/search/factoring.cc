@@ -252,10 +252,16 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     g_factors.resize(factoring.size());
     
     for (size_t i = 0; i < factoring.size(); i++){
+#ifdef DEBUG_FACTORING
+        cout << "leaf factor " << i << ":" << endl;
+#endif        
         vector<int> variables(factoring[i].begin(), factoring[i].end());              
         for (size_t j = 0; j < variables.size(); ++j){
             g_belongs_to_factor[variables[j]] = i;
             g_new_index[variables[j]] = j;
+#ifdef DEBUG_FACTORING
+            cout << "   " << g_fact_names[variables[j]][0] << endl;
+#endif
         }
         g_factors[i] = variables;
     }
@@ -341,7 +347,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     CompliantPathGraph::initialize();
     
     // setup g_goals_per_factor
-    // TODO check if each factor contains a goal! what to do if not??
+    // TODO check if each fork leaf contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
     g_goals_per_factor = vector<vector<pair<int, int> > >(g_factors.size());
     vector<int> indeces_to_remove;
@@ -373,15 +379,6 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 }
 
 void Factoring::print_factoring() const {
-#ifdef DEBUG_FACTORING
-    cout << "final factoring:" << endl;
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
-        cout << "leaf factor " << factor << endl;
-        for (size_t var_i = 0; var_i < g_factors[factor].size(); ++var_i){
-            cout << "   " << g_fact_names[g_factors[factor][var_i]][0] << endl;
-        }
-    }
-#endif
     
     cout << "number leaf factors: " << g_factors.size() << endl;
     
