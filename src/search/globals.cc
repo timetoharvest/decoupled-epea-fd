@@ -234,14 +234,14 @@ void read_operators(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)
-        g_operators.push_back(Operator(in, false, i));
+        g_operators.push_back(Operator(in, false));
 }
 
 void read_axioms(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)
-        g_axioms.push_back(Operator(in, true, -1));
+        g_axioms.push_back(Operator(in, true));
 
     g_axiom_evaluator = new AxiomEvaluator;
 }
