@@ -155,7 +155,7 @@ void SearchNode::dump() const {
 SearchSpace::SearchSpace(OperatorCost cost_type_)
     : cost_type(cost_type_) {
     if (g_use_decoupled_search){
-        g_factoring->set_search_space(this);
+        CompliantPathGraph::set_search_space(this);
     }
 }
 

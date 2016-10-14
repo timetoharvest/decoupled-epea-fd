@@ -2,7 +2,6 @@
 #define FACTORING_H
 
 #include "globals.h"
-#include "operator_cost.h"
 #include "utilities.h"
 
 #include <set>
@@ -71,13 +70,8 @@ public:
 
 class OptionParser;
 class Options;
-class SearchSpace;
 
 class Factoring {
-    
-    mutable OperatorCost cost_type;
-    
-    mutable SearchSpace *search_space;
     
     SEARCH_TYPE search_type;
     
@@ -131,24 +125,11 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct);
-    
-    OperatorCost get_cost_type() const {
-        return cost_type;
-    }
-    
     SEARCH_TYPE get_search_type() const {
         return search_type;
     }
     
-    void set_search_space(SearchSpace *sp) {
-        search_space = sp;
-    }
-    
-    SearchSpace* get_search_space() const {
-        return search_space;
-    }
-    
+
     static void add_options_to_parser(OptionParser &parser);
     
 };

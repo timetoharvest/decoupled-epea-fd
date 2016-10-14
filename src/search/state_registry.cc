@@ -211,16 +211,13 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         
         Pruning::reset_ignore_current_state();
         
-        int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
-        g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
-        
         CompliantPathGraph &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
         
         if (old_dup_counter == -1){ // is new center state
             new_cpg.store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
-            int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, g, predecessor);
+            int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, predecessor, op);
             
             state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];

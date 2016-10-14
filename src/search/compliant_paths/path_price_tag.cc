@@ -142,7 +142,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
                                 change |= add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor),
-                                                cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
+                                                cost + get_adjusted_action_cost(*op, cost_type), op, predecessor_id);
                             }
 
                         }
@@ -173,7 +173,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                                     best_prices.resize(lid.hash() + 1, numeric_limits<int>::max());
                                 }
                                 
-                                change |= add_state(lid, cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()), op, predecessor_id);
+                                change |= add_state(lid, cost + get_adjusted_action_cost(*op, cost_type), op, predecessor_id);
                             }
                         }
                     }

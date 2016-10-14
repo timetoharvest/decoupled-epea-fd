@@ -203,14 +203,14 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
                             bool added = tmp_p_price.add_state(LeafStateID(successor, factor), 
-                                                   cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                                                   cost + get_adjusted_action_cost(*op, cost_type));
                             change |= added;
                             if (store_frontier && added){
                                 tmp_p_price.frontier[factor][successor] = true;
                             }
                         } else if (store_frontier && !propagate_goal_prices) {
                             all_applicable = false;
-                            int new_cost = cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                            int new_cost = cost + get_adjusted_action_cost(*op, cost_type);
                             int successor = leaf_state_successors[factor][id][o].second;
                             if (!tmp_p_price.has_leaf_state(LeafStateID(successor, factor)) || tmp_p_price.get_cost_of_state(LeafStateID(successor, factor)) > new_cost){
                                 tmp_p_price.frontier[factor][id] = true;
@@ -375,7 +375,7 @@ void PruningPrices::goal_price_propagation() {
                     continue;
                 }
 
-                int action_cost = get_adjusted_action_cost(*transition.first, g_factoring->get_cost_type());
+                int action_cost = get_adjusted_action_cost(*transition.first, cost_type);
                 int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
                 int previous_t_val = !has_effective_leaf_state(LeafStateID(t, factor)) ? numeric_limits<int>::max() :
@@ -447,7 +447,7 @@ void PruningPrices::compute_cost_frontier(size_t factor) {
                 frontier[factor][id] = true;
                 break;
             }
-            int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, g_factoring->get_cost_type());
+            int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, cost_type);
             int new_cost = get_effective_cost_of_state(LeafStateID(id, factor)) + action_cost;
             if (get_effective_cost_of_state(LeafStateID(successor, factor)) > new_cost){
                 frontier[factor][id] = true;

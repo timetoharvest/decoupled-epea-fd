@@ -36,6 +36,7 @@ void InteractionGraph::add_dependency(int from, int to) {
     }
 }
 
+
 Factoring::Factoring(const Options &opts) :
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
@@ -218,16 +219,6 @@ public:
 };
 
 
-void Factoring::set_cost_type(OperatorCost ct) {
-    cost_type = ct;
-    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
-    for (const auto &op : g_operators){
-        int factor = op.get_affected_factor();
-        if (factor != -1){
-            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
-        }
-    }
-}
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor

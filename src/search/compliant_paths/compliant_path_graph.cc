@@ -27,6 +27,10 @@ bool CompliantPathGraph::compute_leaf_backwards_graph = false;
 
 bool CompliantPathGraph::store_frontier = false;
 
+SearchSpace* CompliantPathGraph::search_space;
+
+OperatorCost CompliantPathGraph::cost_type;
+
 bool CompliantPathGraph::propagate_goal_prices = false;
 
 vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
@@ -92,8 +96,10 @@ void CompliantPathGraph::initialize() {
 
 int CompliantPathGraph::check_dominance(const State &base_state,
                                         int curr_number_duplicates,
-                                        int g_value,
-                                        const State &predecessor) {
+                                        const State &predecessor,
+                                        const Operator &op) {
+    
+    int g_value = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type);
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
@@ -101,7 +107,6 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 #endif
     
     vector<size_t> predecessors;
-    SearchSpace *search_space = g_factoring->get_search_space();
     
     if (Pruning::are_closed_nodes_reopened()){
         StateID curr_id = predecessor.get_id();
@@ -386,7 +391,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #endif
                         int op_cost = 0;
                         if (!is_center_op){
-                            op_cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                            op_cost = get_adjusted_action_cost(*op, cost_type);
                         }
                         
                         if (lid.hash() >= leaf_state_id_map[factor].size()){

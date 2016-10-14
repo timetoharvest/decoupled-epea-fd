@@ -1333,7 +1333,7 @@ void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const S
                 for (size_t succ = 0; succ < leaf_successors[id].size(); ++succ){
                     const Operator *op = leaf_successors[id][succ].first;
                     int successor_id = leaf_successors[id][succ].second;
-                    int new_price = tag->get_cost_of_state(LeafStateID(id, factor)) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    int new_price = tag->get_cost_of_state(LeafStateID(id, factor)) + get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
                     if (!tag->has_leaf_state(LeafStateID(successor_id, factor)) || new_price < tag->get_cost_of_state(LeafStateID(successor_id, factor))){
                         // is frontier state
                         const vector<const Condition*> &preconditions = op->get_preconditions(-1);

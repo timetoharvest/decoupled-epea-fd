@@ -191,7 +191,7 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
                             change |= tmp_price.add_state(LeafStateID(successor, factor), 
-                                                   cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type()));
+                                                   cost + get_adjusted_action_cost(*op, cost_type));
                         }
                     }
                     

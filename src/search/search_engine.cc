@@ -28,7 +28,7 @@ SearchEngine::SearchEngine(const Options &opts)
     }
     bound = opts.get<int>("bound");
     if (g_use_decoupled_search){
-	g_factoring->set_cost_type(cost_type);
+	CompliantPathGraph::set_cost_type(cost_type);
     }
 }
 

@@ -195,12 +195,12 @@ void SimulationRelation::compute_label_dominance() {
     for (auto op = begin(g_operators); op != end(g_operators); ++op) {
 	int factor = op->get_affected_factor();
 	if (factor == -1) continue; //Skip center actions
-	int cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+	int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
 	const auto & pre = op->get_preconditions(-1);
 	
 	for (auto op2 = op; ++op2 != end(g_operators); ) {
 	    if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
-	    int cost2 = get_adjusted_action_cost(*op2, g_factoring->get_cost_type());
+	    int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
 	    const auto & pre2 = op2->get_preconditions(-1);
 	    
 

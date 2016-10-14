@@ -4,6 +4,7 @@
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "../factoring.h"
 #include "../globals.h"
+#include "../operator_cost.h"
 #include "../por/simple_stubborn_sets.h"
 #include "../pruning/pruning.h"
 #include "../pruning/simulation_relation.h"
@@ -13,6 +14,7 @@
 
 class LeafState;
 class LeafStateID;
+class SearchSpace;
 class State;
 class StateID;
 
@@ -30,6 +32,10 @@ class CompliantPathGraph {
     static CompliantPathGraph& get_init_state_cpg();
     
 protected:
+    
+    static SearchSpace *search_space;
+    
+    static OperatorCost cost_type;
     
     static std::unique_ptr<Pruning> pruning;
     
@@ -110,8 +116,11 @@ public:
     
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1
-    virtual int check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor);
-
+    virtual int check_dominance(const State &base_state,
+                                int curr_number_duplicates,
+                                const State &predecessor,
+                                const Operator &op);
+    
 
     static void initialize();
     
@@ -129,6 +138,25 @@ public:
     
     static void set_pruning(Pruning *p) {
         pruning.reset(p);
+    }
+    
+    static void set_search_space(SearchSpace *sp) {
+        search_space = sp;
+    }
+    
+    static void set_cost_type(OperatorCost ct) {
+        cost_type = ct;
+        g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
+        for (const auto &op : g_operators){
+            int factor = op.get_affected_factor();
+            if (factor != -1){
+                g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
+            }
+        }
+    }
+    
+    static OperatorCost get_cost_type() {
+        return cost_type;
     }
     
     static bool is_leaf_goal_state(const LeafStateID &state);
