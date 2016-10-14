@@ -31,7 +31,7 @@ protected:
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
     // first is id, second is leaf factor
-    static std::vector<std::pair<int, int> > leaf_tags_to_cache;
+    static std::vector<LeafStateID> leaf_tags_to_cache;
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
@@ -74,13 +74,13 @@ public:
     // over leaf state IDs, what about having some kind of iterator providing
     // this functionality?
 
-    virtual bool has_leaf_state(int id, int factor) const = 0;
+    virtual bool has_leaf_state(const LeafStateID &id) const = 0;
     
-    virtual int get_cost_of_state(int id, int factor) const = 0;
+    virtual int get_cost_of_state(const LeafStateID &id) const = 0;
     
-    virtual size_t get_number_states(int factor) const = 0;
+    virtual size_t get_number_states(size_t factor) const = 0;
 
-    virtual bool goal_reachable(int factor) const = 0;
+    virtual bool goal_reachable(size_t factor) const = 0;
     
     virtual void dump() const = 0;
     
@@ -103,7 +103,7 @@ public:
         precompute_leaf_state_spaces = precompute;
     }
     
-    static bool precompute_leaf_state_space(int factor) {
+    static bool precompute_leaf_state_space(size_t factor) {
         return precompute_leaf_state_spaces[factor];
     }
     

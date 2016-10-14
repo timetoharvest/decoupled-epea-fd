@@ -233,7 +233,7 @@ void Factoring::set_cost_type(OperatorCost ct) {
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor
-    g_new_index = vector<int>(g_variable_domain.size());
+    g_new_index = vector<size_t>(g_variable_domain.size());
     interaction_graph = InteractionGraph(factoring.size());
     g_factors.resize(factoring.size());
     

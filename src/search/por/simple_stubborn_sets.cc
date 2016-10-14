@@ -298,7 +298,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
             size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag->has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
                     LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
@@ -562,7 +562,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         size_t number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
                 --number_states;
                 LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 bool applicable_state = true;
@@ -1328,13 +1328,13 @@ void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const S
         size_t number_states = tag->get_number_states(factor);
         size_t id = 0;        
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
                 --number_states;
                 for (size_t succ = 0; succ < leaf_successors[id].size(); ++succ){
                     const Operator *op = leaf_successors[id][succ].first;
                     int successor_id = leaf_successors[id][succ].second;
-                    int new_price = tag->get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                    if (!tag->has_leaf_state(successor_id, factor) || new_price < tag->get_cost_of_state(successor_id, factor)){
+                    int new_price = tag->get_cost_of_state(LeafStateID(id, factor)) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    if (!tag->has_leaf_state(LeafStateID(successor_id, factor)) || new_price < tag->get_cost_of_state(LeafStateID(successor_id, factor))){
                         // is frontier state
                         const vector<const Condition*> &preconditions = op->get_preconditions(-1);
 #ifndef NDEBUG

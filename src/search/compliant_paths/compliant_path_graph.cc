@@ -27,7 +27,7 @@ vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
 
 vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
 
-vector<pair<int, int> > CompliantPathGraph::leaf_tags_to_cache;
+vector<LeafStateID> CompliantPathGraph::leaf_tags_to_cache;
 
 vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
 
@@ -52,20 +52,20 @@ bool CompliantPathGraph::is_leaf_goal_state(const LeafStateID &fact) {
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
         for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
-            size_t leaf_id = leaf_tags_to_cache[i].first;
-            int factor = leaf_tags_to_cache[i].second;
+            size_t leaf_id = leaf_tags_to_cache[i].hash();
+            size_t factor = leaf_tags_to_cache[i].get_factor();
             if (leaf_price_cache[factor].size() <= leaf_id){
                 leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
             leaf_price_cache[factor][leaf_id] = state.get_id();
         }
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
 }
 
 void CompliantPathGraph::discard_leaf_price_cache() {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
 }
 
@@ -136,10 +136,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             change = false;
 
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (!goal_price_tag.has_leaf_state(id, factor)){
+                if (!goal_price_tag.has_leaf_state(LeafStateID(id, factor))){
                     continue;
                 }
-                int cost = goal_price_tag.get_cost_of_state(id, factor);
+                int cost = goal_price_tag.get_cost_of_state(LeafStateID(id, factor));
                 if (id < best_prices.size()){
                     if (cost > best_prices[id]
                         || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)

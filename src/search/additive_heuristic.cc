@@ -71,11 +71,11 @@ void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const Stat
         int number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
 		--number_states;
 		int base_cost = 0;
 		if (search_type == STAR){
-		    base_cost = tag->get_cost_of_state(id, factor);
+		    base_cost = tag->get_cost_of_state(LeafStateID(id, factor));
 		}
 		LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
 		for (size_t v = 0; v < g_factors[factor].size(); ++v) {

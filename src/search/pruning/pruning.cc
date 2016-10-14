@@ -146,13 +146,13 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check->has_effective_leaf_state(id, factor)){
+            if (check->has_effective_leaf_state(LeafStateID(id, factor))){
                 --number_new_states;
-                if (reference->has_effective_leaf_state(id, factor)){
+                if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference->get_effective_cost_of_state(id, factor);
-                        int new_cost = check->get_effective_cost_of_state(id, factor);
+                        int old_cost = reference->get_effective_cost_of_state(LeafStateID(id, factor));
+                        int new_cost = check->get_effective_cost_of_state(LeafStateID(id, factor));
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -165,7 +165,7 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
                 } else {
                     dominated = false;
                 }                
-            } else if (reference->has_effective_leaf_state(id, factor)){
+            } else if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
                 --number_old_states;
                 dominates = false;
             }

@@ -15,10 +15,7 @@ LeafState::LeafState(const PackedStateBin *buffer_, LeafStateID id_)
     assert(id != LeafStateID::no_state);
 }
 
-LeafState::~LeafState() {
-}
-
-int LeafState::operator[](int index) const {
+int LeafState::operator[](size_t index) const {
     assert((size_t) g_new_index[index] < g_factors[id.get_factor()].size());
     return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
 }

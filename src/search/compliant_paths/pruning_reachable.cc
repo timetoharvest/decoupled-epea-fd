@@ -190,7 +190,7 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_p_reach.has_leaf_state(leaf_id, factor)){
+                    if (tmp_p_reach.has_leaf_state(LeafStateID(leaf_id, factor))){
                         break;
                     }
                     ++leaf_id;
@@ -198,12 +198,12 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const PruningReachable &tag_to_copy = CPGStorage::pruning_reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_p_reach.get_cost_of_state(leaf_id, factor);
-                    cost_delta -= tag_to_copy.get_cost_of_state(leaf_id, factor);
+                    int cost_delta = tmp_p_reach.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
                     
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
-                        if (fact != leaf_id && tag_to_copy.has_leaf_state(fact, factor)){
+                        if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
                             tmp_p_reach.add_state(LeafStateID(fact, factor));
                             if (--number_states == 0){
                                 break;
@@ -212,7 +212,7 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                     }
                     continue;
                 } else {
-                    leaf_tags_to_cache.push_back(make_pair(leaf_id, factor));
+                    leaf_tags_to_cache.push_back(LeafStateID(leaf_id, factor));
                 }
             }
         }
@@ -236,7 +236,7 @@ int PruningReachable::update_price_tags(int curr_number_duplicates,
                     break;
                 }
                 
-                if (tmp_p_reach.has_leaf_state(id, factor)){
+                if (tmp_p_reach.has_leaf_state(LeafStateID(id, factor))){
                     ++num_states;
 
                     if (handled[id]){
@@ -389,11 +389,11 @@ void PruningReachable::compute_frontier() {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
         for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
-            if (!has_leaf_state(id, factor)){
+            if (!has_leaf_state(LeafStateID(id, factor))){
                 continue;
             }
             for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                if (!has_leaf_state(leaf_state_successors[factor][id][o].second, factor)){
+                if (!has_leaf_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))){
                     frontier[factor][id] = true;
                 }
             }
@@ -419,7 +419,7 @@ void PruningReachable::dump() const {
     // TODO include frontier information
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(id, factor)){
+            if (has_leaf_state(LeafStateID(id, factor))){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 if (g_factors[factor].size() == 1){
                     cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << endl;

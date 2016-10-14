@@ -28,16 +28,16 @@ class LeafState {
     LeafState(const PackedStateBin *buffer_, LeafStateID id_);
     
 public:
-    virtual ~LeafState();
+    ~LeafState() = default;
 
     LeafStateID get_id() const {
         return id;
     }
 
-    virtual int operator[](int index) const;
+    int operator[](size_t index) const;
     
-    virtual void dump_pddl() const;
-    virtual void dump_fdr() const;
+    void dump_pddl() const;
+    void dump_fdr() const;
 };
 
 #endif

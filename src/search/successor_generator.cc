@@ -94,7 +94,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
             size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag->has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
                     for (size_t op = 0; op < CompliantPathGraph::center_successors[factor][id].size(); ++op){
                         int index = CompliantPathGraph::center_successors[factor][id][op];
@@ -139,7 +139,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafS
                                                 vector<const Operator*> &ops, bool only_center_ops){
     // ignores center preconditions
     immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
-    if (g_belongs_to_factor[switch_var] == leaf_state.get_id().get_factor()){
+    if (g_belongs_to_factor[switch_var] == (int) leaf_state.get_id().get_factor()){
         if (!generator_for_value.empty()){
             generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
         }

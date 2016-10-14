@@ -440,7 +440,7 @@ vector<string> g_variable_name;
 vector<int> g_variable_domain;
 
 vector<int> g_center_vars;
-vector<int> g_new_index;
+vector<size_t> g_new_index;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;

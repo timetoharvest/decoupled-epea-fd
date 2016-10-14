@@ -250,10 +250,10 @@ void SearchSpace::trace_path(const State &goal_state,
                 size_t number_states = price_tags[0].get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0) {
-                    if (price_tags[0].has_leaf_state(id, factor)){
+                    if (price_tags[0].has_leaf_state(LeafStateID(id, factor))){
                         --number_states;
                         if (CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
-                            int new_cost = price_tags[0].get_cost_of_state(id, factor);
+                            int new_cost = price_tags[0].get_cost_of_state(LeafStateID(id, factor));
                             if (min_cost > new_cost){
                                 min_cost = new_cost;
                                 best_leaf_state_id = id;
@@ -335,11 +335,11 @@ void SearchSpace::trace_path(const State &goal_state,
                     size_t number_states = price_tags[step].get_number_states(factor);
                     size_t id = 0;
                     while (number_states > 0){          // iterate over all new leaf states
-                        if (price_tags[step].has_leaf_state(id, factor)){
+                        if (price_tags[step].has_leaf_state(LeafStateID(id, factor))){
                             --number_states;
-                            if (price_tags[step].get_path_info_for_fact(id, factor).is_new){
+                            if (price_tags[step].get_path_info_for_fact(LeafStateID(id, factor)).is_new){
                         
-                                const PathPriceTagInfo &fact = price_tags[step].get_path_info_for_fact(id, factor);
+                                const PathPriceTagInfo &fact = price_tags[step].get_path_info_for_fact(LeafStateID(id, factor));
 
                                 if (marked_leaf_states[factor].erase(id) > 0){
                                     if (center_preconditions[factor].find(id) != center_preconditions[factor].end()){
@@ -421,7 +421,7 @@ void SearchSpace::trace_path(const State &goal_state,
                     size_t number_states = price_tags[step + 1].get_number_states(factor);
                     size_t id = 0;
                     while (number_states > 0) {
-                        if (price_tags[step + 1].has_leaf_state(id, factor)){
+                        if (price_tags[step + 1].has_leaf_state(LeafStateID(id, factor))){
                             --number_states;
                             bool fulfills_pre = true;
                             LeafState leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
@@ -435,7 +435,7 @@ void SearchSpace::trace_path(const State &goal_state,
                             }
                             if (fulfills_pre){
                                 center_preconditions[factor].insert(leaf_state.get_id().hash());
-                                int cost = price_tags[step + 1].get_cost_of_state(leaf_state.get_id().hash(), factor);
+                                int cost = price_tags[step + 1].get_cost_of_state(leaf_state.get_id());
                                 if (cost < best_price){
                                     best_price = cost;
                                     best_predecessor = leaf_state.get_id();

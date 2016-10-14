@@ -39,7 +39,7 @@ protected:
                                   const State &base_state,
                                   int g_value,
                                   const State &predecessor,
-                                  const Operator *op) const;
+                                  const Operator *op) const override;
 
     void compute_cost_frontier();
 
@@ -52,15 +52,15 @@ public:
     PruningPrices(){};
     
     
-    virtual bool has_effective_leaf_state(int id, int factor) const;
+    virtual bool has_effective_leaf_state(const LeafStateID &id) const override;
 
-    virtual int get_effective_cost_of_state(int id, int factor) const;
+    virtual int get_effective_cost_of_state(const LeafStateID &id) const override;
 
-    virtual size_t get_number_effective_states(int factor) const;
+    virtual size_t get_number_effective_states(size_t factor) const override;
     
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
-    virtual void dump() const;
+    virtual void dump() const override;
 
     
     static void create_init_state_prices();

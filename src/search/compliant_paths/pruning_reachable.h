@@ -31,7 +31,7 @@ protected:
                                   const State &base_state,
                                   int g_value,
                                   const State &predecessor,
-                                  const Operator *op) const;
+                                  const Operator *op) const override;
     
     void compute_frontier();
     
@@ -40,9 +40,9 @@ public:
     PruningReachable(){};
 
 
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
-    virtual void dump() const;
+    virtual void dump() const override;
     
     
     static void store_new_graph(const State &state);
