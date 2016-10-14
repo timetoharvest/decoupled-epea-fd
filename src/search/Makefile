@@ -166,12 +166,10 @@ HEADERS += por/expansion_core.h \
            
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
-           ../preprocess/scc.h
-           
+           ../preprocess/scc.h       
 
 HEADERS += pruning/cost_frontier.h \
            pruning/simulation_relation.h \
-           pruning/prunable.h \
            pruning/pruning.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \

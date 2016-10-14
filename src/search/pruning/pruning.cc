@@ -3,7 +3,6 @@
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"
 #include "../plugin.h"
-#include "prunable.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
 
@@ -19,7 +18,7 @@ Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("i
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
-            Prunable::set_propagate_goal_prices();
+            CompliantPathGraph::set_propagate_goal_prices();
             cout << "using goal price propagation" << endl;
         }
         
@@ -60,7 +59,7 @@ void Pruning::init() {
     }
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(const State &, CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;

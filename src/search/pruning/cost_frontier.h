@@ -6,16 +6,14 @@
 #include <vector>
 
 
-class Prices;
-
 class CostFrontierPruning : public Pruning {
 
 public:
     
     CostFrontierPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const State &center, Prunable *check, 
-                                       Prunable *reference, DOMINATION needed = NONE) const;
+    virtual DOMINATION check_dominance(const State &center, CompliantPathGraph *check, 
+                                       CompliantPathGraph *reference, DOMINATION needed = NONE) const override;
                                        
 };
 

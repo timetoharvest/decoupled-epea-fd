@@ -5,13 +5,13 @@ CPGStorage* CPGStorage::storage;
 
 void CPGStorage::initialize() {
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        if (Prunable::do_pruning()){
+        if (CompliantPathGraph::do_pruning()){
             storage = new PruningReachableStorage();
         } else {
             storage = new ReachableStorage();
         }
     } else {
-        if (Prunable::do_pruning()){
+        if (CompliantPathGraph::do_pruning()){
             storage = new PruningPriceStorage();
         } else {
             storage = new PriceStorage();

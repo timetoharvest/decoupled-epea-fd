@@ -10,7 +10,7 @@
 
 class CPGStorage {
     friend class StateRegistry; // to get non-const cpg
-    friend class Prunable; // to get non-const cpg
+    friend class CompliantPathGraph; // to get non-const cpg
     
 protected:
     

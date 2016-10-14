@@ -5,7 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../por/simple_stubborn_sets.h"
-#include "../pruning/prunable.h"
+#include "../pruning/simulation_relation.h"
 
 #include <vector>
 
@@ -15,7 +15,7 @@ class LeafStateID;
 class State;
 class StateID;
 
-class CompliantPathGraph : public Prunable {
+class CompliantPathGraph {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
     friend class SimulationRelation; // access to leaf_state_pre/successors
     friend class StateRegistry; // build leaf state spaces + init state cpg
@@ -29,6 +29,10 @@ class CompliantPathGraph : public Prunable {
     static CompliantPathGraph& get_init_state_cpg();
     
 protected:
+    
+    static bool store_frontier;
+    
+    static bool propagate_goal_prices;
     
     static const size_t MAX_LEAF_SPACE_STORE;
     
@@ -81,18 +85,44 @@ public:
 
     virtual bool has_leaf_state(const LeafStateID &id) const = 0;
     
+    virtual bool has_effective_leaf_state(const LeafStateID &id) const = 0;
+    
     virtual int get_cost_of_state(const LeafStateID &id) const = 0;
     
+    virtual int get_effective_cost_of_state(const LeafStateID &id) const = 0;
+    
     virtual size_t get_number_states(size_t factor) const = 0;
+    
+    virtual size_t get_number_effective_states(size_t factor) const = 0;
 
     virtual bool goal_reachable(size_t factor) const = 0;
+    
+    virtual int get_goal_cost(size_t factor) const = 0;
+    
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
     
     virtual void dump() const = 0;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
+    
+    // returns the duplicate counter for this base state and compliant path graph 
+    // i.e. the counter of the state subsuming that or the current max + 1
+    virtual int check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor);
 
 
     static void initialize();
+    
+    static bool do_pruning() {
+        return store_frontier || propagate_goal_prices || !SimulationRelation::simulated_states.empty();
+    }
+    
+    static void set_store_frontier() {
+        store_frontier = true;
+    }
+
+    static void set_propagate_goal_prices() {
+        propagate_goal_prices = true;
+    }
     
     static bool is_leaf_goal_state(const LeafStateID &state);
     
