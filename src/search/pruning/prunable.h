@@ -5,8 +5,15 @@
 #include "simulation_relation.h"
 
 #include <vector>
+#include <set>
+#include <memory>
+
 
 class LeafStateID;
+class CompliantPathGraph;
+class CPGStorage;
+class State;
+
 
 class Prunable {
     
@@ -35,7 +42,13 @@ public:
     virtual size_t get_number_effective_states(size_t factor) const = 0;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
     
+    // returns the duplicate counter for this base state and compliant path graph 
+    // i.e. the counter of the state subsuming that or the current max + 1
+    int check_dominance(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor);
+
     
     static bool do_pruning() {
         return store_frontier || propagate_goal_prices || !SimulationRelation::simulated_states.empty();

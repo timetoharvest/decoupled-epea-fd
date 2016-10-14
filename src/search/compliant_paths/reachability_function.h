@@ -10,9 +10,16 @@
 
 #include <vector>
 
-class Reachable : public CompliantPathGraph, public Prunable {
+class ReachableStorage;
+
+class Reachable : public CompliantPathGraph {
+    friend class CompliantPathGraph; // to get init state cpg
     
     static Reachable tmp_reach;
+    
+    static ReachableStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_reachable();
     
 protected:
     
@@ -22,28 +29,23 @@ protected:
         
     Reachable(const Reachable *tag);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact);
     
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const override;
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const override;
     
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
     
 public:
     
     Reachable(){};
+
+    virtual void store_new_graph(const State &state) const override;
     
     virtual bool has_leaf_state(const LeafStateID &id) const override;
     
@@ -64,11 +66,11 @@ public:
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
     virtual void dump() const override;
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
     
-    
-    static void store_new_graph(const State &state);
-    
-    static void create_init_state_reachable();
+    static void register_cpg_storage(ReachableStorage *storage);
  
 };
 

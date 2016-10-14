@@ -389,7 +389,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         
         dereference_ops();
         
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){

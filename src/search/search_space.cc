@@ -1,9 +1,9 @@
 #include "search_space.h"
 
+#include "compliant_paths/path_price_tag.h"
 #include "factoring.h"
 #include "globals.h"
 #include "operator.h"
-#include "compliant_paths/path_price_tag.h"
 #include "search_node_info.h"
 #include "state.h"
 
@@ -166,15 +166,6 @@ SearchNode SearchSpace::get_node(const State &state) {
 void SearchSpace::trace_path(const State &goal_state,
                              vector<const Operator *> &path) const {
                                  
-    // TODO in decoupled search, before actually reconstructing the plan,
-    // check if the new plan is actually cheaper! sum(cost(a_center)) + sum_leaves(goal_cost)
-    // at this point, we already know if the globalcost of the found
-    // plan will be lower than the currently best solution. if this is not
-    // the case, just skip the reconstruction of the path and return some
-    // path whose cost is higher than the current optimum
-    // keep the Reachabiliy Function in mind that does *not* store the cost
-    // of cheapest compliant paths!
-
     State current_state = goal_state;
     
     vector<StateID> states;

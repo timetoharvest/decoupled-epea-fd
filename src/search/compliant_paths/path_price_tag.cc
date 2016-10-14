@@ -26,17 +26,17 @@ void PathPriceTagInfo::dump() const {
 }
 
 
-PathPriceTag::PathPriceTag(const PathPriceTag *tag) {
-    if (tag == 0){
+PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
+    if (cpg == 0){
         number_states = vector<size_t>(g_factors.size(), 0);
         prices = vector<vector<int> >(g_factors.size());
         goal_cost = vector<int>(g_factors.size(), INF);
         paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
     } else {
-        number_states = tag->number_states;
-        goal_cost = tag->goal_cost;
-        prices = tag->prices;
-        paths = tag->paths;
+        number_states = cpg->number_states;
+        goal_cost = cpg->goal_cost;
+        prices = cpg->prices;
+        paths = cpg->paths;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             for (size_t state = 0; state < prices[factor].size(); ++state){
                 if (prices[factor][state] != INF){
@@ -164,7 +164,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             
                             if (!effects.empty() && op->is_center_applicable(base_state)){
-                                LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();
+                                LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
                                 
                                 if (lid.hash() >= leaf_state_id_map[factor].size()){
                                     // this can happen when using reachability functions in search, since here we might
@@ -218,7 +218,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             // center op completely overwrites leaf
             const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
 
-            const LeafStateID succ_state = g_state_registry->get_successor_leaf_state(predecessor, op).get_id();
+            const LeafStateID succ_state = g_state_registry->get_successor_leaf_state_id(predecessor, op);
             
             add_state(succ_state, 0, 0, LeafStateID::no_state);
             
@@ -247,7 +247,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                     } else {
                         const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
 
-                        LeafStateID succ_id = g_state_registry->get_successor_leaf_state(state, op).get_id();
+                        LeafStateID succ_id = g_state_registry->get_successor_leaf_state_id(state, op);
             
                         add_state(succ_id, old_tag.get_cost_of_state(LeafStateID(id, factor)), 0, lid);
                     }
@@ -265,4 +265,8 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         cout << "min_price of factor " << factor << " = " << min_price << endl;
 #endif
     }
+}
+
+unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
+    return unique_ptr<CompliantPathGraph> (new PathPriceTag(this));
 }

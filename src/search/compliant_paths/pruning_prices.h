@@ -10,10 +10,24 @@
 
 #include <vector>
 
+class PruningPriceStorage;
 
 class PruningPrices : public Prices {
+    friend class Prices; // to get init state cpg
     
     static PruningPrices tmp_p_price;
+    
+    static PruningPriceStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_prices();
+    
+    
+    void compute_cost_frontier();
+    void compute_cost_frontier(size_t factor);
+
+    void goal_price_propagation();
+
+    void propagate_dominance_prices(); 
     
 protected:  
     
@@ -29,28 +43,16 @@ protected:
     
     bool add_effective_state(const LeafStateID &fact, int cost);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const override;
-
-    void compute_cost_frontier();
-
-    void goal_price_propagation();
-
-    void propagate_dominance_prices(); 
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const override;
     
 public:
     
     PruningPrices(){};
     
+    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_effective_leaf_state(const LeafStateID &id) const override;
 
@@ -62,10 +64,10 @@ public:
     
     virtual void dump() const override;
 
-    
-    static void create_init_state_prices();
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
-    static void store_new_graph(const State &state);
+    
+    static void register_cpg_storage(PruningPriceStorage *storage);
     
 };
 

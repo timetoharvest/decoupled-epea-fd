@@ -218,7 +218,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
                         predecessor.dump_pddl();
 #endif
-                        LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();                        
+                        LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);                        
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
@@ -333,15 +333,17 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::create_init_state_reachable();
-    } else {
-        Prices::create_init_state_prices();
-    }
-    
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "leaving calculate_min_goal_cost function" << endl;
 #endif
+}
+
+CompliantPathGraph& CompliantPathGraph::get_init_state_cpg() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        return Reachable::get_init_state_reachable();
+    } else {
+        return Prices::get_init_state_prices();
+    }
 }
 
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
@@ -364,16 +366,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-void CompliantPathGraph::store_new_graph(const State &state) {
-    cache_leaf_price_tags(state);
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::store_new_graph(state);
-    } else {
-        Prices::store_new_graph(state);
-    }
-}
-
-void CompliantPathGraph::discard_new_graph() {
+void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 

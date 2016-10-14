@@ -17,6 +17,12 @@ using namespace std;
 
 Reachable Reachable::tmp_reach;
 
+ReachableStorage* Reachable::cpg_storage;
+
+
+void Reachable::register_cpg_storage(ReachableStorage *storage) {
+    cpg_storage = storage;
+}
 
 Reachable::Reachable(const Reachable *tag) {
     if (tag == 0){
@@ -25,112 +31,6 @@ Reachable::Reachable(const Reachable *tag) {
     } else {
         reachable = tag->reachable;
         goal_reached = tag->goal_reached;
-    }
-}
-
-int Reachable::check_duplicate(const State &base_state, int curr_number_duplicates, int g_value, const State &predecessor) {
-    
-#ifdef DEBUG_PRUNING
-    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(LeafStateID(id, factor))){
-                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-            }
-        }
-    }
-#endif
-    
-    vector<size_t> predecessors;
-    SearchSpace *search_space = g_factoring->get_search_space();
-    
-    if (g_factoring->are_closed_nodes_reopened()){
-        StateID curr_id = predecessor.get_id();
-        while (curr_id.hash() != 0){
-            if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
-                predecessors.push_back(curr_id.hash());
-            }
-            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
-        }
-        predecessors.push_back(0);
-    }
-    
-    int replaced_state_dup = -1;
-
-    for (int dup = 0; dup <= curr_number_duplicates; dup++){
-        // check the price tags of all equal center states
-        
-#ifdef DEBUG_PRUNING
-        cout << "current dup counter " << dup << endl;
-#endif
-
-        // get other state
-        State s = g_state_registry->get_center_state(base_state, dup);
-        
-#ifdef DEBUG_PRUNING         
-        cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (g_price_tags[s].has_leaf_state(LeafStateID(id, factor))){
-                    g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
-                }
-            }
-        }
-#endif
-        
-        if (!g_factoring->are_closed_nodes_reopened()){
-            // in greedy search, close nodes that are dominated by this one as cannot
-            // reach anything new from those that cannot be reached from this node
-            // if dominated => do not consider this state
-            // in this case, all dominated nodes are also dominated by the state
-            // that dominates this one
-
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::reach_tags[s]); 
-            
-            if (res != NONE){
-                if (res == DOMINATES) {
-                    // set dominated nodes to closed
-                    SearchNode node = search_space->get_node(s);
-                    if (node.is_open()){
-                        node.close();
-                    }
-                } else {
-                    replaced_state_dup = dup;
-
-                    // otherwise, the path to an existing state dominating this one
-                    // will be updated, so that paths to leaf states that are not
-                    // reachable in this state cannot be constructed
-                    // this is only needed for eager search, where for duplicate states
-                    // reached on a cheaper path, the predecessor is updated
-                    g_factoring->set_ignore_current_state(true);
-                }
-            }       
-            
-        } else {
-            
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, &CPGStorage::reach_tags[s]);
-            
-            if (res == EQUAL || res == DOMINATED){
-                int old_g = search_space->get_node(s).get_g();
-                if (g_value + g_inc_g_by < old_g){
-                    // otherwise, that existing state would be reopened
-                    g_factoring->set_ignore_current_state(true);
-                }
-                return dup;
-            } else if (res == DOMINATES){
-                // set dominated nodes to closed
-                SearchNode node = search_space->get_node(s);
-                if (node.is_open()){
-                    node.close();
-                }
-            }
-            
-        }
-    }
-    if (replaced_state_dup != -1){
-        return replaced_state_dup;
-    } else {
-        return curr_number_duplicates + 1;
     }
 }
 
@@ -155,11 +55,9 @@ bool Reachable::add_state(const LeafStateID &state) {
     return false;
 }
 
-int Reachable::update_price_tags(int curr_number_duplicates,
-                                 const State &base_state,
-                                 int g_value,
-                                 const State &predecessor,
-                                 const Operator *op) const {
+CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
+                        	                 const Operator *op,
+                                  	         const State &) const {
     
     if (g_factoring->get_profile() != FORK && op != 0){
         tmp_reach = Reachable(0);               // for initial state => op == 0
@@ -218,7 +116,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                     ++leaf_id;
                 }
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const Reachable &tag_to_copy = CPGStorage::reach_tags[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
+                    const Reachable &tag_to_copy = cpg_storage->reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
                     int cost_delta = tmp_reach.get_cost_of_state(LeafStateID(leaf_id, factor));
                     cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
@@ -337,7 +235,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
 
-                                LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();
+                                LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
                                 
                                 if (lid.hash() >= handled.size()){
                                     handled.resize(lid.hash() + 1, false);
@@ -389,11 +287,7 @@ int Reachable::update_price_tags(int curr_number_duplicates,
     cout << "+++++++++++++++ RPG FINISHED" << endl;
 #endif
     
-    if (curr_number_duplicates == -1){
-        return 0;
-    }
-    
-    return tmp_reach.check_duplicate(base_state, curr_number_duplicates, g_value, predecessor);
+    return tmp_reach;
 }
 
 void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op) {
@@ -419,7 +313,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
             
-            add_state(g_state_registry->get_successor_leaf_state(pred, op).get_id());
+            add_state(g_state_registry->get_successor_leaf_state_id(pred, op));
                
         } else {
             // check which leaf states satisfy center precondition and apply effects
@@ -439,7 +333,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(lid);
 
-                            add_state(g_state_registry->get_successor_leaf_state(state, op).get_id());
+                            add_state(g_state_registry->get_successor_leaf_state_id(state, op));
                         }
                     }
                 }
@@ -500,17 +394,14 @@ const vector< boost::dynamic_bitset<> >& Reachable::get_frontier() {
     exit_with(EXIT_CRITICAL_ERROR);
 }
 
-void Reachable::store_new_graph(const State &state) {
-    if (do_pruning()){
-        PruningReachable::store_new_graph(state);
-    } else {
-        CPGStorage::reach_tags[state] = tmp_reach;
-    }
+void Reachable::store_new_graph(const State &state) const {
+    discard_new_graph();
+    cpg_storage->store_cpg(state, *this);
 }
 
-void Reachable::create_init_state_reachable() {
+CompliantPathGraph& Reachable::get_init_state_reachable() {
     if (do_pruning()){
-        PruningReachable::create_init_state_reachable();        
+        return PruningReachable::get_init_state_reachable();        
     } else {
         Reachable reach(0);
             
@@ -518,7 +409,9 @@ void Reachable::create_init_state_reachable() {
             reach.add_state(LeafStateID(0, factor));
         }
             
-        reach.update_price_tags(-1, g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state(), 0);
+        reach.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
+        
+        return tmp_reach;
     }
 }
 
@@ -535,5 +428,9 @@ void Reachable::dump() const {
             }
         }
     }
+}
+
+unique_ptr<CompliantPathGraph> Reachable::clone() const {
+    return unique_ptr<CompliantPathGraph> (new Reachable(*this));
 }
 

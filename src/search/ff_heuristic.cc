@@ -95,7 +95,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 }
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); factor++){
         int number_states = tag->get_number_states(factor);
         size_t id = 0;
@@ -144,7 +144,7 @@ int FFHeuristic::compute_heuristic(const State &state) {
     }
     int leaf_goal_cost = 0;
     if (search_type == STAR){
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         for (size_t factor = 0; factor < artificial_leaf_ops.size(); ++factor){
             for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
                 if (relaxed_leaf_plan[factor][fact]){

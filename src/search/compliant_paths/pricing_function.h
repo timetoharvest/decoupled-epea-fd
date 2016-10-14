@@ -9,11 +9,18 @@
 
 #include <vector>
 
+class PriceStorage;
 
-class Prices : public CompliantPathGraph, public Prunable {
+class Prices : public CompliantPathGraph {
     friend class CompliantPathGraph;
     
+    // TODO get rid of this in all CPG classes! 
+    // might be needed for init state, then make this an exception
     static Prices tmp_price;
+    
+    static PriceStorage *cpg_storage;
+    
+    static CompliantPathGraph& get_init_state_prices();
     
 protected:  
 
@@ -29,29 +36,24 @@ protected:
     // used when including part of the leaf cost into the g-value
     // of a search node
     void reduce_cost_by(int factor, int cost);
-    
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
+
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
     bool add_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const override;
+    virtual CompliantPathGraph& update_price_tags(const State &base_state,
+                                        const Operator *op,
+                                        const State &predecessor) const override;
     
-    virtual void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
     
 public:
     
     Prices(){};
+
+    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_leaf_state(const LeafStateID &id) const override;
     
@@ -73,10 +75,10 @@ public:
     
     virtual void dump() const override;
 
-    
-    static void create_init_state_prices();
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
-    static void store_new_graph(const State &state);
+
+    static void register_cpg_storage(PriceStorage *storage);
     
 };
 
