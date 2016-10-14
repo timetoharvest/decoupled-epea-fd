@@ -3,9 +3,7 @@
 
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "../globals.h"
-#include "../leaf_state.h"
 #include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 #include "reachability_function.h"
 
 #include <vector>
@@ -37,8 +35,8 @@ protected:
 
     // returns the new duplicate counter
     virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                        const Operator *op,
-                                        const State &predecessor) const override;
+                                                  const Operator *op,
+                                                  const State &predecessor) const override;
     
 public:
     

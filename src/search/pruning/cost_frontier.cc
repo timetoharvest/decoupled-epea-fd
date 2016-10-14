@@ -3,7 +3,6 @@
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../operator.h"
 #include "../plugin.h"
-#include "prunable.h"
 #include "../state_registry.h"
 #include "../ext/boost/dynamic_bitset.hpp"
 

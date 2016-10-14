@@ -4,9 +4,7 @@
 #include "compliant_path_graph.h"
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "../globals.h"
-#include "../leaf_state.h"
 #include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 
 #include <vector>
 

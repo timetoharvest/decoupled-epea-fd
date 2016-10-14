@@ -3,8 +3,6 @@
 
 #include "pruning.h"
 
-#include <vector>
-
 
 class CostFrontierPruning : public Pruning {
 
