@@ -39,10 +39,6 @@ protected:
     
     static std::unique_ptr<Pruning> pruning;
     
-    static bool store_frontier;
-    
-    static bool propagate_goal_prices;
-    
     static const size_t MAX_LEAF_SPACE_STORE;
     
     static bool compute_leaf_backwards_graph;
@@ -124,16 +120,8 @@ public:
 
     static void initialize();
     
-    static bool do_pruning() {
-        return store_frontier || propagate_goal_prices || !SimulationRelation::simulated_states.empty();
-    }
-    
-    static void set_store_frontier() {
-        store_frontier = true;
-    }
-
-    static void set_propagate_goal_prices() {
-        propagate_goal_prices = true;
+    static const Pruning& get_pruning() {
+        return *pruning;
     }
     
     static void set_pruning(Pruning *p) {

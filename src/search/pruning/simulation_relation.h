@@ -15,6 +15,10 @@ class LeafStateID;
 class SimulationRelation {
     
 private:
+    
+    static std::vector<std::vector<std::vector<size_t> > > simulated_states;
+    
+    
     //For each operator, list of operators that dominate it in the
     //center
     std::vector<boost::dynamic_bitset<> > op_dominated_by;
@@ -60,10 +64,7 @@ private:
     const std::string & get_name(const LeafStateID &id) const;
 
 public:
-    
-    static std::vector<std::vector<std::vector<size_t> > > simulated_states;
-    
-    
+
     void init();
 
     void statistics() const;
@@ -71,6 +72,11 @@ public:
     void set_list_dominated_states() const;
 
     void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
+    
+    
+    static const std::vector<std::vector<std::vector<size_t> > > get_simulation_relation() {
+        return simulated_states;
+    }
 
 };
 

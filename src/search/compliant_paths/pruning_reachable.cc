@@ -46,7 +46,7 @@ CompliantPathGraph& PruningReachable::update_price_tags(const State &base_state,
     }
     // the rest of this function works on tmp_p_reach!
     
-    if (store_frontier){
+    if (pruning->use_frontier()){
         // TODO check if using this really makes sense, or if the overhead of computing 
         // and storing the frontier is too much
 //         const PruningPrices &tag = cpg_storage.pruning_reachable[predecessor];
@@ -288,7 +288,7 @@ CompliantPathGraph& PruningReachable::update_price_tags(const State &base_state,
 }
 
 const vector<boost::dynamic_bitset<> >& PruningReachable::get_frontier() {
-    assert(store_frontier);
+    assert(pruning->use_frontier());
     if (frontier.empty()){
         compute_frontier();
     }

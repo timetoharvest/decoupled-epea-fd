@@ -358,7 +358,7 @@ void Prices::store_new_graph(const State &state) const {
 }
 
 CompliantPathGraph& Prices::get_init_state_prices() {
-    if (do_pruning()){
+    if (pruning->do_advanced_pruning()){
         return PruningPrices::get_init_state_prices();
     } else {
         Prices prices(0);

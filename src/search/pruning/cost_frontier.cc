@@ -10,11 +10,10 @@
 using namespace std;
 
 CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
-    CompliantPathGraph::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
 
-DOMINATION CostFrontierPruning::check_dominance(const State &, CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
+DOMINATION CostFrontierPruning::check_dominance(CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
     assert(g_factoring->get_profile() == FORK);
 
     const vector<boost::dynamic_bitset<> > &current_frontier = check->get_frontier();

@@ -14,15 +14,15 @@ bool Pruning::ignore_current_search_state = false;
 
 bool Pruning::reopen_closed_nodes = false;
 
+
 Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                                         do_simulation(opts.get<bool>("simulation")),
                                         goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
 
-    if (goal_price_propagation || do_simulation || irrelevance != NO){        
+    if (goal_price_propagation || do_simulation || irrelevance != NO){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
-            CompliantPathGraph::set_propagate_goal_prices();
             cout << "using goal price propagation" << endl;
         }
         
@@ -63,7 +63,7 @@ void Pruning::init() {
     }
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;

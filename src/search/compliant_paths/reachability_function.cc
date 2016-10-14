@@ -400,7 +400,7 @@ void Reachable::store_new_graph(const State &state) const {
 }
 
 CompliantPathGraph& Reachable::get_init_state_reachable() {
-    if (do_pruning()){
+    if (pruning->do_advanced_pruning()){
         return PruningReachable::get_init_state_reachable();        
     } else {
         Reachable reach(0);

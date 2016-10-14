@@ -25,13 +25,9 @@ const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
 bool CompliantPathGraph::compute_leaf_backwards_graph = false;
 
-bool CompliantPathGraph::store_frontier = false;
-
 SearchSpace* CompliantPathGraph::search_space;
 
 OperatorCost CompliantPathGraph::cost_type;
-
-bool CompliantPathGraph::propagate_goal_prices = false;
 
 vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
 
@@ -143,7 +139,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
+            DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s)); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -168,7 +164,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
+                DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s));
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
@@ -200,7 +196,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
+                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -229,7 +225,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
+                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one
