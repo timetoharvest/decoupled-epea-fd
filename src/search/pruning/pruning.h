@@ -27,6 +27,10 @@ class Pruning {
     
     bool goal_price_propagation;
     
+    static bool ignore_current_search_state;
+    
+    static bool reopen_closed_nodes;
+    
 public:
     Pruning() : irrelevance(NO), do_simulation (false), goal_price_propagation(false) {}
 
@@ -40,7 +44,28 @@ public:
     // then, have a PruningOptions class that encapsulates options like frontier/irrelevance and a class for effective price 
     // like simulation and goal price propagation, that is used within PruningPrices/Reachable
     virtual DOMINATION check_dominance(const State &center, CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed = NONE) const = 0;
-
+    
+    
+    static void set_ignore_current_state() {
+        ignore_current_search_state = true;
+    }
+    
+    static void reset_ignore_current_state() {
+        ignore_current_search_state = false;
+    }
+    
+    static bool ignore_current_state() {
+        return ignore_current_search_state;
+    }
+    
+    static void set_reopen_closed_nodes() {
+        reopen_closed_nodes = true;
+    }
+    
+    static bool are_closed_nodes_reopened() {
+        return reopen_closed_nodes;
+    }
+    
     static void add_options_to_parser(OptionParser &parser);
     
 };

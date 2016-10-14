@@ -17,6 +17,7 @@
 
 using namespace std;
 
+unique_ptr<Pruning> CompliantPathGraph::pruning;
 
 const int CompliantPathGraph::INF = -1;
     
@@ -102,7 +103,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     vector<size_t> predecessors;
     SearchSpace *search_space = g_factoring->get_search_space();
     
-    if (g_factoring->are_closed_nodes_reopened()){
+    if (Pruning::are_closed_nodes_reopened()){
         StateID curr_id = predecessor.get_id();
         while (curr_id.hash() != 0){
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
@@ -130,14 +131,14 @@ int CompliantPathGraph::check_dominance(const State &base_state,
         //g_price_tags[s].dump();
 #endif
         
-        if (!g_factoring->are_closed_nodes_reopened()){
+        if (!Pruning::are_closed_nodes_reopened()){
             // in greedy search, close nodes that are dominated by this one as cannot
             // reach anything new from those that cannot be reached from this node
             // if dominated => do not consider this state
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
+            DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s)); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -154,7 +155,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // reachable in this state cannot be constructed
                     // this is only needed for eager search, where for duplicate states
                     // reached on a cheaper path, the predecessor is updated
-                    g_factoring->set_ignore_current_state(true);
+                    Pruning::set_ignore_current_state();
                 }
             }       
             
@@ -162,13 +163,13 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
+                DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s));
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
                     if (g_value + g_inc_g_by < old_g){
                         // otherwise, that existing state would be reopened
-                        g_factoring->set_ignore_current_state(true);
+                        Pruning::set_ignore_current_state();
                     }
                     return dup;
                 } else if (res == DOMINATES){
@@ -194,7 +195,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
+                    DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -223,7 +224,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = g_factoring->get_pruning()->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
+                    DOMINATION res = pruning->check_dominance(base_state, this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one
@@ -423,7 +424,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
 #endif
     
-    g_factoring->get_pruning()->init();
+    pruning->init();
    
     size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;

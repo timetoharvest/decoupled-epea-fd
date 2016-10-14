@@ -391,6 +391,6 @@ void Prices::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> Prices::clone() const {
-    return unique_ptr<CompliantPathGraph> (new Prices(this));
+    return unique_ptr<CompliantPathGraph>(new Prices(this));
 }
 

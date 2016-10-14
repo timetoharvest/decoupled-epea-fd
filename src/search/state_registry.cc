@@ -209,7 +209,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             old_dup_counter = pos->second;
         }
         
-        g_factoring->set_ignore_current_state(false);
+        Pruning::reset_ignore_current_state();
         
         int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
         g += get_adjusted_action_cost(op, g_factoring->get_cost_type());

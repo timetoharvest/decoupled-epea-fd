@@ -37,7 +37,6 @@ void InteractionGraph::add_dependency(int from, int to) {
 }
 
 Factoring::Factoring(const Options &opts) :
-            reopen_closed_nodes(false),
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
@@ -59,14 +58,13 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
-        pruning = opts.get<Pruning*>("pruning");
+        CompliantPathGraph::set_pruning(opts.get<Pruning*>("pruning"));
     } else {
-        pruning = new BasicPruning();
+        CompliantPathGraph::set_pruning(new BasicPruning());
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
-    ignore_current_state = false;
 }
 
 class CenterFactoring : public Factoring {

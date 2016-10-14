@@ -10,6 +10,10 @@
 using namespace std;
 
 
+bool Pruning::ignore_current_search_state = false;
+
+bool Pruning::reopen_closed_nodes = false;
+
 Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                                         do_simulation(opts.get<bool>("simulation")),
                                         goal_price_propagation(opts.get<bool>("goal_price_propagation")) {

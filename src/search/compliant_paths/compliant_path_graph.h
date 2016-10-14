@@ -5,6 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../por/simple_stubborn_sets.h"
+#include "../pruning/pruning.h"
 #include "../pruning/simulation_relation.h"
 
 #include <vector>
@@ -29,6 +30,8 @@ class CompliantPathGraph {
     static CompliantPathGraph& get_init_state_cpg();
     
 protected:
+    
+    static std::unique_ptr<Pruning> pruning;
     
     static bool store_frontier;
     
@@ -122,6 +125,10 @@ public:
 
     static void set_propagate_goal_prices() {
         propagate_goal_prices = true;
+    }
+    
+    static void set_pruning(Pruning *p) {
+        pruning.reset(p);
     }
     
     static bool is_leaf_goal_state(const LeafStateID &state);
