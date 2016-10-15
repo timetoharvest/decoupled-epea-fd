@@ -153,7 +153,7 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     int s1, s2;
     s1 = *s.begin();
     s2 = *(++s.begin());
-    if (g[s1].size() > g[s1].size()) {
+    if (g[s1].size() > g[s2].size()) {
         int temp = s2;
         s2 = s1;
         s1 = temp;
@@ -213,11 +213,11 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
                 break;
             }
         }
-        if (subset) {
+        if (subset && !(temp.size() == g[s2].size())) {
             set<int> temp = g[s1];
             temp.insert(s1);
             temp.insert(s2);
-            temp.insert(g[s1].begin(), g[s1].end());
+            temp.insert(g[s2].begin(), g[s2].end());
             set<int> mis = find_mis(remove_components(g, temp));
             mis.insert(s2);
             mis.insert(E);
