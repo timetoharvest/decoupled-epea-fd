@@ -74,7 +74,7 @@ public:
     void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
     
     
-    static const std::vector<std::vector<std::vector<size_t> > > get_simulation_relation() {
+    static const std::vector<std::vector<std::vector<size_t> > >& get_simulation_relation() {
         return simulated_states;
     }
 
