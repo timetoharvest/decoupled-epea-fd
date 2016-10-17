@@ -29,7 +29,7 @@ class CompliantPathGraph {
     */
     static void build_leaf_state_spaces();
     
-    static CompliantPathGraph& get_init_state_cpg();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
     
 protected:
     
@@ -69,10 +69,12 @@ protected:
     
     static void discard_leaf_price_cache();
     
+    // TODO refactor this into two separate functions, one that creates the succ CPG, and calls
+    // a new update_cpg(..) function that does the actual update
     // returns the new duplicate counter
-    virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                                  const Operator *op,
-                                                  const State &predecessor) const = 0;
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const = 0;
     
 public:
     

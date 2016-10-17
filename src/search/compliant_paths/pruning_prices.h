@@ -13,11 +13,9 @@ class PruningPriceStorage;
 class PruningPrices : public Prices {
     friend class Prices; // to get init state cpg
     
-    static PruningPrices tmp_p_price;
-    
     static PruningPriceStorage *cpg_storage;
     
-    static CompliantPathGraph& get_init_state_prices();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_prices();
     
     
     void compute_cost_frontier();
@@ -42,9 +40,9 @@ protected:
     bool add_effective_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                        const Operator *op,
-                                        const State &predecessor) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const override;
     
 public:
     

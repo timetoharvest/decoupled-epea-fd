@@ -12,12 +12,10 @@ class ReachableStorage;
 
 class Reachable : public CompliantPathGraph {
     friend class CompliantPathGraph; // to get init state cpg
-    
-    static Reachable tmp_reach;
-    
+
     static ReachableStorage *cpg_storage;
     
-    static CompliantPathGraph& get_init_state_reachable();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();
     
 protected:
     
@@ -33,9 +31,9 @@ protected:
     bool add_state(const LeafStateID &fact);
     
     // returns the new duplicate counter
-    virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                        const Operator *op,
-                                        const State &predecessor) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const override;
     
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
     

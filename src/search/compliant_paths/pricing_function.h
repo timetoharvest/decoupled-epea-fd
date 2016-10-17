@@ -12,13 +12,9 @@ class PriceStorage;
 class Prices : public CompliantPathGraph {
     friend class CompliantPathGraph;
     
-    // TODO get rid of this in all CPG classes! 
-    // might be needed for init state, then make this an exception
-    static Prices tmp_price;
-    
     static PriceStorage *cpg_storage;
     
-    static CompliantPathGraph& get_init_state_prices();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_prices();
     
 protected:  
 
@@ -41,9 +37,9 @@ protected:
     bool add_state(const LeafStateID &fact, int cost);
     
     // returns the new duplicate counter
-    virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                        const Operator *op,
-                                        const State &predecessor) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const override;
     
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
     

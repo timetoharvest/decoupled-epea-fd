@@ -15,10 +15,7 @@
 using namespace std;
 
 
-Reachable Reachable::tmp_reach;
-
 ReachableStorage* Reachable::cpg_storage;
-
 
 void Reachable::register_cpg_storage(ReachableStorage *storage) {
     cpg_storage = storage;
@@ -55,15 +52,17 @@ bool Reachable::add_state(const LeafStateID &state) {
     return false;
 }
 
-CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
-                        	                 const Operator *op,
-                                  	         const State &) const {
+unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State &base_state,
+                                                                    const Operator *op,
+                                                                    const State &) const {
+                                                                        
+    unique_ptr<Reachable> tmp_reach;
     
     if (g_factoring->get_profile() != FORK && op != 0){
-        tmp_reach = Reachable(0);               // for initial state => op == 0
-        tmp_reach.apply_center_op_to_leaves(*this, *op);
+        tmp_reach.reset(new Reachable(0));               // for initial state => op == 0
+        tmp_reach->apply_center_op_to_leaves(*this, *op);
     } else {                
-        tmp_reach = Reachable(this);
+        tmp_reach.reset(new Reachable(this));
     }
     // the rest of this function works on tmp_reach!
     
@@ -78,7 +77,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
         if (!g_factoring->has_successors(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || 
-                (g_factoring->get_search_type() == SAT && tmp_reach.goal_reached[factor])){
+                (g_factoring->get_search_type() == SAT && tmp_reach->goal_reached[factor])){
                 continue;
             }
         }
@@ -106,11 +105,11 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            if (tmp_reach.reachable[factor].count() == 1){
+            if (tmp_reach->reachable[factor].count() == 1){
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_reach.has_leaf_state(LeafStateID(leaf_id, factor))){
+                    if (tmp_reach->has_leaf_state(LeafStateID(leaf_id, factor))){
                         break;
                     }
                     ++leaf_id;
@@ -118,13 +117,13 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const Reachable &tag_to_copy = cpg_storage->reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_reach.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    int cost_delta = tmp_reach->get_cost_of_state(LeafStateID(leaf_id, factor));
                     cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
                     
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
-                            tmp_reach.add_state(LeafStateID(fact, factor));
+                            tmp_reach->add_state(LeafStateID(fact, factor));
                             if (--number_states == 0){
                                 break;
                             }
@@ -139,7 +138,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
         
         boost::dynamic_bitset<> handled(number_leaf_states, false);
         
-        size_t curr_number_states = tmp_reach.reachable[factor].count();
+        size_t curr_number_states = tmp_reach->reachable[factor].count();
         
         bool change = true;
 
@@ -156,7 +155,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                     break;
                 }
                 
-                if (tmp_reach.has_leaf_state(LeafStateID(id, factor))){
+                if (tmp_reach->has_leaf_state(LeafStateID(id, factor))){
                     ++num_states;
 
                     if (handled[id]){
@@ -180,7 +179,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                if(tmp_reach.add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                if(tmp_reach->add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
                                     ++added;
                                 }
                             }
@@ -246,7 +245,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                                 }
                                 
                                 if(!fits_store || op->is_center_applicable(base_state)){
-                                    if (tmp_reach.add_state(lid)){
+                                    if (tmp_reach->add_state(lid)){
                                         ++added;
                                     }
                                 }
@@ -267,7 +266,7 @@ CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
                         change = true;
                     }
                     
-                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_reach.goal_reached[factor]){
+                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_reach->goal_reached[factor]){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
                         break;
@@ -399,7 +398,7 @@ void Reachable::store_new_graph(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
 
-CompliantPathGraph& Reachable::get_init_state_reachable() {
+unique_ptr<CompliantPathGraph> Reachable::get_init_state_reachable() {
     if (pruning->do_advanced_pruning()){
         return PruningReachable::get_init_state_reachable();        
     } else {
@@ -408,10 +407,8 @@ CompliantPathGraph& Reachable::get_init_state_reachable() {
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             reach.add_state(LeafStateID(0, factor));
         }
-            
-        reach.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
         
-        return tmp_reach;
+        return reach.get_updated_successor_cpg(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
     }
 }
 

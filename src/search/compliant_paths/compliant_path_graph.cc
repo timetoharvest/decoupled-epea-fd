@@ -499,7 +499,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #endif
 }
 
-CompliantPathGraph& CompliantPathGraph::get_init_state_cpg() {
+unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         return Reachable::get_init_state_reachable();
     } else {

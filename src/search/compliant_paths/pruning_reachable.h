@@ -13,11 +13,9 @@ class PruningReachableStorage;
 class PruningReachable : public Reachable {
     friend class Reachable; // to get init state cpg
     
-    static PruningReachable tmp_p_reach;
-    
     static PruningReachableStorage *cpg_storage;
     
-    static CompliantPathGraph& get_init_state_reachable();   
+    static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();   
     
     void compute_frontier();
     
@@ -34,9 +32,9 @@ protected:
                         int g_value, const State &predecessor);
 
     // returns the new duplicate counter
-    virtual CompliantPathGraph& update_price_tags(const State &base_state,
-                                                  const Operator *op,
-                                                  const State &predecessor) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const override;
     
 public:
     

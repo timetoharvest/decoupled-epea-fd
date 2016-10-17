@@ -138,9 +138,9 @@ const State &StateRegistry::get_initial_state() {
             
             CompliantPathGraph::build_leaf_state_spaces();
             
-            CompliantPathGraph &init_state_cpg = CompliantPathGraph::get_init_state_cpg();
+            unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
             
-            init_state_cpg.store_new_graph(*cached_initial_state);
+            init_state_cpg->store_new_graph(*cached_initial_state);
             
             state_duplicate_counter[0] = 0;
         }
@@ -211,13 +211,13 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         
         Pruning::reset_ignore_current_state();
         
-        CompliantPathGraph &new_cpg = CPGStorage::storage->get_cpg(predecessor)->update_price_tags(s, &op, predecessor);
+        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_updated_successor_cpg(s, &op, predecessor);
         
         if (old_dup_counter == -1){ // is new center state
-            new_cpg.store_new_graph(s);
+            new_cpg->store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
-            int new_dup_counter = new_cpg.check_dominance(s, old_dup_counter, predecessor, op);
+            int new_dup_counter = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
             
             state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
@@ -229,12 +229,12 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             s = lookup_state(id);
             
             if (new_dup_counter > old_dup_counter){    // is a new decoupled state
-                new_cpg.store_new_graph(s);
+                new_cpg->store_new_graph(s);
                 state_duplicate_counter[base_state_id] = new_dup_counter;
             }
         }
         
-        new_cpg.discard_new_graph();
+        new_cpg->discard_new_graph();
         
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;

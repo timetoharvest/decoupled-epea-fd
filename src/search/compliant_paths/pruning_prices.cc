@@ -18,10 +18,7 @@
 using namespace std;
 
 
-PruningPrices PruningPrices::tmp_p_price;
-
 PruningPriceStorage* PruningPrices::cpg_storage;
-
 
 void PruningPrices::register_cpg_storage(PruningPriceStorage *storage) {
     cpg_storage = storage;
@@ -73,16 +70,18 @@ bool PruningPrices::add_effective_state(const LeafStateID &state, int cost) {
     return false;
 }
 
-CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
-                                           const Operator *op,
-                                           const State &predecessor) const {
+unique_ptr<CompliantPathGraph> PruningPrices::get_updated_successor_cpg(const State &base_state,
+                                                                        const Operator *op,
+                                                                        const State &predecessor) const {
+                                                         
+    unique_ptr<PruningPrices> tmp_p_price;
     
     if (g_factoring->get_profile() != FORK && op != 0){
         assert(false); // not supported, yet
-        tmp_p_price = PruningPrices(0);                  // when updating initial state => op == 0
-        tmp_p_price.apply_center_op_to_leaves(*this, *op);
+        tmp_p_price.reset(new PruningPrices(0));                  // when updating initial state => op == 0
+        tmp_p_price->apply_center_op_to_leaves(*this, *op);
     } else {                
-        tmp_p_price = PruningPrices(this);
+        tmp_p_price.reset(new PruningPrices(this));
     }
     // the rest of this function works on tmp_p_price!
     
@@ -96,14 +95,14 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
     if (pruning->use_frontier()){
         PruningPrices &tag = cpg_storage->pruning_prices[predecessor];
         if (tag.frontier.empty()){
-            tmp_p_price.compute_cost_frontier();
+            tmp_p_price->compute_cost_frontier();
         } else {
-            tmp_p_price.frontier = vector<boost::dynamic_bitset<> >(g_factors.size(), boost::dynamic_bitset<>());
+            tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_factors.size(), boost::dynamic_bitset<>());
             for (size_t factor = 0; factor < g_factors.size(); ++factor){
                 if (tag.frontier[factor].size() != 0){
-                    tmp_p_price.frontier[factor] = tag.frontier[factor];
+                    tmp_p_price->frontier[factor] = tag.frontier[factor];
                 } else {
-                    tmp_p_price.compute_cost_frontier(factor);
+                    tmp_p_price->compute_cost_frontier(factor);
                 }
             }
         }
@@ -139,11 +138,11 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            if (tmp_p_price.number_states[factor] == 1){
+            if (tmp_p_price->number_states[factor] == 1){
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_p_price.has_leaf_state(LeafStateID(leaf_id, factor))){
+                    if (tmp_p_price->has_leaf_state(LeafStateID(leaf_id, factor))){
                         break;
                     }
                     ++leaf_id;
@@ -151,14 +150,14 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const PruningPrices &tag_to_copy = cpg_storage->pruning_prices[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_p_price.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    int cost_delta = tmp_p_price->get_cost_of_state(LeafStateID(leaf_id, factor));
                     cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
                     
                     size_t num_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
                             int cost = tag_to_copy.get_cost_of_state(LeafStateID(fact, factor));
-                            tmp_p_price.add_state(LeafStateID(fact, factor), cost + cost_delta);
+                            tmp_p_price->add_state(LeafStateID(fact, factor), cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
@@ -181,14 +180,14 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 
-                if (tmp_p_price.has_leaf_state(LeafStateID(id, factor))){
+                if (tmp_p_price->has_leaf_state(LeafStateID(id, factor))){
 
-                    if (pruning->use_frontier() && !tmp_p_price.frontier[factor][id]){
+                    if (pruning->use_frontier() && !tmp_p_price->frontier[factor][id]){
                         // TODO should probably only do this if simulation/propagation is disabled.. Why?
                         continue;
                     }
                 
-                    int cost = tmp_p_price.get_cost_of_state(LeafStateID(id, factor));
+                    int cost = tmp_p_price->get_cost_of_state(LeafStateID(id, factor));
                     if (best_prices[id] <= cost && !pruning->use_frontier()){
                         continue;
                     }
@@ -202,23 +201,23 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
-                            bool added = tmp_p_price.add_state(LeafStateID(successor, factor), 
+                            bool added = tmp_p_price->add_state(LeafStateID(successor, factor), 
                                                    cost + get_adjusted_action_cost(*op, cost_type));
                             change |= added;
                             if (pruning->use_frontier() && added){
-                                tmp_p_price.frontier[factor][successor] = true;
+                                tmp_p_price->frontier[factor][successor] = true;
                             }
                         } else if (pruning->use_frontier() && !pruning->propagate_goal_prices()) {
                             all_applicable = false;
                             int new_cost = cost + get_adjusted_action_cost(*op, cost_type);
                             int successor = leaf_state_successors[factor][id][o].second;
-                            if (!tmp_p_price.has_leaf_state(LeafStateID(successor, factor)) || tmp_p_price.get_cost_of_state(LeafStateID(successor, factor)) > new_cost){
-                                tmp_p_price.frontier[factor][id] = true;
+                            if (!tmp_p_price->has_leaf_state(LeafStateID(successor, factor)) || tmp_p_price->get_cost_of_state(LeafStateID(successor, factor)) > new_cost){
+                                tmp_p_price->frontier[factor][id] = true;
                             }
                         }
                     }
                     if (all_applicable){
-                        tmp_p_price.frontier[factor][id] = false;
+                        tmp_p_price->frontier[factor][id] = false;
                     }                    
                     
                     // TODO probably reintroduce this for optimal search again
@@ -244,11 +243,11 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
 #endif
 
     if(pruning->propagate_simulation_prices()){
-        tmp_p_price.propagate_dominance_prices();
+        tmp_p_price->propagate_dominance_prices();
     }
 
     if(pruning->propagate_goal_prices()) {
-        tmp_p_price.goal_price_propagation();
+        tmp_p_price->goal_price_propagation();
     }
 
     return tmp_p_price;
@@ -311,16 +310,14 @@ void PruningPrices::store_new_graph(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
 
-CompliantPathGraph& PruningPrices::get_init_state_prices() {
+unique_ptr<CompliantPathGraph> PruningPrices::get_init_state_prices() {
     PruningPrices prices(0);
         
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         prices.add_state(LeafStateID(0, factor), 0);
     }
-        
-    prices.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
     
-    return tmp_p_price;
+    return prices.get_updated_successor_cpg(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
 }
 
 void PruningPrices::goal_price_propagation() {

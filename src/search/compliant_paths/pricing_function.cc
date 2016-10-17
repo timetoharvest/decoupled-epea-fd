@@ -18,8 +18,6 @@
 using namespace std;
 
 
-Prices Prices::tmp_price;
-
 PriceStorage* Prices::cpg_storage;
 
 void Prices::register_cpg_storage(PriceStorage *storage) {
@@ -84,15 +82,17 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     return false;
 }
 
-CompliantPathGraph& Prices::update_price_tags(const State &base_state,
-                                    const Operator *op,
-                                    const State &) const {
+unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &base_state,
+                                                                 const Operator *op,
+                                                                 const State &) const {
+                                                                  
+    unique_ptr<Prices> tmp_price;
     
     if (g_factoring->get_profile() != FORK && op != 0){
-        tmp_price = Prices(0);                  // when updating initial state => op == 0
-        tmp_price.apply_center_op_to_leaves(*this, *op);
+        tmp_price.reset(new Prices(0));                  // when updating initial state => op == 0
+        tmp_price->apply_center_op_to_leaves(*this, *op);
     } else {                
-        tmp_price = Prices(this);
+        tmp_price.reset(new Prices(this));
     }
     // the rest of this function works on tmp_price!
     
@@ -133,11 +133,11 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            if (tmp_price.number_states[factor] == 1){
+            if (tmp_price->number_states[factor] == 1){
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_price.has_leaf_state(LeafStateID(leaf_id, factor))){
+                    if (tmp_price->has_leaf_state(LeafStateID(leaf_id, factor))){
                         break;
                     }
                     ++leaf_id;
@@ -145,14 +145,14 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const Prices &tag_to_copy = cpg_storage->prices[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_price.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    int cost_delta = tmp_price->get_cost_of_state(LeafStateID(leaf_id, factor));
                     cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
                     
                     size_t num_states = tag_to_copy.get_number_states(factor) - 1;
                     for (size_t fact = 0 ; fact < number_leaf_states; fact++){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
                             int cost = tag_to_copy.get_cost_of_state(LeafStateID(fact, factor));
-                            tmp_price.add_state(LeafStateID(fact, factor), cost + cost_delta);
+                            tmp_price->add_state(LeafStateID(fact, factor), cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
@@ -175,9 +175,9 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
                 
-                if (tmp_price.has_leaf_state(LeafStateID(id, factor))){
+                if (tmp_price->has_leaf_state(LeafStateID(id, factor))){
                 
-                    int cost = tmp_price.get_cost_of_state(LeafStateID(id, factor));
+                    int cost = tmp_price->get_cost_of_state(LeafStateID(id, factor));
                     if (best_prices[id] <= cost){
                         continue;
                     }
@@ -190,7 +190,7 @@ CompliantPathGraph& Prices::update_price_tags(const State &base_state,
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
                             size_t successor = leaf_state_successors[factor][id][o].second;
-                            change |= tmp_price.add_state(LeafStateID(successor, factor), 
+                            change |= tmp_price->add_state(LeafStateID(successor, factor), 
                                                    cost + get_adjusted_action_cost(*op, cost_type));
                         }
                     }
@@ -357,7 +357,7 @@ void Prices::store_new_graph(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
 
-CompliantPathGraph& Prices::get_init_state_prices() {
+unique_ptr<CompliantPathGraph> Prices::get_init_state_prices() {
     if (pruning->do_advanced_pruning()){
         return PruningPrices::get_init_state_prices();
     } else {
@@ -366,10 +366,8 @@ CompliantPathGraph& Prices::get_init_state_prices() {
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             prices.add_state(LeafStateID(0, factor), 0);
         }
-            
-        prices.update_price_tags(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
         
-        return tmp_price;
+        return prices.get_updated_successor_cpg(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
     }
 }
 
