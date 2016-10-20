@@ -104,7 +104,7 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
 
     if (search_type != STD){
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-	for (size_t factor = 0; factor < g_factors.size(); factor++){
+	for (size_t factor = 0; factor < g_factors.size(); ++factor){
 	    int number_states = tag->get_number_states(factor);
             size_t id = 0;
 	    while (number_states > 0){

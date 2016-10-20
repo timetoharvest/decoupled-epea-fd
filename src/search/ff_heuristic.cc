@@ -41,6 +41,7 @@ void FFHeuristic::initialize() {
         artificial_leaf_ops.resize(g_factors.size());
         int counter = -1;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
+            assert(CompliantPathGraph::precompute_leaf_state_space(factor));
             for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
                 artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
                 --counter;
@@ -96,7 +97,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
     const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         int number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){

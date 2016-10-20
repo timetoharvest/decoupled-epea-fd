@@ -65,9 +65,10 @@ void RelaxationHeuristic::initialize() {
 
 void RelaxationHeuristic::reference_ops() {
     for (size_t i = 0; i < unary_operators.size(); ++i) {
-    UnaryOperator *op = &unary_operators[i];
-    for (size_t j = 0; j < op->precondition.size(); ++j)
-        op->precondition[j]->precondition_of.push_back(op);
+        UnaryOperator *op = &unary_operators[i];
+        for (size_t j = 0; j < op->precondition.size(); ++j){
+            op->precondition[j]->precondition_of.push_back(op);
+        }
     }
 }
 
