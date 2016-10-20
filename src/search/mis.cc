@@ -33,7 +33,7 @@ set<int> MIS::find_mis(NGraph g) {
         NGraph g_without_c = remove_components(g, connected_components[min]);
         set<int> mis_g_c = find_mis(g_without_c);
         set<int> mis_c;
-        if (min <= 2) {
+        if (connected_components[min].size() <= 2) {
             mis_c.insert(*connected_components[min].begin());
         } else {
             mis_c = find_mis(remove_components(g, g_without_c));
