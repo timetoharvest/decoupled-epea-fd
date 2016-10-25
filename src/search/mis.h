@@ -6,13 +6,28 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <queue>
+#include <stack>
 #include <list>
 
 /* retrieve maximum independent sets
- * using the algorithm from J.M.Robson as presented in
- * Algorithms for Maximum Independent Sets
- * published in the Journal of Algorithms 7, 425-440(1986)
+ *
+ * find_mis_1:
+ *      implements the algorithm from J.M.Robson as presented in
+ *      Algorithms for Maximum Independent Sets
+ *      published in the Journal of Algorithms 7, 425-440(1986)
+ * find_mis_2:
+ *      implements th algorithm from F. V. Fomin, F Grandoni, and D. Kratsch as presented in
+ *      A Measure & Conquer Approach for the Analysis of Exact Algorithms
+ *      published in the Journal of the ACM, Vol. 56, No. 5, Article 25
  */
+
+enum MIS_ALGO {
+    A1,
+    A2,
+    DFS
+};
+
 
 // NGraph, key = var, entry = set of neighbours
 typedef std::map<int,std::set<int>> NGraph;
@@ -33,12 +48,18 @@ private:
     NGraph remove_components(NGraph, int);
     NGraph remove_components(NGraph, std::set<int>);
     NGraph remove_components(NGraph, NGraph);
-    std::set<int> find_mis(NGraph);
+    std::set<int> find_mis_1(NGraph);
+    std::set<int> find_mis_2(NGraph);
     std::set<int> ms_1(NGraph, std::set<int>);
     std::set<int> ms_2(NGraph, std::set<int>);
+    std::set<int> brute_force_mis_BFS(NGraph);
+    std::set<int> brute_force_mis_DFS(NGraph);
+    void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::set<std::vector<bool>> *, std::vector<std::vector<bool>> *);
 public:
     MIS(NGraph g) : graph(g){}
-    std::set<int> get_mis();
+    std::set<int> get_mis(enum MIS_ALGO);
     void print_graph(NGraph);
+    bool check_mis(std::vector<bool> mis);
+    bool check_mis(std::set<int> mis);
 };
 #endif

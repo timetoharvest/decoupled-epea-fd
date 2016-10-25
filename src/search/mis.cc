@@ -3,11 +3,100 @@
 
 using namespace std;
 
-set<int> MIS::get_mis() {
-    return find_mis(graph);
+set<int> MIS::get_mis(enum MIS_ALGO algo) {
+#ifdef DEBUG_FACTORING
+    cout << "find mis for graph of size: " << graph.size() << endl;
+#endif
+    set<int> mis;
+    switch (algo) {
+        case A1: mis = find_mis_1(graph);
+            break;
+        default: case A2: mis = find_mis_2(graph);
+            break;
+        case DFS: mis = brute_force_mis_DFS(graph);
+            break;
+    }
+    if (!check_mis(mis)){
+//#ifdef DEBUG_FACTORING
+        cout << "did not create valid mis" << endl;
+//#endif
+    }
+    return mis;
 }
 
-set<int> MIS::find_mis(NGraph g) {
+set<int> MIS::brute_force_mis_DFS(NGraph g){
+    cout << "DFS" << endl;
+    if (g.size() <= 1) {
+        set<int> mis;
+        if (g.size() == 1) {
+            mis.insert(0);
+        }
+        return mis;
+    }
+    vector<vector<bool>> gv (g.size());
+
+    for (NGraph::iterator it = g.begin(); it != g.end(); it++) {
+        vector<bool> nv (g.size(), false);
+        for (set<int>::iterator n = it->second.begin(); n != it->second.end(); n++){
+            nv[*n] = true;
+        }
+        gv[it->first] = nv;
+    }
+
+    vector<bool> base (g.size(), false);
+    set<vector<bool>> maxindsets;
+    size_t mis_size = 2;
+    size_t cur_size = 0;
+
+    brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv);
+//#ifdef DEBUG_FACTORING
+    cout << endl << "found " << maxindsets.size() << " maximum independent sets of size " << mis_size << " for graph of size " << g.size() << endl;
+//#endif
+    set<int> mis;
+    if (maxindsets.empty()) {
+        return mis;
+    }
+    vector<bool> res = *maxindsets.begin();
+
+    for (size_t i = 0; i < res.size(); i++){
+        if (res[i]) {
+            mis.insert(i);
+        }
+    }
+
+    return mis;
+}
+
+void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, set<vector<bool>> * maxindsets, vector<vector<bool>> * g){
+    bool mis = false;
+    if (cur_size >= *max) {
+        mis = check_mis(base);
+    }
+    if (mis) {
+        if (cur_size > *max) {
+            maxindsets->clear();
+            *max = cur_size;
+        }
+        maxindsets->insert(base);
+    }
+    for (size_t i = 0; i < base.size(); i++) {
+        if (!base[i]) {
+            bool connected = false;
+            for (size_t j = 0; j < base.size() && !connected; j++) {
+                if (base[j] && (*g)[i][j]) {
+                    connected = true;
+                }
+            }
+            if (!connected) {
+                vector<bool> child (base);
+                child[i] = true;
+                brute_force_mis_DFS(child, max, cur_size + 1, maxindsets, g);
+            }
+        }
+    }
+}
+
+set<int> MIS::find_mis_1(NGraph g) {
     set<int> mis;
 
     if (g.size() <= 1) {
@@ -31,12 +120,12 @@ set<int> MIS::find_mis(NGraph g) {
             }
         }
         NGraph g_without_c = remove_components(g, connected_components[min]);
-        set<int> mis_g_c = find_mis(g_without_c);
+        set<int> mis_g_c = find_mis_1(g_without_c);
         set<int> mis_c;
         if (connected_components[min].size() <= 2) {
             mis_c.insert(*connected_components[min].begin());
         } else {
-            mis_c = find_mis(remove_components(g, g_without_c));
+            mis_c = find_mis_1(remove_components(g, g_without_c));
         }
         mis_g_c.insert(mis_c.begin(), mis_c.end());
         return mis_g_c;
@@ -73,7 +162,7 @@ set<int> MIS::find_mis(NGraph g) {
 
         // g without a and a's neighbours
         NGraph g_red = remove_components(remove_components(g, g[A]), A);
-        set<int> temp = find_mis(g_red);
+        set<int> temp = find_mis_1(g_red);
         mis.insert(temp.begin(), temp.end());
         return mis;
     }
@@ -88,7 +177,7 @@ set<int> MIS::find_mis(NGraph g) {
             }
         }
         if (g[B].find(B_2) != g[B].end()) {
-            mis = find_mis(remove_components(remove_components(g, A), g[A]));
+            mis = find_mis_1(remove_components(remove_components(g, A), g[A]));
             mis.insert(A);
             return mis;
         }
@@ -97,7 +186,7 @@ set<int> MIS::find_mis(NGraph g) {
         temp.insert(B);
         temp.insert(g[B_2].begin(), g[B_2].end());
         temp.insert(B_2);
-        set<int> temp1 = find_mis(remove_components(g, temp));
+        set<int> temp1 = find_mis_1(remove_components(g, temp));
 
         // find secondary neighbours of a
         set<int> n2_a;
@@ -120,7 +209,7 @@ set<int> MIS::find_mis(NGraph g) {
     // case d(A) = 3
     if (g[A].size() == 3) {
         set<int> temp1 = ms_2(remove_components(g, A), g[A]);
-        set<int> temp2 = find_mis(remove_components(remove_components(g, A), g[A]));
+        set<int> temp2 = find_mis_1(remove_components(remove_components(g, A), g[A]));
         if (temp1.size() >= temp2.size() + 1) {
             return temp1;
         } else {
@@ -131,16 +220,17 @@ set<int> MIS::find_mis(NGraph g) {
     // case A dominates B
     bool dominate = true;
     for (set<int>::iterator na = g[A].begin(); na != g[A].end(); ++na) {
-        if (g[B].find(*na) == g[B].end()) {
+        if (g[B].find(*na) == g[B].end() && *na != B) {
             dominate = false;
+            break;
         }
     }
     if (dominate && g[A].size() != g[B].size()) {
-        return find_mis(remove_components(g, B));
+        return find_mis_1(remove_components(g, B));
     }
     // otherwise
-    set<int> temp1 = find_mis(remove_components(g, B));
-    set<int> temp2 = find_mis(remove_components(remove_components(g, B), g[B]));
+    set<int> temp1 = find_mis_1(remove_components(g, B));
+    set<int> temp2 = find_mis_1(remove_components(remove_components(g, B), g[B]));
     if (temp1.size() >= temp2.size() + 1) {
         return temp1;
     } else {
@@ -160,15 +250,15 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     }
 
     if (g[s1].size() <= 1) {
-        return find_mis(g);
+        return find_mis_1(g);
     }
     // check for edge between s1 and s2
     if (g[s1].find(s2) != g[s1].end()) {
         if (g[s1].size() <= 3) {
-            return find_mis(g);
+            return find_mis_1(g);
         } else {
-            set<int> temp1 = find_mis(remove_components(remove_components(g, s1), g[s1]));
-            set<int> temp2 = find_mis(remove_components(remove_components(g, s2), g[s2]));
+            set<int> temp1 = find_mis_1(remove_components(remove_components(g, s1), g[s1]));
+            set<int> temp2 = find_mis_1(remove_components(remove_components(g, s2), g[s2]));
             if (temp1.size() >= temp2.size()) {
                 temp1.insert(s1);
                 return temp1;
@@ -197,7 +287,7 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
 
         // do E and F share an edge?
         if (g[E].find(F) != g[E].end()) {
-            set<int> temp = find_mis(remove_components(remove_components(g, s1), g[s1]));
+            set<int> temp = find_mis_1(remove_components(remove_components(g, s1), g[s1]));
             temp.insert(s1);
             return temp;
         }
@@ -218,14 +308,14 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
             temp.insert(s1);
             temp.insert(s2);
             temp.insert(g[s2].begin(), g[s2].end());
-            set<int> mis = find_mis(remove_components(g, temp));
+            set<int> mis = find_mis_1(remove_components(g, temp));
             mis.insert(s2);
             mis.insert(E);
             mis.insert(F);
             return mis;
 
         }
-        set<int> temp1 = find_mis(remove_components(remove_components(g, s1), g[s1]));
+        set<int> temp1 = find_mis_1(remove_components(remove_components(g, s1), g[s1]));
 
         temp = g[E];
         temp.insert(E);
@@ -233,7 +323,7 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
         temp.insert(g[F].begin(), g[F].end());
         temp.insert(s2);
         temp.insert(g[s2].begin(), g[s2].end());
-        set<int> temp2 = find_mis(remove_components(g, temp));
+        set<int> temp2 = find_mis_1(remove_components(g, temp));
         if (temp1.size() + 1 >= temp2.size() + 3) {
             temp1.insert(s1);
             return temp1;
@@ -246,7 +336,7 @@ std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     }
 
     // independent set contains s2 or (s1 and two elements of N(s2))
-    set<int> temp1 = find_mis(remove_components(remove_components(g, s2), g[s2]));
+    set<int> temp1 = find_mis_1(remove_components(remove_components(g, s2), g[s2]));
     set<int> temp2 = ms_2(remove_components(remove_components(remove_components(g, s1), s2), g[s1]), g[s2]);
     if (temp1.size() >= temp2.size()) {
         temp1.insert(s2);
@@ -276,7 +366,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
             temp.insert(s1);
             temp.insert(s2);
             temp.insert(g[s2].begin(), g[s2].end());
-            set<int> mis = find_mis(remove_components(g, temp));
+            set<int> mis = find_mis_1(remove_components(g, temp));
             mis.insert(s2);
             mis.insert(s1);
             return mis;
@@ -332,7 +422,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
             temp.insert(g[s3].begin(), g[s3].end());
             temp.insert(s2);
             temp.insert(s3);
-            set<int> mis = find_mis(remove_components(g, temp));
+            set<int> mis = find_mis_1(remove_components(g, temp));
             mis.insert(s2);
             mis.insert(s3);
         }
@@ -341,7 +431,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
             temp.insert(g[s3].begin(), g[s3].end());
             temp.insert(s1);
             temp.insert(s3);
-            set<int> mis = find_mis(remove_components(g, temp));
+            set<int> mis = find_mis_1(remove_components(g, temp));
             mis.insert(s1);
             mis.insert(s3);
         }
@@ -350,7 +440,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
             temp.insert(g[s1].begin(), g[s1].end());
             temp.insert(s2);
             temp.insert(s1);
-            set<int> mis = find_mis(remove_components(g, temp));
+            set<int> mis = find_mis_1(remove_components(g, temp));
             mis.insert(s2);
             mis.insert(s1);
         }
@@ -421,7 +511,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
     if (s.size() == 4) {
         for (NGraph::iterator it = g.begin(); it != g.end(); ++it) {
             if ((*it).second.size() <= 3) {
-                return find_mis(g);
+                return find_mis_1(g);
             }
         }
         int s1 = 0;
@@ -433,7 +523,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
                 s1 = *it;
             }
         }
-        set<int> temp1 = find_mis(remove_components(remove_components(g, s1), g[s1]));
+        set<int> temp1 = find_mis_1(remove_components(remove_components(g, s1), g[s1]));
         s.erase(s1);
         set<int> temp2 = ms_2(remove_components(g, s1), s);
         if (temp1.size() + 1 >= temp2.size()) {
@@ -443,7 +533,224 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
             return temp2;
         }
     }
-    return find_mis(g);
+    return find_mis_1(g);
+}
+
+set<int> MIS::find_mis_2(NGraph g) {
+    if (g.size() <= 1) {
+        set<int> found_mis;
+        found_mis.insert((*g.begin()).first);
+        return found_mis;
+    }
+    ConComp connected_components;
+    CtoCCMap c_to_cc_map(g_variable_domain.size());
+    find_connected_components(g, &c_to_cc_map, &connected_components);
+    if (connected_components.size() > 1) {
+        set<int> cc = connected_components[0];
+        NGraph g_without_c = remove_components(g, cc);
+        NGraph c = remove_components(g, g_without_c);;
+        set<int> mis_c = find_mis_2(c);
+        set<int> mis_g_c = find_mis_2(g_without_c);
+        mis_c.insert(mis_g_c.begin(), mis_g_c.end());
+
+        return mis_c;
+    }
+    // find w and v such that N(w) sub_eq N(v), discard v
+    int v1;
+    bool found = false;
+    for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
+        for (set<int>::iterator n = g[it->first].begin(); n != g[it->first].end(); n++)  {
+            if ( *n < it->first) {
+                continue;
+            }
+            if (g[it->first].size() >= g[*n].size()) {
+                bool subset = true;
+                for (set<int>::iterator nn = g[*n].begin(); nn != g[*n].end(); nn++){
+                    if (g[it->first].find(*nn) == g[it->first].end() && *nn != it->first) {
+                        subset = false;
+                        break;
+                    }
+                }
+                if (subset) {
+                    found = true;
+                    v1 = it->first;
+                    break;
+                }
+
+            }
+            else if (g[it->first].size() < g[*n].size()) {
+                bool subset = true;
+                for (set<int>::iterator in = g[it->first].begin(); in != g[it->first].end(); in++){
+                    if (g[*n].find(*in) == g[*n].end() && *in != *n) {
+                        subset = false;
+                        break;
+                    }
+                }
+                if (subset) {
+                    found = true;
+                    v1 = *n;
+                    break;
+                }
+            }
+        }
+    }
+    if(found) {
+        NGraph g_without_v = remove_components(g, v1);
+        set<int> found_mis = find_mis_2(g_without_v);
+        return found_mis;
+    }
+
+    //find foldable vertex v (d(v) = 2)
+    found = false;
+    int v2;
+    for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
+        if (it->second.size() == 2) {
+            v2 = it->first;
+            found = true;
+            break;
+
+        }
+    }
+    if (found) {
+        int i1 = *(g[v2].begin());
+        int i2 = *(g[v2].begin()++);
+        if (g[i1].find(i2) != g[i1].end()) {
+            // folding basically merges the two neighbouring nodes
+            set<int> u (g[i1]);
+            u.insert(g[i2].begin(), g[i2].end());
+            NGraph gf = remove_components(remove_components(g, v2), i2);
+            gf[i1].clear();
+            gf[i1].insert(u.begin(), u.end());
+            set<int> mis = find_mis_2(gf);
+            mis.insert(v2);
+            return mis;
+        } else {
+            NGraph g_without_Nv = remove_components(remove_components(g, v2), g[v2]);
+            set<int> mis = find_mis_2(g_without_Nv);
+            mis.insert(v2);
+            return mis;
+        }
+    }
+    // select v of maximum degree, which minimizes |E(N(v))|
+    set<size_t> max_deg;
+    size_t max = 0;
+
+    for (NGraph::iterator it = g.begin(); it != g.end(); it++) {
+        if (it->second.size() > max) {
+            max_deg.clear();
+            max = it->second.size();
+        }
+        if (it->second.size() == max) {
+            max_deg.insert(it->first);
+        }
+    }
+
+    int v3;
+    if (max_deg.size() == 1) {
+        v3 = *max_deg.begin();
+    } else { // find edges of graph induces by N(v)
+        // N(v) = g[i]
+        // N(N(v)) in g[i]
+        int e = 0;
+        v3 = *max_deg.begin();
+        set<int> visited;
+        for (set<size_t>::iterator i = max_deg.begin(); i != max_deg.end(); i++) {
+            int cur_e = 0;
+            for (set<int>::iterator n = g[*i].begin(); n != g[*i].end(); n++) {
+                visited.insert(*n);
+                for (set<int>::iterator nn = g[*n].begin(); nn != g[*n].end(); nn++) {
+                    // don't count edges twice
+                    if (visited.find(*nn) == visited.end() && *nn != (int)*i) {
+                        // is N(N(v)) in N(v)
+                        if (g[*i].find(*nn) != g[*i].end()) {
+                            cur_e++;
+                        }
+                    }
+                }
+            }
+            if (cur_e > e) {
+                v3 = *i;
+                e = cur_e;
+            }
+        }
+    }
+
+    //return max{mis(G - {v} - M{v}, 1 + mis(G - N[v]}
+    // M(v), set of mirrors of v
+    // mirror of v: vertex u in N(N(v)) such that N(v)\N(u) is a possibly empty clique
+    // clique: every two distinct vertices are adjacent
+
+
+    // find mirrors of v
+    set<int> mv;
+    set<int> visited;
+    for (set<int>::iterator n = g[v3].begin(); n != g[v3].end(); n++) {
+        for (set<int>::iterator u = g[*n].begin(); u != g[*n].end(); u++) {
+            if (visited.find(*u) == visited.end() && *u != v3) {
+                visited.insert(*u);
+                // c = N(v)\N(u)
+                set<int> c (g[v3]);
+                for (set<int>::iterator it = g[*u].begin(); it != g[*u].end(); it ++){
+                  c.erase(*it);
+                }
+                //c.erase(g[*u].begin(), g[*u].end());
+
+                for (set<int>::iterator cc = c.begin(); cc != c.begin(); cc++) {
+                }
+                // test whether c is a clique (every two distinct vertices are adjacent)
+                // (every element in c must be a neighbour of every other element in c)
+                bool clique = true;
+                if (c.size() > 1) {
+                    set<int> cn(c);
+                    for (set<int>::iterator cc = c.begin(); cc != c.begin() && clique; cc++) {
+                        cn.erase(*cc);
+                        for (set<int>::iterator cnn = cn.begin(); cnn != cn.end(); cnn++) {
+                            if (g[*cc].find(*cnn) == g[*cc].end()) {
+                                clique = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (clique) {
+                    mv.insert(*u);
+                }
+            }
+        }
+    }
+    set<int> mis1 = find_mis_2(remove_components(remove_components(g, v3), mv));
+    set<int> mis2 = find_mis_2(remove_components(remove_components(g, g[v3]), v3));
+    mis2.insert(v3);
+
+    if (mis1.size() >= mis2.size()) {
+        return mis1;
+    } else {
+        return mis2;
+    }
+}
+
+bool MIS::check_mis(vector<bool> mis) {
+    for (size_t i = 0; i <  mis.size(); i++) {
+        if (mis[i]) {
+            for (set<int>::iterator n = graph[i].begin(); n != graph[i].end(); ++n) {
+                if (mis[*n]) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool MIS::check_mis(set<int> mis) {
+    for (set<int>::iterator i = mis.begin(); i != mis.end(); i++) {
+        for (set<int>::iterator n = graph[*i].begin(); n != graph[*i].end(); ++n) {
+            if (mis.find(*n) != mis.end()) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 NGraph MIS::remove_components(NGraph g, int c) {

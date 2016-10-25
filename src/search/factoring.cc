@@ -148,16 +148,26 @@ public:
 };
 
 class MaxIndependentSetFactoring : public Factoring {
+protected:
+    enum MIS_ALGO mis_algo;
+    bool minimize_center;
+    bool prevent_leaf_leaf;
 
 public:
 
     MaxIndependentSetFactoring(const Options &opts)
-            : Factoring(opts) {
+            : Factoring(opts),
+                mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
+                minimize_center(opts.get<bool>("minimize_center")),
+                prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")){
         profile = MAX_IND_SET;
-        cout << "using maximum independet set factoring profile" << endl;
+        cout << "using maximum independet set factoring profile - algo: " << mis_algo << " minimize_center "
+             << minimize_center << " prevent_leaf_leaf " << prevent_leaf_leaf << endl;
     };
 
     virtual FactoredVars get_factoring();
+
+    static void add_options_to_parser(OptionParser &parser);
 
 };
 
@@ -1376,9 +1386,15 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         }
         cg_g.insert(NVertex(i,neighbours));
     }
-
     MIS mis(cg_g);
-    set<int> found_mis = mis.get_mis();
+    set<int> found_mis = mis.get_mis(mis_algo);
+//#ifdef DEBUG_FACTORING
+    cout << "mis of size " << found_mis.size() << " found: ";
+    for (set<int>::iterator i = found_mis.begin(); i != found_mis.end(); i++) {
+        cout << *i << " ";
+    }
+    cout << endl;
+//#endif
 
     // generate factoring
     FactoredVars max_ind_sets;
@@ -1389,6 +1405,68 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         max_ind_sets.push_back(s);
     }
 
+    // center = vars - max_ind_sets
+    if (minimize_center) {
+        set<int> center;
+        for (size_t i = 0; i < vars.size(); i++) {
+            if (found_mis.find(i) == found_mis.end()) {
+                center.insert(i);
+            }
+        }
+        for (set<int>::iterator c = center.begin(); c != center.end(); ++c) {
+            if (cg_g[*c].size() == 1) {
+                set<int>::iterator n = found_mis.find(*(cg_g[*c].begin()));
+                if ( n != found_mis.end()) {
+                    // add c to respective leaf
+                    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end(); ++it) {
+                        if ((*it).find(*n) != (*it).end()) {
+                            (*it).insert(*c);
+                            break;
+                        }
+                    }
+                    center.erase(*c);
+                }
+                else {
+                    continue;
+                }
+            }
+            else {
+
+                // if all neighbours lie in the center we can skip this var
+                set<int> leaf_neighbours;
+                for (set<int>::iterator n = cg_g[*c].begin(); n != cg_g[*c].end(); ++n) {
+                    if (center.find(*n) != center.end()) {
+                        leaf_neighbours.insert(*n);
+                    }
+                }
+                if (leaf_neighbours.size() == 0) {
+                    continue;
+                }
+                if (leaf_neighbours.size() == 1) {
+                    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end(); ++it) {
+                        if ((*it).find(*leaf_neighbours.begin()) != (*it).end()) {
+                            (*it).insert(*c);
+                            break;
+                        }
+                    }
+                    center.erase(*c);
+                }
+            }
+        }
+    }
+//#ifdef DEBUG_FACTORING
+    cout << "minimized center - new factoring:" << endl;
+    for (size_t i = 0; i < max_ind_sets.size(); i++) {
+        cout << "   (";
+        set<int> factor = max_ind_sets[i];
+        for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
+            cout << *it << " " ;
+        }
+        cout << ")" << endl;
+    }
+    cout << endl;
+//#endif
+
     FactoredVars temp;
     vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
     for (size_t i = 0; i < frozen_leaves.size(); i++) {
@@ -1396,6 +1474,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             temp.push_back(max_ind_sets[i]);
         }
     }
+//#ifdef DEBUG_FACTORING
+    cout << "removed frozen leaves -> factoring now has size of " << temp.size() << endl;
+//#endif
     return temp;
 }
 
@@ -1614,6 +1695,32 @@ void ForkFactoring::add_options_to_parser(OptionParser& parser) {
     );
 }
 
+void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
+    // TODO add docu
+    parser.add_option<bool>(
+            "minimize_center",
+            "TODO",
+            "false"
+    );
+    parser.add_option<bool>(
+            "prevent_leaf_leaf",
+            "TODO",
+            "true"
+    );
+    vector<string> mis_algos;
+    mis_algos.push_back("a1");
+    mis_algos.push_back("a2");
+    mis_algos.push_back("dfs");
+
+    parser.add_enum_option(
+            "mis_algo",
+            mis_algos,
+            "TODO",
+            "a2",
+            vector<string>(),
+            OptionFlags(false));
+}
+
 static Factoring *_parse_fork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
@@ -1675,6 +1782,7 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
 
 static Factoring *_parse_maxindsets(OptionParser &parser) {
     // TODO docu
+    Factoring::add_options_to_parser(parser);
     MaxIndependentSetFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
