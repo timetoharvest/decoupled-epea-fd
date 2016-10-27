@@ -1,19 +1,21 @@
 #include "mis.h"
 #include <iostream>
+#include "assert.h"
 
 using namespace std;
 
-set<int> MIS::get_mis(enum MIS_ALGO algo) {
-#ifdef DEBUG_FACTORING
+set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
+//#ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
-#endif
+    //print_graph(graph);
+//#endif
     set<int> mis;
     switch (algo) {
         case A1: mis = find_mis_1(graph);
             break;
         default: case A2: mis = find_mis_2(graph);
             break;
-        case DFS: mis = brute_force_mis_DFS(graph);
+        case DFS: mis = brute_force_mis_DFS(graph, x);
             break;
     }
     if (!check_mis(mis)){
@@ -24,7 +26,7 @@ set<int> MIS::get_mis(enum MIS_ALGO algo) {
     return mis;
 }
 
-set<int> MIS::brute_force_mis_DFS(NGraph g){
+set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
     cout << "DFS" << endl;
     if (g.size() <= 1) {
         set<int> mis;
@@ -44,19 +46,24 @@ set<int> MIS::brute_force_mis_DFS(NGraph g){
     }
 
     vector<bool> base (g.size(), false);
-    set<vector<bool>> maxindsets;
+    vector<vector<bool>> maxindsets;
     size_t mis_size = 2;
     size_t cur_size = 0;
 
-    brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv);
+    brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv, -1);
 //#ifdef DEBUG_FACTORING
     cout << endl << "found " << maxindsets.size() << " maximum independent sets of size " << mis_size << " for graph of size " << g.size() << endl;
 //#endif
     set<int> mis;
     if (maxindsets.empty()) {
+        cout << "No MIS found" << endl;
         return mis;
     }
-    vector<bool> res = *maxindsets.begin();
+    if (x >= (int)maxindsets.size()) {
+        cout << "No more factoring found" << endl;
+    }
+    assert(x >= 0 && x < (int)maxindsets.size());
+    vector<bool> res = maxindsets[x];
 
     for (size_t i = 0; i < res.size(); i++){
         if (res[i]) {
@@ -67,7 +74,7 @@ set<int> MIS::brute_force_mis_DFS(NGraph g){
     return mis;
 }
 
-void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, set<vector<bool>> * maxindsets, vector<vector<bool>> * g){
+void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, vector<vector<bool>> * maxindsets, vector<vector<bool>> * g, int first){
     bool mis = false;
     if (cur_size >= *max) {
         mis = check_mis(base);
@@ -77,20 +84,21 @@ void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, 
             maxindsets->clear();
             *max = cur_size;
         }
-        maxindsets->insert(base);
+        maxindsets->push_back(base);
     }
     for (size_t i = 0; i < base.size(); i++) {
-        if (!base[i]) {
+        if (!base[i] && (int)i > first) {
             bool connected = false;
             for (size_t j = 0; j < base.size() && !connected; j++) {
                 if (base[j] && (*g)[i][j]) {
                     connected = true;
                 }
             }
-            if (!connected) {
+            if (!connected ) {
                 vector<bool> child (base);
                 child[i] = true;
-                brute_force_mis_DFS(child, max, cur_size + 1, maxindsets, g);
+                first = i;
+                brute_force_mis_DFS(child, max, cur_size + 1, maxindsets, g, first);
             }
         }
     }

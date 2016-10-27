@@ -52,12 +52,11 @@ private:
     std::set<int> find_mis_2(NGraph);
     std::set<int> ms_1(NGraph, std::set<int>);
     std::set<int> ms_2(NGraph, std::set<int>);
-    std::set<int> brute_force_mis_BFS(NGraph);
-    std::set<int> brute_force_mis_DFS(NGraph);
-    void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::set<std::vector<bool>> *, std::vector<std::vector<bool>> *);
+    std::set<int> brute_force_mis_DFS(NGraph, int x);
+    void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::vector<std::vector<bool>> *, std::vector<std::vector<bool>> *, int);
 public:
     MIS(NGraph g) : graph(g){}
-    std::set<int> get_mis(enum MIS_ALGO);
+    std::set<int> get_mis(enum MIS_ALGO, int x);
     void print_graph(NGraph);
     bool check_mis(std::vector<bool> mis);
     bool check_mis(std::set<int> mis);

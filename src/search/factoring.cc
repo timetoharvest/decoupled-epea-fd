@@ -152,6 +152,7 @@ protected:
     enum MIS_ALGO mis_algo;
     bool minimize_center;
     bool prevent_leaf_leaf;
+    int xth_factoring = 0;
 
 public:
 
@@ -159,10 +160,11 @@ public:
             : Factoring(opts),
                 mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
                 minimize_center(opts.get<bool>("minimize_center")),
-                prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")){
+                prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")),
+                xth_factoring(opts.get<int>("xth_fact")){
         profile = MAX_IND_SET;
         cout << "using maximum independet set factoring profile - algo: " << mis_algo << " minimize_center "
-             << minimize_center << " prevent_leaf_leaf " << prevent_leaf_leaf << endl;
+             << minimize_center << " prevent_leaf_leaf " << prevent_leaf_leaf << " select xth factoring: "<< xth_factoring << endl;
     };
 
     virtual FactoredVars get_factoring();
@@ -1387,33 +1389,45 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         cg_g.insert(NVertex(i,neighbours));
     }
     MIS mis(cg_g);
-    set<int> found_mis = mis.get_mis(mis_algo);
-//#ifdef DEBUG_FACTORING
-    cout << "mis of size " << found_mis.size() << " found: ";
-    for (set<int>::iterator i = found_mis.begin(); i != found_mis.end(); i++) {
-        cout << *i << " ";
-    }
-    cout << endl;
-//#endif
+    set<int> found_mis = mis.get_mis(mis_algo, xth_factoring);
 
     // generate factoring
     FactoredVars max_ind_sets;
-    set<int>::iterator it;
-    for(it = found_mis.begin(); it != found_mis.end(); ++it){
+    map<int,int> var_to_leaf;
+    int l = 0;
+    for(set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it){
         set<int> s;
         s.insert(*it);
         max_ind_sets.push_back(s);
+        var_to_leaf.insert(pair<int,int>(*it,l));
+        l++;
     }
 
     // center = vars - max_ind_sets
+    int c_rm = 0;
     if (minimize_center) {
-        set<int> center;
+        list<int> center;
+        vector<bool> in_center (cg_g.size(), false);
         for (size_t i = 0; i < vars.size(); i++) {
             if (found_mis.find(i) == found_mis.end()) {
-                center.insert(i);
+                if ((int)cg_g[i].size() <= center.front()) {
+                    center.push_front(i);
+                    in_center[i] = true;
+                } else if ((int)cg_g[i].size() >= center.back()) {
+                    center.push_back(i);
+                    in_center[i] = true;
+                } else {
+                    for (list<int>::iterator s_it = ++center.begin(); s_it != center.end(); ++s_it) {
+                        if ((int)cg_g[i].size() <= *s_it) {
+                            center.insert(s_it, i);
+                            in_center[i] = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
-        for (set<int>::iterator c = center.begin(); c != center.end(); ++c) {
+        for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
             if (cg_g[*c].size() == 1) {
                 set<int>::iterator n = found_mis.find(*(cg_g[*c].begin()));
                 if ( n != found_mis.end()) {
@@ -1424,10 +1438,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                             break;
                         }
                     }
-                    center.erase(*c);
-                }
-                else {
-                    continue;
+                    center.erase(c);
+                    c_rm++;
                 }
             }
             else {
@@ -1435,8 +1447,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 // if all neighbours lie in the center we can skip this var
                 set<int> leaf_neighbours;
                 for (set<int>::iterator n = cg_g[*c].begin(); n != cg_g[*c].end(); ++n) {
-                    if (center.find(*n) != center.end()) {
-                        leaf_neighbours.insert(*n);
+                    if (!in_center[*n]) {
+                        leaf_neighbours.insert(var_to_leaf[*n]);
                     }
                 }
                 if (leaf_neighbours.size() == 0) {
@@ -1449,13 +1461,25 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                             break;
                         }
                     }
-                    center.erase(*c);
+                    center.erase(c);
+                    c_rm++;
+                } else {
+                    set<int> temp;
+                    if (prevent_leaf_leaf) {
+                        for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); l++) {
+                            temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
+                            max_ind_sets.erase(max_ind_sets.begin() + (*l));
+                        }
+                        temp.insert(*c);
+                        center.erase(c);
+                        max_ind_sets.push_back(temp);
+                    }
                 }
             }
         }
     }
 //#ifdef DEBUG_FACTORING
-    cout << "minimized center - new factoring:" << endl;
+    cout << "Minimized center, variables removed: " << c_rm << endl;
     for (size_t i = 0; i < max_ind_sets.size(); i++) {
         cout << "   (";
         set<int> factor = max_ind_sets[i];
@@ -1475,7 +1499,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         }
     }
 //#ifdef DEBUG_FACTORING
-    cout << "removed frozen leaves -> factoring now has size of " << temp.size() << endl;
+    cout << "Removed frozen leaves, factoring now has size of " << temp.size() << endl;
 //#endif
     return temp;
 }
@@ -1705,7 +1729,12 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     parser.add_option<bool>(
             "prevent_leaf_leaf",
             "TODO",
-            "true"
+            "false"
+    );
+    parser.add_option<int>(
+            "xth_fact",
+            "TODO",
+            "0"
     );
     vector<string> mis_algos;
     mis_algos.push_back("a1");
