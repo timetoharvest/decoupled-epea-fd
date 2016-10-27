@@ -52,7 +52,10 @@ set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
 
     brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv, -1);
 //#ifdef DEBUG_FACTORING
-    cout << endl << "found " << maxindsets.size() << " maximum independent sets of size " << mis_size << " for graph of size " << g.size() << endl;
+    cout << "MIS found: " << maxindsets.size() << endl;
+    cout << "MIS size: " << mis_size << endl;
+    cout << "Graph size: " << g.size() << endl;
+    cout << "Select x-th factoring, x: " << x << endl;
 //#endif
     set<int> mis;
     if (maxindsets.empty()) {
@@ -60,8 +63,11 @@ set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
         return mis;
     }
     if (x >= (int)maxindsets.size()) {
-        cout << "No more factoring found" << endl;
+        cout << "No more factoring found: 1" << endl;
+        return mis;
     }
+
+    cout << "No more factoring found: 0" << endl;
     assert(x >= 0 && x < (int)maxindsets.size());
     vector<bool> res = maxindsets[x];
 
