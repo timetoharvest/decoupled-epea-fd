@@ -7,6 +7,7 @@
 #include "../search_space.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../utilities.h"
 
 #include <limits>
@@ -432,9 +433,93 @@ unique_ptr<CompliantPathGraph> Reachable::clone() const  {
     return unique_ptr<CompliantPathGraph> (new Reachable(*this));
 }
 
+unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutation &per) const {
+    
+    Reachable *res = new Reachable(nullptr);
 
-std::unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutation &) const {
-    cerr << "Reachable::get_permuted_cpg not implemented" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+    for(auto to_factor : per.get_factors_affected()) {
+        if (!per.is_affected(to_factor)){
+            res->reachable[to_factor] = reachable[to_factor];
+            res->goal_reached[to_factor] = goal_reached[to_factor];
+        } else {
+            auto from_factor = per.get_from_factor(to_factor);
+
+            auto num_states = get_number_states(from_factor);
+            for  (size_t id = 0; num_states > 0; ++id){
+                if (has_leaf_state(id, from_factor)){
+                    --num_states;
+                    auto to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+                    assert(to_pair.first == to_factor);
+                    auto to_val = to_pair.second;
+
+                    res->add_state(LeafStateID(to_val, to_factor));
+                }
+            }
+        }
+    }
+
+#ifndef NDEBUG
+    size_t old = 0, now = 0;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        old += reachable[factor].count();
+        now += res->reachable[factor].count();
+    }
+    assert(old == now);
+    assert(goal_reached.count() == res->goal_reached.count());
+#endif
+
+    return unique_ptr<Reachable>(res);
 }
+
+bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
+
+    auto old_reachable(reachable);
+    auto old_goal_reached(goal_reached);
+
+    for (auto factor : per.get_factors_affected()) {
+	reachable[factor].reset();
+	goal_reached[factor] = false;
+    }
+    
+    for(auto to_factor : per.get_factors_affected()) {
+	auto from_factor = per.get_from_factor(to_factor);
+
+        auto num_states = old_reachable[from_factor].count();
+	for  (size_t id = 0; num_states > 0; ++id){
+	    assert(id < leaf_state_id_map[from_factor].size());
+	    if (leaf_state_id_map[from_factor][id] == -1) {
+		continue; 
+	    }
+
+	    size_t leaf_state = leaf_state_id_map[from_factor][id];
+	    if (leaf_state >= old_reachable[from_factor].size() ||
+		!old_reachable[from_factor][leaf_state]){
+                continue;
+            }
+
+	    --num_states;
+	    auto to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
+	    assert(to_pair.first == to_factor);
+	    auto to_val = to_pair.second;
+
+	    add_state(LeafStateID(to_val, to_factor));
+	}
+    }
+
+#ifndef NDEBUG
+    size_t old = 0, now = 0;
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        old += old_reachable[factor].count();
+        now += reachable[factor].count();
+    }
+    assert(old == now);
+    assert(goal_reached.count() == old_goal_reached.count());
+#endif
+
+    return true; //We do not need to check whether the prices changed
+                    //because the return value is only relevant if
+                    //if_less is true and in that case we checked this in
+                    //per.produce_less(prices)
+}
+
     

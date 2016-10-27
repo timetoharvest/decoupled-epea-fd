@@ -23,6 +23,8 @@ class Reachable : public CompliantPathGraph {
     
 protected:
     
+    // TODO add a number_states variable again
+    
     std::vector<boost::dynamic_bitset<> > reachable;
     
     boost::dynamic_bitset<> goal_reached;
@@ -69,14 +71,10 @@ public:
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
-    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
+    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;
 
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation & /*permutation*/) {
-	cerr << "Symmetries not supported for satisficing search" << endl;
-	cerr << "Look at compliant_paths/reachability_function.h" << endl;
-	exit_with(EXIT_CRITICAL_ERROR);
-    }    
     
     static void register_cpg_storage(ReachableStorage *storage);
  
