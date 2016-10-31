@@ -23,6 +23,8 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
         cout << "did not create valid mis" << endl;
 //#endif
     }
+    cout << "MIS size: " << mis.size() << endl;
+    cout << "Graph size: " << graph.size() << endl;
     return mis;
 }
 
@@ -53,8 +55,6 @@ set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
     brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv, -1);
 //#ifdef DEBUG_FACTORING
     cout << "MIS found: " << maxindsets.size() << endl;
-    cout << "MIS size: " << mis_size << endl;
-    cout << "Graph size: " << g.size() << endl;
     cout << "Select x-th factoring, x: " << x << endl;
 //#endif
     set<int> mis;

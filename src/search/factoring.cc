@@ -1490,16 +1490,18 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
     cout << endl;
 //#endif
-
+    int f_rm = 0;
     FactoredVars temp;
     vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
     for (size_t i = 0; i < frozen_leaves.size(); i++) {
         if (!frozen_leaves[i]) {
             temp.push_back(max_ind_sets[i]);
+        } else {
+            f_rm++;
         }
     }
 //#ifdef DEBUG_FACTORING
-    cout << "Removed frozen leaves, factoring now has size of " << temp.size() << endl;
+    cout << "Removed frozen leaves: " << f_rm << endl;
 //#endif
     return temp;
 }
