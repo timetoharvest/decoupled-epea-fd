@@ -1427,18 +1427,13 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 }
             }
         }
+        cout << "center size: " << center.size() << endl;
         for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
             if (cg_g[*c].size() == 1) {
                 set<int>::iterator n = found_mis.find(*(cg_g[*c].begin()));
                 if ( n != found_mis.end()) {
                     // add c to respective leaf
-                    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end(); ++it) {
-                        if ((*it).find(*n) != (*it).end()) {
-                            (*it).insert(*c);
-                            break;
-                        }
-                    }
-                    center.erase(c);
+                    max_ind_sets[*n].insert(*c);
                     c_rm++;
                 }
             }
@@ -1455,24 +1450,25 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     continue;
                 }
                 if (leaf_neighbours.size() == 1) {
-                    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end(); ++it) {
-                        if ((*it).find(*leaf_neighbours.begin()) != (*it).end()) {
-                            (*it).insert(*c);
-                            break;
-                        }
-                    }
-                    center.erase(c);
+                    max_ind_sets[*leaf_neighbours.begin()].insert(*c);
                     c_rm++;
                 } else {
                     set<int> temp;
                     if (prevent_leaf_leaf) {
                         for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); l++) {
                             temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
-                            max_ind_sets.erase(max_ind_sets.begin() + (*l));
+                            set<int> empty;
+                            max_ind_sets[*l] = empty;
                         }
                         temp.insert(*c);
-                        center.erase(c);
                         max_ind_sets.push_back(temp);
+                        for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();){
+                            if (it->empty()) {
+                                it = max_ind_sets.erase(it);
+                            } else {
+                                it++;
+                            }
+                        }
                     }
                 }
             }
