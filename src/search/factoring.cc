@@ -1441,7 +1441,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     // add c to respective leaf
                     max_ind_sets[*n].insert(*c);
                     var_to_leaf.insert(pair<int,int>(*c,*n));
-                    in_center[*c] == false;
+                    in_center[*c] = false;
                     c_rm++;
                 }
             }
@@ -1460,7 +1460,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 if (leaf_neighbours.size() == 1) {
                     int l = *leaf_neighbours.begin();
                     max_ind_sets[l].insert(*c);
-                    in_center[*c] == false;
+                    in_center[*c] = false;
                     var_to_leaf.insert(pair<int,int>(*c,l));
                     c_rm++;
                 } else {
