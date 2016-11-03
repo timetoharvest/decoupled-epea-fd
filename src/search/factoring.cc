@@ -153,6 +153,7 @@ protected:
     bool minimize_center;
     bool prevent_leaf_leaf;
     int xth_factoring = 0;
+    int merge_leaves = 0;
 
 public:
 
@@ -161,10 +162,11 @@ public:
                 mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
                 minimize_center(opts.get<bool>("minimize_center")),
                 prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")),
-                xth_factoring(opts.get<int>("xth_fact")){
+                xth_factoring(opts.get<int>("xth_fact")),
+                merge_leaves(opts.get<int>("merge_leaves")){
         profile = MAX_IND_SET;
         cout << "using maximum independet set factoring profile - algo: " << mis_algo << " minimize_center "
-             << minimize_center << " prevent_leaf_leaf " << prevent_leaf_leaf << " select xth factoring: "<< xth_factoring << endl;
+             << minimize_center << " prevent_leaf_leaf " << prevent_leaf_leaf << " select xth factoring: "<< xth_factoring << " mege leaves level: " << merge_leaves << endl;
     };
 
     virtual FactoredVars get_factoring();
@@ -1410,15 +1412,15 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         vector<bool> in_center (cg_g.size(), false);
         for (size_t i = 0; i < vars.size(); i++) {
             if (found_mis.find(i) == found_mis.end()) {
-                if ((int)cg_g[i].size() <= center.front()) {
+                if (center.empty() || cg_g[i].size() <= cg_g[center.front()].size()) {
                     center.push_front(i);
                     in_center[i] = true;
-                } else if ((int)cg_g[i].size() >= center.back()) {
+                } else if (cg_g[i].size() >= cg_g[center.back()].size()) {
                     center.push_back(i);
                     in_center[i] = true;
                 } else {
-                    for (list<int>::iterator s_it = ++center.begin(); s_it != center.end(); ++s_it) {
-                        if ((int)cg_g[i].size() <= *s_it) {
+                    for (list<int>::iterator s_it = center.begin(); s_it != center.end(); ++s_it) {
+                        if (cg_g[i].size() <= cg_g[*s_it].size()) {
                             center.insert(s_it, i);
                             in_center[i] = true;
                             break;
@@ -1428,12 +1430,18 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             }
         }
         cout << "center size: " << center.size() << endl;
+        vector<bool> merged_leaf (max_ind_sets.size(), false);
         for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
-            if (cg_g[*c].size() == 1) {
+            if (cg_g[*c].size() == 0) {
+                continue;
+            }
+            else if (cg_g[*c].size() == 1) {
                 set<int>::iterator n = found_mis.find(*(cg_g[*c].begin()));
                 if ( n != found_mis.end()) {
                     // add c to respective leaf
                     max_ind_sets[*n].insert(*c);
+                    var_to_leaf.insert(pair<int,int>(*c,*n));
+                    in_center[*c] == false;
                     c_rm++;
                 }
             }
@@ -1450,28 +1458,42 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     continue;
                 }
                 if (leaf_neighbours.size() == 1) {
-                    max_ind_sets[*leaf_neighbours.begin()].insert(*c);
+                    int l = *leaf_neighbours.begin();
+                    max_ind_sets[l].insert(*c);
+                    in_center[*c] == false;
+                    var_to_leaf.insert(pair<int,int>(*c,l));
                     c_rm++;
                 } else {
                     set<int> temp;
-                    if (prevent_leaf_leaf) {
-                        for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); l++) {
-                            temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
-                            set<int> empty;
-                            max_ind_sets[*l] = empty;
-                        }
-                        temp.insert(*c);
-                        max_ind_sets.push_back(temp);
-                        for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();){
-                            if (it->empty()) {
-                                it = max_ind_sets.erase(it);
-                            } else {
-                                it++;
+                    if (merge_leaves >= 1) {
+                        for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
+                            if (merge_leaves == 2 || (merge_leaves == 1 && !merged_leaf[*l])) {
+                                temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
+                                set<int> empty;
+                                max_ind_sets[*l] = empty;
                             }
                         }
+                        temp.insert(*c);
+                        in_center[*c] = false;
+                        int pos = (int)max_ind_sets.size();
+                        merged_leaf.push_back(true);
+                        max_ind_sets.push_back(temp);
+                        for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
+                            var_to_leaf[*it] = pos;
+                        }
+                    }
+                    else if (!prevent_leaf_leaf) {
+                        //TODO merge center into leaf, if the resulting leaf-leaf interaction is valid
                     }
                 }
             }
+        }
+    }
+    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();){
+        if (it->empty()) {
+            it = max_ind_sets.erase(it);
+        } else {
+            it++;
         }
     }
 //#ifdef DEBUG_FACTORING
@@ -1499,6 +1521,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 //#ifdef DEBUG_FACTORING
     cout << "Removed frozen leaves: " << f_rm << endl;
 //#endif
+    cout << "Number of factors: " << temp.size() << endl;
     return temp;
 }
 
@@ -1727,10 +1750,15 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     parser.add_option<bool>(
             "prevent_leaf_leaf",
             "TODO",
-            "false"
+            "true"
     );
     parser.add_option<int>(
             "xth_fact",
+            "TODO",
+            "0"
+    );
+    parser.add_option<int>(
+            "merge_leaves",
             "TODO",
             "0"
     );

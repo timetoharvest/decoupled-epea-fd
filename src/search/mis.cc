@@ -7,7 +7,7 @@ using namespace std;
 set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
 //#ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
-    //print_graph(graph);
+    print_graph(graph);
 //#endif
     set<int> mis;
     switch (algo) {
@@ -23,7 +23,11 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
         cout << "did not create valid mis" << endl;
 //#endif
     }
-    cout << "MIS size: " << mis.size() << endl;
+    cout << "MIS size: " << mis.size() << " - ";
+    for (set<int>::iterator it = mis.begin(); it != mis.end(); ++it){
+        cout << *it << " ";
+    }
+    cout << endl;
     cout << "Graph size: " << graph.size() << endl;
     return mis;
 }
