@@ -34,6 +34,9 @@ SearchEngine::SearchEngine(const Options &opts)
 
     if (opts.contains("symmetry")) {
         g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator *>("symmetry"));
+        if (g_use_decoupled_search){
+            CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_factors.size(), true));
+        }
     }
 }
 
