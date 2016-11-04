@@ -180,7 +180,7 @@ bool SearchSpace::is_equal(const State &s1, const CompliantPathGraph &cpg1, cons
             if (has_state ^ cpg2.has_leaf_state(id, factor)){
                 return false;
             }
-            if (has_state && cpg1.get_cost_of_state(id, factor) != cpg2.get_cost_of_state(id, factor)){
+            if (g_factoring->get_search_type() != SAT && has_state && cpg1.get_cost_of_state(id, factor) != cpg2.get_cost_of_state(id, factor)){
                 return false;
             }
         }
