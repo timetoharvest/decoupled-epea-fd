@@ -23,13 +23,17 @@ public:
     void init_decoupled();
 
     int get_var_by_index(int val) const;
-    std::pair<int, int> get_var_val_by_index(const int ind) const;
-    int get_index_by_var_val_pair(const int var, const int val) const;
+    std::pair<int, int> get_var_val_by_index(int ind) const;
+    int get_index_by_var_val_pair(int var, int val) const;
 };
 
 class Permutation {
     friend class LeavesPermutation;
-    friend class CenterPermutation;
+    friend class Group;
+    friend class GraphCreator;
+    
+    static FactIndex findex;
+    static void init_fact_index();
     
 protected:
     
@@ -55,9 +59,6 @@ protected:
     void _inverse_value_from_permutation(const Permutation &perm);
     
 public:
-    static FactIndex findex;
-    static void init_fact_index();
-
     Permutation();
     Permutation(const unsigned int*);
     Permutation(const Permutation &perm, bool invert = false);
@@ -87,8 +88,8 @@ public:
     
     void dump() const;
 
-    std::pair<int, int> get_new_var_val_by_old_var_val(const int var, const int val) const;
-    std::pair<int, int> get_old_var_val_by_new_var_val(const int var, const int val) const ;
+    std::pair<int, int> get_new_var_val_by_old_var_val(int var, int val) const;
+    std::pair<int, int> get_old_var_val_by_new_var_val(int var, int val) const;
 
     cmp_t replace_if_less(std::vector<int> &state) const;
     bool stabilizes (const State &state) const;
