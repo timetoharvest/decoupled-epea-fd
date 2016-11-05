@@ -218,11 +218,11 @@ public:
     */
     const State &get_initial_state();
     
-    State get_state_permutation(const State &state, Permutation &permutation);
+    State get_state_permutation(const State &state, const Permutation &permutation);
     
-    State get_state_permutation(const State &state, DecoupledPermutation &permutation);
+    State get_state_permutation(const State &state, const DecoupledPermutation &permutation);
     
-    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, DecoupledPermutation &permutation);
+    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and

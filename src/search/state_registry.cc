@@ -211,7 +211,7 @@ void StateRegistry::permute_initial_state() {
     }
 }
 
-State StateRegistry::get_state_permutation(const State &state, Permutation &permutation) {
+State StateRegistry::get_state_permutation(const State &state, const Permutation &permutation) {
     assert(g_symmetry_graph);
     assert(!g_use_decoupled_search);
     
@@ -229,7 +229,7 @@ State StateRegistry::get_state_permutation(const State &state, Permutation &perm
     return lookup_state(id);
 }
 
-State StateRegistry::get_state_permutation(const State &state, DecoupledPermutation &permutation) {
+State StateRegistry::get_state_permutation(const State &state, const DecoupledPermutation &permutation) {
     assert(g_symmetry_graph);
     assert(g_use_decoupled_search);
     
@@ -251,7 +251,7 @@ State StateRegistry::get_state_permutation(const State &state, DecoupledPermutat
     return lookup_state(id);
 }
 
-State StateRegistry::get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, DecoupledPermutation &permutation) {
+State StateRegistry::get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation) {
     assert(g_symmetry_graph);
     assert(g_use_decoupled_search);
     
