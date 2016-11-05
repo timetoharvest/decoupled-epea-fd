@@ -6,11 +6,15 @@
 #include <memory>
 
 class LexicographicOrdering;
+class Operator;
 class Prices;
 
 class LeavesPermutation {
+    friend class DecoupledGroup;
     
-protected:
+private:
+    static FactIndex findex_leaves;
+    
     std::vector<int> value;
     std::vector<int> inverse_value;
     std::vector<int> factors_affected;
@@ -25,28 +29,24 @@ protected:
     void set_value(int ind, int val);
     
 public:
-    static FactIndex findex_leaves;
 
-    LeavesPermutation (const Permutation &per);
+    LeavesPermutation(const Permutation &per);    
+    LeavesPermutation(const LeavesPermutation &per, 
+                      const LeavesPermutation &per2);    
+    LeavesPermutation(const LeavesPermutation &per, bool invert);
     
-    LeavesPermutation (const LeavesPermutation &per, 
-		       const LeavesPermutation &per2);
-    
-    LeavesPermutation (const LeavesPermutation &per, bool invert);
-
     ~LeavesPermutation() = default;
 
     const std::vector<int> & get_factors_affected() const {
-	return factors_affected;
+        return factors_affected;
     }
 
-
     bool is_affected(int factor) const {
-	return affected[factor];
+        return affected[factor];
     }
 
     int get_from_factor(int f) const {
-	return from_factors[f];
+        return from_factors[f];
     }
 
     std::pair<int, int> get_new_factor_state_by_old_factor_state(int factor, 
@@ -54,10 +54,11 @@ public:
                                                                 
     std::pair<int, int> get_old_factor_state_by_new_factor_state(int factor, 
                                                                  int state) const;
-
-    cmp_t cmp_num_states (const CompliantPathGraph &cpg) const;
-    cmp_t cmp_goal_cost (const CompliantPathGraph &cpg) const;
-    cmp_t cmp_prices (const CompliantPathGraph &cpg) const;
+    cmp_t cmp_num_states(const CompliantPathGraph &cpg) const;
+    
+    cmp_t cmp_goal_cost(const CompliantPathGraph &cpg) const;
+    
+    cmp_t cmp_prices(const CompliantPathGraph &cpg) const;
     
 };
 
@@ -66,11 +67,10 @@ class CenterPermutation : public Permutation {
     
 public:
     CenterPermutation (const CenterPermutation &p1, 
-		       const CenterPermutation &p2);
-
+                       const CenterPermutation &p2);
     CenterPermutation (const Permutation &per, bool invert = false);
     
-    virtual ~CenterPermutation() = default;
+    ~CenterPermutation() = default;
 
 };
 
@@ -84,21 +84,22 @@ public:
     explicit DecoupledPermutation(const Permutation &per);
     DecoupledPermutation(const DecoupledPermutation &per);
     DecoupledPermutation(const DecoupledPermutation &per, bool invert);
-    DecoupledPermutation(const DecoupledPermutation &perm1, const DecoupledPermutation &perm2);
+    DecoupledPermutation(const DecoupledPermutation &perm1, 
+                         const DecoupledPermutation &perm2);
 
     ~DecoupledPermutation() = default;
 
     bool affects_center() const {
-	return center_permutation.get() != nullptr;
+        return center_permutation.get() != nullptr;
     }
 
     bool affects_leaves() const {
-	return leaves_permutation.get() != nullptr;
+        return leaves_permutation.get() != nullptr;
     }
 
     bool replace_if_less(std::vector<int> &center, 
-			 CompliantPathGraph &leaves, 
-			 const LexicographicOrdering &lex_ordering) const;
+                         CompliantPathGraph &leaves, 
+                         const LexicographicOrdering &lex_ordering) const;
 
     cmp_t replace_if_less_center(std::vector<int> &center, 
 				CompliantPathGraph &leaves) const;
@@ -109,17 +110,16 @@ public:
     bool stabilizes_center(const State &center) const;
 
     void permute_decoupled_state(std::vector<int> &center,
-				 CompliantPathGraph &leaves) const;
+                                 CompliantPathGraph &leaves) const;
                                  
     void permute_center_state(std::vector<int> &center) const;
-
-    void invert();
     
-
+    size_t find_matching_min_cost_permuted_op(const Operator *op, 
+                                              const std::vector<const Operator*> &ops) const;
+    
     const LeavesPermutation & get_leaves_permutation() const {
-	return *leaves_permutation;
+        return *leaves_permutation;
     }
-
 
 };
 

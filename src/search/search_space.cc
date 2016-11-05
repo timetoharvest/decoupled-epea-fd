@@ -271,7 +271,7 @@ void SearchSpace::trace_path(const State &goal_state,
             break;
         }
 
-        if (!g_symmetry_graph){
+        if (!g_symmetry_graph || g_use_decoupled_search){
             path.push_back(op);
         }
         current_state = g_state_registry->lookup_state(info.parent_state_id);
@@ -567,7 +567,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
         reverse_permutations.push_back(temp_p);
     }
     for(size_t i = 0; i < states.size(); ++i){
-        Permutation &permutation = reverse_permutations[states.size() - i - 1];
+        const Permutation &permutation = reverse_permutations[states.size() - i - 1];
         states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
     }
     for (size_t i = states.size() - 1; i > 0; --i) {
@@ -609,49 +609,49 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
         temp_p.reset(new DecoupledPermutation(*permutations[i], *temp_p));
         reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
     }
+    reverse(reverse_permutations.begin(), reverse_permutations.end());
     for (size_t i = 0; i < states.size(); ++i){
-        DecoupledPermutation &permutation = *reverse_permutations[states.size() - i - 1];
+        const DecoupledPermutation &permutation = *reverse_permutations[i];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
     }
     for (size_t i = states.size() - 1; i > 0; --i) {
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
-        bool found = false;
-        int min_cost_op = 0;
-        int min_cost = numeric_limits<int>::max();
+//         bool found = false;
+        size_t min_cost_op = reverse_permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
-        for (size_t o = 0; o < applicable_ops.size(); ++o) {
-            const Operator *op = applicable_ops[o];
-            State succ_state = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *op);
-            
-            PathPriceTag succ_cpg;
-            if (g_factoring->get_profile() != FORK){
-                succ_cpg = PathPriceTag(0);
-                succ_cpg.apply_center_op_to_leaves(cpgs[i], *op);
-            } else {
-                succ_cpg = PathPriceTag(&cpgs[i]);
-            }
-            succ_cpg.update_price_tags(succ_state);
-            
-            if (is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], succ_state, succ_cpg)) {
-                found = true;
-                if (op->get_cost() < min_cost) {
-                    min_cost = op->get_cost();
-                    min_cost_op = o;
-                }
-            }
-        }
-        if (!found) {
-            cout << "No operator is found!!!" << endl
-                 << "Cannot reach the state:" << endl;
-            g_state_registry->lookup_state(states[i-1]).dump_pddl();
-            cpgs[i-1].dump();
-            cout << endl << "From the state:" << endl;
-            g_state_registry->lookup_state(states[i]).dump_pddl();
-            cpgs[i].dump();
-            exit_with(EXIT_CRITICAL_ERROR);
-        }
-        permuted_path.push_back(applicable_ops[min_cost_op]);
+//         for (size_t o = 0; o < applicable_ops.size(); ++o) {
+//             const Operator *op = applicable_ops[o];
+//             State succ_state = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *op);
+//             
+//             PathPriceTag succ_cpg;
+//             if (g_factoring->get_profile() != FORK){
+//                 succ_cpg = PathPriceTag(0);
+//                 succ_cpg.apply_center_op_to_leaves(cpgs[i], *op);
+//             } else {
+//                 succ_cpg = PathPriceTag(&cpgs[i]);
+//             }
+//             succ_cpg.update_price_tags(succ_state);
+//             
+//             if (is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], succ_state, succ_cpg)) {
+//                 found = true;
+//                 if (op->get_cost() < min_cost) {
+//                     min_cost = op->get_cost();
+//                     min_cost_op = o;
+//                 }
+//             }
+//         }
+//         if (!found) {
+//             cout << "No operator is found!!!" << endl
+//                  << "Cannot reach the state:" << endl;
+//             g_state_registry->lookup_state(states[i-1]).dump_pddl();
+//             cpgs[i-1].dump();
+//             cout << endl << "From the state:" << endl;
+//             g_state_registry->lookup_state(states[i]).dump_pddl();
+//             cpgs[i].dump();
+//             exit_with(EXIT_CRITICAL_ERROR);
+//         }
+        permuted_path[i-1] = applicable_ops[min_cost_op];
     }
 }
 
