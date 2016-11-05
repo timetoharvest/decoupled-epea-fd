@@ -559,14 +559,12 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     reverse(path.begin(), path.end());
 }
 
-void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, vector<Permutation> &permutations) const {
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, const vector<Permutation> &permutations) const {
     vector<Permutation> reverse_permutations;
-    Permutation temp_p, p;
-    while (permutations.begin() != permutations.end()) {
-        p = permutations.back();
-        temp_p = Permutation(p, temp_p);
+    Permutation temp_p;
+    for (int i = permutations.size() - 1; i >= 0; --i) {
+        temp_p = Permutation(permutations[i], temp_p);
         reverse_permutations.push_back(temp_p);
-        permutations.pop_back();
     }
     for(size_t i = 0; i < states.size(); ++i){
         Permutation &permutation = reverse_permutations[states.size() - i - 1];
@@ -602,21 +600,16 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
     }
 }
 
-void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, vector<PathPriceTag> &cpgs, 
-                                       vector<unique_ptr<DecoupledPermutation> > &permutations) const {
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, vector<StateID> &states, vector<PathPriceTag> &cpgs, 
+                                       const vector<unique_ptr<DecoupledPermutation> > &permutations) const {
     vector<unique_ptr<DecoupledPermutation> > reverse_permutations;
-    unique_ptr<DecoupledPermutation> temp_p, p;
-    while (permutations.begin() != permutations.end()) {
-        p.reset(new DecoupledPermutation(*permutations.back()));
-        if (temp_p){
-            temp_p.reset(new DecoupledPermutation(*p, *temp_p));
-        } else {
-            temp_p.reset(new DecoupledPermutation(*p, DecoupledPermutation()));
-        }
+    unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back(), DecoupledPermutation()));
+    reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
+    for (int i = permutations.size() - 2; i >= 0; --i) {
+        temp_p.reset(new DecoupledPermutation(*permutations[i], *temp_p));
         reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
-        permutations.pop_back();
     }
-    for(size_t i = 0; i < states.size(); ++i){
+    for (size_t i = 0; i < states.size(); ++i){
         DecoupledPermutation &permutation = *reverse_permutations[states.size() - i - 1];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
     }
@@ -658,7 +651,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
             cpgs[i].dump();
             exit_with(EXIT_CRITICAL_ERROR);
         }
-        path.push_back(applicable_ops[min_cost_op]);
+        permuted_path.push_back(applicable_ops[min_cost_op]);
     }
 }
 

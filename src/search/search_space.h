@@ -64,12 +64,12 @@ class SearchSpace {
     
     void trace_decoupled_path(std::vector<const Operator*> &path, std::vector<StateID> &states) const;
     
-    void trace_symmetric_path(std::vector<const Operator*> &path, std::vector<StateID> &states, std::vector<Permutation> &permutations) const;
+    void trace_symmetric_path(std::vector<const Operator*> &path, std::vector<StateID> &states, const std::vector<Permutation> &permutations) const;
     
     void trace_symmetric_path(std::vector<const Operator*> &path,
                               std::vector<StateID> &states, 
                               std::vector<PathPriceTag> &cpgs,
-                              std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
+                              const std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
     
 public:
     SearchSpace(OperatorCost cost_type_);
