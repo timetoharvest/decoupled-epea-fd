@@ -1,12 +1,14 @@
 #ifndef SYMMETRIES_DECOUPLED_GROUP_H
 #define SYMMETRIES_DECOUPLED_GROUP_H
 
-#include <vector>
 #include "decoupled_permutation.h"
 
-class LexicographicOrdering;
+#include <vector>
+
 class CompliantPathGraph;
+class DecoupledPermutation;
 class Group;
+class LexicographicOrdering;
 class State;
 
 
@@ -17,7 +19,7 @@ public:
     std::unique_ptr<CompliantPathGraph> canonical_cpg;
 };
 
-class DecoupledGroup{
+class DecoupledGroup {
     
     std::vector<std::unique_ptr<DecoupledPermutation> > generators;
 
@@ -31,14 +33,13 @@ public:
     ~DecoupledGroup() = default;
 
     DecoupledTrace get_trace(const State &center, const CompliantPathGraph &leaves, 
-			     const LexicographicOrdering &lex_ordering) const;
+                             const LexicographicOrdering &lex_ordering) const;
 
     DecoupledPermutation compose_permutation(const DecoupledTrace &trace) const;
 
-    const std::vector<int> & 
-	get_canonical_decoupled_state(const State &center, 
-				      CompliantPathGraph &leaves, 
-				      const LexicographicOrdering &lex_ordering)  const;    
+    const std::vector<int> & get_canonical_decoupled_state(const State &center, 
+                                                           CompliantPathGraph &leaves, 
+                                                           const LexicographicOrdering &lex_ordering) const;
 
     const std::vector<DecoupledPermutation *> get_stabilized_permutations(const State &center) const;
 
