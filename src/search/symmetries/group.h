@@ -10,10 +10,7 @@
 
 typedef std::vector<short int> Trace;
 
-class CompliantPathGraph;
-class LexicographicOrdering;
-
-class Group{
+class Group {
     friend class DecoupledGroup;
 
     static bool safe_to_add_generators;
