@@ -285,8 +285,24 @@ void Factoring::apply_factoring(FactoredVars factoring) {
                 }
             }
         }
-        if (eff_factors.find(-1) == eff_factors.end()){
-            assert(eff_factors.size() == 1);
+        bool is_center_op = false;
+        if (eff_factors.find(-1) != eff_factors.end()){
+            // effect on center variable
+            is_center_op = true;
+        } else if (eff_factors.size() > 1){
+            // effect on more than one factor
+            is_center_op = true;
+        } else {
+            pre_factors.erase(-1);
+            if (pre_factors.size() > 1){
+                // precondition on more than one leaf
+                is_center_op = true;
+            } else if (*pre_factors.begin() != *eff_factors.begin()){
+                // precondition on leaf A, but effect on leaf B
+                is_center_op = true;
+            }
+        }
+        if (!is_center_op){
             int factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
             num_ops_per_factor[factor]++;
