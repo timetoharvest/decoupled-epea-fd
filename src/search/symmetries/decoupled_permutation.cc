@@ -361,15 +361,34 @@ void DecoupledPermutation::permute_center_state(vector<int> &center) const {
     }
 }
 
-size_t DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator *op, 
-                                                                const vector<const Operator *> &ops) const {
-    // TODO implement this
-    if (op == ops[0]){
-        
+const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator *main_op, 
+									  const vector<const Operator *> &ops) const {
+
+
+    assert(!ops.empty());
+    
+    const Operator * res = nullptr;
+    int cost = std::numeric_limits<int>::max();
+    for(const Operator * op : ops){
+	if(cost > op->get_cost()) {
+	    if(center_permutation && !center_permutation->is_symmetric_op(op, main_op)){
+		continue;
+	    }
+
+	    if(leaves_permutation && !leaves_permutation->is_symmetric_op(op, main_op)){
+		continue;
+	    }
+
+	    cout << "Found symmetric op " << op->get_name() << endl;
+	
+	    res = op;
+	    cost = res->get_cost();
+	}
     }
-    cerr << "implement this! decoupled_permutation.cc" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
-    return 0;
+    
+    assert(res);
+
+    return res;   
 }
 
 bool DecoupledPermutation::stabilizes_center(const State &center) const {
@@ -377,4 +396,36 @@ bool DecoupledPermutation::stabilizes_center(const State &center) const {
         return true;
     }
     return center_permutation->stabilizes(center);
+}
+
+
+bool CenterPermutation::is_symmetric_op (const Operator * op, const Operator * op2) const {
+    const std::vector<const Effect*> & effects = op->get_effects(-1);
+    const std::vector<const Effect*> & effects2 = op2->get_effects(-1);
+    for (auto eff : effects) {
+	auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
+	if(std::find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
+		    return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+		}) == effects2.end() ) {
+	    return false;
+	}
+    }
+
+    const auto & preconditions = op->get_preconditions(-1);
+    const auto & preconditions2 = op2->get_preconditions(-1);
+    for (auto pre : preconditions) {
+	auto new_var_val = get_new_var_val_by_old_var_val(pre->var, pre->val);
+	if(std::find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition* pre2) {
+		    return pre2->var == new_var_val.first && pre2->val == new_var_val.second;
+		}) == preconditions2.end() ) {
+	    return false;
+	}
+    }
+
+    return true;
+}
+
+
+bool LeavesPermutation::is_symmetric_op (const Operator * , const Operator * ) const {
+    return true;
 }

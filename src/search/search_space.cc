@@ -614,11 +614,13 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
         const DecoupledPermutation &permutation = *reverse_permutations[i];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
     }
+    reverse(permuted_path.begin(), permuted_path.end());
+
     for (size_t i = states.size() - 1; i > 0; --i) {
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
 //         bool found = false;
-        size_t min_cost_op = reverse_permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
+	permuted_path[i-1] = reverse_permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
 //         for (size_t o = 0; o < applicable_ops.size(); ++o) {
 //             const Operator *op = applicable_ops[o];
@@ -651,8 +653,8 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
 //             cpgs[i].dump();
 //             exit_with(EXIT_CRITICAL_ERROR);
 //         }
-        permuted_path[i-1] = applicable_ops[min_cost_op];
     }
+    reverse(permuted_path.begin(), permuted_path.end());
 }
 
 void SearchSpace::dump() const {
