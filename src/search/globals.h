@@ -74,7 +74,7 @@ extern std::vector<int> g_variable_domain;
 // the following two map the variable position in g_leaf_variable_domain
 // to the corresponding index in g_variable_domain
 extern std::vector<int> g_center_vars;
-extern std::vector<int> g_new_index;
+extern std::vector<size_t> g_new_index;
 
 extern std::vector<std::vector<std::string> > g_fact_names;
 extern std::vector<int> g_axiom_layers;

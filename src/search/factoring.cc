@@ -36,8 +36,8 @@ void InteractionGraph::add_dependency(int from, int to) {
     }
 }
 
+
 Factoring::Factoring(const Options &opts) :
-            reopen_closed_nodes(false),
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
@@ -59,14 +59,13 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
-        pruning = opts.get<Pruning*>("pruning");
+        CompliantPathGraph::set_pruning(opts.get<Pruning*>("pruning"));
     } else {
-        pruning = new BasicPruning();
+        CompliantPathGraph::set_pruning(new BasicPruning());
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
-    ignore_current_state = false;
 }
 
 class CenterFactoring : public Factoring {
@@ -248,20 +247,10 @@ public:
 };
 
 
-void Factoring::set_cost_type(OperatorCost ct) {
-    cost_type = ct;
-    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
-    for (const auto &op : g_operators){
-        int factor = op.get_affected_factor();
-        if (factor != -1){
-            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
-        }
-    }
-}
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor
-    g_new_index = vector<int>(g_variable_domain.size());
+    g_new_index = vector<size_t>(g_variable_domain.size());
     interaction_graph = InteractionGraph(factoring.size());
     g_factors.resize(factoring.size());
     
@@ -330,8 +319,24 @@ void Factoring::apply_factoring(FactoredVars factoring) {
                 }
             }
         }
-        if (eff_factors.find(-1) == eff_factors.end()){
-            assert(eff_factors.size() == 1);
+        bool is_center_op = false;
+        if (eff_factors.find(-1) != eff_factors.end()){
+            // effect on center variable
+            is_center_op = true;
+        } else if (eff_factors.size() > 1){
+            // effect on more than one factor
+            is_center_op = true;
+        } else {
+            pre_factors.erase(-1);
+            if (pre_factors.size() > 1){
+                // precondition on more than one leaf
+                is_center_op = true;
+            } else if (*pre_factors.begin() != *eff_factors.begin()){
+                // precondition on leaf A, but effect on leaf B
+                is_center_op = true;
+            }
+        }
+        if (!is_center_op){
             int factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
             num_ops_per_factor[factor]++;

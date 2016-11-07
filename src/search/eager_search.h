@@ -18,7 +18,7 @@ class Options;
 class ScalarEvaluator;
 
 namespace POR {
-class PORMethod;
+    class PORMethod;
 }
 
 class EagerSearch : public SearchEngine {

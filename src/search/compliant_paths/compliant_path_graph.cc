@@ -7,6 +7,7 @@
 #include "pricing_function.h"
 #include "../pruning/pruning.h"
 #include "reachability_function.h"
+#include "../search_space.h"
 #include "../state.h"
 #include "../state_id.h"
 #include "../state_registry.h"
@@ -16,6 +17,7 @@
 
 using namespace std;
 
+unique_ptr<Pruning> CompliantPathGraph::pruning;
 
 const int CompliantPathGraph::INF = -1;
     
@@ -23,11 +25,15 @@ const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
 bool CompliantPathGraph::compute_leaf_backwards_graph = false;
 
+SearchSpace* CompliantPathGraph::search_space;
+
+OperatorCost CompliantPathGraph::cost_type;
+
 vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
 
 vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
 
-vector<pair<int, int> > CompliantPathGraph::leaf_tags_to_cache;
+vector<LeafStateID> CompliantPathGraph::leaf_tags_to_cache;
 
 vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
 
@@ -52,20 +58,20 @@ bool CompliantPathGraph::is_leaf_goal_state(const LeafStateID &fact) {
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
         for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
-            size_t leaf_id = leaf_tags_to_cache[i].first;
-            int factor = leaf_tags_to_cache[i].second;
+            size_t leaf_id = leaf_tags_to_cache[i].hash();
+            size_t factor = leaf_tags_to_cache[i].get_factor();
             if (leaf_price_cache[factor].size() <= leaf_id){
                 leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
             leaf_price_cache[factor][leaf_id] = state.get_id();
         }
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
 }
 
 void CompliantPathGraph::discard_leaf_price_cache() {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        vector<pair<int, int> >().swap(leaf_tags_to_cache);
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
 }
 
@@ -81,6 +87,161 @@ void CompliantPathGraph::initialize() {
             leaf_price_cache = vector<vector<StateID> >(g_factors.size());
             break;
         }
+    }
+}
+
+int CompliantPathGraph::check_dominance(const State &base_state,
+                                        int curr_number_duplicates,
+                                        const State &predecessor,
+                                        const Operator &op) {
+    
+    int g_value = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type);
+    
+#ifdef DEBUG_PRUNING
+    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
+    //dump();
+#endif
+    
+    vector<size_t> predecessors;
+    
+    if (Pruning::are_closed_nodes_reopened()){
+        StateID curr_id = predecessor.get_id();
+        while (curr_id.hash() != 0){
+            if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
+                predecessors.push_back(curr_id.hash());
+            }
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
+        }
+        predecessors.push_back(0);
+    }
+    
+    int replaced_state_dup = -1;
+
+    for (int dup = 0; dup <= curr_number_duplicates; dup++){
+        // check the price tags of all equal center states
+        
+#ifdef DEBUG_PRUNING
+        cout << "current dup counter " << dup << endl;
+#endif
+
+        // get other state
+        const State s = g_state_registry->get_center_state(base_state, dup);
+        
+#ifdef DEBUG_PRUNING
+        cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
+        //g_price_tags[s].dump();
+#endif
+        
+        if (!Pruning::are_closed_nodes_reopened()){
+            // in greedy search, close nodes that are dominated by this one as cannot
+            // reach anything new from those that cannot be reached from this node
+            // if dominated => do not consider this state
+            // in this case, all dominated nodes are also dominated by the state
+            // that dominates this one
+
+            DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s)); 
+            
+            if (res != NONE){
+                if (res == DOMINATES) {
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                } else {
+                    replaced_state_dup = dup;
+
+                    // otherwise, the path to an existing state dominating this one
+                    // will be updated, so that paths to leaf states that are not
+                    // reachable in this state cannot be constructed
+                    // this is only needed for eager search, where for duplicate states
+                    // reached on a cheaper path, the predecessor is updated
+                    Pruning::set_ignore_current_state();
+                }
+            }       
+            
+        } else {
+            
+            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                
+                DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s));
+            
+                if (res == EQUAL || res == DOMINATED){
+                    int old_g = search_space->get_node(s).get_g();
+                    if (g_value + g_inc_g_by < old_g){
+                        // otherwise, that existing state would be reopened
+                        Pruning::set_ignore_current_state();
+                    }
+                    return dup;
+                } else if (res == DOMINATES){
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                }
+                
+            } else {
+            
+                // pruning for optimal search
+                
+                int old_g = search_space->get_node(s).get_g();
+            
+                if (g_value + g_inc_g_by < old_g){
+#ifdef DEBUG_PRUNING
+                    cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
+#endif
+                    // new state has a lower g-value and may only replace an
+                    // existing state if it dominates the existing one (nodes are closed instead of replaced)
+                    // => if the new one does not dominate the old state, need
+                    // to make it a new state, no duplicate
+                    
+                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
+                    
+                    if (res == EQUAL){
+#ifdef DEBUG_PRUNING
+                        cout << "new state is equal to old one" << endl;
+#endif
+                        return dup;
+                    } else if (res == DOMINATES){
+#ifdef DEBUG_PRUNING
+                        cout << "new state dominates old one" << endl;
+#endif
+                        if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
+                            // must not close a dominated state that is on path to this state
+                            // it might have been reopened, so its successors may get lower g
+                            SearchNode node = search_space->get_node(s);
+                            if (node.is_open()){
+                                node.close();
+                            }
+                        }
+                    }
+                    
+                } else {
+#ifdef DEBUG_PRUNING
+                    cout << "old g is lower: " << (g_value + g_inc_g_by) << " > " << old_g << endl;
+#endif
+                    // new state has a higher/equal g-value than the existing one and can
+                    // be marked as duplicate if it is subsumed.
+                    // if it is not subsumed, it must be considered a new state
+
+                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
+                    
+                    if (res == EQUAL || res == DOMINATED){
+                        // new state is dominated by existing one
+#ifdef DEBUG_PRUNING
+                        cout << "new state is equal to/dominated by old one" << endl;
+#endif
+                        return dup;
+                    }
+                }
+            }
+        }
+    }
+    if (replaced_state_dup != -1){
+        return replaced_state_dup;
+    } else {
+        return curr_number_duplicates + 1;
     }
 }
 
@@ -136,10 +297,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             change = false;
 
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (!goal_price_tag.has_leaf_state(id, factor)){
+                if (!goal_price_tag.has_leaf_state(LeafStateID(id, factor))){
                     continue;
                 }
-                int cost = goal_price_tag.get_cost_of_state(id, factor);
+                int cost = goal_price_tag.get_cost_of_state(LeafStateID(id, factor));
                 if (id < best_prices.size()){
                     if (cost > best_prices[id]
                         || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
@@ -218,7 +379,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
                         predecessor.dump_pddl();
 #endif
-                        LeafStateID lid = g_state_registry->get_successor_leaf_state(predecessor, *op).get_id();                        
+                        LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);                        
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
@@ -226,7 +387,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #endif
                         int op_cost = 0;
                         if (!is_center_op){
-                            op_cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                            op_cost = get_adjusted_action_cost(*op, cost_type);
                         }
                         
                         if (lid.hash() >= leaf_state_id_map[factor].size()){
@@ -264,7 +425,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
 #endif
     
-    g_factoring->get_pruning()->init();
+    pruning->init();
    
     size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;
@@ -333,15 +494,17 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::create_init_state_reachable();
-    } else {
-        Prices::create_init_state_prices();
-    }
-    
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "leaving calculate_min_goal_cost function" << endl;
 #endif
+}
+
+unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        return Reachable::get_init_state_reachable();
+    } else {
+        return Prices::get_init_state_prices();
+    }
 }
 
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
@@ -364,16 +527,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-void CompliantPathGraph::store_new_graph(const State &state) {
-    cache_leaf_price_tags(state);
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        Reachable::store_new_graph(state);
-    } else {
-        Prices::store_new_graph(state);
-    }
-}
-
-void CompliantPathGraph::discard_new_graph() {
+void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 

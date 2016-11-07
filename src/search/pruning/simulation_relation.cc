@@ -173,10 +173,10 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
     cout << "Irrelevance pruning: " << num_transitions_before << " => " << num_transitions_after  << endl;
 }
 
-bool SimulationRelation::precondition_dominance(const std::vector<const Condition*> & pre, 
-						const std::vector<const Condition*> & pre2) const{
-    for (const auto & p : pre){
-	if (std::find_if(begin(pre2), end(pre2), [p] (const Condition * p2){
+bool SimulationRelation::precondition_dominance(const vector<const Condition*> &pre, 
+						const vector<const Condition*> &pre2) const {
+    for (const auto &p : pre){
+	if (find_if(begin(pre2), end(pre2), [p] (const Condition *p2){
 		    return *p2 == *p;
 		}
 		) == end(pre2)){
@@ -195,12 +195,12 @@ void SimulationRelation::compute_label_dominance() {
     for (auto op = begin(g_operators); op != end(g_operators); ++op) {
 	int factor = op->get_affected_factor();
 	if (factor == -1) continue; //Skip center actions
-	int cost = get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+	int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
 	const auto & pre = op->get_preconditions(-1);
 	
 	for (auto op2 = op; ++op2 != end(g_operators); ) {
 	    if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
-	    int cost2 = get_adjusted_action_cost(*op2, g_factoring->get_cost_type());
+	    int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
 	    const auto & pre2 = op2->get_preconditions(-1);
 	    
 
@@ -217,7 +217,7 @@ void SimulationRelation::compute_label_dominance() {
     }
 }
 
-void SimulationRelation::compute_simulation (int factor) {
+void SimulationRelation::compute_simulation(size_t factor) {
     //cout  << "Compute simulation: " << factor << endl;
     //Init goal respecting
     size_t num_states = g_state_registry->size(factor);
@@ -298,8 +298,8 @@ void SimulationRelation::compute_simulation (int factor) {
 }
 
 
-int SimulationRelation::num_equivalences(int factor) const{
-    int num = 0;
+size_t SimulationRelation::num_equivalences(size_t factor) const {
+    size_t num = 0;
     vector<bool> counted(relation[factor].size(), false);
     for(size_t i = 0; i < counted.size(); i++){
         if(!counted[i]){
@@ -315,10 +315,10 @@ int SimulationRelation::num_equivalences(int factor) const{
     return num;
 }
 
-int SimulationRelation::num_simulations(int factor, bool ignore_equivalences) const{
-    int res = 0;
+size_t SimulationRelation::num_simulations(size_t factor, bool ignore_equivalences) const {
+    size_t res = 0;
     if (ignore_equivalences){
-        std::vector<bool> counted (relation[factor].size(), false);
+        vector<bool> counted (relation[factor].size(), false);
         for(size_t i = 0; i < relation[factor].size(); ++i){
             if(!counted[i]){
                 for(size_t j = i+1; j < relation[factor].size(); ++j){
@@ -368,7 +368,7 @@ void SimulationRelation::set_list_dominated_states() const {
     }
 }
 
-void SimulationRelation::statistics() const{
+void SimulationRelation::statistics() const {
     cout << "Simulation Relation Finished. " << endl;
     for (size_t factor = 0; factor < g_factors.size(); ++factor){    
 	cout << "Factor " <<  factor << " has " <<
@@ -378,7 +378,7 @@ void SimulationRelation::statistics() const{
     }    
 }
 
-void SimulationRelation::dump(int factor) const{ 
+void SimulationRelation::dump(size_t factor) const { 
     cout << "SIMREL:" << endl;
 
     for(size_t j = 0; j < relation[factor].size(); ++j){
@@ -386,15 +386,14 @@ void SimulationRelation::dump(int factor) const{
             if(simulates(factor, j, i) && i != j){
                 if(simulates(factor, i, j)){
                     if (j < i){
-                        cout << get_name(factor, i) << " <=> " << get_name(factor, j) << endl;
+                        cout << get_name(LeafStateID(i, factor)) << " <=> " << get_name(LeafStateID(j, factor)) << endl;
                     }
-                }else{
-                    cout << get_name(factor, i) << " <= " << get_name(factor, j) << endl;
+                } else {
+                    cout << get_name(LeafStateID(i, factor)) << " <= " << get_name(LeafStateID(j, factor)) << endl;
                 }
             }
         }
     }
-
 
     cout << "Reasons: " << endl;
     for (size_t s = 0; s < g_state_registry->size(factor); s++) {
@@ -404,9 +403,9 @@ void SimulationRelation::dump(int factor) const{
 		    int trs_target = trs.second;
 		    int trs_label = trs.first->get_index();
 		    
-		    if(simulates (factor, t, trs_target)) {
-			cout << get_name(factor, s) << " -> " << get_name(factor, trs_target) << " is simulated by " << 
-			    get_name(factor, t) << " noop " << endl;
+		    if(simulates(factor, t, trs_target)) {
+			cout << get_name(LeafStateID(s, factor)) << " -> " << get_name(LeafStateID(trs_target, factor)) << " is simulated by " << 
+			    get_name(LeafStateID(t, factor)) << " noop " << endl;
 		        continue;
 		    }
 		    for (auto trt  : CompliantPathGraph::leaf_state_successors[factor][t]) {
@@ -415,8 +414,8 @@ void SimulationRelation::dump(int factor) const{
 			
 			if(op_dominated_by[trs_label][trt_label] &&
 			   simulates(factor, trt_target, trs_target)) {
-			    cout << get_name(factor, s) << " -> " << get_name(factor, trs_target) << " is simulated by " << 
-				get_name(factor, t) << " -> " << get_name(factor, trt_target) << endl;
+			    cout << get_name(LeafStateID(s, factor)) << " -> " << get_name(LeafStateID(trs_target, factor)) << " is simulated by " << 
+				get_name(LeafStateID(t, factor)) << " -> " << get_name(LeafStateID(trt_target, factor)) << endl;
 			    break;
 			}
 		    }
@@ -427,6 +426,6 @@ void SimulationRelation::dump(int factor) const{
 }
 
 
-const string & SimulationRelation::get_name(int factor, int s) const{
-    return g_fact_names[g_factors[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(s, factor))[g_factors[factor][0]]];
+const string & SimulationRelation::get_name(const LeafStateID &id) const {
+    return g_fact_names[g_factors[id.get_factor()][0]][g_state_registry->lookup_leaf_state(id)[g_factors[id.get_factor()][0]]];
 }

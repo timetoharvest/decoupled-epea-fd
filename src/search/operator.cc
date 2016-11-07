@@ -7,6 +7,7 @@
 #include "state_registry.h"
 
 #include <iostream>
+
 using namespace std;
 
 Condition::Condition(istream &in) {
@@ -19,7 +20,7 @@ bool Condition::is_applicable(const State &state) const {
 }
 
 bool Condition::is_applicable(const LeafState &state) const {
-    assert(g_belongs_to_factor[var] == state.get_id().get_factor());
+    assert(g_belongs_to_factor[var] == (int) state.get_id().get_factor());
     return state[var] == val;
 }
 
@@ -40,7 +41,7 @@ void Operator::read_pre_post(istream &in) {
     effects.push_back(Effect(var, post, conditions));
 }
 
-Operator::Operator(istream &in, bool axiom, int index) {
+Operator::Operator(istream &in, bool axiom) {
     marked = false;
     dead = false;
 
@@ -74,8 +75,6 @@ Operator::Operator(istream &in, bool axiom, int index) {
     }
     
     affects_factor = -1;	// -1 => center factor
-    
-    this->index = index;
 }
 
 void Condition::dump() const {
@@ -109,7 +108,7 @@ const vector<const Effect*> &Operator::get_effects(int factor) const {
     return it->second;
 }
 
-bool Operator::is_applicable(const State& state) const {
+bool Operator::is_applicable(const State &state) const {
     if (g_use_decoupled_search){    // not really efficient, but how to do it better?
         if (!is_center_applicable(state)){
             return false;
@@ -118,14 +117,14 @@ bool Operator::is_applicable(const State& state) const {
             // in fork topology, center actions don't have leaf preconditions
             return true;
         }
-        const CompliantPathGraph *price_tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *price_tag = CPGStorage::storage->get_cpg(state);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             if (has_precondition_on(factor)){
                 bool applicable = false;
                 size_t number_states = price_tag->get_number_states(factor);
                 size_t id = 0;
                 while (number_states > 0){
-                    if (price_tag->has_leaf_state(id, factor)){
+                    if (price_tag->has_leaf_state(LeafStateID(id, factor))){
                         --number_states;
                         if (is_applicable(LeafStateID(id, factor))){
                             applicable = true;

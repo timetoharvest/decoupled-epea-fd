@@ -3,7 +3,6 @@
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../operator.h"
 #include "../plugin.h"
-#include "prunable.h"
 #include "../state_registry.h"
 #include "../ext/boost/dynamic_bitset.hpp"
 
@@ -11,11 +10,10 @@
 using namespace std;
 
 CostFrontierPruning::CostFrontierPruning(const Options& opts) : Pruning(opts) {
-    Prunable::set_store_frontier();
     cout << "using cost frontier pruning" << endl;
 }
 
-DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
+DOMINATION CostFrontierPruning::check_dominance(CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
     assert(g_factoring->get_profile() == FORK);
 
     const vector<boost::dynamic_bitset<> > &current_frontier = check->get_frontier();
@@ -48,12 +46,12 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
                 if (dominates && reference_frontier[factor][id]){
-                    assert(reference->has_effective_leaf_state(id, factor));
+                    assert(reference->has_effective_leaf_state(LeafStateID(id, factor)));
                     
-                    if (check->has_effective_leaf_state(id, factor)){
+                    if (check->has_effective_leaf_state(LeafStateID(id, factor))){
                         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-                            int old_cost = reference->get_cost_of_state(id, factor);
-                            int new_cost = check->get_effective_cost_of_state(id, factor);
+                            int old_cost = reference->get_cost_of_state(LeafStateID(id, factor));
+                            int new_cost = check->get_effective_cost_of_state(LeafStateID(id, factor));
                             assert(old_cost != -1);
                             assert(new_cost != -1);
                             
@@ -66,12 +64,12 @@ DOMINATION CostFrontierPruning::check_dominance(const State &, Prunable *check, 
                     }
                 }
                 if (dominated && current_frontier[factor][id]){
-                    assert(check->has_effective_leaf_state(id, factor));
+                    assert(check->has_effective_leaf_state(LeafStateID(id, factor)));
                     
-                    if (reference->has_effective_leaf_state(id, factor)){
+                    if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
                         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-                            int old_cost = reference->get_effective_cost_of_state(id, factor);
-                            int new_cost = check->get_cost_of_state(id, factor);
+                            int old_cost = reference->get_effective_cost_of_state(LeafStateID(id, factor));
+                            int new_cost = check->get_cost_of_state(LeafStateID(id, factor));
                             assert(old_cost != -1);
                             assert(new_cost != -1);
                             

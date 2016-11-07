@@ -8,6 +8,7 @@
 
 #include <vector>
 
+class CompliantPathGraph;
 class Heuristic;
 class OptionParser;
 class Options;
@@ -20,8 +21,9 @@ public:
 private:
     SearchStatus status;
     bool solution_found;
-    Plan plan;
-    bool is_optimal_leaf_plan(const Plan &plan);
+    mutable Plan plan;
+    StateID cheapest_goal_state;
+    bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
 protected:
     SearchSpace search_space;
     SearchProgress search_progress;

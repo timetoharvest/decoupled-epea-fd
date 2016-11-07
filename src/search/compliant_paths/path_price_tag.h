@@ -31,17 +31,19 @@ class PathPriceTag : public Prices {
     bool add_state(const LeafStateID &fact, int cost, const Operator *bs, 
                    const LeafStateID &predecessor);
     
-    PathPriceTag(const PathPriceTag *tag);
+    PathPriceTag(const PathPriceTag *cpg);
     
 public:
     
     PathPriceTag(){};
-      
-    const PathPriceTagInfo &get_path_info_for_fact(int id, int factor) const;
+
+    const PathPriceTagInfo &get_path_info_for_fact(const LeafStateID &id) const;
     
-    virtual void update_price_tags(const State &base_state);
+    void update_price_tags(const State &base_state);
     
-    virtual void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
     
 };
 

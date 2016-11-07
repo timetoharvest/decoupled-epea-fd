@@ -1,18 +1,20 @@
 #include "eager_search.h"
 
+#include "factoring.h"
+#include "g_evaluator.h"
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser.h"
-#include "successor_generator.h"
-#include "g_evaluator.h"
-#include "sum_evaluator.h"
 #include "plugin.h"
-#include "factoring.h"
 #include "por/por_method.h"
+#include "pruning/pruning.h"
+#include "successor_generator.h"
+#include "sum_evaluator.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <set>
+
 using namespace std;
 
 EagerSearch::EagerSearch(
@@ -42,7 +44,7 @@ EagerSearch::EagerSearch(
             opts.get_list<Heuristic *>("preferred");
     }
     if (g_use_decoupled_search && reopen_closed_nodes){
-        g_factoring->set_reopen_closed_nodes();
+        Pruning::set_reopen_closed_nodes();
     }
 }
 
@@ -257,7 +259,7 @@ SearchStatus EagerSearch::step() {
             
         } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
             
-            if (!g_use_decoupled_search || !g_factoring->ignore_current_search_state()){
+            if (!g_use_decoupled_search || !Pruning::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
                 if (reopen_closed_nodes) {
                     //TODO:CR - test if we should add a reevaluate flag and if it helps

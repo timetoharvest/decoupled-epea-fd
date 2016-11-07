@@ -3,10 +3,6 @@
 
 #include "pruning.h"
 
-#include <vector>
-
-
-class Prices;
 
 class CostFrontierPruning : public Pruning {
 
@@ -14,8 +10,17 @@ public:
     
     CostFrontierPruning(const Options &opts);
     
-    virtual DOMINATION check_dominance(const State &center, Prunable *check, 
-                                       Prunable *reference, DOMINATION needed = NONE) const;
+    virtual bool use_frontier() const override {
+        return true;
+    }
+    
+    virtual bool do_advanced_pruning() const  override {
+        return true;
+    }
+    
+    virtual DOMINATION check_dominance(CompliantPathGraph *check, 
+                                       CompliantPathGraph *reference,
+                                       DOMINATION needed = NONE) const override;
                                        
 };
 

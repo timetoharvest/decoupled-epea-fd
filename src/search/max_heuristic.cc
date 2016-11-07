@@ -103,19 +103,19 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     setup_exploration_queue();
 
     if (search_type != STD){
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-	for (size_t factor = 0; factor < g_factors.size(); factor++){
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+	for (size_t factor = 0; factor < g_factors.size(); ++factor){
 	    int number_states = tag->get_number_states(factor);
             size_t id = 0;
 	    while (number_states > 0){
-		if (tag->has_leaf_state(id, factor)){
+		if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
                     int base_cost = 0;
                     if (search_type == STAR){
-                        base_cost = tag->get_cost_of_state(id, factor);
+                        base_cost = tag->get_cost_of_state(LeafStateID(id, factor));
                     }
                     const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                    for (size_t v = 0; v < g_factors[factor].size(); v++) {
+                    for (size_t v = 0; v < g_factors[factor].size(); ++v) {
                         int var = g_factors[factor][v];
                         Proposition *effect = &propositions[var][f[var]];
                         enqueue_if_necessary(effect, base_cost);

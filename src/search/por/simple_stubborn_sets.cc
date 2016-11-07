@@ -286,7 +286,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 }
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && !tag->goal_reachable(factor)){
@@ -298,7 +298,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
             size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag->has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
                     LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
@@ -542,7 +542,7 @@ static inline pair<int, int> find_unsatisfied_precondition_forward(const Operato
 
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const Operator &op, 
-                                                                   const State &state) {
+                                                                           const State &state) {
     
     if (op.get_affected_factor() != -1){
         // in fork-factoring, an op can only have preconditions on one leaf + center
@@ -558,11 +558,11 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         
         bool is_applicable = false;
         
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         size_t number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
                 --number_states;
                 LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 bool applicable_state = true;
@@ -1321,20 +1321,20 @@ void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const S
     // we cannot know which open center precondition actually is achievable, i.e. can be used to
     // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
     
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         vector<vector<pair<const Operator*, size_t> > > &leaf_successors = CompliantPathGraph::leaf_state_successors[factor];
         
         size_t number_states = tag->get_number_states(factor);
         size_t id = 0;        
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
                 --number_states;
                 for (size_t succ = 0; succ < leaf_successors[id].size(); ++succ){
                     const Operator *op = leaf_successors[id][succ].first;
                     int successor_id = leaf_successors[id][succ].second;
-                    int new_price = tag->get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
-                    if (!tag->has_leaf_state(successor_id, factor) || new_price < tag->get_cost_of_state(successor_id, factor)){
+                    int new_price = tag->get_cost_of_state(LeafStateID(id, factor)) + get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
+                    if (!tag->has_leaf_state(LeafStateID(successor_id, factor)) || new_price < tag->get_cost_of_state(LeafStateID(successor_id, factor))){
                         // is frontier state
                         const vector<const Condition*> &preconditions = op->get_preconditions(-1);
 #ifndef NDEBUG

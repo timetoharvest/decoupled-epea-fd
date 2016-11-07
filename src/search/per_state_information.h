@@ -203,6 +203,14 @@ public:
         }
         return (*entries)[state_id];
     }
+    
+    size_t size(const StateRegistry *registry) const {
+        const SegmentedVector<Entry> *entries = get_entries(registry);
+        if (!entries) {
+            return 0;
+        }
+        return entries->size();
+    }
 
     void remove_state_registry(StateRegistry *registry) {
         delete entries_by_registry[registry];

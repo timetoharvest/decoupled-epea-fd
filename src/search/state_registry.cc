@@ -134,9 +134,13 @@ const State &StateRegistry::get_initial_state() {
                 insert_id_or_pop_leaf_state(factor);
             }
             
+            CPGStorage::initialize();
+            
             CompliantPathGraph::build_leaf_state_spaces();
             
-            CompliantPathGraph::store_new_graph(*cached_initial_state);
+            unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
+            
+            init_state_cpg->store_new_graph(*cached_initial_state);
             
             state_duplicate_counter[0] = 0;
         }
@@ -184,26 +188,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 g_state_packer->set(buffer, effect.var, effect.val);
             }
         }
+        g_axiom_evaluator->evaluate(buffer);
     } else {
         const vector<const Effect*> &effects = op.get_effects(-1);
         for (size_t i = 0; i < effects.size(); i++){
             // no need to check does_fire here, because no conditional effects allowed (yet)
             g_state_packer->set(buffer, g_new_index[effects[i]->var], effects[i]->val);
         }
-    }
-    
-    vector<int> values;
-    if (g_use_decoupled_search){
         g_state_packer->set(buffer, g_center_vars.size(), 0);
-        
-        values.resize(g_center_vars.size());
-        for (size_t i = 0; i < values.size(); i++){
-            values[i] = g_state_packer->get(buffer, i);
-        }
-    } else {
-        g_axiom_evaluator->evaluate(buffer);
     }
-    
+
     StateID id = insert_id_or_pop_state();
     
     if (g_use_decoupled_search){
@@ -215,23 +209,18 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             old_dup_counter = pos->second;
         }
         
-        g_factoring->set_ignore_current_state(false);
+        Pruning::reset_ignore_current_state();
         
-        int g = g_factoring->get_search_space()->get_node(predecessor).get_g();
-        g += get_adjusted_action_cost(op, g_factoring->get_cost_type());
-        
-        int new_dup_counter = CPGStorage::get_cpg(predecessor)->update_price_tags(old_dup_counter, s, g, predecessor, &op);
+        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_updated_successor_cpg(s, &op, predecessor);
         
         if (old_dup_counter == -1){ // is new center state
-            CompliantPathGraph::store_new_graph(s);
+            new_cpg->store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
-        } else {                       
-            state_data_pool.push_back(predecessor.get_packed_buffer());
-            buffer = state_data_pool[state_data_pool.size() - 1];
+        } else {
+            int new_dup_counter = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
             
-            for (size_t i = 0; i < values.size(); i++){
-                g_state_packer->set(buffer, i, values[i]);
-            }
+            state_data_pool.push_back(s.get_packed_buffer());
+            buffer = state_data_pool[state_data_pool.size() - 1];
             g_state_packer->set(buffer, g_center_vars.size(), new_dup_counter);
             
             size_t base_state_id = id.hash();
@@ -240,12 +229,12 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             s = lookup_state(id);
             
             if (new_dup_counter > old_dup_counter){    // is a new decoupled state
-                CompliantPathGraph::store_new_graph(s);
+                new_cpg->store_new_graph(s);
                 state_duplicate_counter[base_state_id] = new_dup_counter;
-            } else {
-                CompliantPathGraph::discard_new_graph();
             }
         }
+        
+        new_cpg->discard_new_graph();
         
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;
@@ -265,11 +254,11 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_state(const State& predecessor, int dup_counter) {
+State StateRegistry::get_center_state(const State &base_state, int dup_counter) {
     assert(dup_counter >= 0);
     assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
     
-    state_data_pool.push_back(predecessor.get_packed_buffer());
+    state_data_pool.push_back(base_state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
     
     g_state_packer->set(buffer, g_center_vars.size(), dup_counter);
@@ -279,10 +268,10 @@ State StateRegistry::get_center_state(const State& predecessor, int dup_counter)
     return lookup_state(id);
 }
 
-LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, const Operator &op) {     
+LeafStateID StateRegistry::get_successor_leaf_state_id(const LeafState &predecessor, const Operator &op) {     
     assert(!op.is_axiom());
 
-    int factor = predecessor.get_id().get_factor();
+    size_t factor = predecessor.get_id().get_factor();
     
     leaf_state_data_pool[factor]->push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
@@ -298,7 +287,7 @@ LeafState StateRegistry::get_successor_leaf_state(const LeafState &predecessor, 
     
     LeafStateID id = insert_id_or_pop_leaf_state(factor);
 
-    return lookup_leaf_state(id);
+    return id;
 }
 
 size_t StateRegistry::get_max_number_duplicates() const {
@@ -320,7 +309,7 @@ void StateRegistry::output_decoupled_state_space_size() const {
     }
     
     for (size_t i = 0; i < size(); ++i){
-        const CompliantPathGraph *cpg = CPGStorage::get_cpg(lookup_state(StateID(i)));
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             size_t number_states = cpg->get_number_states(factor);
             dec_size_1 += g_factors[factor].size() * number_states;
@@ -339,6 +328,6 @@ void StateRegistry::subscribe(PerStateInformationBase *psi) const {
     subscribers.insert(psi);
 }
 
-void StateRegistry::unsubscribe(PerStateInformationBase *const psi) const {
+void StateRegistry::unsubscribe(PerStateInformationBase *psi) const {
     subscribers.erase(psi);
 }
