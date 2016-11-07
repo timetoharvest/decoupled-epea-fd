@@ -15,6 +15,8 @@ class LeavesPermutation {
 private:
     static FactIndex findex_leaves;
     
+    const Permutation *permutation;
+    
     std::vector<int> value;
     std::vector<int> inverse_value;
     std::vector<int> factors_affected;
@@ -60,7 +62,7 @@ public:
     
     cmp_t cmp_prices(const CompliantPathGraph &cpg) const;
     
-    bool is_symmetric_op (const Operator * op, const Operator * op2) const;
+    bool is_symmetric_op(const Operator *op, const Operator *op2) const;
 
 };
 
@@ -74,7 +76,7 @@ public:
     
     ~CenterPermutation() = default;
 
-    bool is_symmetric_op (const Operator * op, const Operator * op2) const;
+    bool is_symmetric_op(const Operator *op, const Operator *op2) const;
 
 };
 

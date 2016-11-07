@@ -14,6 +14,8 @@ FactIndex LeavesPermutation::findex_leaves;
 
 
 LeavesPermutation::LeavesPermutation(const Permutation &per) {
+    
+    permutation = &per;
 
     affected.assign(g_factors.size(), false);
    
@@ -229,10 +231,27 @@ void LeavesPermutation::set_value(int ind, int val) {
     from_factors[to_var] = var;
 }
 
+bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        const vector<const Effect*> & effects = op->get_effects(factor);
+        const vector<const Effect*> & effects2 = op2->get_effects(factor);
+        for (auto eff : effects) {
+            auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff->var, eff->val);
+            if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
+                        return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+                    }) == effects2.end() ) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
     //Remove leaf vars from vars_affected
-    vars_affected.erase(std::remove_if(vars_affected.begin(), 
+    vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
 				       [&](int x){ 
 					   if(g_belongs_to_factor[x] >= 0) {
@@ -256,6 +275,21 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
 CenterPermutation::CenterPermutation(const CenterPermutation &p1, 
                                      const CenterPermutation &p2) : 
     Permutation(p1, p2) {
+}
+
+bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
+    const vector<const Effect*> & effects = op->get_effects(-1);
+    const vector<const Effect*> & effects2 = op2->get_effects(-1);
+    for (auto eff : effects) {
+	auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
+	if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
+		    return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+		}) == effects2.end() ) {
+	    return false;
+	}
+    }
+    
+    return true;
 }
 
 
@@ -338,7 +372,7 @@ cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center,
 }
 
 bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves, 
-                                                  const LexicographicOrdering & lex_ordering) const {   
+                                                  const LexicographicOrdering &lex_ordering) const {   
     return (leaves_permutation && 
 	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
 	    leaves.apply_symmetry_permutation(*leaves_permutation));
@@ -364,22 +398,23 @@ void DecoupledPermutation::permute_center_state(vector<int> &center) const {
 const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator *main_op, 
 									  const vector<const Operator *> &ops) const {
 
-
     assert(!ops.empty());
     
-    const Operator * res = nullptr;
-    int cost = std::numeric_limits<int>::max();
+    if (!center_permutation && !leaves_permutation){
+        return main_op;
+    }
+    
+    const Operator *res = nullptr;
+    int cost = numeric_limits<int>::max();
     for(const Operator * op : ops){
 	if(cost > op->get_cost()) {
-	    if(center_permutation && !center_permutation->is_symmetric_op(op, main_op)){
+	    if (center_permutation && !center_permutation->is_symmetric_op(main_op, op)){
 		continue;
 	    }
 
-	    if(leaves_permutation && !leaves_permutation->is_symmetric_op(op, main_op)){
+	    if (leaves_permutation && !leaves_permutation->is_symmetric_op(main_op, op)){
 		continue;
 	    }
-
-	    cout << "Found symmetric op " << op->get_name() << endl;
 	
 	    res = op;
 	    cost = res->get_cost();
@@ -396,36 +431,4 @@ bool DecoupledPermutation::stabilizes_center(const State &center) const {
         return true;
     }
     return center_permutation->stabilizes(center);
-}
-
-
-bool CenterPermutation::is_symmetric_op (const Operator * op, const Operator * op2) const {
-    const std::vector<const Effect*> & effects = op->get_effects(-1);
-    const std::vector<const Effect*> & effects2 = op2->get_effects(-1);
-    for (auto eff : effects) {
-	auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
-	if(std::find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
-		    return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
-		}) == effects2.end() ) {
-	    return false;
-	}
-    }
-
-    const auto & preconditions = op->get_preconditions(-1);
-    const auto & preconditions2 = op2->get_preconditions(-1);
-    for (auto pre : preconditions) {
-	auto new_var_val = get_new_var_val_by_old_var_val(pre->var, pre->val);
-	if(std::find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition* pre2) {
-		    return pre2->var == new_var_val.first && pre2->val == new_var_val.second;
-		}) == preconditions2.end() ) {
-	    return false;
-	}
-    }
-
-    return true;
-}
-
-
-bool LeavesPermutation::is_symmetric_op (const Operator * , const Operator * ) const {
-    return true;
 }

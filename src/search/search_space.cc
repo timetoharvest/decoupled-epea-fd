@@ -277,8 +277,6 @@ void SearchSpace::trace_path(const State &goal_state,
         current_state = g_state_registry->lookup_state(info.parent_state_id);
     }
     
-    reverse(path.begin(), path.end());
-    
     if (g_symmetry_graph && !g_use_decoupled_search){
         trace_symmetric_path(path, states, permutations);
     }
@@ -288,7 +286,9 @@ void SearchSpace::trace_path(const State &goal_state,
             trace_symmetric_path(path, states, cpgs, decoupled_permutations);
         }
         trace_decoupled_path(path, states);
-    }
+    } 
+    
+    reverse(path.begin(), path.end());
 }
 
 void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<StateID> &states) const {
@@ -296,6 +296,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     cout << "##################### STARTING TRACE_PATH" << endl;
 #endif
     
+    reverse(path.begin(), path.end());
     reverse(states.begin(), states.end());
     
     vector<PathPriceTag> price_tags(states.size(), PathPriceTag(0));
@@ -543,7 +544,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
         if (step < path.size()){
             decoupled_plan.push_back(path[step]);
 #ifdef DEBUG_PLAN_EXTRACTION
-            cout << "added root op: " << decoupled_plan.back()->get_name() << endl;
+            cout << "added center op: " << decoupled_plan.back()->get_name() << endl;
 #endif
         }
         
@@ -556,18 +557,18 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
 #endif
     
     path.swap(decoupled_plan);
-    reverse(path.begin(), path.end());
 }
 
-void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, const vector<Permutation> &permutations) const {
-    vector<Permutation> reverse_permutations;
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<StateID> &states, vector<Permutation> &permutations) const {
+    path.resize(states.size() - 1);
+
     Permutation temp_p;
     for (int i = permutations.size() - 1; i >= 0; --i) {
         temp_p = Permutation(permutations[i], temp_p);
-        reverse_permutations.push_back(temp_p);
+        permutations[i] = temp_p;
     }
     for(size_t i = 0; i < states.size(); ++i){
-        const Permutation &permutation = reverse_permutations[states.size() - i - 1];
+        const Permutation &permutation = permutations[i];
         states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
     }
     for (size_t i = states.size() - 1; i > 0; --i) {
@@ -596,65 +597,30 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
             g_state_registry->lookup_state(states[i]).dump_pddl();
             exit_with(EXIT_CRITICAL_ERROR);
         }
-        path.push_back(applicable_ops[min_cost_op]);
+        path[i-1] = applicable_ops[min_cost_op];
     }
 }
 
 void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, vector<StateID> &states, vector<PathPriceTag> &cpgs, 
-                                       const vector<unique_ptr<DecoupledPermutation> > &permutations) const {
-    vector<unique_ptr<DecoupledPermutation> > reverse_permutations;
+                                       vector<unique_ptr<DecoupledPermutation> > &permutations) const {
+                                           
     unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back(), DecoupledPermutation()));
-    reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
+    permutations[permutations.size() - 1].reset(new DecoupledPermutation(*temp_p));
     for (int i = permutations.size() - 2; i >= 0; --i) {
         temp_p.reset(new DecoupledPermutation(*permutations[i], *temp_p));
-        reverse_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*temp_p)));
+        permutations[i].reset(new DecoupledPermutation(*temp_p));
     }
-    reverse(reverse_permutations.begin(), reverse_permutations.end());
     for (size_t i = 0; i < states.size(); ++i){
-        const DecoupledPermutation &permutation = *reverse_permutations[i];
+        const DecoupledPermutation &permutation = *permutations[i];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
     }
-    reverse(permuted_path.begin(), permuted_path.end());
 
     for (size_t i = states.size() - 1; i > 0; --i) {
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
-//         bool found = false;
-	permuted_path[i-1] = reverse_permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
-//         for (size_t o = 0; o < applicable_ops.size(); ++o) {
-//             const Operator *op = applicable_ops[o];
-//             State succ_state = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *op);
-//             
-//             PathPriceTag succ_cpg;
-//             if (g_factoring->get_profile() != FORK){
-//                 succ_cpg = PathPriceTag(0);
-//                 succ_cpg.apply_center_op_to_leaves(cpgs[i], *op);
-//             } else {
-//                 succ_cpg = PathPriceTag(&cpgs[i]);
-//             }
-//             succ_cpg.update_price_tags(succ_state);
-//             
-//             if (is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], succ_state, succ_cpg)) {
-//                 found = true;
-//                 if (op->get_cost() < min_cost) {
-//                     min_cost = op->get_cost();
-//                     min_cost_op = o;
-//                 }
-//             }
-//         }
-//         if (!found) {
-//             cout << "No operator is found!!!" << endl
-//                  << "Cannot reach the state:" << endl;
-//             g_state_registry->lookup_state(states[i-1]).dump_pddl();
-//             cpgs[i-1].dump();
-//             cout << endl << "From the state:" << endl;
-//             g_state_registry->lookup_state(states[i]).dump_pddl();
-//             cpgs[i].dump();
-//             exit_with(EXIT_CRITICAL_ERROR);
-//         }
+        permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
     }
-    reverse(permuted_path.begin(), permuted_path.end());
 }
 
 void SearchSpace::dump() const {
