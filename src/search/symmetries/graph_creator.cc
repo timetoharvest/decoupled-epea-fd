@@ -221,7 +221,7 @@ DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const 
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
-    assert (curr_trace.canonical_center == new_trace.canonical_center);
+    assert(curr_trace.canonical_center == new_trace.canonical_center);
     //assert (curr_trace.cpg == new_trace.cpg);
     
 
