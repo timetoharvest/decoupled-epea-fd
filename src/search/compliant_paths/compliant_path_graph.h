@@ -20,6 +20,8 @@ class CompliantPathGraph : public Prunable {
     friend class SimulationRelation; // access to leaf_state_pre/successors
     friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class SuccessorGeneratorSwitch; // access to center_successors
+    friend class SearchSpace; // to update CPGs when reconstructing symmetry path
+
     
     /*
       this builds all entire leaf state spaces and stores them

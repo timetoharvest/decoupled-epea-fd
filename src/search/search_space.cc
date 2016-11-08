@@ -180,8 +180,10 @@ bool SearchSpace::is_equal(const State &s1, const CompliantPathGraph &cpg1, cons
             if (has_state ^ cpg2.has_leaf_state(id, factor)){
                 return false;
             }
-            if (g_factoring->get_search_type() != SAT && has_state && cpg1.get_cost_of_state(id, factor) != cpg2.get_cost_of_state(id, factor)){
-                return false;
+            if (has_state && g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
+                if (cpg1.get_cost_of_state(id, factor) != cpg2.get_cost_of_state(id, factor)){
+                    return false;
+                }
             }
         }
     }
@@ -215,32 +217,21 @@ void SearchSpace::trace_path(const State &goal_state,
                 cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
             }
         }
-        
+
         if (g_symmetry_graph){
             State new_state = g_initial_state();
-            PathPriceTag new_cpg;
+            unique_ptr<CompliantPathGraph> new_cpg;
             if (op != 0) {
                 State parent_state = g_state_registry->lookup_state(info.parent_state_id);         
                 new_state = g_state_registry->get_successor_state(parent_state, *op, false);
                 
                 if (g_use_decoupled_search){
-                    if (g_factoring->get_profile() != FORK){
-                        new_cpg = PathPriceTag(0);
-                        new_cpg.apply_center_op_to_leaves(*CPGStorage::storage->get_cpg(parent_state), *op);
-                    } else {
-                        new_cpg = PathPriceTag(*CPGStorage::storage->get_cpg(parent_state));
-                    }
-                    new_cpg.update_price_tags(new_state);
+                    new_cpg = CPGStorage::storage->get_cpg(parent_state)->update_price_tags(new_state, op, parent_state).clone();
                 }
             } else {
                 if (g_use_decoupled_search){
-                    new_state = g_state_registry->get_center_state(g_initial_state_data);
-                    
-                    new_cpg = PathPriceTag(0);
-                    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                        new_cpg.add_state(LeafStateID(0, factor), 0, 0, LeafStateID::no_state);
-                    }
-                    new_cpg.update_price_tags(new_state);
+                    new_state = g_state_registry->get_center_state(g_initial_state_data);                    
+                    new_cpg = CompliantPathGraph::get_init_state_cpg().clone();
                 } else {
                     new_state = g_state_registry->get_state(g_initial_state_data);
                 }
@@ -250,8 +241,8 @@ void SearchSpace::trace_path(const State &goal_state,
             unique_ptr<DecoupledPermutation> dp;
             if (g_use_decoupled_search){
                 const CompliantPathGraph *current_cpg = CPGStorage::storage->get_cpg(current_state);
-                if (!is_equal(current_state, *current_cpg, new_state, new_cpg)){
-                    dp.reset(new DecoupledPermutation(g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, new_cpg)));
+                if (!is_equal(current_state, *current_cpg, new_state, *new_cpg)){
+                    dp.reset(new DecoupledPermutation(g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, *new_cpg)));
                 }
                 if (dp){
                     decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*dp)));
@@ -308,10 +299,16 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     price_tags[0].update_price_tags(g_state_registry->lookup_state(states[0]));
     
     for (size_t i = 1; i < states.size(); ++i){
-        PathPriceTag &tag = price_tags[i];
+        assert(path[i-1]->is_center_applicable(g_state_registry->lookup_state(states[i-1])));
         
+        PathPriceTag &tag = price_tags[i];
         if (g_factoring->get_profile() != FORK){
             tag.apply_center_op_to_leaves(price_tags[i - 1], *path[i - 1]);
+#ifndef NDEBUG
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                assert(tag.get_number_states(factor) > 0);
+            }
+#endif
         } else {
             tag = PathPriceTag(&price_tags[i - 1]);
         }
@@ -330,11 +327,12 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     reverse(states.begin(), states.end());
 #endif        
     
-    vector<set<int> > marked_leaf_states(g_factors.size());       
+    vector<set<int> > marked_leaf_states(g_factors.size());
     
     // mark leaf goal states
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
+            assert(price_tags[0].get_goal_cost(factor) != CompliantPathGraph::INF);
             int min_cost = numeric_limits<int>::max();
             int best_leaf_state_id = -1;
             
