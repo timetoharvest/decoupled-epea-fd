@@ -57,8 +57,8 @@ bool Reachable::add_state(const LeafStateID &state) {
 }
 
 CompliantPathGraph& Reachable::update_price_tags(const State &base_state,
-                                       const Operator *op,
-                                       const State &) const {
+                                                 const Operator *op,
+                                                 const State &) const {
     
     if (g_factoring->get_profile() != FORK && op != 0){
         tmp_reach = Reachable(0);               // for initial state => op == 0
