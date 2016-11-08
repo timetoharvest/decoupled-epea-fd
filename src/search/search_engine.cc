@@ -89,52 +89,54 @@ void SearchEngine::search() {
 
 bool SearchEngine::check_goal_and_set_plan(const State &state) {
     if (test_goal(state)) {
-        if (g_use_decoupled_search){         
-            const SearchNode &info = search_space.get_node(state);
-            int solution_cost = info.get_g();
-            const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                if (!g_goals_per_factor[factor].empty()){
-                    solution_cost += cpg->get_goal_cost(factor);
-                }
-            }
-            cout << "found a plan of cost " << solution_cost;
-            
+        if (g_use_decoupled_search){            
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                cout << "Solution found ";
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
-            } else if (g_factoring->get_search_type() == FRA){
-                if (!is_optimal_leaf_plan(*cpg)){
-                    cout << ", cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
-                    exit_with(EXIT_UNSOLVED_INCOMPLETE);
+            } else {
+                const SearchNode &info = search_space.get_node(state);
+                int solution_cost = info.get_g();
+                const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
+                for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                    if (!g_goals_per_factor[factor].empty()){
+                        solution_cost += cpg->get_goal_cost(factor);
+                    }
                 }
-                solution_found = true;
-                cheapest_goal_state = state.get_id();
-            } else if (g_factoring->get_search_type() == ASDA){
-                if (is_optimal_leaf_plan(*cpg)){
+                cout << "found a plan of cost " << solution_cost;
+                if (g_factoring->get_search_type() == FRA){
+                    if (!is_optimal_leaf_plan(*cpg)){
+                        cout << ", cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
+                        exit_with(EXIT_UNSOLVED_INCOMPLETE);
+                    }
                     solution_found = true;
-                    bound = solution_cost;
                     cheapest_goal_state = state.get_id();
-                } else {
-                    if (bound > solution_cost){
+                } else if (g_factoring->get_search_type() == ASDA){
+                    if (is_optimal_leaf_plan(*cpg)){
                         solution_found = true;
                         bound = solution_cost;
                         cheapest_goal_state = state.get_id();
-                    }                    
-                    cout << ", not leaf-optimal => continue search [t=" << g_timer << "]" << endl;                            
+                    } else {
+                        if (bound > solution_cost){
+                            solution_found = true;
+                            bound = solution_cost;
+                            cheapest_goal_state = state.get_id();
+                        }                    
+                        cout << ", not leaf-optimal => continue search [t=" << g_timer << "]" << endl;                            
+                        return false;
+                    }
+                } else if (g_factoring->get_search_type() == SDA){                
+                    if (!found_solution()){
+                        solution_found = true;
+                        bound = solution_cost;
+                        cheapest_goal_state = state.get_id();
+                    } else if (solution_cost < bound){
+                        bound = solution_cost;
+                        cheapest_goal_state = state.get_id();
+                    }
+                    cout << " [t=" << g_timer << "]" << endl;
                     return false;
                 }
-            } else if (g_factoring->get_search_type() == SDA){                
-                if (!found_solution()){
-                    solution_found = true;
-                    bound = solution_cost;
-                    cheapest_goal_state = state.get_id();
-                } else if (solution_cost < bound){
-                    bound = solution_cost;
-                    cheapest_goal_state = state.get_id();
-                }
-                cout << " [t=" << g_timer << "]" << endl;
-                return false;
             }
             cout << " [t=" << g_timer << "]" << endl;
             return true;
