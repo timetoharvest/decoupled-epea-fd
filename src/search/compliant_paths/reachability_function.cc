@@ -415,6 +415,7 @@ CompliantPathGraph& Reachable::get_init_state_reachable() {
 
 void Reachable::dump() const {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        cout << "factor " << factor << " ------------" << endl;
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
@@ -430,7 +431,7 @@ void Reachable::dump() const {
 
 
 unique_ptr<CompliantPathGraph> Reachable::clone() const  {
-    return unique_ptr<CompliantPathGraph> (new Reachable(*this));
+    return unique_ptr<CompliantPathGraph>(new Reachable(*this));
 }
 
 unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutation &per) const {
