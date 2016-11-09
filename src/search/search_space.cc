@@ -222,11 +222,13 @@ void SearchSpace::trace_path(const State &goal_state,
             State new_state = g_initial_state();
             unique_ptr<CompliantPathGraph> new_cpg;
             if (op != 0) {
-                State parent_state = g_state_registry->lookup_state(info.parent_state_id);         
-                new_state = g_state_registry->get_successor_state(parent_state, *op, false);
+                State parent_state = g_state_registry->lookup_state(info.parent_state_id);
                 
                 if (g_use_decoupled_search){
+                    new_state = g_state_registry->get_center_successor(parent_state, *op);
                     new_cpg = CPGStorage::storage->get_cpg(parent_state)->update_price_tags(new_state, op, parent_state).clone();
+                } else {
+                    new_state = g_state_registry->get_successor_state(parent_state, *op, false);
                 }
             } else {
                 if (g_use_decoupled_search){
