@@ -63,6 +63,8 @@ public:
     cmp_t cmp_prices(const CompliantPathGraph &cpg) const;
     
     bool is_symmetric_op(const Operator *op, const Operator *op2) const;
+    
+    void print_cycle_notation() const;
 
 };
 
@@ -119,6 +121,8 @@ public:
                                  CompliantPathGraph &leaves) const;
                                  
     void permute_center_state(std::vector<int> &center) const;
+    
+    void print_cycle_notation() const;
     
     const Operator * find_matching_min_cost_permuted_op(const Operator *op, 
 							const std::vector<const Operator*> &ops) const;

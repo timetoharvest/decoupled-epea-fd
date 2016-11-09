@@ -235,6 +235,9 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         const vector<const Effect*> & effects = op->get_effects(factor);
         const vector<const Effect*> & effects2 = op2->get_effects(factor);
+        if (effects.size() != effects2.size()){
+            return false;
+        }
         for (auto eff : effects) {
             auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff->var, eff->val);
             if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
@@ -247,6 +250,11 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
     
     return true;
 }
+
+void LeavesPermutation::print_cycle_notation() const {
+    permutation->print_cycle_notation();
+}
+
 
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
@@ -278,8 +286,11 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
 }
 
 bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
-    const vector<const Effect*> & effects = op->get_effects(-1);
-    const vector<const Effect*> & effects2 = op2->get_effects(-1);
+    const vector<const Effect*> &effects = op->get_effects(-1);
+    const vector<const Effect*> &effects2 = op2->get_effects(-1);
+    if (effects.size() != effects2.size()){
+        return false;
+    }
     for (auto eff : effects) {
 	auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
 	if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
@@ -395,6 +406,25 @@ void DecoupledPermutation::permute_center_state(vector<int> &center) const {
     }
 }
 
+inline bool are_equal(const vector<const Effect*> &effs1, const vector<const Effect*> &effs2) {
+    if (effs1.size() != effs2.size()){
+        return false;
+    }
+    for (auto eff1 : effs1){
+        bool found = false;
+        for (auto eff2 : effs2){
+            if (eff1->var == eff2->var && eff1->val == eff2->val){
+                found = true;
+                break;
+            }
+        }
+        if (!found){
+            return false;
+        }
+    }
+    return true;
+}
+
 const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator *main_op, 
 									  const vector<const Operator *> &ops) const {
 
@@ -407,14 +437,24 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
     const Operator *res = nullptr;
     int cost = numeric_limits<int>::max();
     for(const Operator * op : ops){
-	if(cost > op->get_cost()) {
-	    if (center_permutation && !center_permutation->is_symmetric_op(main_op, op)){
-		continue;
-	    }
+	if(cost >= op->get_cost()) {
+	    if (!center_permutation){
+                if(!are_equal(main_op->get_effects(-1), op->get_effects(-1))) {
+                    continue;
+                }
+            } else if (!center_permutation->is_symmetric_op(main_op, op)){
+                continue;                
+            }
 
-	    if (leaves_permutation && !leaves_permutation->is_symmetric_op(main_op, op)){
-		continue;
-	    }
+	    if (!leaves_permutation){
+                for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                    if(!are_equal(main_op->get_effects(factor), op->get_effects(factor))) {
+                        continue;
+                    }
+                }
+	    } else if (!leaves_permutation->is_symmetric_op(main_op, op)){
+                continue;
+            }
 	
 	    res = op;
 	    cost = res->get_cost();
@@ -432,3 +472,13 @@ bool DecoupledPermutation::stabilizes_center(const State &center) const {
     }
     return center_permutation->stabilizes(center);
 }
+
+void DecoupledPermutation::print_cycle_notation() const {
+    if (center_permutation){
+        center_permutation->print_cycle_notation();
+    }
+    if (leaves_permutation){
+        leaves_permutation->print_cycle_notation();
+    }
+}
+
