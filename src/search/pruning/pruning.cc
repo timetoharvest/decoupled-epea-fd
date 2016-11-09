@@ -86,7 +86,7 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
                 } else {
                     all_goals_reached = false;
                     new_is_larger = true;
-                    new_is_smaller = true;
+                    new_is_smaller = true; // TODO this is not needed?!
                     sizes_equal = false;
                 }
                 skip_leaf[factor] = true;
@@ -94,7 +94,7 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
             } else if (reference->get_goal_cost(factor) >= 0){
                 all_goals_reached = false;
                 new_is_smaller = true;
-                new_is_larger = true;
+                new_is_larger = true; // TODO this is not needed?!
                 sizes_equal = false;
                 skip_leaf[factor] = true;
                 continue;
