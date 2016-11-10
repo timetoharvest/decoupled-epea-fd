@@ -616,6 +616,18 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
     }
 
     for (size_t i = states.size() - 1; i > 0; --i) {
+        // verify that applying permuted_path[i-1] is states[i] results in states[i-1]
+        
+        g_state_registry->lookup_state(states[i]).dump_pddl();
+        cout << endl;
+        cout << permuted_path[i-1]->get_name() << endl;
+        cout << endl;
+        g_state_registry->lookup_state(states[i-1]).dump_pddl();
+        
+        permutations[i-1]->print_cycle_notation();
+        
+        assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
+        
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
 
