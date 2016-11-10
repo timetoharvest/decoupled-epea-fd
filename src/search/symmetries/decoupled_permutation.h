@@ -74,11 +74,14 @@ class CenterPermutation : public Permutation {
 public:
     CenterPermutation (const CenterPermutation &p1, 
                        const CenterPermutation &p2);
+    CenterPermutation (const CenterPermutation &per) : CenterPermutation(per, false) {} 
     CenterPermutation (const Permutation &per, bool invert = false);
     
     ~CenterPermutation() = default;
 
     bool is_symmetric_op(const Operator *op, const Operator *op2) const;
+
+    bool is_valid() const;
 
 };
 
@@ -131,6 +134,10 @@ public:
         return *leaves_permutation;
     }
 
+    //For assertion purposes
+    bool has_valid_center_permutation() const {
+	return !center_permutation || center_permutation->is_valid();
+    }
 };
 
 

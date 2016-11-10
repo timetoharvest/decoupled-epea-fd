@@ -626,12 +626,13 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
         
         permutations[i-1]->print_cycle_notation();
         
-        assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
-        
+       
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
 
         permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
+
+        assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
     }
 }
 

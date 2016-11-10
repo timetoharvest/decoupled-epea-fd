@@ -224,9 +224,11 @@ DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const 
     assert(curr_trace.canonical_center == new_trace.canonical_center);
     //assert (curr_trace.cpg == new_trace.cpg);
     
+    
 
     DecoupledPermutation p1(decoupled_group->compose_permutation(new_trace), true);
     DecoupledPermutation p2(decoupled_group->compose_permutation(curr_trace));
+
     return DecoupledPermutation(p2, p1);
 }
 

@@ -161,17 +161,20 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
             for (auto gen : generators_only_leaves) {
                 if(gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
                     changed = true;
+
                     res.trace.push_back(gen);
                 }
             }
             for (const auto & gen : generators_stable_center) {
                 if (gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
                     changed = true;
+
                     res.trace.push_back(gen);   
                 }
             }
         }
     }
+
 
     // cout << "done" << endl;
     // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][tmp_state[g_center_vars[i]]] << "       ";
@@ -199,5 +202,6 @@ DecoupledPermutation DecoupledGroup::compose_permutation(const DecoupledTrace &t
     for (auto perm  : trace.trace) {
         new_perm.reset(new DecoupledPermutation(*new_perm, *perm));
     }
+    assert(new_perm->has_valid_center_permutation());
     return *new_perm;
 }

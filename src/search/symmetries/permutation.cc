@@ -138,6 +138,9 @@ void Permutation::print_cycle_notation() const {
             }
 
             pair<int, int> varval = findex.get_var_val_by_index(i);
+	    if(!affected[varval.first]) {
+		continue;
+	    }
             cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
 
             while(get_value(current) != (int)i){

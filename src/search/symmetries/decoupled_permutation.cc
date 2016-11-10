@@ -7,6 +7,7 @@
 #include "../state_registry.h"
 
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 
@@ -259,6 +260,7 @@ void LeavesPermutation::print_cycle_notation() const {
 
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
+
     //Remove leaf vars from vars_affected
     vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
@@ -279,11 +281,51 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
     affected_vars_cycles.clear();
 
     finalize();
+
+    assert(is_valid());
+
 }
 
+
+bool CenterPermutation::is_valid() const {
+    return std::all_of(from_vars.begin(), from_vars.end(), [] (int v) {
+		return v == -1 ||  g_belongs_to_factor[v] == -1;
+	});
+}
 CenterPermutation::CenterPermutation(const CenterPermutation &p1, 
                                      const CenterPermutation &p2) : 
     Permutation(p1, p2) {
+
+    //Remove leaf vars from vars_affected
+    vars_affected.erase(remove_if(vars_affected.begin(), 
+				       vars_affected.end(),
+				       [&](int x){ 
+					   if(g_belongs_to_factor[x] >= 0) {
+					       affected[x] = false;
+					       return true;
+					   }
+					   return false;}),
+			vars_affected.end());
+
+    for(size_t i = 0; i < from_vars.size(); ++i) {
+        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] >= 0) {
+            from_vars[i] = -1;
+        }
+    }
+
+    affected_vars_cycles.clear();
+
+    finalize();
+
+    assert(p2.is_valid());
+
+    if(!p1.is_valid()) {
+	int * i = nullptr;
+	*i = 0;
+    }
+    assert(p1.is_valid());
+
+    assert(is_valid());
 }
 
 bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
@@ -313,6 +355,7 @@ DecoupledPermutation::DecoupledPermutation(const Permutation &p) {
     if (p.affects_center()){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
     }
+    assert(has_valid_center_permutation());
 }
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
@@ -323,6 +366,8 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
     if (per.leaves_permutation){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation)));
     }
+
+    assert(has_valid_center_permutation());
 }
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {    
@@ -333,9 +378,12 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
     if (per.leaves_permutation) {
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation), invert));
     }
+
+    assert(has_valid_center_permutation());
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const DecoupledPermutation &p2) {
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, 
+					   const DecoupledPermutation &p2) {
     if (p1.center_permutation && p2.center_permutation){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation), *(p2.center_permutation)));
     } else if (p1.center_permutation){
@@ -351,6 +399,8 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, const
     } else if (p2.leaves_permutation){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
     }
+
+    assert(has_valid_center_permutation());
 }
 
 bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves,
@@ -486,8 +536,8 @@ void DecoupledPermutation::print_cycle_notation() const {
     if (center_permutation){
         center_permutation->print_cycle_notation();
     }
-    if (leaves_permutation){
-        leaves_permutation->print_cycle_notation();
-    }
+    //if (leaves_permutation){
+        //leaves_permutation->print_cycle_notation();
+    //}
 }
 
