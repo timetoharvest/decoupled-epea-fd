@@ -240,6 +240,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
         }
         for (auto eff : effects) {
             auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff->var, eff->val);
+            assert(is_affected(factor) || (new_var_val.first == eff->var && new_var_val.second == eff->val));
             if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
                         return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
                     }) == effects2.end() ) {
@@ -431,13 +432,14 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
     assert(!ops.empty());
     
     if (!center_permutation && !leaves_permutation){
+        assert(find(ops.begin(), ops.end(), main_op) != ops.end());
         return main_op;
     }
     
     const Operator *res = nullptr;
     int cost = numeric_limits<int>::max();
-    for(const Operator * op : ops){
-	if(cost >= op->get_cost()) {
+    for(auto op : ops){
+	if(cost > op->get_cost()) {
 	    if (!center_permutation){
                 if(!are_equal(main_op->get_effects(-1), op->get_effects(-1))) {
                     continue;
@@ -447,14 +449,21 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
             }
 
 	    if (!leaves_permutation){
+                bool equal = true;
                 for (size_t factor = 0; factor < g_factors.size(); ++factor){
-                    if(!are_equal(main_op->get_effects(factor), op->get_effects(factor))) {
-                        continue;
+                    if(!are_equal(main_op->get_effects(factor), op->get_effects(factor))){
+                        equal = false;
+                        break;
                     }
+                }
+                if (!equal){
+                    continue;
                 }
 	    } else if (!leaves_permutation->is_symmetric_op(main_op, op)){
                 continue;
             }
+	
+            assert(cost == numeric_limits<int>::max());
 	
 	    res = op;
 	    cost = res->get_cost();
