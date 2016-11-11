@@ -1410,9 +1410,12 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         l++;
     }
 
-    // center = vars - max_ind_sets
+    // minimize center, by pushing center variables into leaves
     int c_rm = 0;
+    int c_size = -1;
+    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
     if (minimize_center) {
+        // extract center variables
         list<int> center;
         vector<bool> in_center (cg_g.size(), false);
         for (size_t i = 0; i < vars.size(); i++) {
@@ -1435,6 +1438,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             }
         }
         cout << "center size: " << center.size() << endl;
+        c_size = center.size();
         vector<bool> merged_leaf (max_ind_sets.size(), false);
         for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
             if (cg_g[*c].size() == 0) {
@@ -1451,7 +1455,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 }
             }
             else {
-
                 // if all neighbours lie in the center we can skip this var
                 set<int> leaf_neighbours;
                 for (set<int>::iterator n = cg_g[*c].begin(); n != cg_g[*c].end(); ++n) {
@@ -1470,7 +1473,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     c_rm++;
                 } else {
                     set<int> temp;
-                    if (merge_leaves >= 1) {
+                    if (!prevent_leaf_leaf) {
+                        //TODO merge center into leaf, if the resulting leaf-leaf interaction is valid
+                    } else if (merge_leaves >= 1) {
                         for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
                             if (merge_leaves == 2 || (merge_leaves == 1 && !merged_leaf[*l])) {
                                 temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
@@ -1480,15 +1485,13 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                         }
                         temp.insert(*c);
                         in_center[*c] = false;
+                        c_rm++;
                         int pos = (int)max_ind_sets.size();
                         merged_leaf.push_back(true);
                         max_ind_sets.push_back(temp);
                         for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
                             var_to_leaf[*it] = pos;
                         }
-                    }
-                    else if (!prevent_leaf_leaf) {
-                        //TODO merge center into leaf, if the resulting leaf-leaf interaction is valid
                     }
                 }
             }
@@ -1513,9 +1516,10 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
     cout << endl;
 //#endif
+    // put frozen leaves back in center
     int f_rm = 0;
     FactoredVars temp;
-    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+    frozen_leaves = get_frozen_leaves(max_ind_sets);
     for (size_t i = 0; i < frozen_leaves.size(); i++) {
         if (!frozen_leaves[i]) {
             temp.push_back(max_ind_sets[i]);
@@ -1523,11 +1527,27 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             f_rm++;
         }
     }
-//#ifdef DEBUG_FACTORING
+    max_ind_sets = temp;
     cout << "Removed frozen leaves: " << f_rm << endl;
-//#endif
-    cout << "Number of factors: " << temp.size() << endl;
-    return temp;
+
+    // if center is empty, use biggest leaf as center
+    if (c_rm == c_size && f_rm == 0) {
+        // select biggest leaf to be the new center
+        FactoredVars::iterator max = max_ind_sets.begin();
+        if (max_ind_sets.size() > 1) {
+            for (FactoredVars::iterator i = max_ind_sets.begin(); i != max_ind_sets.end(); i++) {
+                if (i->size() > max->size()) {
+                    max = i;
+                }
+            }
+        }
+        max_ind_sets.erase(max);
+        cout << "Repopulated center: 1" << endl;
+    } else {
+        cout << "Repopulated center: 0" << endl;
+    }
+    cout << "Number of factors: " << max_ind_sets.size() << endl;
+    return max_ind_sets;
 }
 
 
