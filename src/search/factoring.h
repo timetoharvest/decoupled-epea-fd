@@ -78,6 +78,8 @@ class Factoring {
     SEARCH_TYPE search_type;
     
     size_t max_precompute_state_space_size;
+
+    bool no_search;
     
 protected:
     

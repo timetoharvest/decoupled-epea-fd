@@ -38,7 +38,8 @@ void InteractionGraph::add_dependency(int from, int to) {
 
 
 Factoring::Factoring(const Options &opts) :
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+            search_type(SEARCH_TYPE(opts.get_enum("search_type"))),
+            no_search(opts.get<bool>("no_search")){
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
         case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
@@ -460,6 +461,10 @@ void Factoring::do_factoring_or_abstain() {
     apply_factoring(best_factoring);    
     
     print_factoring();
+    if (no_search) {
+        cout << "Factoring complete, do not perform search" << endl;
+        exit (-1);
+    }
 }
 
 vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
@@ -1746,6 +1751,10 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "build_state_space_size",
         "TODO",
         "10000");
+    parser.add_option<bool>(
+        "no_search",
+        "TODO",
+        "false");
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser& parser) {
