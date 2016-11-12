@@ -150,7 +150,7 @@ public:
 class MaxIndependentSetFactoring : public Factoring {
 protected:
     enum MIS_ALGO mis_algo;
-    bool minimize_center;
+    int minimize_center;
     bool prevent_leaf_leaf;
     int xth_factoring = 0;
     int merge_leaves = 0;
@@ -160,7 +160,7 @@ public:
     MaxIndependentSetFactoring(const Options &opts)
             : Factoring(opts),
                 mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
-                minimize_center(opts.get<bool>("minimize_center")),
+                minimize_center(opts.get<int>("minimize_center")),
                 prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")),
                 xth_factoring(opts.get<int>("xth_fact")),
                 merge_leaves(opts.get<int>("merge_leaves")){
@@ -1428,25 +1428,33 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     // minimize center, by pushing center variables into leaves
     int c_rm = 0;
+    int f_rm = 0;
+    int c_rm_o = 0;
+    int f_rm_o = 0;
     int c_size = -1;
+    bool changed = true;
+    int times_minimized = 0;
     vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
-    if (minimize_center) {
+    while (changed && minimize_center >= 1) {
+        times_minimized++;
         // extract center variables
         list<int> center;
-        vector<bool> in_center (cg_g.size(), false);
+        vector<bool> in_center(cg_g.size(), true);
+        for (size_t i = 0; i < max_ind_sets.size(); i++) {
+            for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); i++) {
+                in_center[*it] = false;
+            }
+        }
         for (size_t i = 0; i < vars.size(); i++) {
-            if (found_mis.find(i) == found_mis.end()) {
+            if (in_center[i]){
                 if (center.empty() || cg_g[i].size() <= cg_g[center.front()].size()) {
                     center.push_front(i);
-                    in_center[i] = true;
                 } else if (cg_g[i].size() >= cg_g[center.back()].size()) {
                     center.push_back(i);
-                    in_center[i] = true;
                 } else {
                     for (list<int>::iterator s_it = center.begin(); s_it != center.end(); ++s_it) {
                         if (cg_g[i].size() <= cg_g[*s_it].size()) {
                             center.insert(s_it, i);
-                            in_center[i] = true;
                             break;
                         }
                     }
@@ -1512,40 +1520,75 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 }
             }
         }
-    }
-    for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();){
-        if (it->empty()) {
-            it = max_ind_sets.erase(it);
-        } else {
-            it++;
+        for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();) {
+            if (it->empty()) {
+                it = max_ind_sets.erase(it);
+            } else {
+                it++;
+            }
         }
-    }
 //#ifdef DEBUG_FACTORING
-    cout << "Minimized center, variables removed: " << c_rm << endl;
-    for (size_t i = 0; i < max_ind_sets.size(); i++) {
-        cout << "   (";
-        set<int> factor = max_ind_sets[i];
-        for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
-            cout << *it << " " ;
+        cout << "Minimized center, variables removed: " << c_rm << endl;
+        for (size_t i = 0; i < max_ind_sets.size(); i++) {
+            cout << "   (";
+            set<int> factor = max_ind_sets[i];
+            for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
+                cout << *it << " ";
+            }
+            cout << ")" << endl;
         }
-        cout << ")" << endl;
-    }
-    cout << endl;
+        cout << endl;
 //#endif
-    // put frozen leaves back in center
-    int f_rm = 0;
-    FactoredVars temp;
-    frozen_leaves = get_frozen_leaves(max_ind_sets);
-    for (size_t i = 0; i < frozen_leaves.size(); i++) {
-        if (!frozen_leaves[i]) {
-            temp.push_back(max_ind_sets[i]);
-        } else {
-            f_rm++;
+        // put frozen leaves back in center
+        FactoredVars temp;
+        frozen_leaves = get_frozen_leaves(max_ind_sets);
+        for (size_t i = 0; i < frozen_leaves.size(); i++) {
+            if (!frozen_leaves[i]) {
+                temp.push_back(max_ind_sets[i]);
+            } else {
+                f_rm++;
+            }
+        }
+        max_ind_sets = temp;
+        cout << "Removed frozen leaves: " << f_rm << endl;
+//#ifdef DEBUG_FACTORING
+        for (size_t i = 0; i < max_ind_sets.size(); i++) {
+            cout << "   (";
+            set<int> factor = max_ind_sets[i];
+            for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
+                cout << *it << " ";
+            }
+            cout << ")" << endl;
+        }
+        cout << endl;
+//#endif
+        if ((f_rm_o != f_rm || c_rm_o != c_rm) && minimize_center == 2) {
+            cout << "removed center and/or frozen leaves in round: " << times_minimized << endl;
+            changed = true;
+            f_rm_o = f_rm;
+            f_rm = 0;
+            c_rm_o = c_rm;
+            c_rm = 0;
+        }
+        else {
+            cout << "do not repeat minimize_center, round: " << times_minimized << endl;
+            changed = false;
         }
     }
-    max_ind_sets = temp;
-    cout << "Removed frozen leaves: " << f_rm << endl;
-
+    if (minimize_center == 0) {
+        // put frozen leaves back in center
+        FactoredVars temp;
+        frozen_leaves = get_frozen_leaves(max_ind_sets);
+        for (size_t i = 0; i < frozen_leaves.size(); i++) {
+            if (!frozen_leaves[i]) {
+                temp.push_back(max_ind_sets[i]);
+            } else {
+                f_rm++;
+            }
+        }
+        max_ind_sets = temp;
+        cout << "Removed frozen leaves: " << f_rm << endl;
+    }
     // if center is empty, use biggest leaf as center
     if (c_rm == c_size && f_rm == 0) {
         // select biggest leaf to be the new center
@@ -1787,10 +1830,10 @@ void ForkFactoring::add_options_to_parser(OptionParser& parser) {
 
 void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     // TODO add docu
-    parser.add_option<bool>(
+    parser.add_option<int>(
             "minimize_center",
             "TODO",
-            "false"
+            "0"
     );
     parser.add_option<bool>(
             "prevent_leaf_leaf",
