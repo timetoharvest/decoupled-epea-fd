@@ -50,6 +50,7 @@ private:
     NGraph remove_components(NGraph, NGraph);
     std::set<int> find_mis_1(NGraph);
     std::set<int> find_mis_2(NGraph);
+    std::set<int> find_mis_2_it(NGraph, int);
     std::set<int> ms_1(NGraph, std::set<int>);
     std::set<int> ms_2(NGraph, std::set<int>);
     std::set<int> brute_force_mis_DFS(NGraph, int x);

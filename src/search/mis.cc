@@ -13,7 +13,8 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
     switch (algo) {
         case A1: mis = find_mis_1(graph);
             break;
-        default: case A2: mis = find_mis_2(graph);
+        //default: case A2: mis = find_mis_2(graph);
+        default: case A2: mis = find_mis_2_it(graph,x);
             break;
         case DFS: mis = brute_force_mis_DFS(graph, x);
             break;
@@ -745,6 +746,237 @@ set<int> MIS::find_mis_2(NGraph g) {
     } else {
         return mis2;
     }
+}
+
+set<int> MIS::find_mis_2_it(NGraph g, int x) {
+
+    vector<set<int>> all_mis;
+    set<int> first_mis;
+    all_mis.push_back(first_mis);
+
+    stack<pair<NGraph,int>> stack;
+    stack.push(make_pair(g,0));
+
+    while (!stack.empty()) {
+        NGraph g = stack.top().first;
+        int mis = stack.top().second;
+        stack.pop();
+
+        if (g.size() <= 1) {
+            all_mis[mis].insert((*g.begin()).first);
+        } else {
+            ConComp connected_components;
+            CtoCCMap c_to_cc_map(g_variable_domain.size());
+            find_connected_components(g, &c_to_cc_map, &connected_components);
+            if (connected_components.size() > 1) {
+                set<int> cc = connected_components[0];
+                NGraph g_without_c = remove_components(g, cc);
+                NGraph c = remove_components(g, g_without_c);
+                stack.push(make_pair(c, mis));
+                stack.push(make_pair(g_without_c, mis));
+            } else {
+                // find w and v such that N(w) sub_eq N(v), discard v
+                int v1;
+                bool found = false;
+                for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
+                    for (set<int>::iterator n = g[it->first].begin(); n != g[it->first].end(); n++) {
+                        if (*n < it->first) {
+                            continue;
+                        }
+                        if (g[it->first].size() >= g[*n].size()) {
+                            bool subset = true;
+                            for (set<int>::iterator nn = g[*n].begin(); nn != g[*n].end(); nn++) {
+                                if (g[it->first].find(*nn) == g[it->first].end() && *nn != it->first) {
+                                    subset = false;
+                                    break;
+                                }
+                            }
+                            if (subset) {
+                                found = true;
+                                v1 = it->first;
+                                break;
+                            }
+
+                        } else if (g[it->first].size() < g[*n].size()) {
+                            bool subset = true;
+                            for (set<int>::iterator in = g[it->first].begin(); in != g[it->first].end(); in++) {
+                                if (g[*n].find(*in) == g[*n].end() && *in != *n) {
+                                    subset = false;
+                                    break;
+                                }
+                            }
+                            if (subset) {
+                                found = true;
+                                v1 = *n;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (found) {
+                    NGraph g_without_v = remove_components(g, v1);
+
+                    stack.push(make_pair(g_without_v, mis));
+                } else {
+                    //find foldable vertex v (d(v) = 2)
+                    found = false;
+                    int v2;
+                    for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
+                        if (it->second.size() == 2) {
+                            v2 = it->first;
+                            found = true;
+                            break;
+
+                        }
+                    }
+                    if (found) {
+                        int i1 = *(g[v2].begin());
+                        int i2 = *(g[v2].begin()++);
+                        if (g[i1].find(i2) != g[i1].end()) {
+                            // folding basically merges the two neighbouring nodes
+                            set<int> u(g[i1]);
+                            u.insert(g[i2].begin(), g[i2].end());
+                            NGraph gf = remove_components(remove_components(g, v2), i2);
+                            gf[i1].clear();
+                            gf[i1].insert(u.begin(), u.end());
+                            all_mis[mis].insert(v2);
+                            stack.push(make_pair(gf, mis));
+                        } else {
+                            NGraph g_without_Nv = remove_components(remove_components(g, v2), g[v2]);
+                            all_mis[mis].insert(v2);
+                            stack.push(make_pair(g_without_Nv, mis));
+                        }
+                    } else {
+                        // select v of maximum degree, which minimizes |E(N(v))|
+                        set<size_t> max_deg;
+                        size_t max = 0;
+
+                        for (NGraph::iterator it = g.begin(); it != g.end(); it++) {
+                            if (it->second.size() > max) {
+                                max_deg.clear();
+                                max = it->second.size();
+                            }
+                            if (it->second.size() == max) {
+                                max_deg.insert(it->first);
+                            }
+                        }
+
+                        int v3;
+                        if (max_deg.size() == 1) {
+                            v3 = *max_deg.begin();
+                        } else { // find edges of graph induces by N(v)
+                            // N(v) = g[i]
+                            // N(N(v)) in g[i]
+                            int e = 0;
+                            v3 = *max_deg.begin();
+                            set<int> visited;
+                            for (set<size_t>::iterator i = max_deg.begin(); i != max_deg.end(); i++) {
+                                int cur_e = 0;
+                                for (set<int>::iterator n = g[*i].begin(); n != g[*i].end(); n++) {
+                                    visited.insert(*n);
+                                    for (set<int>::iterator nn = g[*n].begin(); nn != g[*n].end(); nn++) {
+                                        // don't count edges twice
+                                        if (visited.find(*nn) == visited.end() && *nn != (int) *i) {
+                                            // is N(N(v)) in N(v)
+                                            if (g[*i].find(*nn) != g[*i].end()) {
+                                                cur_e++;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (cur_e > e) {
+                                    v3 = *i;
+                                    e = cur_e;
+                                }
+                            }
+                        }
+
+                        //return max{mis(G - {v} - M{v}, 1 + mis(G - N[v]}
+                        // M(v), set of mirrors of v
+                        // mirror of v: vertex u in N(N(v)) such that N(v)\N(u) is a possibly empty clique
+                        // clique: every two distinct vertices are adjacent
+
+
+                        // find mirrors of v
+                        set<int> mv;
+                        set<int> visited;
+                        for (set<int>::iterator n = g[v3].begin(); n != g[v3].end(); n++) {
+                            for (set<int>::iterator u = g[*n].begin(); u != g[*n].end(); u++) {
+                                if (visited.find(*u) == visited.end() && *u != v3) {
+                                    visited.insert(*u);
+                                    // c = N(v)\N(u)
+                                    set<int> c(g[v3]);
+                                    for (set<int>::iterator it = g[*u].begin(); it != g[*u].end(); it++) {
+                                        c.erase(*it);
+                                    }
+                                    //c.erase(g[*u].begin(), g[*u].end());
+
+                                    for (set<int>::iterator cc = c.begin(); cc != c.begin(); cc++) {
+                                    }
+                                    // test whether c is a clique (every two distinct vertices are adjacent)
+                                    // (every element in c must be a neighbour of every other element in c)
+                                    bool clique = true;
+                                    if (c.size() > 1) {
+                                        set<int> cn(c);
+                                        for (set<int>::iterator cc = c.begin(); cc != c.begin() && clique; cc++) {
+                                            cn.erase(*cc);
+                                            for (set<int>::iterator cnn = cn.begin(); cnn != cn.end(); cnn++) {
+                                                if (g[*cc].find(*cnn) == g[*cc].end()) {
+                                                    clique = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (clique) {
+                                        mv.insert(*u);
+                                    }
+                                }
+                            }
+                        }
+                        //set<int> mis1 = find_mis_2(remove_components(remove_components(g, v3), mv));
+                        stack.push(make_pair(remove_components(remove_components(g, v3), mv), mis));
+                        //set<int> mis2 = find_mis_2(remove_components(remove_components(g, g[v3]), v3));
+                        set<int> copy(all_mis[mis]);
+                        copy.insert(v3);
+                        all_mis.push_back(copy);
+                        stack.push(make_pair(remove_components(remove_components(g, g[v3]), v3), all_mis.size()-1));
+                    }
+                }
+            }
+        }
+    }
+
+    cout << "MIS found: " << all_mis.size() << endl;
+    cout << "Select x-th factoring, x: " << x << endl;
+//#endif
+    vector<set<int>> temp;
+    size_t max = all_mis[0].size();
+    temp.push_back(all_mis[0]);
+    for (size_t i = 1; i < all_mis.size(); i++){
+        if (all_mis[i].size() >= max){
+            if (all_mis[i].size() > max) {
+                temp.clear();
+                max = all_mis[i].size();
+            }
+            temp.push_back(all_mis[i]);
+        }
+    }
+    all_mis = temp;
+    set<int> mis;
+    if (all_mis.empty()) {
+        cout << "No MIS found" << endl;
+        return mis;
+    }
+    if (x >= (int) all_mis.size()) {
+        cout << "No more factoring found: 1" << endl;
+        return mis;
+    }
+
+    cout << "No more factoring found: 0" << endl;
+    assert(x >= 0 && x < (int) all_mis.size());
+
+    return all_mis[x];
 }
 
 bool MIS::check_mis(vector<bool> mis) {
