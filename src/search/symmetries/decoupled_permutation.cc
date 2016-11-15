@@ -6,8 +6,8 @@
 #include "../globals.h"
 #include "../state_registry.h"
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 
 using namespace std;
 
@@ -260,7 +260,6 @@ void LeavesPermutation::print_cycle_notation() const {
 
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
-
     //Remove leaf vars from vars_affected
     vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
@@ -283,9 +282,7 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
     finalize();
 
     assert(is_valid());
-
 }
-
 
 bool CenterPermutation::is_valid() const {
     return std::all_of(from_vars.begin(), from_vars.end(), [] (int v) {
@@ -536,8 +533,8 @@ void DecoupledPermutation::print_cycle_notation() const {
     if (center_permutation){
         center_permutation->print_cycle_notation();
     }
-    //if (leaves_permutation){
-        //leaves_permutation->print_cycle_notation();
-    //}
+    if (leaves_permutation){
+        leaves_permutation->print_cycle_notation();
+    }
 }
 
