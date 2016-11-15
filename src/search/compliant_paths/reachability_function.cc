@@ -438,7 +438,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutati
     
     Reachable *res = new Reachable(nullptr);
 
-    for(auto to_factor : per.get_factors_affected()) {
+    for(size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor) {
         if (!per.is_affected(to_factor)){
             res->reachable[to_factor] = reachable[to_factor];
             res->goal_reached[to_factor] = goal_reached[to_factor];
@@ -450,7 +450,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutati
                 if (has_leaf_state(id, from_factor)){
                     --num_states;
                     auto to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-                    assert(to_pair.first == to_factor);
+                    assert(to_pair.first == (int) to_factor);
                     auto to_val = to_pair.second;
 
                     res->add_state(LeafStateID(to_val, to_factor));
@@ -474,8 +474,8 @@ unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutati
 
 bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
 
-    auto old_reachable(reachable);
-    auto old_goal_reached(goal_reached);
+    vector<boost::dynamic_bitset<> > old_reachable(reachable);
+    boost::dynamic_bitset<> old_goal_reached(goal_reached);
 
     for (auto factor : per.get_factors_affected()) {
 	reachable[factor].reset();
