@@ -463,7 +463,7 @@ void Factoring::do_factoring_or_abstain() {
     print_factoring();
     if (no_search) {
         cout << "Factoring complete, do not perform search" << endl;
-        exit (-1);
+        exit_with(EXIT_UNSOLVED_INCOMPLETE);
     }
 }
 
@@ -1371,7 +1371,7 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
             const Condition &prevail = op->get_preconditions()[prev];
             pre_factors.insert(belongs_to_factor[prevail.var]);
         }
-
+        pre_factors.erase(-1);
         bool center = false;
         for (size_t post = 0; post < op->get_effects().size(); post++){
             const Effect &prepost = op->get_effects()[post];
