@@ -331,7 +331,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         }
                         center_successors[factor][id].reserve(center_ops.size());
                         for (size_t op = 0; op < center_ops.size(); ++op){
-                            if (center_ops[op]->has_precondition_on(factor)){
+                            if (center_ops[op]->has_precondition_on(factor)){ // TODO fix this to support general-star factorings
                                 center_successors[factor][id].push_back(center_ops[op]->get_index());
                             }
                         }
@@ -372,7 +372,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 for (size_t j = 0; j < applicable_ops.size(); ++j){
                     const Operator *op = applicable_ops[j];
 
-                    if (!op->get_effects(factor).empty()){                        
+                    if (!op->get_effects(factor).empty()){
                         bool is_center_op = op->get_affected_factor() == -1;
                         
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
