@@ -1477,6 +1477,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     // add c to respective leaf
                     max_ind_sets[var_to_leaf[*n]].insert(*c);
                     in_center[*c] = false;
+                    var_to_leaf.insert(pair<int,int>(*c,var_to_leaf[*n]));
                     c_rm++;
                 }
             }
@@ -1495,21 +1496,25 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                     int l = *leaf_neighbours.begin();
                     max_ind_sets[l].insert(*c);
                     in_center[*c] = false;
+                    var_to_leaf.insert(pair<int,int>(*c,l));
                     c_rm++;
                 } else {
                     if (!prevent_leaf_leaf) {
                         //TODO merge center into leaf, if the resulting leaf-leaf interaction is valid
                     } else if (merge_leaves >= 1) {
                         set<int> temp;
+                        int pos = max_ind_sets.size();
                         for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
                             if (merge_leaves == 2 || (merge_leaves == 1 && !merged_leaf[*l])) {
                                 temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
                                 set<int> empty;
                                 max_ind_sets[*l] = empty;
+                                var_to_leaf[*l] = pos;
                             }
                         }
                         temp.insert(*c);
                         in_center[*c] = false;
+                        var_to_leaf.insert(pair<int,int>(*c,pos));
                         c_rm++;
                         merged_leaf.push_back(true);
                         max_ind_sets.push_back(temp);
