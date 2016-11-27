@@ -1508,18 +1508,24 @@ bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
         cout << "   Factor: " << it->first << endl;
         cout << "       Parents: ";
         for (set<int>::iterator p = it->second.first.begin(); p != it->second.first.end(); ++p) {
-            cout << *p << " ";
+            if (it->first != -1 && (*p != it->first && *p != -1)) {
+                valid = false;
+                cout << "invalid parent: " << *p;
+            } else {
+                cout << *p << " ";
+            }
         }
         cout << endl;
         cout << "       Children: ";
         for (set<int>::iterator c = it->second.second.begin(); c != it->second.second.end(); ++c) {
-            cout << *c << " ";
+            if (it->first != -1 && (*c != it->first && *c != -1)) {
+                valid = false;
+                cout << "invalid child: " << *c;
+            } else {
+                cout << *c << " ";
+            }
         }
         cout << endl;
-        if ((it->first != -1) && (it->second.first.size() > 1 || it->second.second.size() > 1)) {
-            valid = false;
-            cout << "invalid factor" << endl;
-        }
     }
     return valid;
 }
@@ -1751,20 +1757,29 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                         } else if (arg_merge_leaves >= 1) {
                             set<int> temp;
                             int pos = max_ind_sets.size();
+                            bool invalid_merge = false;
                             for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
                                 if (arg_merge_leaves == 2 || (arg_merge_leaves == 1 && !merged_leaf[*l])) {
                                     temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
                                     set<int> empty;
                                     max_ind_sets[*l] = empty;
-                                    var_to_leaf[*l] = pos;
+                                    for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
+                                        var_to_leaf[*it] = pos;
+                                    }
+                                }
+                                else if (arg_merge_leaves == 1 && merged_leaf[*l]) {
+                                    invalid_merge = true;
+                                    break;
                                 }
                             }
-                            temp.insert(*c);
-                            in_center[*c] = false;
-                            var_to_leaf.insert(pair<int, int>(*c, pos));
-                            c_rm++;
-                            merged_leaf.push_back(true);
-                            max_ind_sets.push_back(temp);
+                            if (!invalid_merge) {
+                                temp.insert(*c);
+                                in_center[*c] = false;
+                                var_to_leaf.insert(pair<int, int>(*c, pos));
+                                c_rm++;
+                                merged_leaf.push_back(true);
+                                max_ind_sets.push_back(temp);
+                            }
                         }
                     }
                 }
