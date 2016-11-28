@@ -1758,13 +1758,14 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                             set<int> temp;
                             int pos = max_ind_sets.size();
                             bool invalid_merge = false;
+                            map<int, int> temp_map(var_to_leaf);
                             for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
                                 if (arg_merge_leaves == 2 || (arg_merge_leaves == 1 && !merged_leaf[*l])) {
                                     temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
                                     set<int> empty;
                                     max_ind_sets[*l] = empty;
                                     for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
-                                        var_to_leaf[*it] = pos;
+                                        temp_map[*it] = pos;
                                     }
                                 }
                                 else if (arg_merge_leaves == 1 && merged_leaf[*l]) {
@@ -1773,6 +1774,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                                 }
                             }
                             if (!invalid_merge) {
+                                var_to_leaf = temp_map;
                                 temp.insert(*c);
                                 in_center[*c] = false;
                                 var_to_leaf.insert(pair<int, int>(*c, pos));
