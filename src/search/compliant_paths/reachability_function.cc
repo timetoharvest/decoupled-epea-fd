@@ -331,7 +331,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                             add_state(lid);
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(lid);
-
+                            // TODO store center successors if new leaf state
                             add_state(g_state_registry->get_successor_leaf_state_id(state, op));
                         }
                     }
