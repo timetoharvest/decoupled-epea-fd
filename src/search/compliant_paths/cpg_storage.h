@@ -42,19 +42,19 @@ class PriceStorage : public CPGStorage {
     
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &prices[state];
     }
     
 public:
     
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
         return &prices[state];
     }
     
-    virtual size_t size(const StateRegistry *registry) const {
+    virtual size_t size(const StateRegistry *registry) const override {
         return prices.size(registry);
     }
     
@@ -71,19 +71,19 @@ class PruningPriceStorage : public CPGStorage {
     
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &pruning_prices[state];
     }
     
 public:
     
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
         return &pruning_prices[state];
     }
     
-    virtual size_t size(const StateRegistry *registry) const {
+    virtual size_t size(const StateRegistry *registry) const override {
         return pruning_prices.size(registry);
     }
     
@@ -100,19 +100,19 @@ class ReachableStorage : public CPGStorage {
         
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &reachable[state];
     }
     
 public:
     
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
         return &reachable[state];
     }
     
-    virtual size_t size(const StateRegistry *registry) const {
+    virtual size_t size(const StateRegistry *registry) const override {
         return reachable.size(registry);
     }
     
@@ -129,19 +129,19 @@ class PruningReachableStorage : public CPGStorage {
         
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) {
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &pruning_reachable[state];
     }
     
 public:
     
-    virtual const CompliantPathGraph* get_cpg(const State &state) const {
+    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
         return &pruning_reachable[state];
     }
     
-    virtual size_t size(const StateRegistry *registry) const {
+    virtual size_t size(const StateRegistry *registry) const override {
         return pruning_reachable.size(registry);
     }
     
