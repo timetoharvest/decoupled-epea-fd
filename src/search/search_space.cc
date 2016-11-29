@@ -227,6 +227,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 if (g_use_decoupled_search){
                     new_state = g_state_registry->get_center_successor(parent_state, *op);
                     new_cpg = CPGStorage::storage->get_cpg(parent_state)->update_price_tags(new_state, op, parent_state).clone();
+                    new_cpg->discard_new_graph();
                 } else {
                     new_state = g_state_registry->get_successor_state(parent_state, *op, false);
                 }
