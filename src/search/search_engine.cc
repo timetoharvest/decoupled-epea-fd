@@ -110,7 +110,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                     cout << ", not leaf-optimal => continue search [t=" << g_timer << "]" << endl;                            
                     return false;
                 }
-            } else if (g_factoring->get_search_type() == SDA){                
+            } else if (g_factoring->get_search_type() == SDA){
                 if (!found_solution()){
                     solution_found = true;
                     bound = solution_cost;
