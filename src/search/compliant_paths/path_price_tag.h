@@ -36,8 +36,6 @@ class PathPriceTag : public Prices {
     PathPriceTag(const CompliantPathGraph &cpg);
     
 public:
-    
-    PathPriceTag(){};
       
     const PathPriceTagInfo &get_path_info_for_fact(int id, int factor) const;
     

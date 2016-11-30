@@ -564,16 +564,22 @@ void StateRegistry::output_decoupled_state_space_size() const {
     
     // in orbit search, when reconstructing the plan, there are center states created
     // for which no CompliantPathGraph is stored
-    assert(size() == CPGStorage::storage->size(this) || g_symmetry_graph);
     
     for (size_t i = 0; i < CPGStorage::storage->size(this); ++i){
         const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            size_t number_states = cpg->get_number_states(factor);
-            dec_size_1 += g_factors[factor].size() * number_states;
-            dec_size_2 += number_states;
-            dec_size_3 += size(factor);
-            dec_size_4 += number_states;
+        if (!cpg->is_empty()){
+            // we need to have this due to the resizing behaviour of the
+            // PerStateInformation, which will generate new empty entries when
+            // accessing an element if the state registry has grown in the meantime.
+            // this happens in particular when generating new center states in the
+            // plan reconstruction of orbit search
+            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                size_t number_states = cpg->get_number_states(factor);
+                dec_size_1 += g_factors[factor].size() * number_states;
+                dec_size_2 += number_states;
+                dec_size_3 += size(factor);
+                dec_size_4 += number_states;
+            }
         }
     }
     cout << "decoupled state space size [1] " << dec_size_1 << endl;

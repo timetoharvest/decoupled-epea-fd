@@ -72,6 +72,10 @@ public:
     virtual int get_goal_cost(int factor) const;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    
+    virtual bool is_empty() const override {
+        return goal_cost.empty();
+    }
 
     // TODO add the override everywhere
     virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;

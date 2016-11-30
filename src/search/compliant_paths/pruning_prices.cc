@@ -150,7 +150,7 @@ CompliantPathGraph& PruningPrices::update_price_tags(const State &base_state,
                     }
                     ++leaf_id;
                 }
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
+                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){
                     const PruningPrices &tag_to_copy = cpg_storage->pruning_prices[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
                     int cost_delta = tmp_p_price.get_cost_of_state(leaf_id, factor);

@@ -52,7 +52,7 @@ public:
     
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;  
 
-    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;  
+    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;
 
     
     static void register_cpg_storage(PruningReachableStorage *storage);
