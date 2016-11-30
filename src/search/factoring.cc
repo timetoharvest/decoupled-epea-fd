@@ -1706,9 +1706,10 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
         int c_rm_o = 0;
         int f_rm_o = 0;
         bool changed = true;
+        bool removed_frozen_leaves = false;
         int times_minimized = 0;
-        vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
         while (changed) {
+            changed = false;
             times_minimized++;
             cout << "minimize center, round " << times_minimized << endl;
             map<int, int> var_to_leaf;
@@ -1773,13 +1774,13 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                     } else {
                         if (!arg_prevent_leaf_leaf) {
                             //TODO merge center into leaf, if the resulting leaf-leaf interaction is valid
-                        } else if (arg_merge_leaves >= 1) {
+                        } else if (arg_merge_leaves == 2 || arg_merge_leaves == 3) {
                             set<int> temp;
                             int pos = max_ind_sets.size();
                             bool invalid_merge = false;
                             map<int, int> temp_map(var_to_leaf);
                             for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
-                                if (arg_merge_leaves == 2 || (arg_merge_leaves == 1 && !merged_leaf[*l])) {
+                                if (arg_merge_leaves == 3 || (arg_merge_leaves == 2 && !merged_leaf[*l])) {
                                     temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
                                     set<int> empty;
                                     max_ind_sets[*l] = empty;
@@ -1787,7 +1788,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                                         temp_map[*it] = pos;
                                     }
                                 }
-                                else if (arg_merge_leaves == 1 && merged_leaf[*l]) {
+                                else if (arg_merge_leaves == 2 && merged_leaf[*l]) {
                                     invalid_merge = true;
                                     break;
                                 }
@@ -1824,42 +1825,107 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             }
             cout << endl;
 //#endif
-            // put frozen leaves back in center
-            FactoredVars temp;
-            frozen_leaves = get_frozen_leaves(max_ind_sets);
-            for (size_t i = 0; i < frozen_leaves.size(); i++) {
-                if (!frozen_leaves[i]) {
-                    temp.push_back(max_ind_sets[i]);
-                } else {
-                    f_rm++;
+            if (!removed_frozen_leaves) {
+                if (arg_merge_leaves == 1){
+                    f_rm = 0;
+                    for (const int &c: center) {
+                        if (in_center[c]) {
+                            // if all neighbours lie in the center we can skip this var
+                            set<int> leaf_neighbours;
+                            for (set<int>::iterator n = cg_g[c].begin(); n != cg_g[c].end(); ++n) {
+                                if (!in_center[*n]) {
+                                    leaf_neighbours.insert(var_to_leaf[*n]);
+                                }
+                            }
+                            if (leaf_neighbours.empty()) {
+                                continue;
+                            }
+                            set<int> temp;
+                            int pos = max_ind_sets.size();
+                            map<int, int> temp_map(var_to_leaf);
+                            vector<bool> frozen = get_frozen_leaves(max_ind_sets);
+                            int not_frozen = 0;
+                            for (const int &l: leaf_neighbours) {
+                                temp.insert(max_ind_sets[l].begin(), max_ind_sets[l].end());
+                                set<int> empty;
+                                max_ind_sets[l] = empty;
+                                for (const int &it: temp) {
+                                    temp_map[it] = pos;
+                                }
+                                if (!frozen[l]) {
+                                    not_frozen++;
+                                } else {
+                                    f_rm++;
+                                }
+                            }
+                            if (not_frozen <= 1) {
+                                var_to_leaf = temp_map;
+                                temp.insert(c);
+                                in_center[c] = false;
+                                var_to_leaf.insert(pair<int, int>(c, pos));
+                                c_rm++;
+                                merged_leaf.push_back(true);
+                                max_ind_sets.push_back(temp);
+                            }
+                        }
+                    }
+                    cout << "merged " << f_rm << " frozen leaves" << endl;
+#ifdef DEBUG_FACTORING
+                    cout << "Factoring" << endl;
+                    for (size_t i = 0; i < max_ind_sets.size(); i++) {
+                        cout << "   (";
+                        set<int> factor = max_ind_sets[i];
+                        for (const int &it: factor) {
+                            cout << it << " ";
+                        }
+                        cout << ")" << endl;
+                    }
+                    cout << endl;
+#endif
                 }
-            }
-            max_ind_sets.clear();
-            max_ind_sets.insert(max_ind_sets.begin(), temp.begin(), temp.end());
-            cout << "Removed frozen leaves: " << f_rm << endl;
-//#ifdef DEBUG_FACTORING
-            for (size_t i = 0; i < max_ind_sets.size(); i++) {
-                cout << "   (";
-                set<int> factor = max_ind_sets[i];
-                for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
-                    cout << *it << " ";
-                }
-                cout << ")" << endl;
-            }
-            cout << endl;
-//#endif
-            if ((f_rm_o != f_rm || c_rm_o != c_rm) && arg_minimize_center == 4) {
-                cout << "removed center and/or frozen leaves in round: " << times_minimized << endl;
-                changed = true;
-                f_rm_o = f_rm;
                 f_rm = 0;
+                // put frozen leaves back in center
+                FactoredVars temp;
+                vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+                for (size_t i = 0; i < frozen_leaves.size(); i++) {
+                    if (!frozen_leaves[i]) {
+                        temp.push_back(max_ind_sets[i]);
+                    } else {
+                        f_rm++;
+                    }
+                }
+                max_ind_sets.clear();
+                max_ind_sets.insert(max_ind_sets.begin(), temp.begin(), temp.end());
+                if (f_rm != f_rm_o) {
+                    changed = true;
+                    f_rm_o = f_rm;
+                }
+#ifdef DEBUG_FACTORING
+                cout << "Removed frozen leaves: " << f_rm << endl;
+                cout << "Factoring" << endl;
+                for (size_t i = 0; i < max_ind_sets.size(); i++) {
+                    cout << "   (";
+                    set<int> factor = max_ind_sets[i];
+                    for (const int &it: factor) {
+                        cout << it << " ";
+                    }
+                    cout << ")" << endl;
+                }
+                cout << endl;
+#endif
+            }
+
+            if ((c_rm_o != c_rm) && arg_minimize_center == 4) {
+                cout << "removed center" << c_rm << "vars in round: " << times_minimized << endl;
+                changed = true;
                 c_rm_o = c_rm;
                 c_rm = 0;
-            } else {
-                cout << "do not repeat arg_minimize_center, round: " << times_minimized << endl;
+            } else if (changed && !(arg_minimize_center == 4)) {
+                // only count removing frozen leaves as a change, if iterativ minimize_center is active
                 changed = false;
             }
         }
+        cout << "do not repeat arg_minimize_center, round: " << times_minimized << endl;
         adapted_factoring = max_ind_sets;
     }
 
