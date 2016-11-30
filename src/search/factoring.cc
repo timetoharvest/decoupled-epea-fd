@@ -1536,7 +1536,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
         cout << "do not minimize center" << endl;
         adapted_factoring =  max_ind_sets;
     }
-    else if (arg_minimize_center == 1) {
+    else if (arg_minimize_center == 1 || arg_minimize_center == 2) {
         cout << "minimize center - baseline - greedily increase mobility" << endl;
         // baseline - greedily maximize mobility
 
@@ -1557,7 +1557,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             }
         }
 
-        cout << "center size: " << center.size() << endl;
         bool minimize = true;
         int c_rm = 0;
 
@@ -1565,11 +1564,12 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
         map<int,int> var_to_candidate; // var -> pos in candidates
         map<int, int> candidates_to_leaf; // var -> leaf
 
+        bool removed_frozen_leaves = false;
+
         while (minimize) {
             candidates.clear();
             var_to_candidate.clear();
             candidates_to_leaf.clear();
-            cout << "removed " << c_rm << " center vars, so far, new round" << endl;
             // collect candidates (center vars with one leaf neighbour)
             for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
                 set<int> leaf_neighbours;
@@ -1587,10 +1587,33 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             }
 
             if (candidates_to_leaf.empty()){
-                cout << "no candidates" << endl;
-                break;
+                if (!removed_frozen_leaves){
+                    // push frozen leaves back in center
+                    removed_frozen_leaves = true;
+                    FactoredVars temp;
+                    int f_rm = 0;
+
+                    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+                    for (size_t i = 0; i < frozen_leaves.size(); i++) {
+                        if (!frozen_leaves[i]) {
+                            temp.push_back(max_ind_sets[i]);
+                        } else {
+                            f_rm++;
+                        }
+                    }
+                    max_ind_sets = temp;
+                    cout << "Removed frozen leaves: " << f_rm << endl;
+                    if (f_rm == 0 || max_ind_sets.empty()) {
+                        cout << "removed no frozen leaves or no leaves left" << endl;
+                        break;
+                    } else if(arg_minimize_center == 1) {
+                        break;
+                    }
+                    // only continue to minimize center, including frozen leaves, if arg_min_center == 2
+                } else {
+                    break;
+                }
             }
-            cout << "candidates found: " << candidates.size() << endl;
 
             // count how many actions affect each center var exclusively (no shared actions)
             vector<int> affecting_actions(var_to_candidate.size(), 0);
@@ -1665,20 +1688,16 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             // and push it into the respective leaf
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[candidates[max]];
-            cout << "push center var " << candidate << " to leaf " << leaf << endl;
             max_ind_sets[leaf].insert(candidate);
-            cout << "push complete, clean up center storage" << endl;
             in_center[candidate] = false;
             center.erase(candidate);
             var_to_factor[candidate] = leaf;
             c_rm++;
-            cout << "start new round" <<  endl;
         }
-        cout << "stop" << endl;
         cout << "Minimized center, variables removed: " << c_rm << endl;
         adapted_factoring = max_ind_sets;
     }
-    else if (arg_minimize_center == 2 || arg_minimize_center == 3) {
+    else if (arg_minimize_center == 3 || arg_minimize_center == 4) {
         cout << "minimize center - experimental + merge leaves" << endl;
         // experimental + merge leaves
         // minimize center, by pushing center variables into leaves
@@ -1689,7 +1708,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
         bool changed = true;
         int times_minimized = 0;
         vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
-        while (changed && arg_minimize_center >= 2) {
+        while (changed) {
             times_minimized++;
             cout << "minimize center, round " << times_minimized << endl;
             map<int, int> var_to_leaf;
@@ -1829,7 +1848,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             }
             cout << endl;
 //#endif
-            if ((f_rm_o != f_rm || c_rm_o != c_rm) && arg_minimize_center == 3) {
+            if ((f_rm_o != f_rm || c_rm_o != c_rm) && arg_minimize_center == 4) {
                 cout << "removed center and/or frozen leaves in round: " << times_minimized << endl;
                 changed = true;
                 f_rm_o = f_rm;
