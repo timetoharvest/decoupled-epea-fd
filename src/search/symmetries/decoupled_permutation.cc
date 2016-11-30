@@ -470,14 +470,14 @@ void DecoupledPermutation::permute_center_state(vector<int> &center) const {
     }
 }
 
-inline bool are_equal(const vector<const Condition*> &effs1, const vector<const Condition*> &effs2) {
-    if (effs1.size() != effs2.size()){
+inline bool are_equal(const vector<const Condition*> &preconds1, const vector<const Condition*> &preconds2) {
+    if (preconds1.size() != preconds2.size()){
         return false;
     }
-    for (auto eff1 : effs1){
+    for (auto pre1 : preconds1){
         bool found = false;
-        for (auto eff2 : effs2){
-            if (eff1->var == eff2->var && eff1->val == eff2->val){
+        for (auto pre2 : preconds2){
+            if (pre1->var == pre2->var && pre1->val == pre2->val){
                 found = true;
                 break;
             }
