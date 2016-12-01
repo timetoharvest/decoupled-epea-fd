@@ -1608,8 +1608,10 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                         break;
                     } else if(arg_minimize_center == 1) {
                         break;
+                    } else {
+                        // only continue to minimize center, including frozen leaves, if arg_min_center == 2
+                        continue;
                     }
-                    // only continue to minimize center, including frozen leaves, if arg_min_center == 2
                 } else {
                     break;
                 }
