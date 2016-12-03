@@ -14,7 +14,12 @@ struct PathPriceTagInfo {
     
     PathPriceTagInfo(const Operator* bs, LeafStateID predecessor, bool is_new = false)
             : best_supporter(bs), predecessor(predecessor), is_new(is_new) {}
-        
+            
+    void reset_supporter() {
+        is_new = false;
+        best_supporter = 0;
+    }
+    
     void dump() const;    
 };
 

@@ -39,9 +39,7 @@ PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
         paths = cpg->paths;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             for (size_t state = 0; state < prices[factor].size(); ++state){
-                if (prices[factor][state] != INF){
-                    paths[factor][state].is_new = false;
-                }
+                paths[factor][state].reset_supporter();
             }
         }
     }
@@ -212,20 +210,28 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
         
-        // TODO why don't we have the special case handling from, e.g., pricing_function, here?
-        
-        if (has_pre_on_factor && num_effects == g_factors[factor].size()){
-            // center op completely overwrites leaf
-            const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
-
-            const LeafStateID succ_state = g_state_registry->get_successor_leaf_state_id(predecessor, op);
-            
-            add_state(succ_state, 0, 0, LeafStateID::no_state);
-            
+        if (!has_pre_on_factor && num_effects == 0){
+            // op does not affect leaf at all => copy everything
+            number_states[factor] = old_tag.number_states[factor];
+            prices[factor] = old_tag.prices[factor];
+            goal_cost[factor] = old_tag.goal_cost[factor];
+            paths[factor] = old_tag.paths[factor];
+            for (size_t id = 0; id < paths[factor].size(); ++id){
+                paths[factor][id].reset_supporter();
+            }
             continue;
         }
         
-        int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
+        if (num_effects == g_factors[factor].size()){
+            // center op completely overwrites leaf
+            
+            const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
+            const LeafStateID succ_state = g_state_registry->get_successor_leaf_state_id(predecessor, op);
+            
+            add_state(succ_state, 0, 0, LeafStateID::no_state);
+            paths[factor][leaf_state_id_map[factor][succ_state.hash()]].reset_supporter();            
+            continue;
+        }
 
         // check which leaf states satisfy center precondition and apply effects
         int number_states = old_tag.get_number_states(factor);
@@ -236,34 +242,26 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 
                 LeafStateID lid(id, factor);
                 
-                if (op.is_applicable(lid)){
-                    if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-                        min_price = min(min_price, old_tag.get_cost_of_state(LeafStateID(id, factor)));
-                        assert(min_price != INF);
-                    }
-                            
+                if (!has_pre_on_factor || op.is_applicable(lid)){
                     if (num_effects == 0){
                         add_state(lid, old_tag.get_cost_of_state(LeafStateID(id, factor)), 0, lid);
+                        paths[factor][leaf_state_id_map[factor][lid.hash()]].reset_supporter();
                     } else {
                         const LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-
+#ifndef NDEBUG
+                        size_t size_before = g_state_registry->size(factor);
+#endif
                         LeafStateID succ_id = g_state_registry->get_successor_leaf_state_id(state, op);
+                        
+                        assert(size_before == g_state_registry->size(factor));
             
                         add_state(succ_id, old_tag.get_cost_of_state(LeafStateID(id, factor)), 0, lid);
+                        paths[factor][leaf_state_id_map[factor][succ_id.hash()]].reset_supporter();
                     }
                 }
             }
             ++id;
         }
-
-        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT && min_price > 0){
-            reduce_cost_by(factor, min_price);
-        }
-        
-        assert(g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT || min_price != numeric_limits<int>::max());
-#ifdef DEBUG_PATH_RECONSTRUCTION
-        cout << "min_price of factor " << factor << " = " << min_price << endl;
-#endif
     }
 }
 

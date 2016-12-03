@@ -233,9 +233,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
-        const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
+        size_t num_effects = op.get_effects(factor).size();
         
-        if (!has_pre_on_factor && eff_on_factor.empty()){
+        if (!has_pre_on_factor && num_effects == 0){
             // op does not affect leaf at all => copy everything
  
             number_states[factor] = old_tag.number_states[factor];
@@ -245,7 +245,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         }
         
         // center op completely overwrites this leaf factor
-        bool leaf_overwritten = eff_on_factor.size() == g_factors[factor].size();
+        bool leaf_overwritten = num_effects == g_factors[factor].size();
         
         if (leaf_overwritten && !has_pre_on_factor){
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
@@ -269,7 +269,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
                     min_price = min(min_price, cost);
                     
                     if (!leaf_overwritten){
-                        if (eff_on_factor.empty()){
+                        if (num_effects == 0){
                             add_state(lid, cost);
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(lid);                

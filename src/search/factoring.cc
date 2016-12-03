@@ -308,6 +308,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             const Effect &prepost = op.get_effects()[post];
             eff_factors.insert(g_belongs_to_factor[prepost.var]);
         }
+        assert(!eff_factors.empty());
         
         for (set<int>::iterator pre_it = pre_factors.begin(); pre_it != pre_factors.end(); ++pre_it){
             for (set<int>::iterator eff_it = eff_factors.begin(); eff_it != eff_factors.end(); ++eff_it){
@@ -323,6 +324,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
                 }
             }
         }
+
         bool is_center_op = false;
         if (eff_factors.find(-1) != eff_factors.end()){
             // effect on center variable
@@ -335,7 +337,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             if (pre_factors.size() > 1){
                 // precondition on more than one leaf
                 is_center_op = true;
-            } else if (*pre_factors.begin() != *eff_factors.begin()){
+            } else if (!pre_factors.empty() && *pre_factors.begin() != *eff_factors.begin()){
                 // precondition on leaf A, but effect on leaf B
                 is_center_op = true;
             }
