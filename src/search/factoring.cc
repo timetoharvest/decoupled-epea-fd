@@ -460,7 +460,7 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
     
     if (best_factoring.empty()){
-        exit_error("No factoring found!", EXIT_UNSOLVED_INCOMPLETE);
+        exit_error("No factoring found!", EXIT_ABSTAINED);
     }
     
     apply_factoring(best_factoring);    
@@ -468,7 +468,7 @@ void Factoring::do_factoring_or_abstain() {
     print_factoring();
     if (no_search) {
         cout << "Factoring complete, do not perform search" << endl;
-        exit_with(EXIT_UNSOLVED_INCOMPLETE);
+        exit_with(EXIT_NO_SEARCH);
     }
 }
 
@@ -1446,7 +1446,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     bool valid = check_factoring(max_ind_sets);
     if (!valid) {
-        exit_with(EXIT_UNSOLVED_INCOMPLETE);
+        exit_with(EXIT_ABSTAINED);
     }
 
     return max_ind_sets;
