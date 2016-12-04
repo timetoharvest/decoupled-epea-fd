@@ -947,8 +947,6 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
         }
     }
 
-    cout << "MIS found: " << all_mis.size() << endl;
-    cout << "Select x-th factoring, x: " << x << endl;
 //#endif
     vector<set<int>> temp;
     size_t max = all_mis[0].size();
@@ -963,6 +961,8 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
         }
     }
     all_mis = temp;
+    cout << "MIS found: " << all_mis.size() << endl;
+    cout << "Select x-th factoring, x: " << x << endl;
     set<int> mis;
     if (all_mis.empty()) {
         cout << "No MIS found" << endl;
