@@ -43,8 +43,8 @@ enum ExitCode {
     // Currently unused.
     EXIT_TIMEOUT = 7,
     // Factoring abstained.
-    EXIT_ABSTAINED = 8,
-    EXIT_NO_SEARCH = 9
+    EXIT_ABSTAINED = 9,
+    EXIT_NO_SEARCH = 10
 };
 
 extern void exit_with(ExitCode returncode) __attribute__((noreturn));
