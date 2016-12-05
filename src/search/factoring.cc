@@ -1387,7 +1387,7 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
             }
         }
         if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-                !(*pre_factors.begin() != *eff_factors.begin())) {
+                (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
             is_frozen_factor[affects_factor] = false;
         }
     }
