@@ -17,6 +17,8 @@ class Reachable : public CompliantPathGraph {
     
     static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();
     
+    void handle_new_leaf_state_from_center_op(LeafStateID id);
+    
 protected:
     
     std::vector<boost::dynamic_bitset<> > reachable;

@@ -96,8 +96,8 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
             while (number_states > 0){
                 if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
-                    for (size_t op = 0; op < CompliantPathGraph::center_successors[factor][id].size(); ++op){
-                        int index = CompliantPathGraph::center_successors[factor][id][op];
+                    assert(id < CompliantPathGraph::center_successors[factor].size());
+                    for (const size_t &index : CompliantPathGraph::center_successors[factor][id]){
                         if (!is_applicable_leaf[index]){
                             ++counter[index];
                             is_applicable_leaf[index] = true;
@@ -110,14 +110,14 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
 #ifndef NDEBUG
         vector<bool> added(g_operators.size(), false);
 #endif
-        for (size_t i = 0; i < center_ops.size(); ++i){
-            int op = center_ops[i]->get_index();
-            if (counter[op] == g_operators[op].get_number_leaf_pre_factors()){
+        for (const auto &op : center_ops){
+            int op_i = op->get_index();
+            if (counter[op_i] == g_operators[op_i].get_number_leaf_pre_factors()){
 #ifndef NDEBUG
-                assert(!added[op]);
-                added[op] = true;
+                assert(!added[op_i]);
+                added[op_i] = true;
 #endif
-                ops.push_back(&g_operators[op]);
+                ops.push_back(op);
             }
         }
         return;

@@ -69,7 +69,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
-    
+
     assert(leaf_tags_to_cache.empty());
 
     for (size_t factor = 0; factor < g_factors.size(); factor++){
@@ -81,8 +81,6 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
                 continue;
             }
         }
-        
-        size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
         cout << "       starting RPG for leaf factor " << factor << endl;
@@ -105,7 +103,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
-            if (tmp_reach->reachable[factor].count() == 1){
+            if (tmp_reach->get_number_states(factor) == 1){
                 size_t leaf_id = 0;
                 for (;;){
                     // TODO there should be a better way to find the state
@@ -117,17 +115,14 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const Reachable &tag_to_copy = cpg_storage->reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_reach->get_cost_of_state(LeafStateID(leaf_id, factor));
-                    cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
-                    
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
-                    for (size_t fact = 0 ; fact < number_leaf_states; fact++){
+                    for (size_t fact = 0 ; fact < g_state_registry->size(factor); ++fact){
                         if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
                             tmp_reach->add_state(LeafStateID(fact, factor));
                             if (--number_states == 0){
                                 break;
                             }
-                        }       
+                        }
                     }
                     continue;
                 } else {
@@ -136,9 +131,9 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
             }
         }
         
-        boost::dynamic_bitset<> handled(number_leaf_states, false);
+        boost::dynamic_bitset<> handled(g_state_registry->size(factor), false);
         
-        size_t curr_number_states = tmp_reach->reachable[factor].count();
+        size_t curr_number_states = tmp_reach->get_number_states(factor);
         
         bool change = true;
 
@@ -155,122 +150,114 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
                     break;
                 }
                 
-                if (tmp_reach->has_leaf_state(LeafStateID(id, factor))){
-                    ++num_states;
+                if (!tmp_reach->has_leaf_state(LeafStateID(id, factor))){
+                    ++id;
+                    continue;
+                }
+                
+                ++num_states;
 
-                    if (handled[id]){
+                if (handled[id]){
+                    ++id;
+                    continue;
+                }
+                
+                handled[id] = true;
+                
+                assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
+                
+                size_t added = 0;
+                
+                if (precompute_leaf_state_spaces[factor] || 
+                        (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
+                    if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
+                        // is "dead-end" leaf state
                         ++id;
                         continue;
                     }
-                    
-                    handled[id] = true;
-                    
-                    assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
-                    
-                    size_t added = 0;
-                    
-                    if (precompute_leaf_state_spaces[factor] || 
-                            (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
-                            // is "dead-end" leaf state
-                            ++id;
-                            continue;
+                    for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
+                        const Operator *op = leaf_state_successors[factor][id][o].first;
+                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                            if(tmp_reach->add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                ++added;
+                            }
                         }
-                        for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                            const Operator *op = leaf_state_successors[factor][id][o].first;
-                            if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                if(tmp_reach->add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                    }
+                } else {
+                    
+                    const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));     
+                    
+                    vector<const Operator*> applicable_ops;
+                    
+                    if (g_factoring->has_successors(factor)){       // is non-fork leaf
+                        if (id >= center_successors[factor].size() || center_successors[factor][id].empty()){
+                            // store center ops whose preconditions are satisfied by predecessor
+                            
+                            vector<const Operator*> center_ops;
+                            g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
+                            
+                            if (id >= center_successors[factor].size()){
+                                center_successors[factor].resize(id+1);
+                            }
+                            center_successors[factor][id].reserve(center_ops.size());
+                            for (size_t op = 0; op < center_ops.size(); ++op){
+                                if (center_ops[op]->has_precondition_on(factor)){
+                                    center_successors[factor][id].push_back(center_ops[op]->get_index());
+                                }
+                            }
+                        }
+                    }
+
+                    g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                    
+                    bool fits_store = id < MAX_LEAF_SPACE_STORE;
+                    if (fits_store && leaf_state_successors[factor].size() <= id){
+                        leaf_state_successors[factor].resize(id + 1);
+                    }
+
+                    // apply all applicable_ops to predecessor and store the outcome          
+                    for (size_t j = 0; j < applicable_ops.size(); ++j){
+                        const Operator *op = applicable_ops[j];
+
+                        const vector<const Effect*> &effects = op->get_effects(factor);
+                        if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
+
+                            LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
+                            
+                            if (lid.hash() >= handled.size()){
+                                handled.resize(lid.hash() + 1, false);
+                            }
+                            
+                            if (lid.hash() >= leaf_state_id_map[factor].size()){
+                                leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                            }
+                            
+                            if(!fits_store || op->is_center_applicable(base_state)){
+                                if (tmp_reach->add_state(lid)){
                                     ++added;
                                 }
                             }
-                        }
-                    } else {
-                      
-                        const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));     
-                        
-                        vector<const Operator*> applicable_ops;
-                        
-                        if (g_factoring->has_successors(factor)){       // is non-fork leaf
-                            bool has_predecessors = g_factoring->has_predecessors(factor);
-                            bool store_actions = id >= center_successors[factor].size() || center_successors[factor][id].empty();
-                            if (has_predecessors || store_actions){
-                                vector<const Operator*> center_ops;
-                                g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
-                                
-                                if (store_actions){
-                                    // store center ops whose preconditions are satisfied by predecessor
-                                    if (id >= center_successors[factor].size()){
-                                        center_successors[factor].resize(id+1);
-                                    }
-                                    center_successors[factor][id].reserve(center_ops.size());
-                                    for (size_t op = 0; op < center_ops.size(); ++op){
-                                        if (center_ops[op]->has_precondition_on(factor)){
-                                            center_successors[factor][id].push_back(center_ops[op]->get_index());
-                                        }
-                                    }
-                                    center_successors[factor][id].swap(center_successors[factor][id]);
-                                }
                             
-                                if (has_predecessors){
-                                    // no need to apply center ops if none of them changes this leaf factor
-                                    applicable_ops.swap(center_ops);
-                                }
+                            if (fits_store){
+                                leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
                             }
                         }
-
-                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
-                        
-                        bool fits_store = id < MAX_LEAF_SPACE_STORE;
-                        if (fits_store){
-                            if (leaf_state_successors[factor].size() <= id){
-                                leaf_state_successors[factor].resize(id + 1);
-                            }
-                        }
-
-                        // apply all applicable_ops to predecessor and store the outcome          
-                        for (size_t j = 0; j < applicable_ops.size(); ++j){
-                            const Operator *op = applicable_ops[j];
-
-                            const vector<const Effect*> &effects = op->get_effects(factor);
-                            if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
-
-                                LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
-                                
-                                if (lid.hash() >= handled.size()){
-                                    handled.resize(lid.hash() + 1, false);
-                                }
-                                
-                                if (lid.hash() >= leaf_state_id_map[factor].size()){
-                                    leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
-                                }
-                                
-                                if(!fits_store || op->is_center_applicable(base_state)){
-                                    if (tmp_reach->add_state(lid)){
-                                        ++added;
-                                    }
-                                }
-                                
-                                if (op->get_affected_factor() != -1 && fits_store){
-                                    leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
-                                }
-                            }
-                        }
-                        if (fits_store && leaf_state_successors[factor][id].empty()){
-                            // to mark "dead end" leaf states
-                            leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
-                        }
                     }
-                    
-                    if (added > 0){
-                        curr_number_states += added;
-                        change = true;
+                    if (fits_store && leaf_state_successors[factor][id].empty()){
+                        // to mark "dead end" leaf states
+                        leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
                     }
-                    
-                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_reach->goal_reached[factor]){
-                        // in satisficing search => stop once a goal is reachable in fork-leaves
-                        change = false;
-                        break;
-                    }
+                }
+                
+                if (added > 0){
+                    curr_number_states += added;
+                    change = true;
+                }
+                
+                if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_reach->goal_reached[factor]){
+                    // in satisficing search => stop once a goal is reachable in fork-leaves
+                    change = false;
+                    break;
                 }
                 ++id;
             }
@@ -279,7 +266,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_updated_successor_cpg(const State 
 #ifdef DEBUG_SEARCH
     cout << "   RPG for leaf factor " << factor << " finished" << endl;
 #endif
-
+        assert(handled.count() == tmp_reach->get_number_states(factor) || tmp_reach->goal_reached[factor]);
     }
         
 #ifdef DEBUG_SEARCH
@@ -312,8 +299,15 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
             
-            add_state(g_state_registry->get_successor_leaf_state_id(pred, op));
-               
+            size_t size_before = g_state_registry->size(factor);
+            
+            LeafStateID succ_id(g_state_registry->get_successor_leaf_state_id(pred, op));
+            
+            if (succ_id.hash() >= size_before){
+                // new leaf state, need to store applicable center actions
+                handle_new_leaf_state_from_center_op(succ_id);
+            }
+            add_state(succ_id);
         } else {
             // check which leaf states satisfy center precondition and apply effects
             
@@ -331,12 +325,48 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
                             add_state(lid);
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(lid);
-                            // TODO store center successors if new leaf state
-                            add_state(g_state_registry->get_successor_leaf_state_id(state, op));
+                            
+                            size_t size_before = g_state_registry->size(factor);
+                            
+                            LeafStateID succ_id = g_state_registry->get_successor_leaf_state_id(state, op);
+                            
+                            if (succ_id.hash() >= size_before){
+                                // new leaf state, need to store applicable center actions
+                                handle_new_leaf_state_from_center_op(succ_id);
+                            }
+                            add_state(succ_id);
                         }
                     }
                 }
                 ++id;
+            }
+        }
+    }
+}
+
+void Reachable::handle_new_leaf_state_from_center_op(LeafStateID id) {  
+    size_t succ_id_hash = id.hash();
+    size_t factor = id.get_factor();
+    
+    if (succ_id_hash >= leaf_state_id_map[factor].size()){
+        leaf_state_id_map[factor].resize(succ_id_hash + 1, -1);
+    }
+    
+    assert(succ_id_hash >= center_successors[factor].size());
+    
+    bool has_predecessors = g_factoring->has_predecessors(factor);
+    if (has_predecessors){
+        // store center ops whose preconditions are satisfied by the new leaf state
+        
+        vector<const Operator*> center_ops;
+        g_successor_generator->generate_applicable_ops_ignore_others(g_state_registry->lookup_leaf_state(id), center_ops, true);
+        
+        center_successors[factor].resize(succ_id_hash+1);
+        
+        center_successors[factor][succ_id_hash].reserve(center_ops.size());
+        for (size_t op = 0; op < center_ops.size(); ++op){
+            if (center_ops[op]->has_precondition_on(factor)){
+                center_successors[factor][succ_id_hash].push_back(center_ops[op]->get_index());
             }
         }
     }

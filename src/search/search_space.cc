@@ -312,6 +312,8 @@ void SearchSpace::trace_path(const State &goal_state,
                             
                             marked_leaf_states[factor] = fact.predecessor.hash();
                             decoupled_plan.push_back(fact.best_supporter);
+
+                            assert(fact.best_supporter->get_affected_factor() == (int) factor);
                         } else if (fact.predecessor != LeafStateID::no_state){
                             // this leaf state has been copied from one decoupled state to its successor
                             // the state can have been modified by the center op
@@ -344,11 +346,6 @@ void SearchSpace::trace_path(const State &goal_state,
                         
                         if (price_tags[step].get_path_info_for_fact(LeafStateID(state_hash, factor)).predecessor != LeafStateID::no_state){
                             marked_leaf_states[factor] = predecessor_hash;
-                            cout << "---------" << endl;
-                            g_state_registry->lookup_leaf_state(LeafStateID(state_hash, factor)).dump_pddl();
-                            cout << op->get_name() << endl;
-                            g_state_registry->lookup_leaf_state(LeafStateID(predecessor_hash, factor)).dump_pddl();
-                            cout << "---------" << endl;
                         } else {
                             need_compliant_leaf_state = true;
                             marked_leaf_states[factor] = numeric_limits<size_t>::max();
