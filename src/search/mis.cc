@@ -5,10 +5,10 @@
 using namespace std;
 
 set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
-//#ifdef DEBUG_FACTORING
+#ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
     print_graph(graph);
-//#endif
+#endif
     set<int> mis;
     switch (algo) {
         case A1: mis = find_mis_1(graph);
@@ -19,11 +19,11 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
         case DFS: mis = brute_force_mis_DFS(graph, x);
             break;
     }
+#ifdef DEBUG_FACTORING
     if (!check_mis(mis)){
-//#ifdef DEBUG_FACTORING
         cout << "did not create valid mis" << endl;
-//#endif
     }
+#endif
     cout << "MIS size: " << mis.size() << " - ";
     for (set<int>::iterator it = mis.begin(); it != mis.end(); ++it){
         cout << *it << " ";
@@ -754,13 +754,13 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
     set<int> first_mis;
     all_mis.push_back(first_mis);
 
-    stack<pair<NGraph,int>> stack;
-    stack.push(make_pair(g,0));
+    list<pair<NGraph,int>> stack;
+    stack.push_front(make_pair(g,0));
 
     while (!stack.empty()) {
-        NGraph g = stack.top().first;
-        int mis = stack.top().second;
-        stack.pop();
+        NGraph g = stack.front().first;
+        int mis = stack.front().second;
+        stack.pop_front();
 
         if (g.size() <= 1) {
             all_mis[mis].insert((*g.begin()).first);
@@ -772,17 +772,16 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                 set<int> cc = connected_components[0];
                 NGraph g_without_c = remove_components(g, cc);
                 NGraph c = remove_components(g, g_without_c);
-                stack.push(make_pair(c, mis));
-                stack.push(make_pair(g_without_c, mis));
+                stack.push_front(make_pair(c, mis));
+                stack.push_front(make_pair(g_without_c, mis));
             } else {
                 // find w and v such that N(w) sub_eq N(v), discard v
                 int v1;
+                int w = -1;
                 bool found = false;
+                bool equal = false;
                 for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
                     for (set<int>::iterator n = g[it->first].begin(); n != g[it->first].end(); n++) {
-                        if (*n < it->first) {
-                            continue;
-                        }
                         if (g[it->first].size() >= g[*n].size()) {
                             bool subset = true;
                             for (set<int>::iterator nn = g[*n].begin(); nn != g[*n].end(); nn++) {
@@ -792,6 +791,10 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                                 }
                             }
                             if (subset) {
+                                if (g[it->first].size() == g[*n].size()) {
+                                    equal = true;
+                                    w = *n;
+                                }
                                 found = true;
                                 v1 = it->first;
                                 break;
@@ -814,9 +817,24 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                     }
                 }
                 if (found) {
+                    if (equal) {
+                        assert(w != 1);
+                        NGraph g_without_w = remove_components(g, w);
+                        set<int> copy(all_mis[mis]);
+                        all_mis.push_back(copy);
+                        // copy stack "history" such that it is applied to both choices
+                        for (const pair<NGraph,int> elem:stack) {
+                            if (elem.second == mis) {
+                                stack.push_front(make_pair(elem.first, all_mis.size()-1));
+                            }
+                            else if (elem.second == (int)all_mis.size()-1) {
+                                break;
+                            }
+                        }
+                        stack.push_front(make_pair(g_without_w, all_mis.size()-1));
+                    }
                     NGraph g_without_v = remove_components(g, v1);
-
-                    stack.push(make_pair(g_without_v, mis));
+                    stack.push_front(make_pair(g_without_v, mis));
                 } else {
                     //find foldable vertex v (d(v) = 2)
                     found = false;
@@ -834,17 +852,35 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                         int i2 = *(g[v2].begin()++);
                         if (g[i1].find(i2) != g[i1].end()) {
                             // folding basically merges the two neighbouring nodes
-                            set<int> u(g[i1]);
-                            u.insert(g[i2].begin(), g[i2].end());
-                            NGraph gf = remove_components(remove_components(g, v2), i2);
-                            gf[i1].clear();
-                            gf[i1].insert(u.begin(), u.end());
+                            set<int> u1(g[i1]);
+                            u1.insert(g[i2].begin(), g[i2].end());
+                            set<int> u2(g[i2]);
+                            u2.insert(g[i1].begin(), g[i1].end());
+                            NGraph gf1 = remove_components(remove_components(g, v2), i2);
+                            NGraph gf2 = remove_components(remove_components(g, v2), i1);
+                            gf1[i1].clear();
+                            gf1[i1].insert(u1.begin(), u1.end());
+                            gf2[i2].clear();
+                            gf2[i2].insert(u2.begin(), u2.end());
                             all_mis[mis].insert(v2);
-                            stack.push(make_pair(gf, mis));
+                            set<int> copy(all_mis[mis]);
+                            copy.insert(v2);
+                            all_mis.push_back(copy);
+                            // copy stack "history" such that it is applied to both choices
+                            for (const pair<NGraph,int> elem:stack) {
+                                if (elem.second == mis) {
+                                    stack.push_front(make_pair(elem.first, all_mis.size()-1));
+                                }
+                                else if (elem.second == (int)all_mis.size()-1) {
+                                    break;
+                                }
+                            }
+                            stack.push_front(make_pair(gf1, mis));
+                            stack.push_front(make_pair(gf2, all_mis.size()-1));
                         } else {
                             NGraph g_without_Nv = remove_components(remove_components(g, v2), g[v2]);
                             all_mis[mis].insert(v2);
-                            stack.push(make_pair(g_without_Nv, mis));
+                            stack.push_front(make_pair(g_without_Nv, mis));
                         }
                     } else {
                         // select v of maximum degree, which minimizes |E(N(v))|
@@ -935,12 +971,21 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                             }
                         }
                         //set<int> mis1 = find_mis_2(remove_components(remove_components(g, v3), mv));
-                        stack.push(make_pair(remove_components(remove_components(g, v3), mv), mis));
                         //set<int> mis2 = find_mis_2(remove_components(remove_components(g, g[v3]), v3));
                         set<int> copy(all_mis[mis]);
                         copy.insert(v3);
                         all_mis.push_back(copy);
-                        stack.push(make_pair(remove_components(remove_components(g, g[v3]), v3), all_mis.size()-1));
+                        // copy stack "history" such that it is applied to both choices
+                        for (const pair<NGraph,int> elem:stack) {
+                            if (elem.second == mis) {
+                                stack.push_front(make_pair(elem.first, all_mis.size()-1));
+                            }
+                            else if (elem.second == (int)all_mis.size()-1) {
+                                break;
+                            }
+                        }
+                        stack.push_front(make_pair(remove_components(remove_components(g, v3), mv), mis));
+                        stack.push_front(make_pair(remove_components(remove_components(g, g[v3]), v3), all_mis.size()-1));
                     }
                 }
             }
@@ -962,6 +1007,15 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
     }
     all_mis = temp;
     cout << "MIS found: " << all_mis.size() << endl;
+#ifdef DEBUG_FACTORING
+    for (size_t i = 0; i < all_mis.size(); i++) {
+        cout << "MIS " << i << ": ";
+        for (const int v:all_mis[i]) {
+            cout << v <<  " ";
+        }
+        cout << endl;
+    }
+#endif
     cout << "Select x-th factoring, x: " << x << endl;
     set<int> mis;
     if (all_mis.empty()) {

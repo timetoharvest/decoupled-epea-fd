@@ -1400,11 +1400,12 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     MIS mis(cg_g);
     set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring);
-
+#ifdef DEBUG_FACTORING
     cout << "MIS: " << endl;
     for (set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it) {
         cout << "(" << *it << " )" << endl;
     }
+#endif
 
     // generate factoring
     FactoredVars max_ind_sets;
@@ -1418,6 +1419,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     max_ind_sets = minimize_center(max_ind_sets, cg_g);
 
+#ifdef DEBUG_FACTORING
     cout << "minimized MIS: " << endl;
     for(size_t i = 0; i < max_ind_sets.size(); i++){
         cout << "(";
@@ -1426,7 +1428,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         }
         cout << ")" << endl;
     }
-
+#endif
     // push frozen leaves back in center
     FactoredVars temp;
     int f_rm = 0;
@@ -1715,7 +1717,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
         while (changed) {
             changed = false;
             times_minimized++;
-            cout << "minimize center, round " << times_minimized << endl;
             map<int, int> var_to_leaf;
             // extract center variables
             list<int> center;
@@ -1743,7 +1744,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                     }
                 }
             }
-            cout << "center size: " << center.size() << endl;
             vector<bool> merged_leaf(max_ind_sets.size(), false);
             for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
                 if (cg_g[*c].size() == 0) {
@@ -1817,8 +1817,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                     it++;
                 }
             }
-//#ifdef DEBUG_FACTORING
             cout << "Minimized center, variables removed: " << c_rm << endl;
+#ifdef DEBUG_FACTORING
             for (size_t i = 0; i < max_ind_sets.size(); i++) {
                 cout << "   (";
                 set<int> factor = max_ind_sets[i];
@@ -1828,7 +1828,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                 cout << ")" << endl;
             }
             cout << endl;
-//#endif
+#endif
             if (!removed_frozen_leaves) {
                 if (arg_merge_leaves == 1){
                     f_rm = 0;
@@ -1904,8 +1904,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                     changed = true;
                     f_rm_o = f_rm;
                 }
-#ifdef DEBUG_FACTORING
                 cout << "Removed frozen leaves: " << f_rm << endl;
+#ifdef DEBUG_FACTORING
                 cout << "Factoring" << endl;
                 for (size_t i = 0; i < max_ind_sets.size(); i++) {
                     cout << "   (";
@@ -1920,7 +1920,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
             }
 
             if ((c_rm_o != c_rm) && arg_minimize_center == 4) {
+#ifdef DEBUG_FACTORING
                 cout << "removed center" << c_rm << "vars in round: " << times_minimized << endl;
+#endif
                 changed = true;
                 c_rm_o = c_rm;
                 c_rm = 0;
@@ -1929,7 +1931,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
                 changed = false;
             }
         }
+#ifdef DEBUG_FACTORING
         cout << "do not repeat arg_minimize_center, round: " << times_minimized << endl;
+#endif
         adapted_factoring = max_ind_sets;
     }
 
