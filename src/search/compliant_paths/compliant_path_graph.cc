@@ -266,7 +266,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     }
     
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        
+
         if (!precompute_leaf_state_spaces[factor]){
             continue;
         }
