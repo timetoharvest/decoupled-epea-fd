@@ -81,8 +81,6 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                 continue;
             }
         }
-        
-        size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_PATH_RECONSTRUCTION
         cout << "       starting RPG for leaf factor " << factor << endl;
@@ -96,7 +94,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif   
         
-        vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
+        vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
         
         bool is_ifork_leaf = !g_factoring->has_predecessors(factor);
         
@@ -138,28 +136,22 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                         }
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
-                            if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                            if (is_ifork_leaf || op->is_center_applicable(base_state)){ // TODO what about caching applicability per update?
                                 change |= add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor),
                                                 cost + get_adjusted_action_cost(*op, cost_type), op, predecessor_id);
                             }
-
                         }
                     } else {                      
                         const LeafState predecessor = g_state_registry->lookup_leaf_state(predecessor_id);
                         
                         vector<const Operator*> applicable_ops;
-                        
-                        if (g_factoring->has_successors(factor) && g_factoring->has_predecessors(factor)){
-                            // there exist center ops that change this leaf factor
-                            g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops, true);
-                        }
-
                         g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
 
                         // apply all applicable_ops to predecessor and store the outcome          
                         for (size_t j = 0; j < applicable_ops.size(); ++j){
                             const Operator *op = applicable_ops[j];
                             const vector<const Effect*> &effects = op->get_effects(factor);
+                            assert(op->get_affected_factor() != -1);
                             
                             if (!effects.empty() && op->is_center_applicable(base_state)){
                                 LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
