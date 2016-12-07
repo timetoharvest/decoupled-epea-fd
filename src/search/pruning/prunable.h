@@ -33,7 +33,7 @@ protected:
 					    std::unique_ptr<CompliantPathGraph> cpg,
 					    int curr_number_duplicates, 
 					    int g_value, const State& predecessor,
-					    const std::vector<DecoupledPermutation *> & symmetry_permutations,
+					    const std::vector<const DecoupledPermutation *> & symmetry_permutations,
 					    std::set<std::unique_ptr<CompliantPathGraph>,compare_cpg_pointers> & permutations);    
 public:
     

@@ -139,7 +139,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
 void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const {
-    int OP_COLOR = MAX_VALUE + op.get_cost();
+    int OP_COLOR = MAX_VALUE + op.get_cost(); // TODO this should probably take get_adjusted_action_cost instead
 
     int op_idx = g->add_vertex(OP_COLOR);
 
@@ -214,7 +214,7 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 }
 
 
-DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const State &state, 
+unique_ptr<DecoupledPermutation> GraphCreator::create_permutation_from_state_to_state(const State &state, 
 						     const CompliantPathGraph &cpg,
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
@@ -226,10 +226,10 @@ DecoupledPermutation GraphCreator::create_permutation_from_state_to_state(const 
     
     
 
-    DecoupledPermutation p1(decoupled_group->compose_permutation(new_trace), true);
-    DecoupledPermutation p2(decoupled_group->compose_permutation(curr_trace));
+    unique_ptr<DecoupledPermutation> p1(new DecoupledPermutation(*decoupled_group->compose_permutation(new_trace), true));
+    unique_ptr<DecoupledPermutation> p2(decoupled_group->compose_permutation(curr_trace));
 
-    return DecoupledPermutation(p2, p1);
+    return unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*p2, *p1));
 }
 
 

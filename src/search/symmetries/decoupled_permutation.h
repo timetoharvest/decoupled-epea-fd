@@ -15,7 +15,7 @@ class LeavesPermutation {
 private:
     static FactIndex findex_leaves;
     
-    const Permutation *permutation;
+    std::unique_ptr<Permutation> permutation;
     
     std::vector<int> value;
     std::vector<int> inverse_value;

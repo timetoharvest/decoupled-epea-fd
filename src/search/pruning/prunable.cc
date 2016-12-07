@@ -173,12 +173,12 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
 						  unique_ptr<CompliantPathGraph> cpg_own,
 						  int curr_number_duplicates, 
 						  int g_value, const State& predecessor,
-						  const std::vector<DecoupledPermutation *> & symmetry_permutations, 
+						  const vector<const DecoupledPermutation *> & symmetry_permutations, 
 						  set<unique_ptr<CompliantPathGraph>, compare_cpg_pointers> & cpg_permutations) {
     
     CompliantPathGraph * cpg = cpg_own.get();
     //TODO: Avoid innecessary copy
-    if (!cpg_permutations.insert(std::move(cpg_own)).second) return curr_number_duplicates + 1; 
+    if (!cpg_permutations.insert(move(cpg_own)).second) return curr_number_duplicates + 1; 
 
     int result = cpg->check_dominance (base_state, curr_number_duplicates, g_value, predecessor);
     if (result != curr_number_duplicates + 1) return result; //This state is dominated by another
@@ -187,7 +187,7 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
 	unique_ptr<CompliantPathGraph> permuted = cpg->get_permuted_cpg(p->get_leaves_permutation());
 
 	int result = check_symmetric_dominance_recursive(base_state, 
-							 std::move(permuted), 
+							 move(permuted), 
 							 curr_number_duplicates, 
 							 g_value, 
 							 predecessor, 
@@ -204,7 +204,7 @@ int Prunable::check_symmetric_dominance_recursive(const State &base_state,
 int Prunable::check_symmetric_dominance(const State& base_state, int curr_number_duplicates, int g_value, const State& predecessor) {   
     //TODO: Avoid innecessary copy when I am dominated?
     set<unique_ptr<CompliantPathGraph>, compare_cpg_pointers> cpg_permutations; 
-    std::vector<DecoupledPermutation *> symmetry_permutations = g_symmetry_graph->get_stabilized_permutations(base_state);
+    vector<const DecoupledPermutation *> symmetry_permutations = g_symmetry_graph->get_stabilized_permutations(base_state);
     
     int result = check_symmetric_dominance_recursive(base_state, clone(), curr_number_duplicates, g_value, predecessor, symmetry_permutations, cpg_permutations);
 #ifdef DEBUG_PRUNING

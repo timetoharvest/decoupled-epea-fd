@@ -11,8 +11,8 @@ enum class cmp_t {LESS, EQUAL, GREATER};
 class CompliantPathGraph;
 
 class FactIndex {
-//Alvaro: Putting all the static data members in one class, so that it
-//is easier to have two separated instances for center and leaves.
+// Alvaro: Putting all the static data members in one class, so that it
+// is easier to have two separated instances for center and leaves.
 public: 
     int initial_index;
     unsigned int length;
@@ -89,14 +89,18 @@ public:
     void dump() const;
 
     std::pair<int, int> get_new_var_val_by_old_var_val(int var, int val) const;
+
     std::pair<int, int> get_old_var_val_by_new_var_val(int var, int val) const;
 
     cmp_t replace_if_less(std::vector<int> &state) const;
+
     bool stabilizes (const State &state) const;
+
     void permute(std::vector<int> &state) const;
 
     bool affects_center() const;
-    int num_leafs_affected() const;
+
+    size_t number_leaves_affected() const;
     
 };
 

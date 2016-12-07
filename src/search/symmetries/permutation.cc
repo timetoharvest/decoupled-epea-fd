@@ -359,14 +359,14 @@ bool Permutation::affects_center() const {
     return false;
 }
 
-int Permutation::num_leafs_affected() const {
-    set<int> leafs; 
+size_t Permutation::number_leaves_affected() const {
+    set<int> leaves; 
     for(int v : vars_affected) {
         if (g_belongs_to_factor[v] != -1) {
-            leafs.insert(v);
+            leaves.insert(g_belongs_to_factor[v]);
         }
     }
-    return leafs.size();
+    return leaves.size();
 }
 
 void Permutation::init_fact_index() {
@@ -377,7 +377,7 @@ void FactIndex::init() {
     int num_of_vertex = g_variable_domain.size();
     for (size_t num_of_variable = 0; num_of_variable < g_variable_domain.size(); num_of_variable++){
         dom_sum_by_var.push_back(num_of_vertex);
-        num_of_vertex+=g_variable_domain[num_of_variable];
+        num_of_vertex += g_variable_domain[num_of_variable];
         for(int num_of_value = 0; num_of_value < g_variable_domain[num_of_variable]; num_of_value++){
             var_by_val.push_back(num_of_variable);
         }

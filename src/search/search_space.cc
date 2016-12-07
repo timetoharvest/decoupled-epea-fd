@@ -245,7 +245,7 @@ void SearchSpace::trace_path(const State &goal_state,
             if (g_use_decoupled_search){
                 const CompliantPathGraph *current_cpg = CPGStorage::storage->get_cpg(current_state);
                 if (!is_equal(current_state, *current_cpg, new_state, *new_cpg)){
-                    dp.reset(new DecoupledPermutation(g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, *new_cpg)));
+                    dp = g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, *new_cpg);
                 }
                 if (dp){
                     decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*dp)));

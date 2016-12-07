@@ -48,7 +48,7 @@ public:
         return group->get_canonical_state(state);
     }
 
-    std::vector<DecoupledPermutation *> get_stabilized_permutations(const State &center)  const {
+    std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center)  const {
 	assert(decoupled_group);
         return decoupled_group->get_stabilized_permutations(center);
     }
@@ -64,7 +64,7 @@ public:
     Permutation create_permutation_from_state_to_state(const State &from_state, 
                                                        const State &to_state);
 
-    DecoupledPermutation create_permutation_from_state_to_state(const State &state, 
+    std::unique_ptr<DecoupledPermutation> create_permutation_from_state_to_state(const State &state, 
                                                                 const CompliantPathGraph &cpg,
                                                                 const State &succ_state, 
                                                                 const CompliantPathGraph &succ_cpg) const;

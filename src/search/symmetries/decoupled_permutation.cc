@@ -14,9 +14,8 @@ using namespace std;
 FactIndex LeavesPermutation::findex_leaves;
 
 
-LeavesPermutation::LeavesPermutation(const Permutation &per) {
-    
-    permutation = &per;
+LeavesPermutation::LeavesPermutation(const Permutation &per) 
+                             : permutation(new Permutation(per)) {
 
     affected.assign(g_factors.size(), false);
    
@@ -59,7 +58,7 @@ LeavesPermutation::LeavesPermutation(const Permutation &per) {
                 assert(symm_factor == -1 || symm_factor ==  g_belongs_to_factor[symm_var]);
 
                 symm_factor =  g_belongs_to_factor[symm_var];
-                if(symm_leaf_state.empty()) {
+                if(symm_leaf_state.size() != g_factors[symm_factor].size()) {
                     symm_leaf_state.resize(g_factors[symm_factor].size());
                 }
                 symm_leaf_state[g_new_index[symm_var]] = symm_val;
@@ -82,7 +81,9 @@ LeavesPermutation::LeavesPermutation(const Permutation &per) {
 }
 
 LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1, 
-                                      const LeavesPermutation &perm2) {
+                                      const LeavesPermutation &perm2)
+                                 : permutation(new Permutation(*perm1.permutation, *perm2.permutation)) {
+    
     affected.resize(g_factors.size(), false);
     value.resize(findex_leaves.length, -1);
     from_factors.resize(g_factors.size(), -1);
@@ -94,7 +95,9 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1,
     finalize();
 }
 
-LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)  {
+LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)
+                                 : permutation(new Permutation(*perm.permutation, invert)){
+    
     affected.resize(g_factors.size(), false);
     value.resize(findex_leaves.length, -1);
     from_factors.resize(g_factors.size(), -1);
@@ -233,46 +236,96 @@ void LeavesPermutation::set_value(int ind, int val) {
 }
 
 bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        const vector<const Effect*> & effects = op->get_effects(factor);
-        const vector<const Effect*> & effects2 = op2->get_effects(factor);
-        const auto & preconditions = op->get_preconditions(factor);
-        const auto & preconditions2 = op2->get_preconditions(factor);
+    const auto &effects = op->get_effects();
+    const auto &effects2 = op2->get_effects();
+    const auto &preconditions = op->get_preconditions();
+    const auto &preconditions2 = op2->get_preconditions();
 
-        if (preconditions.size() != preconditions2.size() || effects.size() != effects2.size()){
-            return false;
-        }
+    if (preconditions.size() != preconditions2.size() || effects.size() != effects2.size()){
+        return false;
+    }
 
-        for (auto eff : effects) {
-            auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff->var, eff->val);
-            assert(is_affected(factor) || (new_var_val.first == eff->var && new_var_val.second == eff->val));
-            if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
-                        return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+    for (auto eff : effects) {
+        auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff.var, eff.val);
+        if (g_belongs_to_factor[new_var_val.first] != -1){
+            if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect &eff2) {
+                        return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
                     }) == effects2.end() ) {
                 return false;
             }
         }
+    }
 
-        for (auto pre : preconditions) {
-            auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre->var, pre->val);
-            assert(is_affected(factor) || 
-		   (new_var_val.first == pre->var && new_var_val.second == pre->val));
-            if(find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition* pre2) {
-                        return pre2->var == new_var_val.first && pre2->val == new_var_val.second;
+    for (auto pre : preconditions) {
+        auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
+        if (g_belongs_to_factor[new_var_val.first] != -1){
+            if(find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition &pre2) {
+                        return pre2.var == new_var_val.first && pre2.val == new_var_val.second;
                     }) == preconditions2.end() ) {
                 return false;
             }
         }
-
     }
     
     return true;
 }
 
 void LeavesPermutation::print_cycle_notation() const {
-    permutation->print_cycle_notation();
-}
+    vector<int> done;
+    for (size_t i = g_variable_domain.size(); i < permutation->findex.length; ++i){
+        if (find(done.begin(), done.end(), i) == done.end()){
+            pair<int, int> varval = permutation->findex.get_var_val_by_index(i);
+	    if (g_belongs_to_factor[varval.first] == -1 || !affected[varval.first]){
+                continue;
+	    }
+	    
+            int current = i;
+            if(permutation->get_value(i) == (int) i){
+                continue; //don't print cycles of size 1
+            }
 
+            cout << "(" << g_fact_names[varval.first][varval.second]  << " ";
+
+            while(permutation->get_value(current) != (int) i){
+                done.push_back(current);
+                current = permutation->get_value(current);
+
+                pair<int, int> currvarval = permutation->findex.get_var_val_by_index(current);
+                cout << g_fact_names[currvarval.first][currvarval.second] << " ";
+            }
+            done.push_back(current);
+            cout << ") ";
+        }
+    }
+    cout << endl << "Variables:  ";
+    for (const auto &var : permutation->vars_affected){
+        if (g_belongs_to_factor[var] != -1){
+            cout << var << "  ";
+        }
+    }
+    cout << endl << "Variables permuted:  ";
+
+    for (const auto &var : permutation->vars_affected){
+        if (g_belongs_to_factor[var] != -1){
+            cout << permutation->from_vars[var] << " -> " << var << "  ";
+        }
+    }
+    cout << endl;
+
+    cout << "Affected variables by cycles: " << endl;
+    for (const auto &cycle : permutation->affected_vars_cycles){
+        cout << "( " ;
+        bool is_center = false;
+        for (const auto &var : cycle) {
+            if (g_belongs_to_factor[var] == -1){
+                is_center = true;
+            }
+            cout << var << " ";
+        }
+        cout << (is_center ? "center permutation => ignored)" : ")  ");
+    }
+    cout << endl;    
+}
 
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
@@ -361,7 +414,7 @@ bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
 
 
 DecoupledPermutation::DecoupledPermutation(const Permutation &p) { 
-    if (p.num_leafs_affected()){
+    if (p.number_leaves_affected() > 0){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
     }
     
@@ -377,7 +430,7 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
     }
 
     if (per.leaves_permutation){
-        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation)));
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*per.leaves_permutation, false));
     }
 
     assert(has_valid_center_permutation());
@@ -385,11 +438,11 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
 
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {    
     if (per.center_permutation){
-        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(per.center_permutation), invert));
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*per.center_permutation, invert));
     }
 
     if (per.leaves_permutation) {
-        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(per.leaves_permutation), invert));
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*per.leaves_permutation, invert));
     }
 
     assert(has_valid_center_permutation());
@@ -398,19 +451,19 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
 DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, 
 					   const DecoupledPermutation &p2) {
     if (p1.center_permutation && p2.center_permutation){
-        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation), *(p2.center_permutation)));
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*p1.center_permutation, *p2.center_permutation));
     } else if (p1.center_permutation){
-        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p1.center_permutation)));
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*p1.center_permutation));
     } else if (p2.center_permutation){
-        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*(p2.center_permutation)));
+        center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*p2.center_permutation));
     }
 
     if (p1.leaves_permutation && p2.leaves_permutation){
-        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation), *(p2.leaves_permutation)));
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*p1.leaves_permutation, *p2.leaves_permutation));
     } else if (p1.leaves_permutation){
-        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p1.leaves_permutation)));
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*p1.leaves_permutation, false));
     } else if (p2.leaves_permutation){
-        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*(p2.leaves_permutation)));
+        leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*p2.leaves_permutation, false));
     }
 
     assert(has_valid_center_permutation());
@@ -512,13 +565,14 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
 									  const vector<const Operator *> &ops) const {
 
     assert(!ops.empty());
+
     
     if (!center_permutation && !leaves_permutation){
         assert(find(ops.begin(), ops.end(), main_op) != ops.end());
         return main_op;
     }
     
-    for(auto op : ops) {
+    for(const auto op : ops) {
 	if (op->get_cost() == main_op->get_cost()) {
 	    if (!center_permutation){
                 if(!are_equal(main_op->get_effects(-1), op->get_effects(-1))) {
