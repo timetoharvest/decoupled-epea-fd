@@ -377,8 +377,9 @@ void Prices::dump() const {
         for (size_t id = 0; id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                bool is_goal_state = !g_goals_per_factor[factor].empty() ? is_a_leaf_goal_state[factor][id] : false;
                 if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << (is_a_leaf_goal_state[factor][id] ? ", is goal" : "") << endl;
+                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(id, factor) << (is_goal_state ? ", is goal" : "") << endl;
                 } else {
                     state.dump_pddl();
                     cout << " with price " << get_cost_of_state(id, factor) << endl;
