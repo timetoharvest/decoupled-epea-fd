@@ -51,7 +51,6 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
 								  CompliantPathGraph &leaves, 
 								  const LexicographicOrdering &lex_ordering) const {
 
-
     for (int var : g_center_vars) {
         tmp_state[var] = center[var];
     }

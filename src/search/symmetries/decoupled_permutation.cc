@@ -245,7 +245,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
         return false;
     }
 
-    for (auto eff : effects) {
+    for (const auto &eff : effects) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff.var, eff.val);
         if (g_belongs_to_factor[new_var_val.first] != -1){
             if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect &eff2) {
@@ -256,7 +256,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
         }
     }
 
-    for (auto pre : preconditions) {
+    for (const auto &pre : preconditions) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
         if (g_belongs_to_factor[new_var_val.first] != -1){
             if(find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition &pre2) {
