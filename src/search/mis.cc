@@ -5,7 +5,7 @@
 
 using namespace std;
 
-set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
+set<int> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all) {
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
     print_graph(graph);
@@ -15,7 +15,7 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x) {
         case A1: mis = find_mis_1(graph);
             break;
         //default: case A2: mis = find_mis_2(graph);
-        default: case A2: mis = find_mis_2_it(graph,x);
+        default: case A2: mis = find_mis_2_it(graph,x, arg_find_all);
             break;
         case DFS: mis = brute_force_mis_DFS(graph, x);
             break;
@@ -759,7 +759,7 @@ set<int> MIS::find_mis_2(NGraph g) {
     }
 }
 
-set<int> MIS::find_mis_2_it(NGraph g, int x) {
+set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
 
     vector<set<int>> all_mis;
     set<int> first_mis;
@@ -850,7 +850,7 @@ set<int> MIS::find_mis_2_it(NGraph g, int x) {
                     }
                 }
                 if (found) {
-                    if (equal) {
+                    if (equal && arg_find_all == 1) {
                         assert(w != -1);
                         NGraph g_without_w = remove_components(g, w);
                         set<int> copy(all_mis[mis]);

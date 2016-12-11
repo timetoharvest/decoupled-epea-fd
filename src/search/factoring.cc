@@ -154,6 +154,7 @@ protected:
     bool arg_prevent_leaf_leaf;
     int arg_xth_factoring = 0;
     int arg_merge_leaves = 0;
+    int arg_find_all;
 
 public:
 
@@ -163,9 +164,10 @@ public:
                 arg_minimize_center(opts.get<int>("minimize_center")),
                 arg_prevent_leaf_leaf(opts.get<bool>("prevent_leaf_leaf")),
                 arg_xth_factoring(opts.get<int>("xth_fact")),
-                arg_merge_leaves(opts.get<int>("merge_leaves")){
+                arg_merge_leaves(opts.get<int>("merge_leaves")),
+                arg_find_all(opts.get<int>("find_all")){
         profile = MAX_IND_SET;
-        cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " minimize_center "
+        cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: " << arg_find_all << " minimize_center "
              << arg_minimize_center << " prevent_leaf_leaf " << arg_prevent_leaf_leaf << " select xth factoring: "<< arg_xth_factoring << " merge leaves level: " << arg_merge_leaves << endl;
     };
 
@@ -1399,7 +1401,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     NGraph cg_g = generate_ngraph();
 
     MIS mis(cg_g);
-    set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring);
+    set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all);
 #ifdef DEBUG_FACTORING
     cout << "MIS: " << endl;
     for (set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it) {
@@ -2200,6 +2202,11 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     );
     parser.add_option<int>(
             "merge_leaves",
+            "TODO",
+            "0"
+    );
+    parser.add_option<int>(
+            "find_all",
             "TODO",
             "0"
     );
