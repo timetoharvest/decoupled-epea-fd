@@ -138,7 +138,7 @@ set<int> MIS::find_mis_1(NGraph g) {
     }
 
     ConComp connected_components;
-    CtoCCMap c_to_cc_map(g_variable_domain.size());
+    CtoCCMap c_to_cc_map(g_variable_domain.size(),-1);
     find_connected_components(g, &c_to_cc_map, &connected_components);
     if (connected_components.size() > 1) {
         // find smallest component
@@ -573,7 +573,7 @@ set<int> MIS::find_mis_2(NGraph g) {
         return found_mis;
     }
     ConComp connected_components;
-    CtoCCMap c_to_cc_map(g_variable_domain.size());
+    CtoCCMap c_to_cc_map(g_variable_domain.size(),-1);
     find_connected_components(g, &c_to_cc_map, &connected_components);
     if (connected_components.size() > 1) {
         set<int> cc = connected_components[0];
@@ -798,7 +798,7 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
             }
         } else {
             ConComp connected_components;
-            CtoCCMap c_to_cc_map(g_variable_domain.size());
+            CtoCCMap c_to_cc_map(g_variable_domain.size(),-1);
             find_connected_components(g, &c_to_cc_map, &connected_components);
             if (connected_components.size() > 1) {
                 set<int> cc = connected_components[0];
@@ -981,8 +981,6 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                                     for (set<int>::iterator it = g[*u].begin(); it != g[*u].end(); it++) {
                                         c.erase(*it);
                                     }
-                                    for (set<int>::iterator cc = c.begin(); cc != c.begin(); cc++) {
-                                    }
                                     // test whether c is a clique (every two distinct vertices are adjacent)
                                     // (every element in c must be a neighbour of every other element in c)
                                     bool clique = true;
@@ -1108,36 +1106,40 @@ NGraph MIS::remove_components(NGraph g, NGraph cs) {
 
 
 void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) {
-    size_t number_seen_c = 0;
-    set<int> seen_c;
-    set<int> open_c;
-
-    while (number_seen_c < g.size()) {
+    stack<int> open_c;
+    size_t seen = 0;
+    while (seen < g.size()) {
         if (open_c.empty()) {
-            for (NGraph::iterator it = g.begin(); it != g.end(); ++it) {
-                if (seen_c.find(it->first) == seen_c.end()) {
-                    open_c.insert(it->first);
-                    (*c_to_cc)[it->first] = cc->size();
-                    cc->push_back(set<int>());
-                    (*cc)[(*c_to_cc)[it->first]].insert(it->first);
-                    break;
+            NVertex c = *g.begin();
+            bool found = true;
+            for (NVertex it:g) {
+                if ((*c_to_cc)[it.first] == -1) {
+                    c = it;
+                    found = true;
                 }
             }
-            continue;
-        }
-        int c = *open_c.begin();
-        open_c.erase(open_c.begin());
-        if (seen_c.find(c) != seen_c.end()) {
-            continue;
-        }
-
-        seen_c.insert(c);
-        number_seen_c++;
-
-        for (set<int>::iterator it = g[c].begin(); it != g[c].end(); ++it) {
-            open_c.insert(*it);
-            (*c_to_cc)[*it] = (*c_to_cc)[c];
-            (*cc)[(*c_to_cc)[*it]].insert(*it);
+            if (!found) {
+                //cout << "no unseen node found" << endl;
+                return;
+            }
+            open_c.push(c.first);
+            set<int> i;
+            (*c_to_cc)[c.first] = cc->size();
+            i.insert(c.first);
+            cc->push_back(i);
+        } else {
+            int c = open_c.top();
+            open_c.pop();
+            seen++;
+            set<int> neighbours = g[c];
+            for (int n:neighbours) {
+                if ((*c_to_cc)[n] == -1) {
+                    int comp = (*c_to_cc)[c];
+                    (*c_to_cc)[n] = comp;
+                    (*cc)[comp].insert(n);
+                    open_c.push(n);
+                }
+            }
         }
     }
     return;
