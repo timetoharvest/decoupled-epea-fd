@@ -163,7 +163,7 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
 }
 
 cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
-    for (int to_factor : factors_affected){ // TODO the ordering of factors_affected is not the same across multiple LeavesPermutations
+    for (int to_factor : factors_affected){
         int from_factor = from_factors[to_factor];
         if(from_factor < to_factor) continue; // This has been compared in the other direction
         // TODO the above if only works if the cycle involves <= 2 factors
@@ -212,7 +212,7 @@ void LeavesPermutation::finalize() {
         while (from_factors[current] != (int) i){
             current = from_factors[current];
             marked[current] = true;
-            cycle.insert(cycle.begin(),current);
+            cycle.insert(cycle.begin(), current);
         }
 
         // Get here when from_factors[current] == i.
