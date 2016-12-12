@@ -131,7 +131,7 @@ pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(int f
 cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
         int from_factor = from_factors[to_factor];
-//         if(from_factor <= to_factor) continue; // This has been compared in the other directionor or is the same factor
+        if(from_factor <= to_factor) continue; // This has been compared in the other directionor or is the same factor
         // TODO the above if only works if the cycle involves <= 2 factors
 
         if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
@@ -143,7 +143,7 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
 cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
     for (int to_factor : factors_affected){
         int from_factor = from_factors[to_factor];
-//         if (from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
+        if (from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
         // TODO the above if only works if the cycle involves <= 2 factors
 
         int cost_from = cpg.get_goal_cost(from_factor);
@@ -165,7 +165,7 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
 cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
     for (int to_factor : factors_affected){ // TODO the ordering of factors_affected is not the same across multiple LeavesPermutations
         int from_factor = from_factors[to_factor];
-//         if(from_factor < to_factor) continue; // This has been compared in the other direction
+        if(from_factor < to_factor) continue; // This has been compared in the other direction
         // TODO the above if only works if the cycle involves <= 2 factors
 
         assert(g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
