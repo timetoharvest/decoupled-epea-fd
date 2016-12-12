@@ -30,7 +30,7 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
     from_factors.assign(g_factors.size(), -1);
     for (size_t v = 0; v < per.from_vars.size(); ++v) {
         int from_v = per.from_vars[v];
-        int factor  = g_belongs_to_factor[v];
+        int factor  = g_belongs_to_factor[v]; // TODO this is probably not what we want
         int from_factor  = g_belongs_to_factor[from_v];
 
         if (factor == -1 || from_v == -1){
@@ -131,6 +131,7 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
         int from_factor = from_factors[to_factor];
         if(from_factor <= to_factor) continue; // This has been compared in the other directionor or is the same factor
+        // TODO the above if only works if the cycle involves <= 2 factors
 
         if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
         if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
@@ -139,9 +140,10 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
 }
 
 cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
-    for(int to_factor : factors_affected) {
+    for (int to_factor : factors_affected){
         int from_factor = from_factors[to_factor];
-        if(from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
+        if (from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
+        // TODO the above if only works if the cycle involves <= 2 factors
 
         int cost_from = cpg.get_goal_cost(from_factor);
         int cost_to = cpg.get_goal_cost(to_factor);
@@ -150,23 +152,24 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
         bool has_from = cost_from >= 0; 
         bool has_to = cost_to >= 0; 
 
-        if(has_from && !has_to) return cmp_t::LESS;
-        if(!has_from && has_to) return cmp_t::GREATER;
+        if (has_from && !has_to) return cmp_t::LESS;
+        if (!has_from && has_to) return cmp_t::GREATER;
 
-        if(cost_from < cost_to) return cmp_t::LESS;
-        if(cost_from > cost_to) return cmp_t::GREATER;
+        if (cost_from < cost_to) return cmp_t::LESS;
+        if (cost_from > cost_to) return cmp_t::GREATER;
     }
     return cmp_t::EQUAL;
 }
 
 cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
-    for(int to_factor : factors_affected) {
+    for (int to_factor : factors_affected){ // TODO the ordering of factors_affected is not the same across multiple LeavesPermutations
         int from_factor = from_factors[to_factor];
         if(from_factor < to_factor) continue; // This has been compared in the other direction
+        // TODO the above if only works if the cycle involves <= 2 factors
 
-        assert (g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
+        assert(g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
 
-        for  (size_t to_id = 0; to_id < g_state_registry->size(from_factor); ++to_id){
+        for (size_t to_id = 0; to_id < g_state_registry->size(from_factor); ++to_id){
             pair<int, int> from_pair = get_old_factor_state_by_new_factor_state(to_factor, to_id);
             assert(from_pair.first == from_factor);
             int from_id = from_pair.second;
@@ -189,13 +192,13 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
     return cmp_t::EQUAL;
 }
 
-void LeavesPermutation::finalize(){
+void LeavesPermutation::finalize() {
     // Sorting the vector of affected factoriables
     sort(factors_affected.begin(), factors_affected.end());
     // Going over the vector from_factors of the mappings of the variables and finding cycles
     vector<bool> marked;
     marked.assign(from_factors.size(), false);
-    for (size_t i = 0; i < from_factors.size(); i++) {
+    for (size_t i = 0; i < from_factors.size(); i++){
         if (marked[i] || from_factors[i] == -1){
             continue;
         }
@@ -205,7 +208,7 @@ void LeavesPermutation::finalize(){
         vector<int> cycle;
         cycle.push_back(current);
         
-        while (from_factors[current] != (int)i){
+        while (from_factors[current] != (int) i){
             current = from_factors[current];
             marked[current] = true;
             cycle.insert(cycle.begin(),current);
