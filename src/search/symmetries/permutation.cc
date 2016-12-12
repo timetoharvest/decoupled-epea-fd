@@ -28,13 +28,15 @@ void Permutation::_allocate() {
 }
 
 void Permutation::_copy_value_from_permutation(const Permutation &perm) {
-    for (size_t i = 0; i < findex.length; i++)
-    	set_value(i, perm.get_value(i));
+    for (size_t i = 0; i < findex.length; i++){
+        set_value(i, perm.get_value(i));
+    }
 }
 
 void Permutation::_inverse_value_from_permutation(const Permutation &perm) {
-    for (size_t i = 0; i < findex.length; i++)
-	set_value(perm.get_value(i), i);
+    for (size_t i = 0; i < findex.length; i++){
+        set_value(perm.get_value(i), i);
+    }
 }
 
 Permutation &Permutation::operator=(const Permutation &other) {
@@ -42,10 +44,10 @@ Permutation &Permutation::operator=(const Permutation &other) {
         if (borrowed_buffer) {
             _allocate();
         } else {
-        	affected.assign(g_variable_domain.size(), false);
-        	vars_affected.clear();
-        	from_vars.assign(g_variable_domain.size(), -1);
-        	affected_vars_cycles.clear();
+            affected.assign(g_variable_domain.size(), false);
+            vars_affected.clear();
+            from_vars.assign(g_variable_domain.size(), -1);
+            affected_vars_cycles.clear();
         }
         _copy_value_from_permutation(other);
     }
@@ -55,15 +57,16 @@ Permutation &Permutation::operator=(const Permutation &other) {
 
 Permutation::Permutation(){
     _allocate();
-    for (size_t i = 0; i < findex.length; i++)
-    	set_value(i,i);
+    for (size_t i = 0; i < findex.length; i++){
+        set_value(i,i);
+    }
     finalize();
 }
 
 Permutation::Permutation(const unsigned int *full_permutation){
     _allocate();
     for (size_t i = 0; i < findex.length; i++){
-    set_value(i,full_permutation[i]);
+        set_value(i, full_permutation[i]);
     }
     finalize();
 }
@@ -115,7 +118,7 @@ void Permutation::finalize(){
 }
 
 bool Permutation::identity() const {
-	return vars_affected.size() == 0;
+    return vars_affected.size() == 0;
 }
 
 bool Permutation::operator==(const Permutation &other) const {
@@ -124,7 +127,6 @@ bool Permutation::operator==(const Permutation &other) const {
             return false;
         }
     }
-
     return true;
 }
 
@@ -141,17 +143,17 @@ void Permutation::print_cycle_notation() const {
 	    if(!affected[varval.first]) {
 		continue;
 	    }
-            cout<<"("<< g_fact_names[varval.first][(int) varval.second]  <<" ";
+            cout << "("<< g_fact_names[varval.first][(int) varval.second] << " ";
 
             while(get_value(current) != (int)i){
                 done.push_back(current);
                 current = get_value(current);
 
                 pair<int, int> currvarval = findex.get_var_val_by_index(current);
-                cout<< g_fact_names[currvarval.first][(int) currvarval.second] <<" ";
+                cout <<  g_fact_names[currvarval.first][(int) currvarval.second] << " ";
             }
             done.push_back(current);
-            cout<<") ";
+            cout << ") ";
         }
     }
     cout << endl << "Variables:  ";
@@ -180,8 +182,9 @@ void Permutation::dump() const {
     }
     cout << endl;
     for(size_t i = 0; i < findex.length; i++){
-        if (get_value(i) != (int)i)
+        if (get_value(i) != (int)i){
             cout << setw(4) << get_value(i);
+        }
     }
     cout << endl;
 }
@@ -211,7 +214,6 @@ void Permutation::set_affected(int ind, int val) {
     // Keeping the orig. var for each var.
     from_vars[to_var] = var;
 }
-
 
 pair<int, int> Permutation::get_new_var_val_by_old_var_val(int var, int val) const {
     int old_ind = findex.get_index_by_var_val_pair(var, val);
@@ -273,7 +275,6 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     return cmp_t::LESS;
 }
 
-
 bool Permutation::stabilizes(const State &state)  const {
     if (identity()) return true;
 
@@ -291,8 +292,6 @@ bool Permutation::stabilizes(const State &state)  const {
 
     return true;
 }
-
-
 
 void Permutation::permute(vector<int> &state) const {
     if (identity()) return;
@@ -337,7 +336,6 @@ void Permutation::permute(vector<int> &state) const {
 }
 
 void Permutation::permute_state(const State &from_state, vector<int> &to_state) const {
-
     // Does not assume anything about to_state
     for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
         int from_val = from_state[from_var];
@@ -347,7 +345,6 @@ void Permutation::permute_state(const State &from_state, vector<int> &to_state) 
         // Copying the values to the new state
         to_state[to_pair.first] = to_pair.second;
     }
-
 }
 
 bool Permutation::affects_center() const {

@@ -130,7 +130,7 @@ pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(int f
 cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     for(int to_factor : factors_affected) {
         int from_factor = from_factors[to_factor];
-        if(from_factor <= to_factor) continue; // This has been compared in the other directionor is the same factor
+        if(from_factor <= to_factor) continue; // This has been compared in the other directionor or is the same factor
 
         if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
         if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
@@ -178,11 +178,11 @@ cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
             if(!has_from && has_to) return cmp_t::GREATER;
                 
             if(has_from && has_to) {
-            int cost_from = cpg.get_cost_of_state(from_id, from_factor);
-            int cost_to = cpg.get_cost_of_state(to_id, to_factor);
+                int cost_from = cpg.get_cost_of_state(from_id, from_factor);
+                int cost_to = cpg.get_cost_of_state(to_id, to_factor);
 
-            if(cost_from < cost_to) return cmp_t::LESS;
-            if(cost_from > cost_to) return cmp_t::GREATER;
+                if(cost_from < cost_to) return cmp_t::LESS;
+                if(cost_from > cost_to) return cmp_t::GREATER;
             }
         }
     }
