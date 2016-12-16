@@ -185,9 +185,9 @@ public:
     virtual FactoredVars get_factoring();
     FactoredVars minimize_center(FactoredVars, const NGraph&);
     void optimize_feature(FactoredVars &, const NGraph &);
-    int rank_factoring(const FactoredVars &, const FEATURE);
-    int rank_mobility(const FactoredVars &);
-    int rank_leaves(const FactoredVars &);
+    uint64_t rank_factoring(const FactoredVars &, const FEATURE);
+    uint64_t rank_mobility(const FactoredVars &);
+    uint64_t rank_leaves(const FactoredVars &);
     //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
     NGraph generate_ngraph();
     bool check_factoring(FactoredVars);
@@ -1552,7 +1552,7 @@ bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
     }
     return valid;
 }
-int MaxIndependentSetFactoring::rank_factoring(const FactoredVars & factoring, const FEATURE feature){
+uint64_t MaxIndependentSetFactoring::rank_factoring(const FactoredVars & factoring, const FEATURE feature){
     int ret;
     switch (feature) {
         default:
@@ -1563,13 +1563,13 @@ int MaxIndependentSetFactoring::rank_factoring(const FactoredVars & factoring, c
             ret = rank_leaves(factoring);
             break;
         case NONE:
-            ret = -1;
+            ret = 0;
             break;
     }
     return ret;
 }
 
-int MaxIndependentSetFactoring::rank_mobility(const FactoredVars &factoring) {
+uint64_t MaxIndependentSetFactoring::rank_mobility(const FactoredVars &factoring) {
     vector<int> factor_actions(factoring.size(), 0);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
 
@@ -1604,7 +1604,7 @@ int MaxIndependentSetFactoring::rank_mobility(const FactoredVars &factoring) {
             ++factor_actions[affects_factor];
         }
     }
-    int mobility = 1;
+    uint64_t mobility = 1;
     bool any_actions = false;
     for (int i:factor_actions) {
         if (i > 0) {
@@ -1618,7 +1618,7 @@ int MaxIndependentSetFactoring::rank_mobility(const FactoredVars &factoring) {
     return mobility;
 }
 
-int MaxIndependentSetFactoring::rank_leaves(const FactoredVars &factoring) {
+uint64_t MaxIndependentSetFactoring::rank_leaves(const FactoredVars &factoring) {
     vector<bool> frozen = get_frozen_leaves(factoring);
     int f = 0;
     for (bool b:frozen) {
@@ -1626,7 +1626,7 @@ int MaxIndependentSetFactoring::rank_leaves(const FactoredVars &factoring) {
             ++f;
         }
     }
-    return f;
+    return (uint64_t)f;
 }
 
 void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGraph & g) {
@@ -1678,10 +1678,10 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 
     while (minimize) {
         if (!candidates.empty()) {
-            int max = -1;
-            vector<int> max_rank;
-            max_rank.push_back(-1);
-            max_rank.push_back(-1);
+            size_t max = 0;
+            vector<uint64_t> max_rank;
+            max_rank.push_back(0);
+            max_rank.push_back(0);
             for (size_t i = 0; i < candidates.size(); ++i) {
                 int candidate = candidates[i];
                 int leaf = candidates_to_leaf[i];
@@ -1689,8 +1689,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                 mis[leaf].insert(candidate);
 
                 // call ranking (multiple rankings?)
-                vector<int> ranking;
-                ranking.push_back(-1);
+                vector<uint64_t> ranking;
                 bool update = false;
                 ranking.push_back(rank_factoring(mis, arg_feature_1));
                 if (ranking[0] > max_rank[0]) {
@@ -1712,7 +1711,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                 mis[leaf].erase(mis[leaf].find(candidate));
 
             }
-            assert(max != -1);
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[max];
             // and push it into the respective leaf
