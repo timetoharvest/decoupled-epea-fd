@@ -59,8 +59,8 @@ set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
     size_t cur_size = 0;
 
     brute_force_mis_DFS(base, &mis_size, cur_size, &maxindsets, &gv, -1);
-#ifdef DEBUG_FACTORING
     cout << "MIS found: " << maxindsets.size() << endl;
+#ifdef DEBUG_FACTORING
     for (size_t i = 0; i < maxindsets.size(); i++) {
         cout << "MIS " << i << ": ";
         for (size_t v = 0; v < maxindsets[i].size(); v++) {
