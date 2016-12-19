@@ -1652,24 +1652,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 
     cout << "center size: " << center.size() << endl;
 
-    vector<int> candidates; // pos -> var
-    vector<int> candidates_to_leaf; // pos -> leaf
-
-    // collect candidates (center vars with one leaf neighbour)
-    for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-        set<int> leaf_neighbours;
-        for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-            if (!in_center[*n]) {
-                leaf_neighbours.insert(var_to_factor.at(*n));
-            }
-        }
-        if (leaf_neighbours.size() == 1) {
-            candidates.push_back(*it);
-            candidates_to_leaf.push_back(*leaf_neighbours.begin());
-
-        }
-    }
-
     bool minimize = true;
     int c_rm = 0;
     int f_rm = 0;
@@ -1677,6 +1659,24 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
     bool removed_frozen_leaves = false;
 
     while (minimize) {
+        vector<int> candidates; // pos -> var
+        vector<int> candidates_to_leaf; // pos -> leaf
+
+        // collect candidates (center vars with one leaf neighbour)
+        for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+            set<int> leaf_neighbours;
+            for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
+                if (!in_center[*n]) {
+                    leaf_neighbours.insert(var_to_factor.at(*n));
+                }
+            }
+            if (leaf_neighbours.size() == 1) {
+                candidates.push_back(*it);
+                candidates_to_leaf.push_back(*leaf_neighbours.begin());
+
+            }
+        }
+        
         if (!candidates.empty()) {
             size_t max = 0;
             vector<uint64_t> max_rank;
