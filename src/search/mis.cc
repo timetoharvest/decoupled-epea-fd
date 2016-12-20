@@ -871,7 +871,7 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                 } else {
                     //find foldable vertex v (d(v) = 2)
                     found = false;
-                    /*
+                    
                     int v2;
                     for (NGraph::iterator it = g.begin(); it != g.end() && !found; it++) {
                         if (it->second.size() == 2) {
@@ -880,8 +880,8 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                             break;
 
                         }
-                    }*/
-                    if (found) {/*
+                    }
+                    if (found) {
                         set<int>::iterator it = g[v2].begin();
                         int u1 = *(it);
                         int u2 = *(++it);
@@ -916,7 +916,7 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                             // should never happen, as this case should have been resolved by dominance first
                             cout <<  "###############   INVALID FOLDING   ###############" << endl;
                             exit_with(EXIT_CRITICAL_ERROR);
-                        }*/
+                        }
                     } else {
                         // select v of maximum degree, which minimizes |E(N(v))|
                         set<size_t> max_deg;
