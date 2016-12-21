@@ -141,7 +141,7 @@ void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
     }
     int cost = get_adjusted_cost(op);
     if (search_type == CENTER && op.get_affected_factor() != -1){
-        cost = 0;   // ASDA*/FRA*/SAT => center heuristic
+        cost = 0;   // ADA*/FRA*/SAT => center heuristic
     }
     add_relaxed_operator(precondition, effects, &op, cost);
 }
@@ -374,7 +374,7 @@ void LandmarkCutHeuristic::validate_h_max() const {
 void LandmarkCutHeuristic::dereference_ops() {
     for (size_t i = 0; i < propositions.size(); ++i){
         for (size_t j = 0; j < propositions[i].size(); ++j){
-            // only precondition of new leaf ops is artificial_precondition
+            // the only precondition of new leaf ops is artificial_precondition
             propositions[i][j].effect_of.resize(number_center_effs[i][j]);
         }
     }
@@ -389,20 +389,20 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         
         dereference_ops();
         
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (size_t factor = 0; factor < g_factors.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
-            int number_states = tag->get_number_states(factor);
+            size_t number_states = tag->get_number_states(factor);
             size_t id = 0;
             while (number_states > 0){
-                if (tag->has_leaf_state(id, factor)){
+                if (tag->has_leaf_state(LeafStateID(id, factor))){
                     --number_states;
                     
                     int cost = 0;
                     if (search_type == STAR){
-                        cost = tag->get_cost_of_state(id, factor);
+                        cost = tag->get_cost_of_state(LeafStateID(id, factor));
                         assert(cost >= 0);
                     }
                     
@@ -424,9 +424,8 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                     relaxed_leaf_operators[factor][id].cost = cost;
                     
                     RelaxedOperator &op = relaxed_leaf_operators[factor][id];
-                    for (size_t j = 0; j < op.precondition.size(); ++j){
-                        op.precondition[j]->precondition_of.push_back(&op);
-                    }
+                    assert(op.precondition.size() == 1);
+                    op.precondition[0]->precondition_of.push_back(&op);
                     for (size_t j = 0; j < op.effects.size(); ++j){
                         op.effects[j]->effect_of.push_back(&op);
                     }
@@ -456,9 +455,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         return DEAD_END;
     }
 
-    int num_iterations = 0;
     while (artificial_goal.h_max_cost != 0) {
-        num_iterations++;
         //cout << "h_max = " << artificial_goal.h_max_cost << "..." << endl;
         //cout << "total_cost = " << total_cost << "..." << endl;
         mark_goal_plateau(&artificial_goal);

@@ -224,7 +224,7 @@ public:
     */
     State get_center_state(const State &predecessor, int dup_counter);
     
-    size_t get_id_of_successor_leaf_state(const LeafState &predecessor, const Operator &op);
+    LeafStateID get_successor_leaf_state_id(const LeafState &predecessor, const Operator &op);
 
     /*
       Returns the number of states registered so far.

@@ -2,7 +2,6 @@
 #define FACTORING_H
 
 #include "globals.h"
-#include "operator_cost.h"
 #include "utilities.h"
 
 #include <set>
@@ -27,6 +26,7 @@ enum PROFILE {
     TPP_CONSTRAINED, // domain dependant factoring
     INV_TPP_CONSTRAINED, // domain dependant factoring
     DOC_TRANSFER, // domain dependant factoring
+    PEGSOL, // domain dependant factoring
     INC_ARCS
 };
 
@@ -70,20 +70,8 @@ public:
 
 class OptionParser;
 class Options;
-class Pruning;
-class SearchSpace;
 
 class Factoring {
-    
-    mutable bool ignore_current_state;
-    
-    bool reopen_closed_nodes;
-    
-    mutable OperatorCost cost_type;
-    
-    mutable SearchSpace *search_space;
-    
-    Pruning *pruning;
     
     SEARCH_TYPE search_type;
     
@@ -137,44 +125,11 @@ public:
         return interaction_graph;
     }
     
-    void set_cost_type(OperatorCost ct);
-    
-    OperatorCost get_cost_type() const {
-        return cost_type;
-    }
-    
     SEARCH_TYPE get_search_type() const {
         return search_type;
     }
     
-    void set_ignore_current_state(bool ignore) {
-        ignore_current_state = ignore;
-    }
-    
-    bool ignore_current_search_state() const {
-        return ignore_current_state;
-    }
-    
-    void set_search_space(SearchSpace *sp) {
-        search_space = sp;
-    }
-    
-    SearchSpace* get_search_space() const {
-        return search_space;
-    }
-    
-    Pruning* get_pruning() const {
-        return pruning;
-    }
-    
-    bool are_closed_nodes_reopened() const {
-        return reopen_closed_nodes;
-    }
-    
-    void set_reopen_closed_nodes() {
-        reopen_closed_nodes = true;
-    }
-    
+
     static void add_options_to_parser(OptionParser &parser);
     
 };

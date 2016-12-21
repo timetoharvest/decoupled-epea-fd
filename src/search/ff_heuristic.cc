@@ -41,6 +41,7 @@ void FFHeuristic::initialize() {
         artificial_leaf_ops.resize(g_factors.size());
         int counter = -1;
         for (size_t factor = 0; factor < g_factors.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
+            assert(CompliantPathGraph::precompute_leaf_state_space(factor));
             for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
                 artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
                 --counter;
@@ -95,18 +96,18 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 }
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
         int number_states = tag->get_number_states(factor);
         size_t id = 0;
         while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
+            if (tag->has_leaf_state(LeafStateID(id, factor))){
                 --number_states;
                 int base_cost = 0;
                 UnaryOperator *op = 0;
                 if (search_type == STAR){
                     op = artificial_leaf_ops[factor][id];
-                    base_cost = tag->get_cost_of_state(id, factor);
+                    base_cost = tag->get_cost_of_state(LeafStateID(id, factor));
                 }
                 LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                 for (size_t v = 0; v < g_factors[factor].size(); ++v) {
@@ -144,13 +145,13 @@ int FFHeuristic::compute_heuristic(const State &state) {
     }
     int leaf_goal_cost = 0;
     if (search_type == STAR){
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         for (size_t factor = 0; factor < artificial_leaf_ops.size(); ++factor){
             for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
                 if (relaxed_leaf_plan[factor][fact]){
                     relaxed_leaf_plan[factor][fact] = false;
-                    assert(tag->get_cost_of_state(fact, factor) >= 0);
-                    leaf_goal_cost += tag->get_cost_of_state(fact, factor);
+                    assert(tag->get_cost_of_state(LeafStateID(fact, factor)) >= 0);
+                    leaf_goal_cost += tag->get_cost_of_state(LeafStateID(fact, factor));
                 }
             }
         }

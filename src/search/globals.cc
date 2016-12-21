@@ -47,7 +47,7 @@ bool test_goal(const State &state) {
         }
     }
     if (g_use_decoupled_search){
-        const CompliantPathGraph *cpg = CPGStorage::get_cpg(state);
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
         for (size_t factor = 0; factor < g_factors.size(); ++factor) {
             if (!g_goals_per_factor[factor].empty() && !cpg->goal_reachable(factor)){
                 return false;
@@ -440,7 +440,7 @@ vector<string> g_variable_name;
 vector<int> g_variable_domain;
 
 vector<int> g_center_vars;
-vector<int> g_new_index;
+vector<size_t> g_new_index;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;

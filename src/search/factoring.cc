@@ -36,8 +36,8 @@ void InteractionGraph::add_dependency(int from, int to) {
     }
 }
 
+
 Factoring::Factoring(const Options &opts) :
-            reopen_closed_nodes(false),
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
@@ -59,14 +59,13 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
-        pruning = opts.get<Pruning*>("pruning");
+        CompliantPathGraph::set_pruning(opts.get<Pruning*>("pruning"));
     } else {
-        pruning = new BasicPruning();
+        CompliantPathGraph::set_pruning(new BasicPruning());
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
-    ignore_current_state = false;
 }
 
 class CenterFactoring : public Factoring {
@@ -205,21 +204,25 @@ public:
   
 };
 
+class PegsolFactoring : public Factoring {
+  
+public:
+    
+    PegsolFactoring(const Options &opts)
+            : Factoring(opts) {
+        profile = PEGSOL;
+        cout << "using pegsol factoring profile" << endl;
+    };
+    
+    virtual FactoredVars get_factoring();
+  
+};
 
-void Factoring::set_cost_type(OperatorCost ct) {
-    cost_type = ct;
-    g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
-    for (const auto &op : g_operators){
-        int factor = op.get_affected_factor();
-        if (factor != -1){
-            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
-        }
-    }
-}
+
 
 void Factoring::apply_factoring(FactoredVars factoring) {
     g_belongs_to_factor = vector<int>(g_variable_domain.size(), -1);        // -1 => center factor
-    g_new_index = vector<int>(g_variable_domain.size());
+    g_new_index = vector<size_t>(g_variable_domain.size());
     interaction_graph = InteractionGraph(factoring.size());
     g_factors.resize(factoring.size());
     
@@ -267,6 +270,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
             const Effect &prepost = op.get_effects()[post];
             eff_factors.insert(g_belongs_to_factor[prepost.var]);
         }
+        assert(!eff_factors.empty());
         
         for (set<int>::iterator pre_it = pre_factors.begin(); pre_it != pre_factors.end(); ++pre_it){
             for (set<int>::iterator eff_it = eff_factors.begin(); eff_it != eff_factors.end(); ++eff_it){
@@ -282,8 +286,25 @@ void Factoring::apply_factoring(FactoredVars factoring) {
                 }
             }
         }
-        if (eff_factors.find(-1) == eff_factors.end()){
-            assert(eff_factors.size() == 1);
+
+        bool is_center_op = false;
+        if (eff_factors.find(-1) != eff_factors.end()){
+            // effect on center variable
+            is_center_op = true;
+        } else if (eff_factors.size() > 1){
+            // effect on more than one factor
+            is_center_op = true;
+        } else {
+            pre_factors.erase(-1);
+            if (pre_factors.size() > 1){
+                // precondition on more than one leaf
+                is_center_op = true;
+            } else if (!pre_factors.empty() && *pre_factors.begin() != *eff_factors.begin()){
+                // precondition on leaf A, but effect on leaf B
+                is_center_op = true;
+            }
+        }
+        if (!is_center_op){
             int factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
             ++num_ops_per_factor[factor];
@@ -1476,6 +1497,26 @@ Factoring::FactoredVars DocTransferFactoring::get_factoring() {
     return factoring;
 }
 
+Factoring::FactoredVars PegsolFactoring::get_factoring() {
+    FactoredVars factoring(4);
+    vector<vector<string> > factors(4, vector<string>(7));
+    factors[0][0] = "Atom free(pos-0-2)";factors[0][1] = "Atom free(pos-0-3)";factors[0][2] = "Atom free(pos-0-4)";factors[0][3] = "Atom free(pos-1-2)";factors[0][4] = "Atom free(pos-1-3)";factors[0][5] = "Atom free(pos-1-4)";//factors[0][6] = "Atom free(pos-2-3)";
+    factors[1][0] = "Atom free(pos-2-0)";factors[1][1] = "Atom free(pos-3-0)";factors[1][2] = "Atom free(pos-4-0)";factors[1][3] = "Atom free(pos-2-1)";factors[1][4] = "Atom free(pos-3-1)";factors[1][5] = "Atom free(pos-4-1)";//factors[1][6] = "Atom free(pos-3-2)";
+    factors[2][0] = "Atom free(pos-5-2)";factors[2][1] = "Atom free(pos-5-3)";factors[2][2] = "Atom free(pos-5-4)";factors[2][3] = "Atom free(pos-6-2)";factors[2][4] = "Atom free(pos-6-3)";factors[2][5] = "Atom free(pos-6-4)";//factors[2][6] = "Atom free(pos-4-3)";
+    factors[3][0] = "Atom free(pos-2-5)";factors[3][1] = "Atom free(pos-3-5)";factors[3][2] = "Atom free(pos-4-5)";factors[3][3] = "Atom free(pos-2-6)";factors[3][4] = "Atom free(pos-3-6)";factors[3][5] = "Atom free(pos-4-6)";//factors[3][6] = "Atom free(pos-3-4)";
+    
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        for (size_t factor = 0; factor < factors.size(); ++factor){
+            vector<string>::const_iterator it = find(factors[factor].begin(), factors[factor].end(), g_fact_names[var][0].c_str());
+            if (it != factors[factor].end()){
+                factoring[factor].insert(var);
+                break;
+            }
+        }
+    }
+    return factoring;
+}
+
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
@@ -1598,6 +1639,20 @@ static Factoring *_parse_doctransfer(OptionParser &parser) {
     return factoring;
 }
 
+static Factoring *_parse_pegsol(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    
+    Options opts = parser.parse();
+
+    PegsolFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new PegsolFactoring(opts);
+    }
+
+    return factoring;
+}
+
 static Plugin<Factoring> _plugin_fork("fork", _parse_fork);
 static Plugin<Factoring> _plugin_ifork("ifork", _parse_ifork);
 static Plugin<Factoring> _plugin_xshape("xshape", _parse_xshape);
@@ -1608,4 +1663,5 @@ static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
 // static Plugin<Factoring> _plugin_itpp_const("itpp_const", _parse_itpp_const);
 
 static Plugin<Factoring> _plugin_doctransfer("doctransfer", _parse_doctransfer);
+static Plugin<Factoring> _plugin_pegsol("pegsol", _parse_pegsol);
 

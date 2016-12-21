@@ -87,7 +87,8 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
-          lp_solver_interface.h \
+          lp_solver_interface.h
+
 
 ## Each of the following "HEADERS += ..." constructs defines a
 ## "plugin" feature that can be enabled or disabled by simply
@@ -164,12 +165,10 @@ HEADERS += por/stubborn_sets.h \
 
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
-           ../preprocess/scc.h
-           
+           ../preprocess/scc.h       
 
 HEADERS += pruning/cost_frontier.h \
            pruning/simulation_relation.h \
-           pruning/prunable.h \
            pruning/pruning.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
@@ -233,11 +232,6 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-CXX = g++-4.9
-# nasty HACK to be able to compile Alvaro's magic constructs on the cluster
-ifeq (, $(shell which $(CXX)))
-    CXX = g++
-endif
 
 DEPEND = $(CXX) -MM
 
@@ -256,8 +250,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc up to 4.6
-CXXFLAGS += -Wall -std=c++0x -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -265,24 +258,6 @@ ifeq ($(DOWNWARD_OS), osx)
     CXXFLAGS += -I/opt/local/include/
 endif
 
-
-## The following lines contain workarounds for bugs when
-## cross-compiling to 64 bit on 32-bit systems using gcc 4.4 or gcc
-## 4.5 in some Ubuntu releases. (We don't usually cross-compile to
-## 64-bit, but in some cases we do; e.g. we did for the IPC.) See
-## http://stackoverflow.com/questions/4643197/missing-include-bits-cconfig-h-when-cross-compiling-64-bit-program-on-32-bit.
-ifeq ($(DOWNWARD_OS), linux) # workarounds only valid for Linux...
-    HAVE_GCC_4_4 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.4\.\\\))
-    HAVE_GCC_4_5 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.5\.\\\))
-
-    ifdef HAVE_GCC_4_4
-        CXXFLAGS += -I/usr/include/c++/4.4/i686-linux-gnu
-    endif
-
-    ifdef HAVE_GCC_4_5
-        CXXFLAGS += -I/usr/include/c++/4.5/i686-linux-gnu
-    endif
-endif
 
 LDFLAGS =
 LDFLAGS += $(BITWIDTHOPT)

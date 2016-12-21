@@ -3,7 +3,6 @@
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"
 #include "../plugin.h"
-#include "prunable.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
 
@@ -11,15 +10,19 @@
 using namespace std;
 
 
+bool Pruning::ignore_current_search_state = false;
+
+bool Pruning::reopen_closed_nodes = false;
+
+
 Pruning::Pruning(const Options &opts) : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                                         do_simulation(opts.get<bool>("simulation")),
                                         goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
 
-    if (goal_price_propagation || do_simulation || irrelevance != NO){        
+    if (goal_price_propagation || do_simulation || irrelevance != NO){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
-            Prunable::set_propagate_goal_prices();
             cout << "using goal price propagation" << endl;
         }
         
@@ -60,7 +63,7 @@ void Pruning::init() {
     }
 }
 
-DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunable *reference, DOMINATION needed) const {
+DOMINATION BasicPruning::check_dominance(CompliantPathGraph *check, CompliantPathGraph *reference, DOMINATION needed) const {
     
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -146,13 +149,13 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check->has_effective_leaf_state(id, factor)){
+            if (check->has_effective_leaf_state(LeafStateID(id, factor))){
                 --number_new_states;
-                if (reference->has_effective_leaf_state(id, factor)){
+                if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference->get_effective_cost_of_state(id, factor);
-                        int new_cost = check->get_effective_cost_of_state(id, factor);
+                        int old_cost = reference->get_effective_cost_of_state(LeafStateID(id, factor));
+                        int new_cost = check->get_effective_cost_of_state(LeafStateID(id, factor));
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -165,7 +168,7 @@ DOMINATION BasicPruning::check_dominance(const State &, Prunable *check, Prunabl
                 } else {
                     dominated = false;
                 }                
-            } else if (reference->has_effective_leaf_state(id, factor)){
+            } else if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
                 --number_old_states;
                 dominates = false;
             }

@@ -10,16 +10,16 @@ class LeafStateID {
     friend class StateRegistry;
     friend std::ostream &operator<<(std::ostream &os, LeafStateID id);
    
-    int value;
+    size_t value;
     
-    int factor;
+    size_t factor;
     
     // No implementation to prevent default construction
     LeafStateID();
     
 public:
     
-    explicit LeafStateID(int id, int factor)
+    explicit LeafStateID(size_t id, size_t factor)
         : value(id), factor(factor) {
     }
     
@@ -44,7 +44,7 @@ public:
         return value;
     }
     
-    int get_factor() const {
+    size_t get_factor() const {
         return factor;
     }
 };

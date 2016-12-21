@@ -3,16 +3,21 @@
 
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "../globals.h"
-#include "../leaf_state.h"
 #include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 #include "reachability_function.h"
 
 #include <vector>
 
+class PruningReachableStorage;
+
 class PruningReachable : public Reachable {
+    friend class Reachable; // to get init state cpg
     
-    static PruningReachable tmp_p_reach;
+    static PruningReachableStorage *cpg_storage;
+    
+    static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();   
+    
+    void compute_frontier();
     
 protected:
     
@@ -27,27 +32,24 @@ protected:
                         int g_value, const State &predecessor);
 
     // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
-    
-    void compute_frontier();
+    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
+                                                                          const Operator *op,
+                                                                          const State &predecessor) const override;
     
 public:
     
     PruningReachable(){};
 
+    virtual void store_new_graph(const State &state) const;
 
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
+    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
-    virtual void dump() const;
+    virtual void dump() const override;
+
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
     
     
-    static void store_new_graph(const State &state);
-    
-    static void create_init_state_reachable();
+    static void register_cpg_storage(PruningReachableStorage *storage);
  
 };
 

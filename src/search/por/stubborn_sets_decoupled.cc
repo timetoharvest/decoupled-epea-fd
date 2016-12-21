@@ -35,7 +35,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
             bool applicable = false;
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (current_cpg->has_leaf_state(id, factor)){
+                if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                     bool applicable_state = true;
                     for (size_t i = 0; i < preconds.size(); ++i){
@@ -94,12 +94,12 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(int factor) {
     for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-        if (current_cpg->has_leaf_state(id, factor)){
-            int curr_cost = current_cpg->get_cost_of_state(id, factor);
+        if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
+            int curr_cost = current_cpg->get_cost_of_state(LeafStateID(id, factor));
             for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 int new_price = curr_cost;
-                new_price += get_adjusted_action_cost(*succ.first, g_factoring->get_cost_type());
-                if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
+                new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
+                if (!current_cpg->has_leaf_state(LeafStateID(succ.second, factor)) || new_price < current_cpg->get_cost_of_state(LeafStateID(succ.second, factor))){
                     mark_as_stubborn(succ.first->get_index());
                 }
             }
@@ -132,7 +132,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
-    current_cpg = CPGStorage::get_cpg(state);
+    current_cpg = CPGStorage::storage->get_cpg(state);
 
     // if goal in a factor not reached, mark all ingoing transition to all
     // goal states as stubborn
@@ -147,8 +147,8 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             vector<bool> sat(g_goals_per_factor[factor].size(), false);
             
             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (current_cpg->has_leaf_state(id, factor)){
-                    assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+                if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
+                    assert(!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor)));
                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
                         if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
