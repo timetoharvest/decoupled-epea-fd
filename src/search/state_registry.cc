@@ -178,12 +178,11 @@ void StateRegistry::permute_initial_state() {
             g_state_packer->set(sym_buffer, g_center_vars.size(), 0);
                     
             StateID id = insert_id_or_pop_state();
+            assert(id.hash() == 0);
             
             delete cached_initial_state;
             cached_initial_state = new State(lookup_state(id));
         }
-        
-        cpg->store_new_graph(*cached_initial_state);
     } else {
         const vector<int> &new_state = g_symmetry_graph->get_canonical_state(*cached_initial_state);
         
