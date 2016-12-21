@@ -279,7 +279,7 @@ void LeavesPermutation::print_cycle_notation() const {
     for (size_t i = g_variable_domain.size(); i < permutation->findex.length; ++i){
         if (find(done.begin(), done.end(), i) == done.end()){
             pair<int, int> varval = permutation->findex.get_var_val_by_index(i);
-	    if (g_belongs_to_factor[varval.first] == -1 || !affected[varval.first]){
+	    if (g_belongs_to_factor[varval.first] == -1 || !affected[g_belongs_to_factor[varval.first]]){
                 continue;
 	    }
 	    
