@@ -16,7 +16,7 @@ Heuristic::Heuristic(const Options &opts)
       search_type(SearchType(opts.get_enum("search_type"))){
     heuristic = NOT_INITIALIZED;
 
-    if (g_use_decoupled_search){
+    if (g_factoring){
         if (search_type == STD){
             if (g_factoring->get_search_type() == SDA){
                 search_type = STAR;

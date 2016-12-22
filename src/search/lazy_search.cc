@@ -25,7 +25,7 @@ LazySearch::LazySearch(const Options &opts)
       current_operator(NULL),
       current_g(0),
       current_real_g(0) {
-    if (g_use_decoupled_search && reopen_closed_nodes){
+    if (g_factoring && reopen_closed_nodes){
         Pruning::set_reopen_closed_nodes();
     }
 }
@@ -155,7 +155,7 @@ SearchStatus LazySearch::step() {
     SearchNode node = search_space.get_node(current_state);
     bool reopen = reopen_closed_nodes && (current_g < node.get_g()) && !node.is_dead_end() && !node.is_new();
     
-    if (g_use_decoupled_search && Pruning::ignore_current_state()){
+    if (g_factoring && Pruning::ignore_current_state()){
         reopen = false;
     }
 

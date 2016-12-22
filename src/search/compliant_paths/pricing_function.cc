@@ -26,9 +26,9 @@ void Prices::register_cpg_storage(PriceStorage *storage) {
 
 Prices::Prices(const Prices *tag) {
     if (tag == 0){
-        number_states = vector<size_t>(g_factors.size(), 0);
-        prices = vector<vector<int> >(g_factors.size());
-        goal_cost = vector<int>(g_factors.size(), INF);
+        number_states = vector<size_t>(g_leaves.size(), 0);
+        prices = vector<vector<int> >(g_leaves.size());
+        goal_cost = vector<int>(g_leaves.size(), INF);
     } else {
         number_states = tag->number_states;
         prices = tag->prices;
@@ -36,7 +36,7 @@ Prices::Prices(const Prices *tag) {
     }
 }
 
-void Prices::reduce_cost_by(int factor, int cost) {
+void Prices::reduce_cost_by(LeafFactorID factor, int cost) {
     assert(g_factoring->get_profile() != FORK);
     
     if (goal_cost[factor] != INF){
@@ -50,13 +50,12 @@ void Prices::reduce_cost_by(int factor, int cost) {
     }
 }
 
-bool Prices::add_state(const LeafStateID &state, int cost) {
-    size_t factor = state.get_factor();
-    if (leaf_state_id_map[factor][state.hash()] == -1){ // get new index to prevent facts vector from being sparse
-        leaf_state_id_map[factor][state.hash()] = curr_leaf_state_max_id[factor];
+bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
+    if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
+        leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
     }
-    size_t leaf_id = leaf_state_id_map[factor][state.hash()];
+    size_t leaf_id = leaf_state_id_map[factor][id];
 
     if (leaf_id >= prices[factor].size()){
         prices[factor].resize(leaf_id + 1, INF);
@@ -64,7 +63,7 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
     if (prices[factor][leaf_id] == INF){
         prices[factor][leaf_id] = cost;
         ++number_states[factor];
-        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
+        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(id, factor)){
             if (goal_cost[factor] == INF || goal_cost[factor] > cost){
                 goal_cost[factor] = cost;
             }
@@ -72,7 +71,7 @@ bool Prices::add_state(const LeafStateID &state, int cost) {
         return true;
     } else if (prices[factor][leaf_id] > cost){
         prices[factor][leaf_id] = cost;
-        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(state)){
+        if (!g_goals_per_factor[factor].empty() && is_leaf_goal_state(id, factor)){
             if (goal_cost[factor] > cost){
                 goal_cost[factor] = cost;
             }
@@ -86,7 +85,7 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
                                                                  const Operator *op,
                                                                  const State &) const {
                                                                   
-    unique_ptr<Prices> tmp_price;
+    unique_ptr<Prices> tmp_price; // TODO what about having a static pointer in the class to prevent reallocation?
     
     if (g_factoring->get_profile() != FORK && op != 0){
         tmp_price.reset(new Prices(0));                  // when updating initial state => op == 0
@@ -103,10 +102,10 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
     
     assert(leaf_tags_to_cache.empty());
 
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
         // skip fork leaves that don't have a goal!
-        if (!g_factoring->has_successors(factor) && g_goals_per_factor[factor].empty()){
+        if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
             continue;
         }
         
@@ -124,7 +123,7 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
         
-        bool is_ifork_leaf = !g_factoring->has_predecessors(factor);
+        bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
         
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
             // the two above conditions together prevent errors in case the CG is not connected.
@@ -134,10 +133,10 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
             if (tmp_price->number_states[factor] == 1){
-                size_t leaf_id = 0;
+                LeafStateHash leaf_id(0);
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_price->has_leaf_state(LeafStateID(leaf_id, factor))){
+                    if (tmp_price->has_leaf_state(leaf_id, factor)){
                         break;
                     }
                     ++leaf_id;
@@ -145,14 +144,14 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const Prices &tag_to_copy = cpg_storage->prices[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_price->get_cost_of_state(LeafStateID(leaf_id, factor));
-                    cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    int cost_delta = tmp_price->get_cost_of_state(leaf_id, factor);
+                    cost_delta -= tag_to_copy.get_cost_of_state(leaf_id, factor);
                     
                     size_t num_states = tag_to_copy.get_number_states(factor) - 1;
-                    for (size_t fact = 0 ; fact < number_leaf_states; fact++){
-                        if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
-                            int cost = tag_to_copy.get_cost_of_state(LeafStateID(fact, factor));
-                            tmp_price->add_state(LeafStateID(fact, factor), cost + cost_delta);
+                    for (LeafStateHash id(0) ; id < number_leaf_states; ++id){
+                        if (id != leaf_id && tag_to_copy.has_leaf_state(id, factor)){
+                            int cost = tag_to_copy.get_cost_of_state(id, factor);
+                            tmp_price->add_state(id, factor, cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
@@ -173,11 +172,11 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
            
             change = false;
             
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 
-                if (tmp_price->has_leaf_state(LeafStateID(id, factor))){
+                if (tmp_price->has_leaf_state(id, factor)){
                 
-                    int cost = tmp_price->get_cost_of_state(LeafStateID(id, factor));
+                    int cost = tmp_price->get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
                         continue;
                     }
@@ -189,9 +188,9 @@ unique_ptr<CompliantPathGraph> Prices::get_updated_successor_cpg(const State &ba
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator *op = leaf_state_successors[factor][id][o].first;
                         if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                            size_t successor = leaf_state_successors[factor][id][o].second;
-                            change |= tmp_price->add_state(LeafStateID(successor, factor), 
-                                                   cost + get_adjusted_action_cost(*op, cost_type));
+                            LeafStateHash successor = leaf_state_successors[factor][id][o].second;
+                            change |= tmp_price->add_state(successor, factor, 
+                                                           cost + get_adjusted_action_cost(*op, cost_type));
                         }
                     }
                     
@@ -230,7 +229,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
 #endif
 
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
@@ -245,35 +244,34 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         }
         
         // center op completely overwrites this leaf factor
-        bool leaf_overwritten = num_effects == g_factors[factor].size();
+        bool leaf_overwritten = num_effects == g_leaves[factor].size();
         
         if (leaf_overwritten && !has_pre_on_factor){
-            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
-            add_state(g_state_registry->get_successor_leaf_state_id(pred, op), 0);
+            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+            add_state(g_state_registry->get_successor_leaf_state_hash(pred, op), factor, 0);
             continue;
         }
               
         int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
                 
         int number_states = old_tag.get_number_states(factor);
-        size_t id = 0;
+        LeafStateHash id(0);
         while (number_states > 0) {
-            LeafStateID lid(id, factor);
-            if (old_tag.has_leaf_state(lid)){
+            if (old_tag.has_leaf_state(id, factor)){
                 --number_states;
                 
-                if (!has_pre_on_factor || op.is_applicable(lid)){ // TODO there should be a more efficient way to check this! yep, cf above TODO 
+                if (!has_pre_on_factor || op.is_applicable(id, factor)){ // TODO there should be a more efficient way to check this! yep, cf above TODO 
                     
-                    int cost = old_tag.get_cost_of_state(lid);
+                    int cost = old_tag.get_cost_of_state(id, factor);
                     
                     min_price = min(min_price, cost);
                     
                     if (!leaf_overwritten){
                         if (num_effects == 0){
-                            add_state(lid, cost);
+                            add_state(id, factor, cost);
                         } else {
-                            const LeafState state = g_state_registry->lookup_leaf_state(lid);                
-                            add_state(g_state_registry->get_successor_leaf_state_id(state, op), cost);
+                            const LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                            add_state(g_state_registry->get_successor_leaf_state_hash(state, op), factor, cost);
                         }
                     }
                 }
@@ -282,8 +280,8 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         }
         
         if (leaf_overwritten){
-            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateID(0, factor));
-            add_state(g_state_registry->get_successor_leaf_state_id(pred, op), min_price);
+            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+            add_state(g_state_registry->get_successor_leaf_state_hash(pred, op), factor, min_price);
         }
 
         if (min_price > 0){
@@ -298,43 +296,40 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
     }
 }
 
-bool Prices::has_leaf_state(const LeafStateID &id) const {
-    size_t factor = id.get_factor();
-    size_t lid = id.hash();
-    if (leaf_state_id_map[factor][lid] == -1){
+bool Prices::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
+    if (leaf_state_id_map[factor][id] == -1){
         return false;
     }
-    size_t leaf_id = leaf_state_id_map[factor][lid];
+    size_t leaf_id = leaf_state_id_map[factor][id];
     return leaf_id < prices[factor].size() && prices[factor][leaf_id] != INF;
 }
 
-bool Prices::has_effective_leaf_state(const LeafStateID &id) const {
-    return has_leaf_state(id);
+bool Prices::has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const {
+    return has_leaf_state(id, factor);
 }
 
-int Prices::get_cost_of_state(const LeafStateID &id) const {
-    size_t factor = id.get_factor();
-    assert((size_t) leaf_state_id_map[factor][id.hash()] < prices[factor].size());
-    return prices[factor][leaf_state_id_map[factor][id.hash()]];
+int Prices::get_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
+    assert((size_t) leaf_state_id_map[factor][id] < prices[factor].size());
+    return prices[factor][leaf_state_id_map[factor][id]];
 }
 
-int Prices::get_effective_cost_of_state(const LeafStateID &id) const {
-    return get_cost_of_state(id);
+int Prices::get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
+    return get_cost_of_state(id, factor);
 }
 
-size_t Prices::get_number_states(size_t factor) const {
+size_t Prices::get_number_states(LeafFactorID factor) const {
     return number_states[factor];
 }
 
-size_t Prices::get_number_effective_states(size_t factor) const {
+size_t Prices::get_number_effective_states(LeafFactorID factor) const {
     return number_states[factor];
 }
 
-int Prices::get_goal_cost(size_t factor) const {
+int Prices::get_goal_cost(LeafFactorID factor) const {
     return goal_cost[factor];
 }
 
-bool Prices::goal_reachable(size_t factor) const {
+bool Prices::goal_reachable(LeafFactorID factor) const {
     return goal_cost[factor] != INF;
 }
 
@@ -354,8 +349,8 @@ unique_ptr<CompliantPathGraph> Prices::get_init_state_prices() {
     } else {
         Prices prices(0);
             
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            prices.add_state(LeafStateID(0, factor), 0);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            prices.add_state(LeafStateHash(0), factor, 0);
         }
         
         return prices.get_updated_successor_cpg(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
@@ -363,19 +358,19 @@ unique_ptr<CompliantPathGraph> Prices::get_init_state_prices() {
 }
 
 void Prices::dump() const {
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(LeafStateID(id, factor))){
-                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << " with price " << get_cost_of_state(LeafStateID(id, factor));
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                if (g_leaves[factor].size() == 1){
+                    cout << g_fact_names[g_leaves[factor][0]][state[g_leaves[factor][0]]] << " with price " << get_cost_of_state(id, factor);
                 } else {
                     state.dump_pddl();
-                    cout << " with price " << get_cost_of_state(LeafStateID(id, factor));
+                    cout << " with price " << get_cost_of_state(id, factor);
                 }
                 if (!g_goals_per_factor[factor].empty()){
-                    cout << (is_leaf_goal_state(state.get_id()) ? " is goal" : "") << endl;
+                    cout << (is_leaf_goal_state(id, factor) ? " is goal" : "") << endl;
                 } else {
                     cout << endl;
                 }

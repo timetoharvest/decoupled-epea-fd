@@ -73,13 +73,13 @@ DOMINATION BasicPruning::check_dominance(CompliantPathGraph *check, CompliantPat
     bool all_goals_reached = g_factoring->get_profile() == FORK &&
                              g_factoring->get_search_type() == SAT;
     
-    vector<bool> skip_leaf(g_factors.size(), false);
+    vector<bool> skip_leaf(g_leaves.size(), false);
     
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     
     // check number of reachable leaf states
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor)) {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (g_factoring->get_search_type() == SAT && g_factoring->is_fork_leaf(factor)) {
             // in satisficing search, updating PriceTags stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
             // in this case
@@ -138,24 +138,24 @@ DOMINATION BasicPruning::check_dominance(CompliantPathGraph *check, CompliantPat
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
     // compare prices / reachability
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
         size_t number_new_states = check->get_number_effective_states(factor);
         size_t number_old_states = reference->get_number_effective_states(factor);
-        size_t id = 0;
+        LeafStateHash id(0);
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             // TODO probably introduce some kind of hash to compare leaves
             // against each other in satisficing search
-            if (check->has_effective_leaf_state(LeafStateID(id, factor))){
+            if (check->has_effective_leaf_state(id, factor)){
                 --number_new_states;
-                if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
+                if (reference->has_effective_leaf_state(id, factor)){
                     --number_old_states;
                     if (g_factoring->get_search_type() != SAT){
-                        int old_cost = reference->get_effective_cost_of_state(LeafStateID(id, factor));
-                        int new_cost = check->get_effective_cost_of_state(LeafStateID(id, factor));
+                        int old_cost = reference->get_effective_cost_of_state(id, factor);
+                        int new_cost = check->get_effective_cost_of_state(id, factor);
                         assert(old_cost != -1);
                         assert(new_cost != -1);
                         
@@ -168,7 +168,7 @@ DOMINATION BasicPruning::check_dominance(CompliantPathGraph *check, CompliantPat
                 } else {
                     dominated = false;
                 }                
-            } else if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
+            } else if (reference->has_effective_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
             }

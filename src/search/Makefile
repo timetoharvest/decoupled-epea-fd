@@ -54,8 +54,6 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
-          leaf_state.h\
-          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
@@ -166,6 +164,8 @@ HEADERS += por/expansion_core.h \
            
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
+           leaf_state.h\
+           leaf_state_id.h\
            ../preprocess/scc.h       
 
 HEADERS += pruning/cost_frontier.h \

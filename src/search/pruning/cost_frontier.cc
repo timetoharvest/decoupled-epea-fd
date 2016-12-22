@@ -25,7 +25,7 @@ DOMINATION CostFrontierPruning::check_dominance(CompliantPathGraph *check, Compl
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
     
     // compare prices
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (check->get_goal_cost(factor) != CompliantPathGraph::INF || reference->get_goal_cost(factor) != CompliantPathGraph::INF){
             if (check->get_goal_cost(factor) == CompliantPathGraph::INF || 
                 (reference->get_goal_cost(factor) != CompliantPathGraph::INF &&
@@ -43,15 +43,15 @@ DOMINATION CostFrontierPruning::check_dominance(CompliantPathGraph *check, Compl
 #endif
 	}
 
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor))){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
                 if (dominates && reference_frontier[factor][id]){
-                    assert(reference->has_effective_leaf_state(LeafStateID(id, factor)));
+                    assert(reference->has_effective_leaf_state(id, factor));
                     
-                    if (check->has_effective_leaf_state(LeafStateID(id, factor))){
+                    if (check->has_effective_leaf_state(id, factor)){
                         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-                            int old_cost = reference->get_cost_of_state(LeafStateID(id, factor));
-                            int new_cost = check->get_effective_cost_of_state(LeafStateID(id, factor));
+                            int old_cost = reference->get_cost_of_state(id, factor);
+                            int new_cost = check->get_effective_cost_of_state(id, factor);
                             assert(old_cost != -1);
                             assert(new_cost != -1);
                             
@@ -64,12 +64,12 @@ DOMINATION CostFrontierPruning::check_dominance(CompliantPathGraph *check, Compl
                     }
                 }
                 if (dominated && current_frontier[factor][id]){
-                    assert(check->has_effective_leaf_state(LeafStateID(id, factor)));
+                    assert(check->has_effective_leaf_state(id, factor));
                     
-                    if (reference->has_effective_leaf_state(LeafStateID(id, factor))){
+                    if (reference->has_effective_leaf_state(id, factor)){
                         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-                            int old_cost = reference->get_effective_cost_of_state(LeafStateID(id, factor));
-                            int new_cost = check->get_cost_of_state(LeafStateID(id, factor));
+                            int old_cost = reference->get_effective_cost_of_state(id, factor);
+                            int new_cost = check->get_cost_of_state(id, factor);
                             assert(old_cost != -1);
                             assert(new_cost != -1);
                             

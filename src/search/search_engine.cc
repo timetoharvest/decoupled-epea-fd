@@ -27,7 +27,7 @@ SearchEngine::SearchEngine(const Options &opts)
         exit_with(EXIT_INPUT_ERROR);
     }
     bound = opts.get<int>("bound");
-    if (g_use_decoupled_search){
+    if (g_factoring){
 	CompliantPathGraph::set_cost_type(cost_type);
     }
 }
@@ -75,11 +75,11 @@ void SearchEngine::search() {
 
 bool SearchEngine::check_goal_and_set_plan(const State &state) {
     if (test_goal(state)) {
-        if (g_use_decoupled_search){         
+        if (g_factoring){         
             const SearchNode &info = search_space.get_node(state);
             int solution_cost = info.get_g();
             const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 if (!g_goals_per_factor[factor].empty()){
                     solution_cost += cpg->get_goal_cost(factor);
                 }
@@ -135,7 +135,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 }
 
 bool SearchEngine::is_optimal_leaf_plan(const CompliantPathGraph &cpg) {
-    for (size_t factor = 0; factor < g_min_goal_cost.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_min_goal_cost.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
             assert(cpg.get_goal_cost(factor) >= 0);
             if (cpg.get_goal_cost(factor) > g_min_goal_cost[factor]){
@@ -148,7 +148,7 @@ bool SearchEngine::is_optimal_leaf_plan(const CompliantPathGraph &cpg) {
 
 void SearchEngine::save_plan_if_necessary() const {
     if (found_solution()){
-        if (g_use_decoupled_search){
+        if (g_factoring){
             search_space.trace_path(g_state_registry->lookup_state(cheapest_goal_state), plan);
         }
         save_plan(get_plan(), 0);

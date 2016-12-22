@@ -2,8 +2,6 @@
 #define PRUNING_PRICES_H
 
 #include "compliant_path_graph.h"
-#include "../globals.h"
-#include "../leaf_state_id.h"
 #include "pricing_function.h"
 
 #include <vector>
@@ -19,7 +17,7 @@ class PruningPrices : public Prices {
     
     
     void compute_cost_frontier();
-    void compute_cost_frontier(size_t factor);
+    void compute_cost_frontier(LeafFactorID factor);
 
     void goal_price_propagation();
 
@@ -37,7 +35,7 @@ protected:
     PruningPrices(const PruningPrices *tag);
 
     
-    bool add_effective_state(const LeafStateID &fact, int cost);
+    bool add_effective_state(LeafStateHash id, LeafFactorID factor, int cost);
     
     // returns the new duplicate counter
     virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
@@ -50,11 +48,11 @@ public:
     
     virtual void store_new_graph(const State &state) const;
     
-    virtual bool has_effective_leaf_state(const LeafStateID &id) const override;
+    virtual bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
 
-    virtual int get_effective_cost_of_state(const LeafStateID &id) const override;
+    virtual int get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
 
-    virtual size_t get_number_effective_states(size_t factor) const override;
+    virtual size_t get_number_effective_states(LeafFactorID factor) const override;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     

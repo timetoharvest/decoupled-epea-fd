@@ -1,9 +1,6 @@
 #ifndef PRUNING_REACHABLE_H
 #define PRUNING_REACHABLE_H
 
-#include "../ext/boost/dynamic_bitset.hpp"
-#include "../globals.h"
-#include "../leaf_state_id.h"
 #include "reachability_function.h"
 
 #include <vector>
@@ -26,10 +23,6 @@ protected:
     
     PruningReachable(const PruningReachable *tag);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
 
     // returns the new duplicate counter
     virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,

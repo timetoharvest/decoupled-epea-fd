@@ -18,6 +18,7 @@ class SearchSpace;
 class State;
 class StateID;
 
+
 class CompliantPathGraph {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
     friend class SimulationRelation; // access to leaf_state_pre/successors
@@ -47,19 +48,18 @@ protected:
     
     static std::vector<std::vector<StateID> > leaf_price_cache;
     
-    // first is id, second is leaf factor
     static std::vector<LeafStateID> leaf_tags_to_cache;
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
     // these are only computed when performing goal price propagation
-    static std::vector<std::vector<size_t> > leaf_goal_states;
+    static std::vector<std::vector<LeafStateHash> > leaf_goal_states;
     
     static std::vector<std::vector<std::vector<size_t> > > center_successors;
     
-    static std::vector<std::vector<std::vector<std::pair<const Operator*, size_t> > > > leaf_state_successors;
+    static std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > leaf_state_successors;
     
-    static std::vector<std::vector<std::vector<std::pair<const Operator*, size_t> > > > leaf_state_predecessors;
+    static std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > leaf_state_predecessors;
     
     static std::vector<std::vector<int> > leaf_state_id_map;
     
@@ -90,21 +90,21 @@ public:
 
     virtual void discard_new_graph() const;
 
-    virtual bool has_leaf_state(const LeafStateID &id) const = 0;
+    virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const = 0;
     
-    virtual bool has_effective_leaf_state(const LeafStateID &id) const = 0;
+    virtual bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const = 0;
     
-    virtual int get_cost_of_state(const LeafStateID &id) const = 0;
+    virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const = 0;
     
-    virtual int get_effective_cost_of_state(const LeafStateID &id) const = 0;
+    virtual int get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const = 0;
     
-    virtual size_t get_number_states(size_t factor) const = 0;
+    virtual size_t get_number_states(LeafFactorID factor) const = 0;
     
-    virtual size_t get_number_effective_states(size_t factor) const = 0;
+    virtual size_t get_number_effective_states(LeafFactorID factor) const = 0;
 
-    virtual bool goal_reachable(size_t factor) const = 0;
+    virtual bool goal_reachable(LeafFactorID factor) const = 0;
     
-    virtual int get_goal_cost(size_t factor) const = 0;
+    virtual int get_goal_cost(LeafFactorID factor) const = 0;
     
     virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() = 0;
     
@@ -134,22 +134,13 @@ public:
         search_space = sp;
     }
     
-    static void set_cost_type(OperatorCost ct) {
-        cost_type = ct;
-        g_min_action_cost_per_factor.resize(g_factors.size(), numeric_limits<int>::max());
-        for (const auto &op : g_operators){
-            int factor = op.get_affected_factor();
-            if (factor != -1){
-                g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
-            }
-        }
-    }
+    static void set_cost_type(OperatorCost ct);
     
     static OperatorCost get_cost_type() {
         return cost_type;
     }
     
-    static bool is_leaf_goal_state(const LeafStateID &state);
+    static bool is_leaf_goal_state(LeafStateHash id, LeafFactorID factor);
     
     static void store_is_leaf_goal_state(const LeafState &state);
     
@@ -161,7 +152,7 @@ public:
         precompute_leaf_state_spaces = precompute;
     }
     
-    static bool precompute_leaf_state_space(size_t factor) {
+    static bool precompute_leaf_state_space(LeafFactorID factor) {
         return precompute_leaf_state_spaces[factor];
     }
     

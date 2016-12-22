@@ -34,7 +34,7 @@ EagerSearch::EagerSearch(
     } else {
         partial_order_reduction_method = 0;
     }
-    if (g_use_decoupled_search && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
+    if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
     } else {
         pruning_heuristic = 0;
@@ -43,7 +43,7 @@ EagerSearch::EagerSearch(
         preferred_operator_heuristics =
             opts.get_list<Heuristic *>("preferred");
     }
-    if (g_use_decoupled_search && reopen_closed_nodes){
+    if (g_factoring && reopen_closed_nodes){
         Pruning::set_reopen_closed_nodes();
     }
 }
@@ -132,7 +132,7 @@ SearchStatus EagerSearch::step() {
     }
     SearchNode node = n.first;
     
-    if (g_use_decoupled_search &&
+    if (g_factoring &&
         g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
@@ -176,7 +176,7 @@ SearchStatus EagerSearch::step() {
 
 	// g-value upper bound pruning for factored search => g_sum_min_goal_cost
         int goal_cost = g_sum_min_goal_cost;
-        if (g_use_decoupled_search && g_factoring->get_profile() != FORK){
+        if (g_factoring && g_factoring->get_profile() != FORK){
             // because g-value might include some goal cost
             goal_cost = max(0, goal_cost - node.get_leaf_part_g());
         }
@@ -259,7 +259,7 @@ SearchStatus EagerSearch::step() {
             
         } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
             
-            if (!g_use_decoupled_search || !Pruning::ignore_current_state()){
+            if (!g_factoring || !Pruning::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
                 if (reopen_closed_nodes) {
                     //TODO:CR - test if we should add a reevaluate flag and if it helps
@@ -306,7 +306,7 @@ SearchStatus EagerSearch::step() {
 }
 
 bool EagerSearch::insert_state(const SearchNode &succ_node) {
-    if (!g_use_decoupled_search || !found_solution()){
+    if (!g_factoring || !found_solution()){
 	return true;
     }
     if (succ_node.get_g() + succ_node.get_h() >= bound){
@@ -357,7 +357,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
         }
         
         // upper bound pruning for factored search
-        if (g_use_decoupled_search && found_solution()){
+        if (g_factoring && found_solution()){
             int goal_cost = g_sum_min_goal_cost;
             if (g_factoring->get_profile() != FORK){
                 // because g-value might include some goal cost

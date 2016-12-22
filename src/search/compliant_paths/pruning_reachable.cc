@@ -23,8 +23,8 @@ void PruningReachable::register_cpg_storage(PruningReachableStorage *storage) {
 
 PruningReachable::PruningReachable(const PruningReachable *tag) {
     if (tag == 0){
-        reachable = vector<boost::dynamic_bitset<> >(g_factors.size());
-        goal_reached.resize(g_factors.size(), false);
+        reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
+        goal_reached.resize(g_leaves.size(), false);
     } else {
         reachable = tag->reachable;
         goal_reached = tag->goal_reached;
@@ -34,7 +34,7 @@ PruningReachable::PruningReachable(const PruningReachable *tag) {
 unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const State &base_state,
                                                                            const Operator *op,
                                                                            const State &) const {
-                                                                               
+
     unique_ptr<PruningReachable> tmp_p_reach;
     
     if (g_factoring->get_profile() != FORK && op != 0){
@@ -52,8 +52,8 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
 //         if (tag.prices.empty()){
 //             // is initial state
 //             assert(predecessor.get_id().hash() == 0);
-//             tmp_p_reach->frontier.resize(g_factors.size());
-//             for (size_t factor = 0; factor < g_factors.size(); ++factor){
+//             tmp_p_reach->frontier.resize(g_leaves.size());
+//             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 //                 tmp_p_reach->frontier[factor].resize(g_state_registry->size(factor));
 //                 tmp_p_reach->frontier[factor][0] = true;
 //             }
@@ -69,9 +69,9 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
     
     assert(leaf_tags_to_cache.empty());
     
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
-        if (!g_factoring->has_successors(factor)){
+        if (g_factoring->is_fork_leaf(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || 
                 (g_factoring->get_search_type() == SAT && tmp_p_reach->goal_reached[factor])){
@@ -93,7 +93,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
         cout << "       " << new_tag.get_number_facts(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
         
-        bool is_ifork_leaf = !g_factoring->has_predecessors(factor);
+        bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
         
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
             // the two above conditions together prevent errors in case the CG is not connected.
@@ -103,10 +103,10 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
             if (tmp_p_reach->reachable[factor].count() == 1){
-                size_t leaf_id = 0;
+                LeafStateHash leaf_id(0);
                 for (;;){
                     // TODO there should be a better way to find the state
-                    if (tmp_p_reach->has_leaf_state(LeafStateID(leaf_id, factor))){
+                    if (tmp_p_reach->has_leaf_state(leaf_id, factor)){
                         break;
                     }
                     ++leaf_id;
@@ -114,13 +114,13 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
                     const PruningReachable &tag_to_copy = cpg_storage->pruning_reachable[g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id])];
                     
-                    int cost_delta = tmp_p_reach->get_cost_of_state(LeafStateID(leaf_id, factor));
-                    cost_delta -= tag_to_copy.get_cost_of_state(LeafStateID(leaf_id, factor));
+                    int cost_delta = tmp_p_reach->get_cost_of_state(leaf_id, factor);
+                    cost_delta -= tag_to_copy.get_cost_of_state(leaf_id, factor);
                     
                     size_t number_states = tag_to_copy.get_number_states(factor) - 1;
-                    for (size_t fact = 0 ; fact < number_leaf_states; fact++){
-                        if (fact != leaf_id && tag_to_copy.has_leaf_state(LeafStateID(fact, factor))){
-                            tmp_p_reach->add_state(LeafStateID(fact, factor));
+                    for (LeafStateHash id(0) ; id < number_leaf_states; ++id){
+                        if (id != leaf_id && tag_to_copy.has_leaf_state(id, factor)){
+                            tmp_p_reach->add_state(id, factor);
                             if (--number_states == 0){
                                 break;
                             }
@@ -144,7 +144,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
             change = false;
             
             size_t num_states = 0;
-            size_t id = 0;
+            LeafStateHash id(0);
             while (num_states < curr_number_states) {
                 
                 if (id >= g_state_registry->size(factor)){
@@ -152,7 +152,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
                     break;
                 }
                 
-                if (tmp_p_reach->has_leaf_state(LeafStateID(id, factor))){
+                if (tmp_p_reach->has_leaf_state(id, factor)){
                     ++num_states;
 
                     if (handled[id]){
@@ -176,19 +176,19 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator *op = leaf_state_successors[factor][id][o].first;
                             if (is_ifork_leaf || op->is_center_applicable(base_state)){
-                                if(tmp_p_reach->add_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))) {
+                                if(tmp_p_reach->add_state(leaf_state_successors[factor][id][o].second, factor)) {
                                     ++added;
                                 }
                             }
                         }
                     } else {
                       
-                        const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));     
+                        const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);     
                         
                         vector<const Operator*> applicable_ops;
                         
-                        if (g_factoring->has_successors(factor)){       // is non-fork leaf
-                            bool has_predecessors = g_factoring->has_predecessors(factor);
+                        if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
+                            bool has_predecessors = !g_factoring->is_ifork_leaf(factor);
                             bool store_actions = id >= center_successors[factor].size() || center_successors[factor][id].empty();
                             if (has_predecessors || store_actions){
                                 vector<const Operator*> center_ops;
@@ -231,30 +231,30 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
                             const vector<const Effect*> &effects = op->get_effects(factor);
                             if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
 
-                                LeafStateID lid = g_state_registry->get_successor_leaf_state_id(predecessor, *op);
+                                LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, *op);
                                 
-                                if (lid.hash() >= handled.size()){
-                                    handled.resize(lid.hash() + 1, false);
+                                if (lid >= handled.size()){
+                                    handled.resize(lid + 1, false);
                                 }
                                 
-                                if (lid.hash() >= leaf_state_id_map[factor].size()){
-                                    leaf_state_id_map[factor].resize(lid.hash() + 1, -1);
+                                if (lid >= leaf_state_id_map[factor].size()){
+                                    leaf_state_id_map[factor].resize(lid + 1, -1);
                                 }
                                 
                                 if(!fits_store || op->is_center_applicable(base_state)){
-                                    if (tmp_p_reach->add_state(lid)){
+                                    if (tmp_p_reach->add_state(lid, factor)){
                                         ++added;
                                     }
                                 }
                                 
-                                if (op->get_affected_factor() != -1 && fits_store){
-                                    leaf_state_successors[factor][id].push_back(make_pair(op, lid.hash()));
+                                if (op->get_affected_factor() != LeafFactorID::CENTER && fits_store){
+                                    leaf_state_successors[factor][id].push_back(make_pair(op, lid));
                                 }
                             }
                         }
                         if (fits_store && leaf_state_successors[factor][id].empty()){
                             // to mark "dead end" leaf states
-                            leaf_state_successors[factor][id].push_back(make_pair<const Operator*, size_t>(0, 0)); // HACK
+                            leaf_state_successors[factor][id].push_back(make_pair<const Operator*, LeafStateHash>(0, LeafStateHash(0))); // HACK
                         }
                     }
                     
@@ -263,7 +263,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_updated_successor_cpg(const
                         change = true;
                     }
                     
-                    if (g_factoring->get_search_type() == SAT && !g_factoring->has_successors(factor) && tmp_p_reach->goal_reached[factor]){
+                    if (g_factoring->get_search_type() == SAT && g_factoring->is_fork_leaf(factor) && tmp_p_reach->goal_reached[factor]){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
                         break;
@@ -297,15 +297,15 @@ const vector<boost::dynamic_bitset<> >& PruningReachable::get_frontier() {
 void PruningReachable::compute_frontier() {
     assert(g_factoring->get_profile() == FORK);
     
-    frontier.resize(g_factors.size());
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    frontier.resize(g_leaves.size());
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
-        for (size_t id = 0; id < leaf_state_successors[factor].size(); ++id){
-            if (!has_leaf_state(LeafStateID(id, factor))){
+        for (LeafStateHash id(0); id < leaf_state_successors[factor].size(); ++id){
+            if (!has_leaf_state(id, factor)){
                 continue;
             }
             for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                if (!has_leaf_state(LeafStateID(leaf_state_successors[factor][id][o].second, factor))){
+                if (!has_leaf_state(leaf_state_successors[factor][id][o].second, factor)){
                     frontier[factor][id] = true;
                 }
             }
@@ -321,8 +321,8 @@ void PruningReachable::store_new_graph(const State &state) const {
 unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_reachable() {
     PruningReachable reach(0);
         
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        reach.add_state(LeafStateID(0, factor));
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        reach.add_state(LeafStateHash(0), factor);
     }
 
     return reach.get_updated_successor_cpg(g_state_registry->get_initial_state(), 0, g_state_registry->get_initial_state());
@@ -330,12 +330,12 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_reachable() {
 
 void PruningReachable::dump() const {
     // TODO include frontier information
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-            if (has_leaf_state(LeafStateID(id, factor))){
-                LeafState state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                if (g_factors[factor].size() == 1){
-                    cout << g_fact_names[g_factors[factor][0]][state[g_factors[factor][0]]] << endl;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                if (g_leaves[factor].size() == 1){
+                    cout << g_fact_names[g_leaves[factor][0]][state[g_leaves[factor][0]]] << endl;
                 } else {
                     state.dump_pddl();
                 }
