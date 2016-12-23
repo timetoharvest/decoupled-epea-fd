@@ -44,7 +44,7 @@ EagerSearch::EagerSearch(
             opts.get_list<Heuristic *>("preferred");
     }
     if (g_factoring && reopen_closed_nodes){
-        Pruning::set_reopen_closed_nodes();
+        PruningOptions::set_reopen_closed_nodes();
     }
 }
 
@@ -259,7 +259,7 @@ SearchStatus EagerSearch::step() {
             
         } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
             
-            if (!g_factoring || !Pruning::ignore_current_state()){
+            if (!g_factoring || !PruningOptions::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
                 if (reopen_closed_nodes) {
                     //TODO:CR - test if we should add a reevaluate flag and if it helps

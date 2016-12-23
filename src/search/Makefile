@@ -168,12 +168,12 @@ HEADERS += factoring.h \
            leaf_state_id.h\
            ../preprocess/scc.h       
 
-HEADERS += pruning/cost_frontier.h \
-           pruning/simulation_relation.h \
-           pruning/pruning.h
+HEADERS += pruning/pruning.h \
+           pruning/simulation_relation.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
+           compliant_paths/frontier_prices.h \
            compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
            compliant_paths/pruning_prices.h \

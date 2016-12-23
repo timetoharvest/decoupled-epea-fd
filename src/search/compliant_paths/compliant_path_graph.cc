@@ -17,7 +17,7 @@
 
 using namespace std;
 
-unique_ptr<Pruning> CompliantPathGraph::pruning;
+unique_ptr<PruningOptions> CompliantPathGraph::pruning;
 
 const int CompliantPathGraph::INF = -1;
     
@@ -115,7 +115,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     
     vector<size_t> predecessors;
     
-    if (Pruning::are_closed_nodes_reopened()){
+    if (PruningOptions::are_closed_nodes_reopened()){
         StateID curr_id = predecessor.get_id();
         while (curr_id.hash() != 0){
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
@@ -143,14 +143,14 @@ int CompliantPathGraph::check_dominance(const State &base_state,
         //g_price_tags[s].dump();
 #endif
         
-        if (!Pruning::are_closed_nodes_reopened()){
+        if (!PruningOptions::are_closed_nodes_reopened()){
             // in greedy search, close nodes that are dominated by this one as cannot
             // reach anything new from those that cannot be reached from this node
             // if dominated => do not consider this state
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s)); 
+            DOMINATION res = check_dominance(s); 
             
             if (res != NONE){
                 if (res == DOMINATES) {
@@ -167,7 +167,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // reachable in this state cannot be constructed
                     // this is only needed for eager search, where for duplicate states
                     // reached on a cheaper path, the predecessor is updated
-                    Pruning::set_ignore_current_state();
+                    PruningOptions::set_ignore_current_state();
                 }
             }       
             
@@ -175,13 +175,13 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s));
+                DOMINATION res = check_dominance(s);
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
                     if (g_value + g_inc_g_by < old_g){
                         // otherwise, that existing state would be reopened
-                        Pruning::set_ignore_current_state();
+                        PruningOptions::set_ignore_current_state();
                     }
                     return dup;
                 } else if (res == DOMINATES){
@@ -207,7 +207,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATES);
+                    DOMINATION res = check_dominance(s, DOMINATES);
                     
                     if (res == EQUAL){
 #ifdef DEBUG_PRUNING
@@ -236,7 +236,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = pruning->check_dominance(this, CPGStorage::storage->get_mutable_cpg(s), DOMINATED);
+                    DOMINATION res = check_dominance(s, DOMINATED);
                     
                     if (res == EQUAL || res == DOMINATED){
                         // new state is dominated by existing one
@@ -381,7 +381,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 
                 // apply all applicable_ops to predecessor and store the outcome          
                 for (const Operator *op : applicable_ops){
-                    if (!op->get_effects(factor).empty()){                        
+                    if (!op->get_effects(factor).empty()){
                         bool is_center_op = op->get_affected_factor() == LeafFactorID::CENTER;
                         
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
@@ -407,8 +407,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         
                         // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
                         // that here, i.e. e.g. the goal states of fork leaves dont need successors
-                        // is that actually true? what about finding a globally cheaper goal state behind a goal?
-                        // the last comment doesn't make too much sense..
+                        
+                        // TODO eliminate self-loops in the leaf state space. this should be the case if lid == id
                         
                         if (!is_center_op && first_time_seen){
                             leaf_state_successors[factor][id].push_back(make_pair(op, lid));
@@ -510,9 +510,9 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 
 unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        return Reachable::get_init_state_reachable();
+        return Reachable::get_init_state_cpg();
     } else {
-        return Prices::get_init_state_prices();
+        return Prices::get_init_state_cpg();
     }
 }
 

@@ -1,67 +1,61 @@
-#ifndef PRUNING_PRICES_H
-#define PRUNING_PRICES_H
+#ifndef EFFECTIVE_PRICES_H
+#define EFFECTIVE_PRICES_H
 
 #include "compliant_path_graph.h"
 #include "pricing_function.h"
 
 #include <vector>
 
-class PruningPriceStorage;
+class EffectivePriceStorage;
 
-class PruningPrices : public Prices {
+class EffectivePrices : public Prices {
     friend class Prices; // to get init state cpg
     
-    static PruningPriceStorage *cpg_storage;
+    static EffectivePriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_prices();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
     
-    
-    void compute_cost_frontier();
-    void compute_cost_frontier(LeafFactorID factor);
 
+    EffectivePrices(const EffectivePrices *tag);
+    
+    
     void goal_price_propagation();
 
-    void propagate_dominance_prices(); 
+    void propagate_dominance_prices();
     
-protected:  
-    
-    std::vector<boost::dynamic_bitset<> > frontier;
+protected:
     
     std::vector<std::vector<int> > effective_prices;
     
     std::vector<size_t> number_effective_states;
+    
+    bool add_effective_state(LeafStateHash id, LeafFactorID factor, int cost);    
         
-    
-    PruningPrices(const PruningPrices *tag);
+    bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const;
 
+    int get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const;
+
+    size_t get_number_effective_states(LeafFactorID factor) const;
     
-    bool add_effective_state(LeafStateHash id, LeafFactorID factor, int cost);
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
     
-    // returns the new duplicate counter
-    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
-                                                                          const Operator *op,
-                                                                          const State &predecessor) const override;
+    virtual void update(const State &base_state) override;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
-    PruningPrices(){};
-    
-    virtual void store_new_graph(const State &state) const;
-    
-    virtual bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
-
-    virtual int get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
-
-    virtual size_t get_number_effective_states(LeafFactorID factor) const override;
-    
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
+    EffectivePrices(){};
     
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
     
-    static void register_cpg_storage(PruningPriceStorage *storage);
+    static void register_cpg_storage(EffectivePriceStorage *storage);
     
 };
 

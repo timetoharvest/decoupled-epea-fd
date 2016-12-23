@@ -12,30 +12,31 @@ class PruningReachable : public Reachable {
     
     static PruningReachableStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();   
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();   
     
     void compute_frontier();
     
-protected:
-    
-    std::vector<boost::dynamic_bitset<> > frontier;
-    
+    const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     PruningReachable(const PruningReachable *tag);
     
+protected:
+    
+    std::vector<boost::dynamic_bitset<> > frontier;    
 
-    // returns the new duplicate counter
-    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
-                                                                          const Operator *op,
-                                                                          const State &predecessor) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+                                                                                
+// no own implementation so far. the only use would be to skip non-frontier states in the update
+// virtual void update(const State &base_state) = 0;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     PruningReachable(){};
-
-    virtual void store_new_graph(const State &state) const;
-
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
     virtual void dump() const override;
 

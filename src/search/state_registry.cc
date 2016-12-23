@@ -210,9 +210,10 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             old_dup_counter = pos->second;
         }
         
-        Pruning::reset_ignore_current_state();
+        PruningOptions::reset_ignore_current_state();
         
-        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_updated_successor_cpg(s, &op, predecessor);
+        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(predecessor, &op);
+        new_cpg->update(s);
         
         if (old_dup_counter == -1){ // is new center state
             new_cpg->store_new_graph(s);

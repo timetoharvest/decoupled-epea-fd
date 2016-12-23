@@ -1,10 +1,8 @@
-#ifndef PRUNING_H
-#define PRUNING_H
+#ifndef PRUNING_OPTIONS_H
+#define PRUNING_OPTIONS_H
 
-class CompliantPathGraph;
 class Options;
 class OptionParser;
-class State;
 
 enum DOMINATION {
     NONE,
@@ -13,7 +11,7 @@ enum DOMINATION {
     EQUAL
 };
 
-class Pruning {
+class PruningOptions {
     
     enum IRRELEVANCE {
         NO,
@@ -27,25 +25,31 @@ class Pruning {
     
     bool goal_price_propagation;
     
+    bool frontier_pruning;
+    
+    
     static bool ignore_current_search_state;
     
     static bool reopen_closed_nodes;
     
 public:
-    Pruning() : irrelevance(NO), do_simulation (false), goal_price_propagation(false) {}
+    PruningOptions() : irrelevance(NO), 
+                       do_simulation(false), 
+                       goal_price_propagation(false),
+                       frontier_pruning(false) {}
 
-    Pruning(const Options &opts);
+    PruningOptions(const Options &opts);
 
-    virtual ~Pruning() = default;
+    ~PruningOptions() = default;
     
-    virtual void init();
+    void init() const;
     
-    virtual bool use_frontier() const {
-        return false;
+    bool use_frontier() const {
+        return frontier_pruning;
     }
     
-    virtual bool do_advanced_pruning() const {
-        return do_simulation || goal_price_propagation;
+    bool do_advanced_pruning() const {
+        return do_simulation || goal_price_propagation || frontier_pruning;
     }
     
     bool propagate_goal_prices() const {
@@ -55,14 +59,7 @@ public:
     bool propagate_simulation_prices() const {
         return do_simulation;
     }
-    
-    // TODO make this part of CompliantPathGraph, so that each subclass can have its own specific implementation
-    // then, have a PruningOptions class that encapsulates options like frontier/irrelevance and a class for effective price 
-    // like simulation and goal price propagation, that is used within PruningPrices/Reachable
-    virtual DOMINATION check_dominance(CompliantPathGraph *check, 
-                                       CompliantPathGraph *reference, 
-                                       DOMINATION needed = NONE) const = 0;
-    
+
     
     static void set_ignore_current_state() {
         ignore_current_search_state = true;
@@ -85,20 +82,6 @@ public:
     }
     
     static void add_options_to_parser(OptionParser &parser);
-    
-};
-
-class BasicPruning : public Pruning {
-    
-public:
-    
-    BasicPruning() : Pruning() {}
-    
-    BasicPruning(const Options &opts);
-    
-    virtual DOMINATION check_dominance(CompliantPathGraph *check, 
-                                       CompliantPathGraph *reference, 
-                                       DOMINATION needed = NONE) const override;
     
 };
 

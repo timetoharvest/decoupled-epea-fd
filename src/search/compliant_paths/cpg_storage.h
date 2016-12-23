@@ -1,6 +1,7 @@
 #ifndef CPG_STORAGE
 #define CPG_STORAGE
 
+#include "frontier_prices.h"
 #include "../per_state_information.h"
 #include "pricing_function.h"
 #include "pruning_prices.h"
@@ -60,13 +61,13 @@ public:
     
 };
 
-class PruningPriceStorage : public CPGStorage {
-    friend class PruningPrices;
+class EffectivePriceStorage : public CPGStorage {
+    friend class EffectivePrices;
 
-    PerStateInformation<PruningPrices> pruning_prices;
+    PerStateInformation<EffectivePrices> effective_prices;
     
-    void store_cpg(const State &state, const PruningPrices &cpg) {
-        pruning_prices[state] = cpg;
+    void store_cpg(const State &state, const EffectivePrices &cpg) {
+        effective_prices[state] = cpg;
     }
     
 protected:
@@ -74,17 +75,46 @@ protected:
     virtual void register_at_compliant_path_graph();
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
-        return &pruning_prices[state];
+        return &effective_prices[state];
     }
     
 public:
     
     virtual const CompliantPathGraph* get_cpg(const State &state) const override {
-        return &pruning_prices[state];
+        return &effective_prices[state];
     }
     
     virtual size_t size(const StateRegistry *registry) const override {
-        return pruning_prices.size(registry);
+        return effective_prices.size(registry);
+    }
+    
+};
+
+class FrontierPriceStorage : public CPGStorage {
+    friend class FrontierPrices;
+
+    PerStateInformation<FrontierPrices> frontier_prices;
+    
+    void store_cpg(const State &state, const FrontierPrices &cpg) {
+        frontier_prices[state] = cpg;
+    }
+    
+protected:
+    
+    virtual void register_at_compliant_path_graph();
+    
+    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
+        return &frontier_prices[state];
+    }
+    
+public:
+    
+    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
+        return &frontier_prices[state];
+    }
+    
+    virtual size_t size(const StateRegistry *registry) const override {
+        return frontier_prices.size(registry);
     }
     
 };

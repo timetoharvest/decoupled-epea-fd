@@ -13,7 +13,15 @@ class Prices : public CompliantPathGraph {
     
     static PriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_prices();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+    
+        
+    Prices(const Prices *tag);
+
+    
+    // used when including part of the leaf cost into the g-value
+    // of a search node
+    void reduce_cost_by(LeafFactorID factor, int cost);
     
 protected:  
 
@@ -23,48 +31,34 @@ protected:
 
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
-        
-    Prices(const Prices *tag);
-      
-    // used when including part of the leaf cost into the g-value
-    // of a search node
-    void reduce_cost_by(LeafFactorID factor, int cost);
 
     // return true, if the fact was actually added
-    // in satisficing planning, return true only if the leaf state was
-    // not already reached, before
     bool add_state(LeafStateHash id, LeafFactorID factor, int cost);
     
-    // returns the new duplicate counter
-    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
-                                                                          const Operator *op,
-                                                                          const State &predecessor) const override;
-    
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+    
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+                                                                          
+    virtual void update(const State &base_state) override;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     Prices(){};
-
-    virtual void store_new_graph(const State &state) const;
     
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
-    
     virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual int get_effective_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
-    
     virtual size_t get_number_states(LeafFactorID factor) const override;
-
-    virtual size_t get_number_effective_states(LeafFactorID factor) const override;
     
     virtual int get_goal_cost(LeafFactorID factor) const override;
     
     virtual bool goal_reachable(LeafFactorID factor) const override;
-    
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
     
     virtual void dump() const override;
 

@@ -67,9 +67,9 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
-        CompliantPathGraph::set_pruning(opts.get<Pruning*>("pruning"));
+        CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
     } else {
-        CompliantPathGraph::set_pruning(new BasicPruning());
+        CompliantPathGraph::set_pruning_options(new PruningOptions());
         cout << "using default pruning method: BasicPruning" << endl;
     }
     min_number_leaves = 2;
@@ -1558,7 +1558,7 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
-    parser.add_option<Pruning*>(
+    parser.add_option<PruningOptions*>(
         "pruning", 
         "TODO", 
         "",
