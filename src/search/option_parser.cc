@@ -3,7 +3,6 @@
 #include "ext/tree_util.hh"
 #include "factoring.h"
 #include "plugin.h"
-#include "pruning/pruning.h"
 #include "rng.h"
 
 #include <algorithm>

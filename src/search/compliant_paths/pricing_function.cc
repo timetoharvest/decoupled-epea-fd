@@ -4,8 +4,8 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator.h"
-#include "pruning_prices.h"
-#include "../pruning/pruning.h"
+#include "effective_prices.h"
+#include "../pruning/pruning_options.h"
 #include "../state_registry.h"
 #include "../utilities.h"
 

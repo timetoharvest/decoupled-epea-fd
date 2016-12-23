@@ -3,7 +3,7 @@
 #include "cpg_storage.h"
 #include "../factoring.h"
 #include "../operator.h"
-#include "../pruning/pruning.h"
+#include "../pruning/pruning_options.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
 #include "../utilities.h"

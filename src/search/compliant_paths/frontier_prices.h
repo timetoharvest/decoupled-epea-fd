@@ -2,7 +2,7 @@
 #define FRONTIER_PRICES_H
 
 #include "compliant_path_graph.h"
-#include "pruning_prices.h"
+#include "effective_prices.h"
 
 #include <vector>
 

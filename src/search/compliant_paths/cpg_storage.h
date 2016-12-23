@@ -4,7 +4,7 @@
 #include "frontier_prices.h"
 #include "../per_state_information.h"
 #include "pricing_function.h"
-#include "pruning_prices.h"
+#include "effective_prices.h"
 #include "pruning_reachable.h"
 #include "reachability_function.h"
 

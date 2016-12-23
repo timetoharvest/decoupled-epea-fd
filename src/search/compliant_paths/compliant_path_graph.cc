@@ -5,7 +5,7 @@
 #include "../leaf_state_id.h"
 #include "../operator.h"
 #include "pricing_function.h"
-#include "../pruning/pruning.h"
+#include "../pruning/pruning_options.h"
 #include "reachability_function.h"
 #include "../search_space.h"
 #include "../state.h"

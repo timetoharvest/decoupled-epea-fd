@@ -5,7 +5,7 @@
 #include "../globals.h"
 #include "../operator.h"
 #include "../priority_queue.h"
-#include "../pruning/pruning.h"
+#include "../pruning/pruning_options.h"
 #include "../pruning/simulation_relation.h"
 #include "../state_registry.h"
 #include "../utilities.h"
