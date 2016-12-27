@@ -1705,17 +1705,20 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
     if (aff_leaf) {
         int avg = 0;
         int max = 0;
-        int min = factor_affecting_actions[0];
-        for (int i:factor_affecting_actions) {
-            avg += i;
-            if (i > max) {
-                max = i;
+        int min = 0;
+        if (!factor_affecting_actions.empty()) {
+            int min = factor_affecting_actions[0];
+            for (int i:factor_affecting_actions) {
+                avg += i;
+                if (i > max) {
+                    max = i;
+                }
+                if (i < min) {
+                    min = i;
+                }
             }
-            if (i < min) {
-                min = i;
-            }
+            avg = avg / factor_affecting_actions.size();
         }
-        avg = avg / factor_affecting_actions.size();
         if (all_data) {
             if (!leaf_a) {
                 cout << "Ranking " << "leaf_affecting_center_actions_min" << ": " << min << endl;
@@ -1735,18 +1738,21 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
 uint64_t MaxIndependentSetFactoring::rank_leaf_size_avg(const FactoredVars &factoring, bool all_data) {
     int avg = 0;
     int max = 0;
-    int min = factoring[0].size();
-    for (set<int> factor:factoring) {
-        int s = (int)factor.size();
-        avg += s;
-        if (s > max) {
-            max = s;
+    int min = 0;
+    if (!factoring.empty()) {
+        int min = factoring[0].size();
+        for (set<int> factor:factoring) {
+            int s = (int) factor.size();
+            avg += s;
+            if (s > max) {
+                max = s;
+            }
+            if (s < min) {
+                min = s;
+            }
         }
-        if (s < min) {
-            min = s;
-        }
+        avg = avg / factoring.size();
     }
-    avg = avg/factoring.size();
     if (all_data) {
         cout << "Ranking " << "leaf_size_min" << ": " << min << endl;
         cout << "Ranking " << "leaf_size_max" << ": " << max << endl;
