@@ -2661,6 +2661,11 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     vector<string> feature;
     feature.push_back("mobility");
     feature.push_back("leaves");
+    feature.push_back("center_aff_a");
+    feature.push_back("leaf_aff_center_a_avg");
+    feature.push_back("leaf_aff_leaf_a_avg");
+    feature.push_back("leaf_size_avg");
+    feature.push_back("center_size");
     feature.push_back("none");
 
     parser.add_enum_option(
