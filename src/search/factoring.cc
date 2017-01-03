@@ -167,7 +167,8 @@ protected:
     int arg_xth_factoring = 0;
     int arg_merge_leaves = 0;
     int arg_find_all;
-    int arg_all_rankings;
+    bool arg_all_rankings;
+    int arg_timeout;
 
 public:
 
@@ -181,7 +182,8 @@ public:
                 arg_xth_factoring(opts.get<int>("xth_fact")),
                 arg_merge_leaves(opts.get<int>("merge_leaves")),
                 arg_find_all(opts.get<int>("find_all")),
-                arg_all_rankings(opts.get<bool>("all_rankings")){
+                arg_all_rankings(opts.get<bool>("all_rankings")),
+                arg_timeout(opts.get<int>("timeout")){
         profile = MAX_IND_SET;
         cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: "
              << arg_find_all << " minimize_center " << arg_minimize_center << " optimize feature: " << arg_feature_1
@@ -1427,7 +1429,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     const NGraph cg_g = generate_ngraph();
 
     MIS mis(cg_g);
-    set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all);
+    set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout);
 #ifdef DEBUG_FACTORING
     cout << "MIS: " << endl;
     for (set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it) {
@@ -2686,6 +2688,11 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
             "all_rankings",
             "TODO",
             "false"
+    );
+    parser.add_option<int>(
+            "timeout",
+            "TODO",
+            "0"
     );
 }
 

@@ -2,10 +2,11 @@
 #include <iostream>
 #include "assert.h"
 #include "utilities.h"
+#include "countdown_timer.h"
 
 using namespace std;
 
-set<int> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all) {
+set<int> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout) {
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
     print_graph(graph);
@@ -15,7 +16,7 @@ set<int> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all) {
         case A1: mis = find_mis_1(graph);
             break;
         //default: case A2: mis = find_mis_2(graph);
-        default: case A2: mis = find_mis_2_it(graph,x, arg_find_all);
+        default: case A2: mis = find_mis_2_it(graph,x, arg_find_all, arg_timeout);
             break;
         case DFS: mis = brute_force_mis_DFS(graph, x);
             break;
@@ -759,7 +760,7 @@ set<int> MIS::find_mis_2(NGraph g) {
     }
 }
 
-set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
+set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) {
 
     vector<set<int>> all_mis;
     set<int> first_mis;
@@ -768,7 +769,10 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
     list<pair<pair<NGraph,int>,int>> stack;
     stack.push_front(make_pair(make_pair(g,-1),0));
 
-    while (!stack.empty()) {
+    CountdownTimer timer(arg_timeout);
+    bool timeout = arg_timeout != 0;
+
+    while (!stack.empty() && (!timeout || !timer.is_expired())) {
         pair<NGraph,int> g_t = stack.front().first;
         NGraph g = g_t.first;
         int tag = g_t.second;
@@ -850,6 +854,8 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                     }
                 }
                 if (found) {
+                    NGraph g_without_v = remove_components(g, v1);
+                    stack.push_front(make_pair(make_pair(g_without_v,tag), mis));
                     if (equal && arg_find_all == 1) {
                         assert(w != -1);
                         NGraph g_without_w = remove_components(g, w);
@@ -866,8 +872,6 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all) {
                         }
                         stack.push_front(make_pair(make_pair(g_without_w,v1), all_mis.size()-1));
                     }
-                    NGraph g_without_v = remove_components(g, v1);
-                    stack.push_front(make_pair(make_pair(g_without_v,tag), mis));
                 } else {
                     //find foldable vertex v (d(v) = 2)
                     found = false;
