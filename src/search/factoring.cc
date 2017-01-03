@@ -1866,11 +1866,19 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
             }
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[max];
-            // and push it into the respective leaf
-            mis[leaf].insert(candidate);
-            in_center[candidate] = false;
-            center.erase(candidate);
-            var_to_factor[candidate] = leaf;
+            // check leaf factor size
+            uint64_t f_size = 1;
+            for (int v:mis[leaf]) {
+                f_size *= g_variable_domain[v];
+            }
+            uint64_t tmp_size = f_size * g_variable_domain[candidate];
+            if (tmp_size <= max_leaf_size) {
+                // and push it into the respective leaf
+                mis[leaf].insert(candidate);
+                var_to_factor[candidate] = leaf;
+                in_center[candidate] = false;
+                center.erase(candidate);
+            }
             candidates.erase(candidates.begin()+max);
             candidates_to_leaf.erase(candidates_to_leaf.begin()+max);
             c_rm++;

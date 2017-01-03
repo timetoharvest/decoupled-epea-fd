@@ -854,15 +854,19 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
                     }
                 }
                 if (found) {
-                    NGraph g_without_v = remove_components(g, v1);
-                    stack.push_front(make_pair(make_pair(g_without_v,tag), mis));
+
                     if (equal && arg_find_all == 1) {
                         assert(w != -1);
                         NGraph g_without_w = remove_components(g, w);
                         set<int> copy(all_mis[mis]);
                         all_mis.push_back(copy);
+                        list<pair<pair<NGraph,int>,int>> tmp_stack(stack);
+
+                        NGraph g_without_v = remove_components(g, v1);
+                        stack.push_front(make_pair(make_pair(g_without_v, tag), mis));
+
                         // copy stack "history" such that it is applied to both choices
-                        for (const pair<pair<NGraph,int>,int> elem:stack) {
+                        for (const pair<pair<NGraph,int>,int> elem:tmp_stack) {
                             if (elem.second == mis) {
                                 stack.push_front(make_pair(make_pair(elem.first.first, v1), all_mis.size()-1));
                             }
@@ -871,6 +875,9 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
                             }
                         }
                         stack.push_front(make_pair(make_pair(g_without_w,v1), all_mis.size()-1));
+                    } else {
+                        NGraph g_without_v = remove_components(g, v1);
+                        stack.push_front(make_pair(make_pair(g_without_v, tag), mis));
                     }
                 } else {
                     //find foldable vertex v (d(v) = 2)
@@ -894,6 +901,8 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
                             NGraph gf = remove_components(remove_components(g, g[v2]), v2);
                             set<int> copy(all_mis[mis]);
                             all_mis[mis].insert(v2);
+                            list<pair<pair<NGraph,int>,int>> tmp_stack(stack);
+                            stack.push_front(make_pair(make_pair(gf,tag), mis));
 
                             // case 2: select u1, u2; remove v, u1, u2, N(u1), N(u2)
                             set<int> remove = g[u1];
@@ -905,7 +914,7 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
                             copy.insert(u2);
                             all_mis.push_back(copy);
                             // copy stack "history" such that it is applied to both choices
-                            for (const pair<pair<NGraph,int>,int> elem:stack) {
+                            for (const pair<pair<NGraph,int>,int> elem:tmp_stack) {
                                 if (elem.second == mis) {
                                     stack.push_front(make_pair(make_pair(elem.first.first, tag), all_mis.size()-1));
                                 }
@@ -914,7 +923,6 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
                                 }
                             }
                             stack.push_front(make_pair(make_pair(gf2,tag), all_mis.size()-1));
-                            stack.push_front(make_pair(make_pair(gf,tag), mis));
 
                         } else {
                             // should never happen, as this case should have been resolved by dominance first
