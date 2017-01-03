@@ -1707,7 +1707,7 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
         int max = 0;
         int min = 0;
         if (!factor_affecting_actions.empty()) {
-            int min = factor_affecting_actions[0];
+            min = factor_affecting_actions[0];
             for (int i:factor_affecting_actions) {
                 avg += i;
                 if (i > max) {
@@ -1740,7 +1740,7 @@ uint64_t MaxIndependentSetFactoring::rank_leaf_size_avg(const FactoredVars &fact
     int max = 0;
     int min = 0;
     if (!factoring.empty()) {
-        int min = factoring[0].size();
+        min = factoring[0].size();
         for (set<int> factor:factoring) {
             int s = (int) factor.size();
             avg += s;
