@@ -70,13 +70,16 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                if (dominates && reference_frontier[factor][id]){
+                if (dominates && id < reference_frontier[factor].size() && reference_frontier[factor][id]){
+                    // reg. second condition: in satisficing planning (in contrast to optimal), the leaf state spaces
+                    // are not necessarily precomputed. thus, the frontier of a decoupled state created early during
+                    // search might be smaller than the current size of the leaf state space
                     assert(other_cpg->has_leaf_state(id, factor));
                     if (!has_leaf_state(id, factor)){
                         dominates = false;
                     }
                 }
-                if (dominated && frontier[factor][id]){
+                if (dominated && id < frontier[factor].size() && frontier[factor][id]){
                     assert(has_leaf_state(id, factor));                    
                     if (!other_cpg->has_leaf_state(id, factor)){
                         dominated = false;

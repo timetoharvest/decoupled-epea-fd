@@ -263,7 +263,7 @@ void Reachable::update(const State &base_state) {
 #ifdef DEBUG_SEARCH
     cout << "   RPG for leaf factor " << factor << " finished" << endl;
 #endif
-        assert(handled.count() == get_number_states(factor) || goal_reached[factor]);
+        assert((handled.count() == get_number_states(factor)) || goal_reached[factor]);
     }
         
 #ifdef DEBUG_SEARCH
