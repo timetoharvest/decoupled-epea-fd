@@ -15,7 +15,7 @@ class PruningReachable : public Reachable {
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();   
     
     void compute_frontier();
-    
+    // TODO get rid of this function
     const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
     PruningReachable(const PruningReachable *tag);

@@ -25,7 +25,7 @@ class FrontierPrices : public EffectivePrices {
     void goal_price_propagation();
 
     void propagate_dominance_prices();
-    
+    // TODO get rid of this function
     const std::vector<boost::dynamic_bitset<> > & get_frontier();
     
 protected:  
