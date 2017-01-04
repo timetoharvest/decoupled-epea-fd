@@ -241,7 +241,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 	}
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
+            if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
                 if (dominates && reference_frontier[factor][id]){
                     assert(other_cpg->has_effective_leaf_state(id, factor));
                     
