@@ -46,6 +46,8 @@ public:
     
     FrontierPrices(){};
     
+    FrontierPrices(const FrontierPrices &) : EffectivePrices() {}; // HACK
+    
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;

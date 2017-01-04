@@ -45,7 +45,7 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
     
     assert(g_factoring->get_profile() == FORK);
 
-    const vector<boost::dynamic_bitset<> > &current_frontier = get_frontier();
+    get_frontier();
     const vector<boost::dynamic_bitset<> > &reference_frontier = other_cpg->get_frontier();
         
     bool dominated = needed != DOMINATES;
@@ -55,26 +55,28 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
     
     // compare prices
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (goal_reachable(factor) && !other_cpg->goal_reachable(factor)){
-            dominated = false;
-        } else if (!goal_reachable(factor) && other_cpg->goal_reachable(factor)){
-            dominates = false;
-        }
+        if (!g_goals_per_factor[factor].empty()){
+            if (goal_reachable(factor) && !other_cpg->goal_reachable(factor)){
+                dominated = false;
+            } else if (!goal_reachable(factor) && other_cpg->goal_reachable(factor)){
+                dominates = false;
+            }
 #ifndef NDEBUG
-        else {
-            assert(goal_reachable(factor) == other_cpg->goal_reachable(factor));
-        }
+            else {
+                assert(goal_reachable(factor) == other_cpg->goal_reachable(factor));
+            }
 #endif
+        }
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
+            if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
                 if (dominates && reference_frontier[factor][id]){
                     assert(other_cpg->has_leaf_state(id, factor));
                     if (!has_leaf_state(id, factor)){
                         dominates = false;
                     }
                 }
-                if (dominated && current_frontier[factor][id]){
+                if (dominated && frontier[factor][id]){
                     assert(has_leaf_state(id, factor));                    
                     if (!other_cpg->has_leaf_state(id, factor)){
                         dominated = false;
@@ -150,15 +152,21 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_cpg() {
 }
 
 void PruningReachable::dump() const {
-    // TODO include frontier information
+    if (frontier.empty()){
+        cout << "WARNING: No frontier information available" << endl;
+    }
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
+                bool is_frontier = !frontier.empty() && frontier[factor][id];
                 LeafState state = g_state_registry->lookup_leaf_state(id, factor);
                 if (g_leaves[factor].size() == 1){
-                    cout << g_fact_names[g_leaves[factor][0]][state[g_leaves[factor][0]]] << endl;
+                    cout << g_fact_names[g_leaves[factor][0]][state[g_leaves[factor][0]]] << (is_frontier ? " - is frontier state" : "") << endl;
                 } else {
                     state.dump_pddl();
+                    if (is_frontier){
+                        cout << "is frontier state" << endl;
+                    }
                 }
             }
         }
@@ -166,5 +174,5 @@ void PruningReachable::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new PruningReachable(*this));
+    return unique_ptr<CompliantPathGraph>(new PruningReachable(this));
 }

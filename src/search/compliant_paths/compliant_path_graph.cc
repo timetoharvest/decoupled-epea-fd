@@ -52,6 +52,7 @@ vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
 
 
 bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID factor) {
+    assert(is_a_leaf_goal_state.size() > factor && is_a_leaf_goal_state[factor].size() > id);
     return is_a_leaf_goal_state[factor][id];
 }
 
@@ -110,7 +111,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
-    //dump();
+    dump();
 #endif
     
     vector<size_t> predecessors;
@@ -140,9 +141,9 @@ int CompliantPathGraph::check_dominance(const State &base_state,
         
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
-        //g_price_tags[s].dump();
+        CPGStorage::storage->get_mutable_cpg(s)->dump();
 #endif
-        
+
         if (!PruningOptions::are_closed_nodes_reopened()){
             // in greedy search, close nodes that are dominated by this one as cannot
             // reach anything new from those that cannot be reached from this node

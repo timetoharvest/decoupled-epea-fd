@@ -45,6 +45,7 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
         
     const FrontierPrices &tag = cpg_storage->frontier_prices[predecessor];
     if (tag.frontier.empty()){
+        assert(predecessor.get_id().hash() == 0);
         tmp_p_price->compute_cost_frontier();
     } else {
         tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_leaves.size(), boost::dynamic_bitset<>());
@@ -212,7 +213,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
     
     assert(g_factoring->get_profile() == FORK);
 
-    const vector<boost::dynamic_bitset<> > &current_frontier = get_frontier();
+    get_frontier();
     const vector<boost::dynamic_bitset<> > &reference_frontier = other_cpg->get_frontier();
         
     bool dominated = needed != DOMINATES;
@@ -257,7 +258,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
                         dominates = false;
                     }
                 }
-                if (dominated && current_frontier[factor][id]){
+                if (dominated && frontier[factor][id]){
                     assert(has_effective_leaf_state(id, factor));
                     
                     if (other_cpg->has_effective_leaf_state(id, factor)){

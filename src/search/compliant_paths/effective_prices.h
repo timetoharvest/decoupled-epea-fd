@@ -50,6 +50,8 @@ public:
     
     EffectivePrices(){};
     
+    EffectivePrices(const EffectivePrices &) : Prices() {}; // HACK
+    
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
