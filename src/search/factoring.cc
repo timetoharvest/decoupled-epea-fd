@@ -151,6 +151,9 @@ class MaxIndependentSetFactoring : public Factoring {
     enum FEATURE {
         MOBILITY,
         LEAVES,
+        L_VS_C_VARS,
+        L_VS_C_DOM_SIZE,
+        L_VS_C_AFF_ACTIONS,
         CENTER_AFF_A,
         LEAF_AFF_CENTER_A_AVG,
         LEAF_AFF_LEAF_A_AVG,
@@ -197,7 +200,9 @@ public:
     uint64_t rank_factoring(const FactoredVars &, const FEATURE, bool all_data = false);
     uint64_t rank_mobility(const FactoredVars &, bool);
     uint64_t rank_leaves(const FactoredVars &, bool);
-    uint64_t rank_aff_a(const FactoredVars &, bool, bool, bool);
+    uint64_t rank_l_vs_c_dom_size(const FactoredVars &, bool);
+    uint64_t rank_l_vs_c_vars(const FactoredVars &, bool);
+    uint64_t rank_aff_a(const FactoredVars &, bool, bool, bool, bool);
     uint64_t rank_leaf_size_avg(const FactoredVars &, bool);
     uint64_t rank_center_size(const FactoredVars &, bool);
     //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
@@ -1575,14 +1580,23 @@ uint64_t MaxIndependentSetFactoring::rank_factoring(const FactoredVars & factori
         case LEAVES:
             ret = rank_leaves(factoring, all_data);
             break;
+        case L_VS_C_VARS:
+            ret = rank_l_vs_c_vars(factoring, all_data);
+            break;
+        case L_VS_C_DOM_SIZE:
+            ret = rank_l_vs_c_dom_size(factoring, all_data);
+            break;
+        case L_VS_C_AFF_ACTIONS:
+            ret = rank_aff_a(factoring, all_data, false, false, true);
+            break;
         case CENTER_AFF_A:
-            ret = rank_aff_a(factoring, all_data, false, false);
+            ret = rank_aff_a(factoring, all_data, false, false, false);
             break;
         case LEAF_AFF_CENTER_A_AVG:
-            ret = rank_aff_a(factoring, all_data, true, false);
+            ret = rank_aff_a(factoring, all_data, true, false, false);
             break;
         case LEAF_AFF_LEAF_A_AVG:
-            ret = rank_aff_a(factoring, all_data, true, true);
+            ret = rank_aff_a(factoring, all_data, true, true, false);
             break;
         case LEAF_SIZE_AVG:
             ret = rank_leaf_size_avg(factoring, all_data);
@@ -1656,7 +1670,46 @@ uint64_t MaxIndependentSetFactoring::rank_leaves(const FactoredVars &factoring, 
     return (uint64_t)f;
 }
 
-uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, bool all_data, bool aff_leaf, bool leaf_a) {
+uint64_t MaxIndependentSetFactoring::rank_l_vs_c_dom_size(const FactoredVars & factoring, bool) {
+    size_t leaf = 1;
+    size_t center = 1;
+    vector<bool> in_center(g_variable_domain.size(), true);
+    for (size_t i = 0; i < factoring.size(); i++) {
+        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it) {
+            in_center[*it] = false;
+        }
+    }
+    for (int i = 0; i < g_variable_domain.size(); ++i) {
+        if (in_center[i]) {
+            center *= g_variable_domain[i];
+        } else {
+            leaf *= g_variable_domain[i];
+        }
+    }
+    if (center == 0) {
+        return leaf;
+    } else {
+        return leaf / center;
+    }
+}
+
+uint64_t MaxIndependentSetFactoring::rank_l_vs_c_vars(const FactoredVars & factoring, bool) {
+    size_t leaf = 0;
+    size_t center = 0;
+    size_t size = g_variable_domain.size();
+    center = size;
+    for (set<int> f:factoring){
+        center -= f.size();
+    }
+    if (center == 0) {
+        return size;
+    } else {
+        leaf = size - center;
+        return leaf / center;
+    }
+}
+
+uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, bool all_data, bool aff_leaf, bool leaf_a, bool ratio) {
     vector<int> factor_affecting_actions(factoring.size(), 0);
     int affecting_center = 0;
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
@@ -1704,14 +1757,15 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
         }
 
     }
-    if (aff_leaf) {
+    if (aff_leaf || ratio) {
+        int sum = 0;
         int avg = 0;
         int max = 0;
         int min = 0;
         if (!factor_affecting_actions.empty()) {
             min = factor_affecting_actions[0];
             for (int i:factor_affecting_actions) {
-                avg += i;
+                sum += i;
                 if (i > max) {
                     max = i;
                 }
@@ -1719,7 +1773,7 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
                     min = i;
                 }
             }
-            avg = avg / factor_affecting_actions.size();
+            avg = sum / factor_affecting_actions.size();
         }
         if (all_data) {
             if (!leaf_a) {
@@ -1730,7 +1784,15 @@ uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, b
                 cout << "Ranking " << "leaf_affecting_leaf_actions_max" << ": " << max << endl;
             }
         }
-        return (uint64_t)avg;
+        if (ratio) {
+            if (affecting_center == 0) {
+                return sum;
+            }
+            int ratio = sum / affecting_center;
+            return (uint64_t) ratio;
+        } else {
+            return (uint64_t) avg;
+        }
     } else {
         return (uint64_t)affecting_center;
     }
@@ -2671,6 +2733,9 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
     vector<string> feature;
     feature.push_back("mobility");
     feature.push_back("leaves");
+    feature.push_back("l_vs_c_vars");
+    feature.push_back("l_vs_c_dom_size");
+    feature.push_back("l_vs_c_actions");
     feature.push_back("center_aff_a");
     feature.push_back("leaf_aff_center_a_avg");
     feature.push_back("leaf_aff_leaf_a_avg");
