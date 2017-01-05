@@ -65,6 +65,7 @@ HEADERS = \
           per_state_information.h \
           por/por_method.h \
           pref_evaluator.h \
+          ranking.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -167,7 +168,7 @@ HEADERS += por/expansion_core.h \
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
            mis.h \
-           ../preprocess/scc.h       
+           ../preprocess/scc.h
 
 HEADERS += pruning/cost_frontier.h \
            pruning/simulation_relation.h \

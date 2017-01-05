@@ -16,6 +16,7 @@
 
 
 class Factoring;
+class Ranking;
 class MergeStrategy;
 class ShrinkStrategy;
 class LandmarkGraph;
@@ -213,6 +214,13 @@ template <>
 struct TypeNamer<Factoring *> {
     static std::string name() {
         return "Factoring";
+    }
+};
+
+template <>
+struct TypeNamer<Ranking *> {
+    static std::string name() {
+        return "Ranking";
     }
 };
 

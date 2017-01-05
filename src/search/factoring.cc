@@ -11,6 +11,7 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
+#include "ranking.h"
 
 #include <iostream>
 #include <limits>
@@ -148,25 +149,12 @@ public:
 };
 
 class MaxIndependentSetFactoring : public Factoring {
-    enum FEATURE {
-        MOBILITY,
-        LEAVES,
-        L_VS_C_VARS,
-        L_VS_C_DOM_SIZE,
-        L_VS_C_AFF_ACTIONS,
-        CENTER_AFF_A,
-        LEAF_AFF_CENTER_A_AVG,
-        LEAF_AFF_LEAF_A_AVG,
-        LEAF_SIZE_AVG,
-        CENTER_SIZE,
-        NONE
-    };
+
 protected:
     enum MIS_ALGO arg_mis_algo;
     int arg_minimize_center;
     bool arg_minimize_frozen;
-    enum FEATURE arg_feature_1;
-    enum FEATURE arg_feature_2;
+    vector<Ranking* > arg_rankings;
     int arg_xth_factoring = 0;
     int arg_merge_leaves = 0;
     int arg_find_all;
@@ -180,8 +168,7 @@ public:
                 arg_mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
                 arg_minimize_center(opts.get<int>("minimize_center")),
                 arg_minimize_frozen(opts.get<bool>("minimize_frozen")),
-                arg_feature_1(FEATURE(opts.get_enum("feature_1"))),
-                arg_feature_2(FEATURE(opts.get_enum("feature_2"))),
+                arg_rankings(opts.get_list<Ranking *>("rankings")),
                 arg_xth_factoring(opts.get<int>("xth_fact")),
                 arg_merge_leaves(opts.get<int>("merge_leaves")),
                 arg_find_all(opts.get<int>("find_all")),
@@ -189,22 +176,23 @@ public:
                 arg_timeout(opts.get<int>("timeout")){
         profile = MAX_IND_SET;
         cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: "
-             << arg_find_all << " minimize_center " << arg_minimize_center << " optimize feature: " << arg_feature_1
-             << ", " << arg_feature_2 << " all rankings: " << arg_all_rankings << " minimize frozen " << arg_minimize_frozen << " select xth factoring: "
-             << arg_xth_factoring << " merge leaves level: " << arg_merge_leaves << endl;
+             << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
+             << " minimize frozen " << arg_minimize_frozen << " select xth factoring: " << arg_xth_factoring
+             << " merge leaves level: " << arg_merge_leaves;
+        cout << " ranking_features: ";
+        if (arg_rankings.empty()) {
+            cout << "None" << endl;
+        } else {
+            for (Ranking * ranking:arg_rankings) {
+                cout << ranking->get_feature() << " ";
+            }
+            cout << endl;
+        }
     };
 
     virtual FactoredVars get_factoring();
     FactoredVars minimize_center(FactoredVars, const NGraph&);
     void optimize_feature(FactoredVars &, const NGraph &);
-    uint64_t rank_factoring(const FactoredVars &, const FEATURE, bool all_data = false);
-    uint64_t rank_mobility(const FactoredVars &, bool);
-    uint64_t rank_leaves(const FactoredVars &, bool);
-    uint64_t rank_l_vs_c_dom_size(const FactoredVars &, bool);
-    uint64_t rank_l_vs_c_vars(const FactoredVars &, bool);
-    uint64_t rank_aff_a(const FactoredVars &, bool, bool, bool, bool);
-    uint64_t rank_leaf_size_avg(const FactoredVars &, bool);
-    uint64_t rank_center_size(const FactoredVars &, bool);
     //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
     NGraph generate_ngraph();
     bool check_factoring(FactoredVars);
@@ -1570,285 +1558,12 @@ bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
 #endif
     return valid;
 }
-uint64_t MaxIndependentSetFactoring::rank_factoring(const FactoredVars & factoring, const FEATURE feature, bool all_data){
-    int ret = 0;
-    switch (feature) {
-        default:
-        case MOBILITY:
-            ret = rank_mobility(factoring, all_data);
-            break;
-        case LEAVES:
-            ret = rank_leaves(factoring, all_data);
-            break;
-        case L_VS_C_VARS:
-            ret = rank_l_vs_c_vars(factoring, all_data);
-            break;
-        case L_VS_C_DOM_SIZE:
-            ret = rank_l_vs_c_dom_size(factoring, all_data);
-            break;
-        case L_VS_C_AFF_ACTIONS:
-            ret = rank_aff_a(factoring, all_data, false, false, true);
-            break;
-        case CENTER_AFF_A:
-            ret = rank_aff_a(factoring, all_data, false, false, false);
-            break;
-        case LEAF_AFF_CENTER_A_AVG:
-            ret = rank_aff_a(factoring, all_data, true, false, false);
-            break;
-        case LEAF_AFF_LEAF_A_AVG:
-            ret = rank_aff_a(factoring, all_data, true, true, false);
-            break;
-        case LEAF_SIZE_AVG:
-            ret = rank_leaf_size_avg(factoring, all_data);
-            break;
-        case CENTER_SIZE:
-            ret = rank_center_size(factoring, all_data);
-            break;
-        case NONE:
-            break;
-    }
-    return ret;
-}
-
-uint64_t MaxIndependentSetFactoring::rank_mobility(const FactoredVars &factoring, bool) {
-    vector<int> factor_actions(factoring.size(), 0);
-    vector<int> belongs_to_factor(g_variable_domain.size(), -1);
-
-    for (size_t i = 0; i < factoring.size(); i++){
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-            belongs_to_factor[*it] = i;
-        }
-    }
-
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
-        bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
-                center = true;
-            }
-        }
-        if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-            (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            ++factor_actions[affects_factor];
-        }
-    }
-    uint64_t mobility = 1;
-    bool any_actions = false;
-    for (int i:factor_actions) {
-        if (i > 0) {
-            any_actions = true;
-            mobility *= i;
-        }
-    }
-    if (!any_actions) {
-        mobility = 0;
-    }
-    return mobility;
-}
-
-uint64_t MaxIndependentSetFactoring::rank_leaves(const FactoredVars &factoring, bool) {
-    vector<bool> frozen = get_frozen_leaves(factoring);
-    int f = 0;
-    for (bool b:frozen) {
-        if (!b) {
-            ++f;
-        }
-    }
-    return (uint64_t)f;
-}
-
-uint64_t MaxIndependentSetFactoring::rank_l_vs_c_dom_size(const FactoredVars & factoring, bool) {
-    size_t leaf = 1;
-    size_t center = 1;
-    vector<bool> in_center(g_variable_domain.size(), true);
-    for (size_t i = 0; i < factoring.size(); i++) {
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it) {
-            in_center[*it] = false;
-        }
-    }
-    for (int i = 0; i < g_variable_domain.size(); ++i) {
-        if (in_center[i]) {
-            center *= g_variable_domain[i];
-        } else {
-            leaf *= g_variable_domain[i];
-        }
-    }
-    if (center == 0) {
-        return leaf;
-    } else {
-        return leaf / center;
-    }
-}
-
-uint64_t MaxIndependentSetFactoring::rank_l_vs_c_vars(const FactoredVars & factoring, bool) {
-    size_t leaf = 0;
-    size_t center = 0;
-    size_t size = g_variable_domain.size();
-    center = size;
-    for (set<int> f:factoring){
-        center -= f.size();
-    }
-    if (center == 0) {
-        return size;
-    } else {
-        leaf = size - center;
-        return leaf / center;
-    }
-}
-
-uint64_t MaxIndependentSetFactoring::rank_aff_a(const FactoredVars &factoring, bool all_data, bool aff_leaf, bool leaf_a, bool ratio) {
-    vector<int> factor_affecting_actions(factoring.size(), 0);
-    int affecting_center = 0;
-    vector<int> belongs_to_factor(g_variable_domain.size(), -1);
-
-    for (size_t i = 0; i < factoring.size(); i++){
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-            belongs_to_factor[*it] = i;
-        }
-    }
-
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
-        bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
-                center = true;
-            }
-        }
-        if (aff_leaf && leaf_a && !center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-            (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            ++factor_affecting_actions[affects_factor];
-        }
-        else if (aff_leaf && !leaf_a && (center || (eff_factors.size() > 1) || (pre_factors.size() > 1) ||
-            !(pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin())))) {
-            for (int eff:eff_factors) {
-                if (eff != -1) {
-                    ++factor_affecting_actions[eff];
-                }
-            }
-        }
-        else if (!aff_leaf && center) {
-            ++affecting_center;
-        }
-
-    }
-    if (aff_leaf || ratio) {
-        int sum = 0;
-        int avg = 0;
-        int max = 0;
-        int min = 0;
-        if (!factor_affecting_actions.empty()) {
-            min = factor_affecting_actions[0];
-            for (int i:factor_affecting_actions) {
-                sum += i;
-                if (i > max) {
-                    max = i;
-                }
-                if (i < min) {
-                    min = i;
-                }
-            }
-            avg = sum / factor_affecting_actions.size();
-        }
-        if (all_data) {
-            if (!leaf_a) {
-                cout << "Ranking " << "leaf_affecting_center_actions_min" << ": " << min << endl;
-                cout << "Ranking " << "leaf_affecting_center_actions_max" << ": " << max << endl;
-            } else {
-                cout << "Ranking " << "leaf_affecting_leaf_actions_min" << ": " << min << endl;
-                cout << "Ranking " << "leaf_affecting_leaf_actions_max" << ": " << max << endl;
-            }
-        }
-        if (ratio) {
-            if (affecting_center == 0) {
-                return sum;
-            }
-            int ratio = sum / affecting_center;
-            return (uint64_t) ratio;
-        } else {
-            return (uint64_t) avg;
-        }
-    } else {
-        return (uint64_t)affecting_center;
-    }
-
-}
-
-uint64_t MaxIndependentSetFactoring::rank_leaf_size_avg(const FactoredVars &factoring, bool all_data) {
-    int avg = 0;
-    int max = 0;
-    int min = 0;
-    if (!factoring.empty()) {
-        min = factoring[0].size();
-        for (set<int> factor:factoring) {
-            int s = (int) factor.size();
-            avg += s;
-            if (s > max) {
-                max = s;
-            }
-            if (s < min) {
-                min = s;
-            }
-        }
-        avg = avg / factoring.size();
-    }
-    if (all_data) {
-        cout << "Ranking " << "leaf_size_min" << ": " << min << endl;
-        cout << "Ranking " << "leaf_size_max" << ": " << max << endl;
-    }
-    return (uint64_t)avg;
-}
-
-uint64_t MaxIndependentSetFactoring::rank_center_size(const FactoredVars &factoring, bool) {
-    size_t size = g_variable_domain.size();
-    for (set<int> f:factoring){
-        size -= f.size();
-    }
-    return size;
-}
 
 void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGraph & g) {
     if (arg_minimize_center == 0) {
         return;
     }
 
-    // TODO - upgrade parser to parse a list of features
-    vector<enum FEATURE> features (NONE,NONE);
-    if (arg_feature_1 != NONE) {
-        features[0] = arg_feature_1;
-    } else {
-        return;
-    }
-    if (arg_feature_2 != NONE) {
-        features[2] = arg_feature_2;
-    }
-
-    // retrieve center vars
     set<int> center;
     vector<bool> in_center(g.size(), true);
     map<int, int> var_to_factor;
@@ -1894,7 +1609,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
     while (minimize) {
         if (!candidates.empty()) {
             size_t max = 0;
-            vector<uint64_t> max_rank (NONE,0);
+            vector<uint64_t> max_rank (arg_rankings.size(),0);
             for (size_t i = 0; i < candidates.size(); ++i) {
                 int candidate = candidates[i];
                 int leaf = candidates_to_leaf[i];
@@ -1903,25 +1618,23 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 
                 // call ranking (multiple rankings?)
                 bool update = false;
-                vector<uint64_t> ranking;
-                for (int i = 0; i < NONE && !update; ++i) {
-                    if (features[i] != NONE) {
-                        ranking.push_back(rank_factoring(mis, features[i]));
-                        if (ranking[i] > max_rank[i]) {
-                            update = true;
-                        }
-                    }else {
-                        break;
+                vector<uint64_t> rankings;
+                uint64_t n = 0;
+                for (Ranking * ranking:arg_rankings) {
+                    rankings.push_back(ranking->get_rank(mis));
+                    if (rankings[n] > max_rank[n]) {
+                        update = true;
                     }
+                    ++n;
                 }
                 if (update) {
                     max = i;
-                    if (ranking.size() < features.size()) {
-                        for (size_t i = ranking.size(); i < features.size(); ++i) {
-                            ranking.push_back(rank_factoring(mis, features[i]));
+                    if (rankings.size() < arg_rankings.size()) {
+                        for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
+                            rankings.push_back(arg_rankings[i]->get_rank(mis));
                         }
                     }
-                    max_rank = ranking;
+                    max_rank = rankings;
                 }
                 mis[leaf].erase(mis[leaf].find(candidate));
 
@@ -1973,38 +1686,10 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                 }
                 cout << endl;
 #endif
-                cout << "Ranking of Factoring: " << rank_factoring(mis,arg_feature_1) << endl;
+                cout << "Ranking of Factoring: " << arg_rankings[0]->get_rank(mis) << endl;
                 if (arg_all_rankings) {
                     cout << "All Rankings: " << endl;
-                    for (int i = 0; i < NONE; ++i) {
-                        string feature = "";
-                        switch (i) {
-                            case 0:
-                                feature = "mobility";
-                                break;
-                            case 1:
-                                feature = "leaves";
-                                break;
-                            case 2:
-                                feature = "center_affecting_actions";
-                                break;
-                            case 3:
-                                feature = "leaf_affecting_center_actions_avg";
-                                break;
-                            case 4:
-                                feature = "leaf_affecting_leaf_actions_avg";
-                                break;
-                            case 5:
-                                feature = "leaf_size_avg";
-                                break;
-                            case 6:
-                                feature = "center_size";
-                                break;
-                            default:
-                                feature = "none";
-                        }
-                        cout << "Ranking " << feature << ": " << rank_factoring(mis, FEATURE(i), true) << endl;
-                    }
+                    arg_rankings[0]->print_all_rankings(mis);
                     cout << endl;
                 }
                 if (f_rm == 0 || mis.empty()) {
@@ -2730,33 +2415,7 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
             vector<string>(),
             OptionFlags(false));
 
-    vector<string> feature;
-    feature.push_back("mobility");
-    feature.push_back("leaves");
-    feature.push_back("l_vs_c_vars");
-    feature.push_back("l_vs_c_dom_size");
-    feature.push_back("l_vs_c_actions");
-    feature.push_back("center_aff_a");
-    feature.push_back("leaf_aff_center_a_avg");
-    feature.push_back("leaf_aff_leaf_a_avg");
-    feature.push_back("leaf_size_avg");
-    feature.push_back("center_size");
-    feature.push_back("none");
-
-    parser.add_enum_option(
-            "feature_1",
-            feature,
-            "TODO",
-            "mobility",
-            vector<string>(),
-            OptionFlags(false));
-    parser.add_enum_option(
-            "feature_2",
-            feature,
-            "TODO",
-            "none",
-            vector<string>(),
-            OptionFlags(false));
+    parser.add_list_option<Ranking *>("rankings");
     parser.add_option<bool>(
             "all_rankings",
             "TODO",
