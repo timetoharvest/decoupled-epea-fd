@@ -562,6 +562,6 @@ void Reachable::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> Reachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Reachable(*this));
+    return unique_ptr<CompliantPathGraph>(new Reachable(this));
 }
 
