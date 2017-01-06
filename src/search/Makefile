@@ -79,6 +79,7 @@ HEADERS = \
           sum_evaluator.h \
           timer.h \
           utilities.h \
+          variable_int.h \
           variable_order_finder.h \
           weighted_evaluator.h \
           \
