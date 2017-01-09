@@ -253,17 +253,13 @@ uint64_t AffActionsRanking::rank(const vector<set<int>> &factoring) {
         }
         else if (center || (eff_factors.size() > 1) || (pre_factors.size() > 1) ||
                  !(pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            for (int eff:eff_factors) {
-                if (eff != -1) {
                     ++affecting_center;
-                }
-            }
         }
     }
     if (affecting_center == 0) {
         return (uint64_t)affecting_leaf;
     } else {
-        return (uint64_t)(affecting_leaf * 100 / (affecting_center + affecting_leaf));
+        return (uint64_t)((affecting_leaf * 100) / (affecting_center + affecting_leaf));
     }
 }
 
