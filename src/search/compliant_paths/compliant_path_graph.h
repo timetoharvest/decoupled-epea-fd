@@ -68,7 +68,7 @@ protected:
     static void cache_leaf_price_tags(const State &state);
     
     static void discard_leaf_price_cache();
-    
+
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
                                                                                 const Operator *op) const = 0;

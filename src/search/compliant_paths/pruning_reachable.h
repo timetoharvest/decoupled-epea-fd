@@ -38,8 +38,6 @@ public:
     
     PruningReachable(){};
     
-    PruningReachable(const PruningReachable &) : Reachable() {}; // HACK
-    
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;

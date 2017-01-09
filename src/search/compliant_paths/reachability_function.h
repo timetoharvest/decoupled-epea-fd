@@ -46,8 +46,6 @@ public:
     
     Reachable(){};
     
-    Reachable(const Reachable &) {}; // HACK
-    
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
     virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;

@@ -41,8 +41,6 @@ class PathPriceTag : public Prices {
 public:
     
     PathPriceTag(){};
-    
-    PathPriceTag(const PathPriceTag &) : Prices() {}; // HACK
 
     const PathPriceTagInfo &get_path_info_for_fact(LeafStateHash id, LeafFactorID factor) const;
     
