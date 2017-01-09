@@ -213,8 +213,8 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
     
     assert(g_factoring->get_profile() == FORK);
 
-    get_frontier();
-    const vector<boost::dynamic_bitset<> > &reference_frontier = other_cpg->get_frontier();
+    compute_cost_frontier();
+    other_cpg->compute_cost_frontier();
         
     bool dominated = needed != DOMINATES;
     bool dominates = needed != DOMINATED;
@@ -235,14 +235,14 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
             } 
 #ifndef NDEBUG
             else {
-                assert(get_goal_cost(factor) == other_cpg->get_goal_cost(factor));	 
+                assert(get_goal_cost(factor) == other_cpg->get_goal_cost(factor));
             }
 #endif
 	}
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                if (dominates && reference_frontier[factor][id]){
+                if (dominates && other_cpg->frontier[factor][id]){
                     assert(other_cpg->has_effective_leaf_state(id, factor));
                     
                     if (has_effective_leaf_state(id, factor)){
@@ -298,25 +298,6 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
         return DOMINATES;
     }
     return NONE;
-}
-
-const vector<boost::dynamic_bitset<> > & FrontierPrices::get_frontier() {
-    if (frontier.empty()){
-        compute_cost_frontier();
-#ifdef DEBUG_PRUNING
-        cout << "not precomputed" << endl;
-#endif
-    } else {
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (frontier[factor].size() == 0){
-                compute_cost_frontier(factor);
-            }
-        }
-#ifdef DEBUG_PRUNING
-        cout << "precomputed" << endl;
-#endif
-    }
-    return frontier;
 }
 
 void FrontierPrices::store_new_graph(const State &state) const {
@@ -432,12 +413,26 @@ void FrontierPrices::propagate_dominance_prices() {
 void FrontierPrices::compute_cost_frontier() {
     assert(g_factoring->get_profile() == FORK);
     
-    // frontier is only stored for states for which the dominance was already checked at some point
-    //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
-    
-    frontier.resize(g_leaves.size());
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        compute_cost_frontier(factor);
+    if (frontier.empty()){
+        // frontier is only stored for states for which the dominance was already checked at some point
+        //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
+        
+        frontier.resize(g_leaves.size());
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            compute_cost_frontier(factor);
+        }
+#ifdef DEBUG_PRUNING
+        cout << "not precomputed" << endl;
+#endif
+    } else {
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (frontier[factor].size() == 0){
+                compute_cost_frontier(factor);
+            }
+        }
+#ifdef DEBUG_PRUNING
+        cout << "precomputed" << endl;
+#endif
     }
 }
 

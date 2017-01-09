@@ -45,8 +45,8 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
     
     assert(g_factoring->get_profile() == FORK);
 
-    get_frontier();
-    const vector<boost::dynamic_bitset<> > &reference_frontier = other_cpg->get_frontier();
+    compute_frontier();
+    other_cpg->compute_frontier();
         
     bool dominated = needed != DOMINATES;
     bool dominates = needed != DOMINATED;
@@ -70,7 +70,7 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                if (dominates && id < reference_frontier[factor].size() && reference_frontier[factor][id]){
+                if (dominates && id < other_cpg->frontier[factor].size() && other_cpg->frontier[factor][id]){
                     // reg. second condition: in satisficing planning (in contrast to optimal), the leaf state spaces
                     // are not necessarily precomputed. thus, the frontier of a decoupled state created early during
                     // search might be smaller than the current size of the leaf state space
@@ -111,16 +111,13 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
     return NONE;
 }
 
-const vector<boost::dynamic_bitset<> >& PruningReachable::get_frontier() {
-    assert(pruning->use_frontier());
-    if (frontier.empty()){
-        compute_frontier();
-    }
-    return frontier;
-}
-
 void PruningReachable::compute_frontier() {
     assert(g_factoring->get_profile() == FORK);
+    assert(pruning->use_frontier());
+    
+    if (!frontier.empty()){
+        return;
+    }
     
     frontier.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
