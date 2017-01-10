@@ -11,7 +11,7 @@ Ranking::Ranking(const Options &) {
 
 }
 
-uint64_t Ranking::get_rank(const std::vector<std::set<int>> & factoring) {
+VarInt Ranking::get_rank(const std::vector<std::set<int>> & factoring) {
     return rank(factoring);
 }
 
@@ -23,7 +23,7 @@ public:
         feature = MOBILITY;
     };
 
-    virtual uint64_t rank(const vector<set<int>> &);
+    virtual VarInt rank(const vector<set<int>> &);
 };
 
 class LeavesRanking : public Ranking {
@@ -34,7 +34,7 @@ public:
         feature = LEAVES;
     };
 
-    virtual uint64_t rank(const vector<set<int>> &);
+    virtual VarInt rank(const vector<set<int>> &);
 };
 
 class DomSizeRanking : public Ranking {
@@ -45,7 +45,7 @@ public:
         feature = L_VS_C_DOM_SIZE;
     };
 
-    virtual uint64_t rank(const vector<set<int>> &);
+    virtual VarInt rank(const vector<set<int>> &);
 };
 
 class VariablesRanking : public Ranking {
@@ -56,7 +56,7 @@ public:
         feature = L_VS_C_VARS;
     };
 
-    virtual uint64_t rank(const vector<set<int>> &);
+    virtual VarInt rank(const vector<set<int>> &);
 };
 
 class AffActionsRanking : public Ranking {
@@ -67,23 +67,36 @@ public:
         feature = L_VS_C_AFF_ACTIONS;
     };
 
-    virtual uint64_t rank(const vector<set<int>> &);
+    virtual VarInt rank(const vector<set<int>> &);
 };
 
 void Ranking::print_all_rankings(const std::vector<std::set<int>> & factoring) {
-    //MobilityRanking *mobility = new MobilityRanking(NULL);
-    // cout << "mis_ranking_mobility: " << mobility->get_rank(factoring) << endl;
+    MobilityRanking *mobility = new MobilityRanking(NULL);
+    cout << "mis_ranking_mobility: ";
+    mobility->get_rank(factoring).dump_number();
+    cout << endl;
     LeavesRanking *leaves = new LeavesRanking(NULL);
-    cout << "mis_ranking_leaves: " << leaves->get_rank(factoring) << endl;
-    //DomSizeRanking *dom_size = new DomSizeRanking(NULL);
-    //cout << "mis_ranking_dom_size: " << dom_size->get_rank(factoring) << endl;
+    cout << "mis_ranking_leaves: ";
+    leaves->get_rank(factoring).dump_number();
+    cout << endl;
+    DomSizeRanking *dom_size = new DomSizeRanking(NULL);
+    cout << "mis_ranking_dom_size: ";
+    dom_size->get_rank(factoring).dump_number();
+    cout << endl;
     VariablesRanking *vars = new VariablesRanking(NULL);
-    cout << "mis_ranking_variables: " << vars->get_rank(factoring) << endl;
+    cout << "mis_ranking_variables: ";
+    vars->get_rank(factoring).dump_number();
+    cout << endl;
     AffActionsRanking *aff_actions = new AffActionsRanking(NULL);
-    cout << "mis_ranking_aff_actions: " << aff_actions->get_rank(factoring) << endl;
+    cout << "mis_ranking_aff_actions: ";
+    aff_actions->get_rank(factoring).dump_number();
+    cout << endl;
 }
 
-uint64_t MobilityRanking::rank(const vector<set<int>> &factoring) {
+VarInt MobilityRanking::rank(const vector<set<int>> &factoring) {
+    if (factoring.size() == 0){
+        return 0;
+    }
     vector<int> factor_actions(factoring.size(), 0);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
 
@@ -118,12 +131,13 @@ uint64_t MobilityRanking::rank(const vector<set<int>> &factoring) {
             ++factor_actions[affects_factor];
         }
     }
-    uint64_t mobility = 1;
+    VarInt mobility(1);
     bool any_actions = false;
     for (int i:factor_actions) {
         if (i > 0) {
             any_actions = true;
-            mobility *= i;
+            VarInt f(i);
+            mobility *= f;
         }
     }
     if (!any_actions) {
@@ -132,7 +146,10 @@ uint64_t MobilityRanking::rank(const vector<set<int>> &factoring) {
     return mobility;
 }
 
-uint64_t LeavesRanking::rank(const vector<set<int>> &factoring) {
+VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
+    if (factoring.size() == 0){
+        return 0;
+    }
     vector<bool> is_frozen_factor(factoring.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
 
@@ -173,12 +190,16 @@ uint64_t LeavesRanking::rank(const vector<set<int>> &factoring) {
             ++f;
         }
     }
-    return (uint64_t)f;
+    VarInt res(f);
+    return res;
 }
 
-uint64_t DomSizeRanking::rank(const vector<set<int>> & factoring) {
-    size_t leaf = 1;
-    size_t center = 1;
+VarInt DomSizeRanking::rank(const vector<set<int>> & factoring) {
+    if (factoring.size() == 0){
+        return 0;
+    }
+    VarInt leaf(1);
+    VarInt center(1);
     vector<bool> in_center(g_variable_domain.size(), true);
     for (size_t i = 0; i < factoring.size(); i++) {
         for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it) {
@@ -187,20 +208,26 @@ uint64_t DomSizeRanking::rank(const vector<set<int>> & factoring) {
     }
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         if (in_center[i]) {
-            if (g_variable_domain[i] == 0)
-                center *= g_variable_domain[i];
+            if (g_variable_domain[i] == 0) {
+                VarInt f(g_variable_domain[i]);
+                center *= f;
+            }
         } else {
-            leaf *= g_variable_domain[i];
+            VarInt f(g_variable_domain[i]);
+            leaf *= f;
         }
     }
-    if (center == 0) {
+    if (center.count() == 0) {
         return leaf;
     } else {
         return leaf / center;
     }
 }
 
-uint64_t VariablesRanking::rank(const vector<set<int>> & factoring) {
+VarInt VariablesRanking::rank(const vector<set<int>> & factoring) {
+    if (factoring.size() == 0){
+        return 0;
+    }
     size_t leaf = 0;
     size_t center = 0;
     size_t size = g_variable_domain.size();
@@ -209,16 +236,22 @@ uint64_t VariablesRanking::rank(const vector<set<int>> & factoring) {
         center -= f.size();
     }
     if (center == 0) {
-        return size;
+        VarInt res(size);
+        return res;
     } else {
         leaf = size - center;
-        return leaf * 100 / center;
+        leaf = leaf * 100 / center;
+        VarInt res(leaf);
+        return res;
     }
 }
 
-uint64_t AffActionsRanking::rank(const vector<set<int>> &factoring) {
-    int affecting_center = 0;
-    int affecting_leaf = 0;
+VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
+    if (factoring.size() == 0){
+        return 0;
+    }
+    vector<int> affecting_center(factoring.size(),0);
+    vector<int> affecting_leaf(factoring.size(),0);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
 
     for (size_t i = 0; i < factoring.size(); i++){
@@ -249,18 +282,29 @@ uint64_t AffActionsRanking::rank(const vector<set<int>> &factoring) {
         }
         if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
             (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            ++affecting_leaf;
+            ++affecting_leaf[affects_factor];
         }
         else if (center || (eff_factors.size() > 1) || (pre_factors.size() > 1) ||
                  !(pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-                    ++affecting_center;
+            for (int f:eff_factors) {
+                if (f != -1) {
+                    ++affecting_center[f];
+
+                }
+            }
         }
     }
-    if (affecting_center == 0) {
-        return (uint64_t)affecting_leaf;
-    } else {
-        return (uint64_t)((affecting_leaf * 100) / (affecting_center + affecting_leaf));
+    vector<int> affecting_ratio(factoring.size(),0);
+    for (size_t i = 0; i < factoring.size(); ++i) {
+        affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
     }
+    int result = 0;
+    for (size_t i = 0; i < factoring.size(); ++i) {
+        result += affecting_ratio[i];
+    }
+    result = result / factoring.size();
+    VarInt res(result);
+    return res;
 }
 
 

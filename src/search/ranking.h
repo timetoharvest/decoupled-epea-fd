@@ -2,6 +2,7 @@
 #define RANKING_H
 
 #include "utilities.h"
+#include "variable_int.h"
 
 #include <set>
 #include <vector>
@@ -28,7 +29,7 @@ protected:
 
     FEATURE feature;
 
-    virtual uint64_t rank(const std::vector<std::set<int>> &) = 0;
+    virtual VarInt rank(const std::vector<std::set<int>> &) = 0;
 
     Ranking(const Options &ops);
 
@@ -38,7 +39,7 @@ public:
         return feature;
     }
 
-    uint64_t get_rank(const std::vector<std::set<int>> &);
+    VarInt get_rank(const std::vector<std::set<int>> &);
 
     void print_all_rankings(const std::vector<std::set<int>> &);
 };

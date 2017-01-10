@@ -81,6 +81,35 @@ VarInt VarInt::operator*(const VarInt &other) const {
     tmp *= other;
     return move(tmp);
 }
+
+void VarInt::operator/=(const VarInt &other) {
+    boost::dynamic_bitset<> res(value.size(), false);
+    boost::dynamic_bitset<> tmp(value.size(), false);
+    boost::dynamic_bitset<> oth(other.value);
+    oth.resize(tmp.size());
+
+    size_t offset = value.size() - other.value.size();
+    oth <<= offset;
+    for (size_t i = 0; i < offset; ++i) {
+        if (oth <= value) {
+            tmp = value - oth;
+            res.set(0,1);
+            value = tmp;
+        }
+        tmp <<= 1;
+        res <<= 1;
+
+    }
+    value = res;
+
+    shrink_to_fit();
+}
+
+VarInt VarInt::operator/(const VarInt &other) const {
+    VarInt tmp(*this);
+    tmp /= other;
+    return move(tmp);
+}
     
 
 void VarInt::dump_number() const {

@@ -2,13 +2,14 @@
 #define VARIABLE_INT_H
 
 #include "ext/boost/dynamic_bitset.hpp"
+#include <math.h>
 
 class VarInt {
 
     boost::dynamic_bitset<> value;
     
     void shrink_to_fit() {
-        for (size_t i = value.size() - 1; i > 0; --i){
+        for (size_t i = std::max(0,(int)value.size() - 1); i > 0; --i){
             if (value[i]){
                 value.resize(i + 1);
                 return;
@@ -72,6 +73,10 @@ public:
     void operator*=(const VarInt &other);
     
     VarInt operator*(const VarInt &other) const;
+
+    void operator/=(const VarInt &other);
+
+    VarInt operator/(const VarInt &other) const;
     
     VarInt& operator=(const VarInt &other) {
         if(&other == this){
@@ -79,6 +84,10 @@ public:
         }
         value = other.value;
         return *this;
+    }
+
+    std::size_t count() const {
+        return value.count();
     }
     
     void dump_number() const;

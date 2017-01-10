@@ -1609,7 +1609,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
     while (minimize) {
         if (!candidates.empty()) {
             size_t max = 0;
-            vector<uint64_t> max_rank (arg_rankings.size(),0);
+            VarInt x(0);
+            vector<VarInt> max_rank (arg_rankings.size(),x);
             for (size_t i = 0; i < candidates.size(); ++i) {
                 int candidate = candidates[i];
                 int leaf = candidates_to_leaf[i];
@@ -1618,10 +1619,11 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 
                 // call ranking (multiple rankings?)
                 bool update = false;
-                vector<uint64_t> rankings;
+                vector<VarInt> rankings;
                 uint64_t n = 0;
                 for (Ranking * ranking:arg_rankings) {
-                    rankings.push_back(ranking->get_rank(mis));
+                    VarInt vi(ranking->get_rank(mis));
+                    rankings.push_back(vi);
                     if (rankings[n] > max_rank[n]) {
                         update = true;
                     }
@@ -1631,7 +1633,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                     max = i;
                     if (rankings.size() < arg_rankings.size()) {
                         for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
-                            rankings.push_back(arg_rankings[i]->get_rank(mis));
+                            VarInt vi(arg_rankings[i]->get_rank(mis));
+                            rankings.push_back(vi);
                         }
                     }
                     max_rank = rankings;
@@ -1686,7 +1689,9 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                 }
                 cout << endl;
 #endif
-                cout << "Ranking of Factoring: " << arg_rankings[0]->get_rank(mis) << endl;
+                cout << "Ranking of Factoring: ";
+                arg_rankings[0]->get_rank(mis).dump_number();
+                cout << endl;
                 if (arg_all_rankings) {
                     cout << "All Rankings: " << endl;
                     arg_rankings[0]->print_all_rankings(mis);
