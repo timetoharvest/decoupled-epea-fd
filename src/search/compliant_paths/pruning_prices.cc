@@ -322,6 +322,22 @@ CompliantPathGraph& PruningPrices::get_init_state_prices() {
     return tmp_p_price;
 }
 
+CompliantPathGraph& PruningPrices::get_real_init_state_prices() {
+	const auto &  initial_center = g_state_registry->get_center_state(g_initial_state_data);
+
+    PruningPrices prices(0);
+        
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        prices.add_state(LeafStateID(0, factor), 0);
+    }
+        
+    prices.update_price_tags(initial_center, 0, initial_center);
+    
+    return tmp_p_price;
+}
+
+
+
 void PruningPrices::goal_price_propagation() {
     assert(g_factoring->get_profile() == FORK);
      

@@ -20,6 +20,7 @@ class PruningPrices : public Prices {
     static PruningPriceStorage *cpg_storage;
     
     static CompliantPathGraph& get_init_state_prices();
+    static CompliantPathGraph& get_real_init_state_prices();
     
     
     void compute_cost_frontier();

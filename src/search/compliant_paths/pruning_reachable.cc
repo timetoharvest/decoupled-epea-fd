@@ -331,6 +331,22 @@ CompliantPathGraph& PruningReachable::get_init_state_reachable() {
     return tmp_p_reach;
 }
 
+
+CompliantPathGraph& PruningReachable::get_real_init_state_reachable() {
+    const auto & initial_center = g_state_registry->get_center_state(g_initial_state_data);
+	
+    PruningReachable reach(0);
+        
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        reach.add_state(LeafStateID(0, factor));
+    }
+        
+    reach.update_price_tags(initial_center , 0, initial_center);
+    
+    return tmp_p_reach;
+}
+
+
 void PruningReachable::dump() const {
     // TODO include frontier information
     for (size_t factor = 0; factor < g_factors.size(); ++factor){

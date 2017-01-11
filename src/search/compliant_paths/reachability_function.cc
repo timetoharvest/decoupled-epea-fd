@@ -413,6 +413,23 @@ CompliantPathGraph& Reachable::get_init_state_reachable() {
     }
 }
 
+CompliantPathGraph& Reachable::get_real_init_state_reachable() {
+    if (do_pruning()){
+        return PruningReachable::get_real_init_state_reachable();        
+    } else {
+	const auto &  initial_center = g_state_registry->get_center_state(g_initial_state_data);
+        Reachable reach(0);
+            
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            reach.add_state(LeafStateID(0, factor));
+        }
+            
+        reach.update_price_tags(initial_center, 0, initial_center);
+        
+        return tmp_reach;
+    }
+}
+
 void Reachable::dump() const {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         cout << "factor " << factor << " ------------" << endl;

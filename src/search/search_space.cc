@@ -234,7 +234,7 @@ void SearchSpace::trace_path(const State &goal_state,
             } else {
                 if (g_use_decoupled_search){
                     new_state = g_state_registry->get_center_state(g_initial_state_data);                    
-                    new_cpg = CompliantPathGraph::get_init_state_cpg().clone();
+                    new_cpg = CompliantPathGraph::get_real_init_state_cpg().clone();
                 } else {
                     new_state = g_state_registry->get_state(g_initial_state_data);
                 }
@@ -602,19 +602,38 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
     }
 }
 
-void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, vector<StateID> &states, vector<PathPriceTag> &cpgs, 
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, vector<StateID> &states, 
+				       vector<PathPriceTag> &cpgs, 
                                        vector<unique_ptr<DecoupledPermutation> > &permutations) const {
                                            
-    unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back(), DecoupledPermutation()));
-    permutations[permutations.size() - 1].reset(new DecoupledPermutation(*temp_p));
+    unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back()));
     for (int i = permutations.size() - 2; i >= 0; --i) {
         temp_p.reset(new DecoupledPermutation(*permutations[i], *temp_p));
         permutations[i].reset(new DecoupledPermutation(*temp_p));
     }
+
     for (size_t i = 0; i < states.size(); ++i){
         const DecoupledPermutation &permutation = *permutations[i];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
     }
+
+#ifndef NDEBUG
+    for (size_t var: g_center_vars) {
+	assert(g_state_registry->lookup_state(states.back()) [var] == g_initial_state_data[var]);
+    }
+
+    for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+	vector<int> tmp_initial_state;
+	for (size_t var : g_factors[factor]) {
+	    tmp_initial_state.push_back(g_initial_state_data[var]);
+	}
+	assert(cpgs.back().has_leaf_state(g_state_registry->
+					     get_leaf_state(tmp_initial_state, 
+							    factor).get_id().hash(), 
+					 factor));
+	assert(cpgs[0].get_goal_cost(factor) != CompliantPathGraph::INF);
+    }
+#endif
 
     for (size_t i = states.size() - 1; i > 0; --i) {
         // verify that applying permuted_path[i-1] is states[i] results in states[i-1]      
@@ -624,6 +643,15 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
         permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
         assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
+
+#ifndef NDEBUG
+	auto copy = new PathPriceTag(&(cpgs[i]));
+        copy->update_price_tags (g_state_registry->lookup_state(states[i-1]));
+	for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+	    assert(!((cpgs[i-1].get_goal_cost(factor) == CompliantPathGraph::INF) ^
+		     (copy->get_goal_cost(factor) == CompliantPathGraph::INF)));
+	}
+#endif	
     }
 }
 

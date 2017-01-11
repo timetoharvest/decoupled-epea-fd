@@ -20,6 +20,7 @@ class Reachable : public CompliantPathGraph {
     static ReachableStorage *cpg_storage;
     
     static CompliantPathGraph& get_init_state_reachable();
+    static CompliantPathGraph& get_real_init_state_reachable();
     
 protected:
     

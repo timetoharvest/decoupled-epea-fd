@@ -346,6 +346,14 @@ CompliantPathGraph& CompliantPathGraph::get_init_state_cpg() {
     }
 }
 
+CompliantPathGraph& CompliantPathGraph::get_real_init_state_cpg() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        return Reachable::get_real_init_state_reachable();
+    } else {
+        return Prices::get_real_init_state_prices();
+    }
+}
+
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     int factor = state.get_id().get_factor();
     if (!g_goals_per_factor[factor].empty()){

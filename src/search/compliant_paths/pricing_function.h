@@ -21,6 +21,7 @@ class Prices : public CompliantPathGraph {
     static PriceStorage *cpg_storage;
     
     static CompliantPathGraph& get_init_state_prices();
+    static CompliantPathGraph& get_real_init_state_prices();
     
 protected:  
 

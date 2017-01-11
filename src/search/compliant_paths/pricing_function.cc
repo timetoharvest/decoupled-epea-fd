@@ -371,6 +371,24 @@ CompliantPathGraph& Prices::get_init_state_prices() {
     }
 }
 
+CompliantPathGraph& Prices::get_real_init_state_prices() {
+    if (do_pruning()){
+        return PruningPrices::get_init_state_prices();
+    } else {
+	const auto &  initial_center = g_state_registry->get_center_state(g_initial_state_data);
+	
+        Prices prices(0);
+            
+        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            prices.add_state(LeafStateID(0, factor), 0);
+        }
+            
+        prices.update_price_tags(initial_center, 0, initial_center);
+        
+        return tmp_price;
+    }
+}
+
 void Prices::dump() const {
     for (size_t factor = 0; factor < g_factors.size(); ++factor){
         cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;

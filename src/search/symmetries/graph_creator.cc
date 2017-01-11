@@ -214,7 +214,8 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 }
 
 
-unique_ptr<DecoupledPermutation> GraphCreator::create_permutation_from_state_to_state(const State &state, 
+unique_ptr<DecoupledPermutation> 
+GraphCreator::create_permutation_from_state_to_state(const State &state, 
 						     const CompliantPathGraph &cpg,
 						     const State &succ_state, 
 						     const CompliantPathGraph &succ_cpg) const {
@@ -224,9 +225,10 @@ unique_ptr<DecoupledPermutation> GraphCreator::create_permutation_from_state_to_
     assert(curr_trace.canonical_center == new_trace.canonical_center);
     //assert (curr_trace.cpg == new_trace.cpg);
     
-    
+    assert(curr_trace.trace.empty());
 
-    unique_ptr<DecoupledPermutation> p1(new DecoupledPermutation(*decoupled_group->compose_permutation(new_trace), true));
+    unique_ptr<DecoupledPermutation> p1(
+	new DecoupledPermutation(*decoupled_group->compose_permutation(new_trace), true));
     unique_ptr<DecoupledPermutation> p2(decoupled_group->compose_permutation(curr_trace));
 
     return unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*p2, *p1));

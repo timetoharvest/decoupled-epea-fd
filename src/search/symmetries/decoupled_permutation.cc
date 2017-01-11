@@ -288,7 +288,7 @@ void LeavesPermutation::print_cycle_notation() const {
                 continue; //don't print cycles of size 1
             }
 
-            cout << "(" << g_fact_names[varval.first][varval.second]  << " ";
+            cout << "  (" << g_fact_names[varval.first][varval.second]  << " ";
 
             while(permutation->get_value(current) != (int) i){
                 done.push_back(current);
@@ -298,7 +298,7 @@ void LeavesPermutation::print_cycle_notation() const {
                 cout << g_fact_names[currvarval.first][currvarval.second] << " ";
             }
             done.push_back(current);
-            cout << ") ";
+            cout << ") " << endl;
         }
     }
     cout << endl << "Variables:  ";
