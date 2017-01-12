@@ -160,6 +160,7 @@ protected:
     int arg_find_all;
     bool arg_all_rankings;
     int arg_timeout;
+    int arg_multiple_mis;
 
 public:
 
@@ -173,7 +174,8 @@ public:
                 arg_merge_leaves(opts.get<int>("merge_leaves")),
                 arg_find_all(opts.get<int>("find_all")),
                 arg_all_rankings(opts.get<bool>("all_rankings")),
-                arg_timeout(opts.get<int>("timeout")){
+                arg_timeout(opts.get<int>("timeout")),
+                arg_multiple_mis(opts.get<int>("multiple_mis")){
         profile = MAX_IND_SET;
         cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: "
              << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
@@ -192,7 +194,7 @@ public:
 
     virtual FactoredVars get_factoring();
     FactoredVars minimize_center(FactoredVars, const NGraph&);
-    void optimize_feature(FactoredVars &, const NGraph &);
+    void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &);
     //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
     NGraph generate_ngraph();
     bool check_factoring(FactoredVars);
@@ -1422,60 +1424,103 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     const NGraph cg_g = generate_ngraph();
 
     MIS mis(cg_g);
-    set<int> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout);
-#ifdef DEBUG_FACTORING
-    cout << "MIS: " << endl;
-    for (set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it) {
-        cout << "(" << *it << " )" << endl;
-    }
-#endif
+    vector<set<int>> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
 
     // generate factoring
-    FactoredVars max_ind_sets;
-    int l = 0;
-    for(set<int>::iterator it = found_mis.begin(); it != found_mis.end(); ++it){
-        set<int> s;
-        s.insert(*it);
-        max_ind_sets.push_back(s);
-        l++;
+    vector<FactoredVars> max_ind_sets;
+    for (set<int> m: found_mis) {
+        FactoredVars mis;
+        int l = 0;
+        for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
+            set<int> s;
+            s.insert(*it);
+            mis.push_back(s);
+            l++;
+        }
+        max_ind_sets.push_back(mis);
     }
 
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
-    optimize_feature(max_ind_sets, cg_g);
+    vector<int> c_rm(max_ind_sets.size(),0);
+    vector<int> f_rm(max_ind_sets.size(),0);
+    vector<int> f_c(max_ind_sets.size(),0);
+    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        optimize_feature(max_ind_sets[i], cg_g, c_rm[i], f_rm[i], f_c[i]);
+    }
+    size_t max = 0;
+    VarInt x(0);
+    vector<VarInt> max_rank (arg_rankings.size(),x);
+    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        FactoredVars m = max_ind_sets[i];
+        bool update = false;
+        vector<VarInt> rankings;
+        uint64_t n = 0;
+        for (Ranking * ranking:arg_rankings) {
+            VarInt vi(ranking->get_rank(m));
+            rankings.push_back(vi);
+            if (rankings[n] > max_rank[n]) {
+                update = true;
+            }
+            ++n;
+        }
+        if (update) {
+            max = i;
+            if (rankings.size() < arg_rankings.size()) {
+                for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
+                    VarInt vi(arg_rankings[i]->get_rank(m));
+                    rankings.push_back(vi);
+                }
+            }
+            max_rank = rankings;
+        }
+    }
+    FactoredVars final_factoring = max_ind_sets[max];
 
 #ifdef DEBUG_FACTORING
-    cout << "minimized MIS: " << endl;
-    for(size_t i = 0; i < max_ind_sets.size(); i++){
+    cout << "optimized MIS: " << endl;
+    for(size_t i = 0; i < final_factoring.size(); i++){
         cout << "(";
-        for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); ++it) {
+        for (set<int>::iterator it = final_factoring[i].begin(); it != final_factoring[i].end(); ++it) {
             cout << *it << " ";
         }
         cout << ")" << endl;
     }
 #endif
+    cout << "Minimized center, variables removed: " << c_rm[max] << endl;
+    cout << "Frozen candidates: " << f_c[max] << endl;
+
+    cout << "Ranking of Factoring: ";
+    arg_rankings[0]->get_rank(final_factoring).dump_number();
+    cout << endl;
+    if (arg_all_rankings) {
+        cout << "All Rankings: " << endl;
+        arg_rankings[0]->print_all_rankings(final_factoring);
+        cout << endl;
+    }
+
     // push frozen leaves back in center
     FactoredVars temp;
-    int f_rm = 0;
+    int f_rm_max = f_rm[max];
 
-    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+    vector<bool> frozen_leaves = get_frozen_leaves(final_factoring);
     for (size_t i = 0; i < frozen_leaves.size(); i++) {
         if (!frozen_leaves[i]) {
-            temp.push_back(max_ind_sets[i]);
+            temp.push_back(final_factoring[i]);
         } else {
-            f_rm++;
+            f_rm_max++;
         }
     }
-    max_ind_sets = temp;
-    cout << "Removed frozen leaves: " << f_rm << endl;
+    final_factoring = temp;
+    cout << "Removed frozen leaves: " << f_rm_max << endl;
 
     cout << "Number of factors: " << max_ind_sets.size() << endl;
 
-    bool valid = check_factoring(max_ind_sets);
+    bool valid = check_factoring(final_factoring);
     if (!valid) {
         exit_with(EXIT_ABSTAINED);
     }
 
-    return max_ind_sets;
+    return final_factoring;
 }
 
 NGraph MaxIndependentSetFactoring::generate_ngraph() {
@@ -1559,7 +1604,7 @@ bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
     return valid;
 }
 
-void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGraph & g) {
+void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGraph & g, int & f_rm, int & c_rm, int & f_c) {
     if (arg_minimize_center == 0) {
         return;
     }
@@ -1580,13 +1625,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
         }
     }
 
-    cout << "center size: " << center.size() << endl;
-
-
-
     bool minimize = true;
-    int c_rm = 0;
-    int f_rm = 0;
 
     bool removed_frozen_leaves = false;
 
@@ -1677,36 +1716,13 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                     }
                 }
                 mis = temp;
-                cout << "Removed frozen leaves: " << f_rm << endl;
-#ifdef DEBUG_FACTORING
-                cout << "Factoring" << endl;
-                for (size_t i = 0; i < mis.size(); i++) {
-                    cout << "   (";
-                    set<int> factor = mis[i];
-                    for (const int &it: factor) {
-                        cout << it << " ";
-                    }
-                    cout << ")" << endl;
-                }
-                cout << endl;
-#endif
-                if (!mis.empty()) {
-                    cout << "Ranking of Factoring: ";
-                    arg_rankings[0]->get_rank(mis).dump_number();
-                    cout << endl;
-                    if (arg_all_rankings) {
-                        cout << "All Rankings: " << endl;
-                        arg_rankings[0]->print_all_rankings(mis);
-                        cout << endl;
-                    }
-                }
                 if (f_rm == 0 || mis.empty()) {
-                    cout << "removed no frozen leaves or no leaves left" << endl;
+                    // removed no frozen leaves or no leaves left
                     break;
                 } else if (!arg_minimize_frozen) {
                     break;
                 } else {
-                    int f_c = 0;
+                    f_c = 0;
                     // only continue to minimize center, including frozen leaves, if minimize_frozen = true
                     for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
                         set<int> leaf_neighbours;
@@ -1721,7 +1737,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                             ++f_c;
                         }
                     }
-                    cout << "Frozen candidates: " << f_c;
                     if (f_c == 0) {
                         break;
                     } else {
@@ -1733,8 +1748,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
             }
         }
     }
-    cout << "Minimized center, variables removed: " << c_rm << endl;
-
 }
 
 
@@ -2433,6 +2446,11 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
             "timeout",
             "TODO",
             "0"
+    );
+    parser.add_option<int>(
+            "multiple_mis",
+            "TODO",
+            "1"
     );
 }
 

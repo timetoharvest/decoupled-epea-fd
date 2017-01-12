@@ -50,14 +50,14 @@ private:
     NGraph remove_components(NGraph, NGraph);
     std::set<int> find_mis_1(NGraph);
     std::set<int> find_mis_2(NGraph);
-    std::set<int> find_mis_2_it(NGraph, int, int, int);
+    std::vector<std::set<int>> find_mis_2_it(NGraph, int, int, int, int);
     std::set<int> ms_1(NGraph, std::set<int>);
     std::set<int> ms_2(NGraph, std::set<int>);
     std::set<int> brute_force_mis_DFS(NGraph, int x);
     void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::vector<std::vector<bool>> *, std::vector<std::vector<bool>> *, int);
 public:
     MIS(NGraph g) : graph(g){}
-    std::set<int> get_mis(enum MIS_ALGO, int x, int, int);
+    std::vector<std::set<int>> get_mis(enum MIS_ALGO, int x, int, int, int);
     void print_graph(NGraph);
     bool check_mis(std::vector<bool> mis);
     bool check_mis(std::set<int> mis);
