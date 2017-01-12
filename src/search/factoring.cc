@@ -1626,26 +1626,31 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
     }
 
     bool minimize = true;
-
     bool removed_frozen_leaves = false;
+    bool update_candidates = true;
+    vector<int> candidates; // pos -> var
+    vector<int> candidates_to_leaf; // pos -> leaf
 
     while (minimize) {
-        vector<int> candidates; // pos -> var
-        vector<int> candidates_to_leaf; // pos -> leaf
+        if (update_candidates) {
+            candidates.clear();
+            candidates_to_leaf.clear();
 
-        // collect candidates (center vars with one leaf neighbour)
-        for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-            set<int> leaf_neighbours;
-            for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-                if (!in_center[*n]) {
-                    leaf_neighbours.insert(var_to_factor.at(*n));
+            // collect candidates (center vars with one leaf neighbour)
+            for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+                set<int> leaf_neighbours;
+                for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
+                    if (!in_center[*n]) {
+                        leaf_neighbours.insert(var_to_factor.at(*n));
+                    }
+                }
+                if (leaf_neighbours.size() == 1) {
+                    candidates.push_back(*it);
+                    candidates_to_leaf.push_back(*leaf_neighbours.begin());
+
                 }
             }
-            if (leaf_neighbours.size() == 1) {
-                candidates.push_back(*it);
-                candidates_to_leaf.push_back(*leaf_neighbours.begin());
-
-            }
+            update_candidates = false;
         }
         if (!candidates.empty()) {
             size_t max = 0;
@@ -1696,10 +1701,13 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                 var_to_factor[candidate] = leaf;
                 in_center[candidate] = false;
                 center.erase(candidate);
+                c_rm++;
+                update_candidates = true;
+            } else {
+                update_candidates = false;
             }
             candidates.erase(candidates.begin()+max);
             candidates_to_leaf.erase(candidates_to_leaf.begin()+max);
-            c_rm++;
         } else {
             if (!removed_frozen_leaves) {
                 // push frozen leaves back in center
@@ -1740,6 +1748,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                     if (f_c == 0) {
                         break;
                     } else {
+                        update_candidates = true;
                         continue;
                     }
                 }
