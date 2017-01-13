@@ -35,11 +35,11 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
     LeavesPermutation::findex_leaves.init_decoupled();
 
     for(const Permutation &per : group.generators){
-        DecoupledPermutation gen(per);
-        if(gen.affects_center()){
-            generators_center.push_back(gen);
+        unique_ptr<DecoupledPermutation> gen(new DecoupledPermutation (per));
+        if(gen->affects_center()){
+            generators_center.push_back(std::move(gen));
         } else {
-            generators_only_leaves.push_back(gen);
+            generators_only_leaves.push_back(std::move(gen));
         }
     }
 
@@ -67,11 +67,11 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
         changed = false;
         generators_stable_center.clear();
         for (const auto &gen : generators_center) {
-            cmp_t cmp = gen.replace_if_less_center(tmp_state, leaves); 
+            cmp_t cmp = gen->replace_if_less_center(tmp_state, leaves); 
             if (cmp == cmp_t::LESS){
                 changed = true;
-            } else if (cmp == cmp_t::EQUAL && gen.affects_leaves()){
-                generators_stable_center.push_back(&gen);
+            } else if (cmp == cmp_t::EQUAL && gen->affects_leaves()){
+                generators_stable_center.push_back(gen.get());
             }
         }
     }
@@ -83,7 +83,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
         while (changed) {
             changed = false;
             for (const auto &gen : generators_only_leaves) {
-                changed |= gen.replace_if_less_leaves(leaves, lex_ordering);
+                changed |= gen->replace_if_less_leaves(leaves, lex_ordering);
             }
             for (const auto gen : generators_stable_center) {
                 changed |= gen->replace_if_less_leaves(leaves, lex_ordering);
@@ -97,11 +97,11 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
 vector<const DecoupledPermutation *> DecoupledGroup::get_stabilized_permutations(const State &center) const {
     vector<const DecoupledPermutation *> permutations;
     for (const auto &gen : generators_only_leaves){
-        permutations.push_back(&gen);
+        permutations.push_back(gen.get());
     }
     for (const auto &gen : generators_center) {
-        if (gen.affects_leaves() && gen.stabilizes_center(center)) {
-            permutations.push_back(&gen);
+        if (gen->affects_leaves() && gen->stabilizes_center(center)) {
+            permutations.push_back(gen.get());
         } 
     }
 
@@ -137,12 +137,12 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
         changed = false;
         generators_stable_center.clear();
         for (const auto &gen : generators_center) {
-            cmp_t cmp = gen.replace_if_less_center(res.canonical_center, *(res.canonical_cpg)); 
+            cmp_t cmp = gen->replace_if_less_center(res.canonical_center, *(res.canonical_cpg)); 
             if (cmp == cmp_t::LESS) {
-                res.trace.push_back(&gen);
+                res.trace.push_back(gen.get());
                 changed = true;
-            } else if (cmp == cmp_t::EQUAL && gen.affects_leaves()) {
-                generators_stable_center.push_back(&gen);
+            } else if (cmp == cmp_t::EQUAL && gen->affects_leaves()) {
+                generators_stable_center.push_back(gen.get());
             }
         }
     }
@@ -154,9 +154,9 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
         while (changed) {
             changed = false;
             for (const auto &gen : generators_only_leaves) {
-                if(gen.replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
+                if(gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
                     changed = true;
-                    res.trace.push_back(&gen);
+                    res.trace.push_back(gen.get());
                 }
             }
             for (const auto gen : generators_stable_center) {

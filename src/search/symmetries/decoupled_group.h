@@ -21,8 +21,8 @@ public:
 
 class DecoupledGroup {
 
-    std::vector<DecoupledPermutation> generators_center;
-    std::vector<DecoupledPermutation> generators_only_leaves;
+    std::vector<std::unique_ptr<DecoupledPermutation>> generators_center;
+    std::vector<std::unique_ptr<DecoupledPermutation>> generators_only_leaves;
      
     mutable std::vector<int> tmp_state;
     
