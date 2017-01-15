@@ -40,8 +40,8 @@ void RelaxationHeuristic::initialize() {
         propositions[var][val].is_goal = true;
         goal_propositions.push_back(&propositions[var][val]);
     }
-    if (g_use_decoupled_search){
-        for (size_t i = 0; i < g_factors.size(); ++i){
+    if (g_factoring){
+        for (size_t i = 0; i < g_leaves.size(); ++i){
             for (size_t j = 0; j < g_goals_per_factor[i].size(); ++j){
                 int var = g_goals_per_factor[i][j].first, val = g_goals_per_factor[i][j].second;
                 propositions[var][val].is_goal = true;
@@ -74,9 +74,9 @@ void RelaxationHeuristic::reference_ops() {
 
 void RelaxationHeuristic::build_unary_operators(const Operator &op, int op_no) {
     int base_cost = get_adjusted_cost(op);
-    if (g_use_decoupled_search &&
+    if (g_factoring &&
         search_type == CENTER &&
-        op.get_affected_factor() != -1){
+        op.get_affected_factor() != LeafFactorID::CENTER){
         base_cost = 0;
     }
     const vector<Condition> &preconditions = op.get_preconditions();
