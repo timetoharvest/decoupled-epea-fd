@@ -102,6 +102,14 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
            g->add_edge(idx,i);
        }
     }
+    
+    //add vertices for factors
+    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        idx = g->add_vertex(LEAF_FACTOR_VERTEX);
+        for (size_t v : g_factors[factor]){
+            g->add_edge(idx,v);
+        }
+    }
 
     // now add vertices for operators
     for (size_t i = 0; i < g_operators.size(); i++){
