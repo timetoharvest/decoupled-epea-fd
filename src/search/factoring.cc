@@ -158,6 +158,8 @@ public:
 };
 
 class MaxIndependentSetFactoring : public Factoring {
+    
+    vector<FactoredVars> get_factorings(const vector<Ranking*> &rankings) const;
 
 protected:
     enum MIS_ALGO arg_mis_algo;
