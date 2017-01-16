@@ -2,8 +2,8 @@
 #define FACTORING_H
 
 #include "globals.h"
+#include "leaf_state_id.h"
 #include "utilities.h"
-#include "mis.h"
 
 #include <set>
 #include <string>
@@ -47,25 +47,31 @@ struct InteractionGraph {
     // to handle the center factor, increase indexes by 1
     
 private:
-    std::vector<std::vector<int> > successors;
-    std::vector<std::vector<int> > predecessors;
+    std::vector<std::vector<LeafFactorID> > successors;
+    std::vector<std::vector<LeafFactorID> > predecessors;
     
-    void add_dependency(int from, int to);
+    void add_dependency(LeafFactorID from, LeafFactorID to);
     
     InteractionGraph(){};
 public:
-    InteractionGraph(int num_factors) {
+    InteractionGraph(size_t num_factors) {
         successors.resize(num_factors+1);
         predecessors.resize(num_factors+1);
     }
     
     ~InteractionGraph(){}
 
-    const std::vector<int> &get_successors(int factor) const {
+    const std::vector<LeafFactorID> &get_successors(LeafFactorID factor) const {
+        if (factor == LeafFactorID::CENTER){
+            return successors[0];
+        }
         return successors[factor+1];
     }
 
-    const std::vector<int> &get_predecessors(int factor) const {
+    const std::vector<LeafFactorID> &get_predecessors(LeafFactorID factor) const {
+        if (factor == LeafFactorID::CENTER){
+            return predecessors[0];
+        }
         return predecessors[factor+1];
     }
 };
@@ -91,7 +97,9 @@ protected:
     
     PROFILE profile;
     
-    mutable InteractionGraph interaction_graph;
+    std::vector<bool> fork_leaf;
+    
+    std::vector<bool> ifork_leaf;
     
     virtual FactoredVars get_factoring() = 0;
     
@@ -111,22 +119,20 @@ protected:
     
 public:
     
+    virtual ~Factoring() = default;
+    
     void do_factoring_or_abstain();
     
     PROFILE get_profile() const {
         return profile;
     }
     
-    bool has_predecessors(int factor) const {
-        return !interaction_graph.get_predecessors(factor).empty();
+    bool is_fork_leaf(LeafFactorID factor) const {
+        return fork_leaf[factor];
     }
     
-    bool has_successors(int factor) const {
-        return !interaction_graph.get_successors(factor).empty();
-    }
-    
-    const InteractionGraph &get_interaction_graph() const {
-        return interaction_graph;
+    bool is_ifork_leaf(LeafFactorID factor) const {
+        return ifork_leaf[factor];
     }
     
     SEARCH_TYPE get_search_type() const {

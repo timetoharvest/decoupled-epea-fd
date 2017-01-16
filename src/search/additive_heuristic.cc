@@ -67,19 +67,19 @@ void AdditiveHeuristic::setup_exploration_queue() {
 
 void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
     const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         int number_states = tag->get_number_states(factor);
-        size_t id = 0;
+        LeafStateHash id(0);
         while (number_states > 0){
-            if (tag->has_leaf_state(LeafStateID(id, factor))){
+            if (tag->has_leaf_state(id, factor)){
 		--number_states;
 		int base_cost = 0;
 		if (search_type == STAR){
-		    base_cost = tag->get_cost_of_state(LeafStateID(id, factor));
+		    base_cost = tag->get_cost_of_state(id, factor);
 		}
-		LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-		for (size_t v = 0; v < g_factors[factor].size(); ++v) {
-		    int var = g_factors[factor][v];
+		LeafState f = g_state_registry->lookup_leaf_state(id, factor);
+		for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+		    int var = g_leaves[factor][v];
 		    Proposition *effect = &propositions[var][f[var]];
 		    enqueue_if_necessary(effect, base_cost, 0);
 		}
@@ -91,7 +91,7 @@ void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const Stat
 
 void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-        if (search_type == STD || g_belongs_to_factor[var] == -1){
+        if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
             Proposition *init_prop = &propositions[var][state[var]];
             enqueue_if_necessary(init_prop, 0, 0);
         }
@@ -141,7 +141,7 @@ void AdditiveHeuristic::mark_preferred_operators(
                 // If we had no 0-cost operators and axioms to worry
                 // about, this would also be a sufficient condition.
                 const Operator *op = &g_operators[operator_no];
-                if (op->get_affected_factor() == -1 && op->is_applicable(state))
+                if (op->get_affected_factor() == LeafFactorID::CENTER && op->is_applicable(state))
                     // don't mark leaf ops as preferred
                     set_preferred(op);
             }

@@ -16,14 +16,14 @@
 
 
 class Factoring;
-class Ranking;
-class MergeStrategy;
-class ShrinkStrategy;
-class LandmarkGraph;
 class Heuristic;
+class LandmarkGraph;
+class MergeStrategy;
+class Ranking;
 class ScalarEvaluator;
 class Synergy;
 class SearchEngine;
+class ShrinkStrategy;
 class OptionParser;
 template<class Entry>
 class OpenList;

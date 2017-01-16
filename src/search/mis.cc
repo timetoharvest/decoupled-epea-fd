@@ -1,11 +1,15 @@
 #include "mis.h"
-#include <iostream>
-#include "assert.h"
-#include "utilities.h"
+
 #include "countdown_timer.h"
+#include "utilities.h"
+
+#include "assert.h"
 #include <cstdlib>
+#include <iostream>
+
 
 using namespace std;
+
 
 vector<set<int>> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) {
 #ifdef DEBUG_FACTORING
@@ -282,7 +286,7 @@ set<int> MIS::find_mis_1(NGraph g) {
     }
 }
 
-std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
+set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     int s1, s2;
     s1 = *s.begin();
     s2 = *(++s.begin());

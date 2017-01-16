@@ -54,8 +54,6 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
-          leaf_state.h\
-          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
@@ -65,7 +63,6 @@ HEADERS = \
           per_state_information.h \
           por/por_method.h \
           pref_evaluator.h \
-          ranking.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -168,18 +165,21 @@ HEADERS += por/expansion_core.h \
            
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
+           leaf_state.h \
+           leaf_state_id.h \
            mis.h \
-           ../preprocess/scc.h
+           ../preprocess/scc.h \
+           ranking.h
 
-HEADERS += pruning/cost_frontier.h \
-           pruning/simulation_relation.h \
-           pruning/pruning.h
+HEADERS += pruning/pruning_options.h \
+           pruning/simulation_relation.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
+           compliant_paths/effective_prices.h \
+           compliant_paths/frontier_prices.h \
            compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
-           compliant_paths/pruning_prices.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h
            
@@ -236,11 +236,6 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-CXX = g++-4.9
-# nasty HACK to be able to compile Alvaro's magic constructs on the cluster
-ifeq (, $(shell which $(CXX)))
-    CXX = g++
-endif
 
 DEPEND = $(CXX) -MM
 
@@ -259,8 +254,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc up to 4.6
-CXXFLAGS += -Wall -std=c++0x -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -268,24 +262,6 @@ ifeq ($(DOWNWARD_OS), osx)
     CXXFLAGS += -I/opt/local/include/
 endif
 
-
-## The following lines contain workarounds for bugs when
-## cross-compiling to 64 bit on 32-bit systems using gcc 4.4 or gcc
-## 4.5 in some Ubuntu releases. (We don't usually cross-compile to
-## 64-bit, but in some cases we do; e.g. we did for the IPC.) See
-## http://stackoverflow.com/questions/4643197/missing-include-bits-cconfig-h-when-cross-compiling-64-bit-program-on-32-bit.
-ifeq ($(DOWNWARD_OS), linux) # workarounds only valid for Linux...
-    HAVE_GCC_4_4 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.4\.\\\))
-    HAVE_GCC_4_5 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.5\.\\\))
-
-    ifdef HAVE_GCC_4_4
-        CXXFLAGS += -I/usr/include/c++/4.4/i686-linux-gnu
-    endif
-
-    ifdef HAVE_GCC_4_5
-        CXXFLAGS += -I/usr/include/c++/4.5/i686-linux-gnu
-    endif
-endif
 
 LDFLAGS =
 LDFLAGS += $(BITWIDTHOPT)

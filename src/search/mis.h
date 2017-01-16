@@ -1,14 +1,15 @@
 #ifndef MIS_H
 #define MIS_H
 
-
 #include "globals.h"
-#include <vector>
-#include <set>
+
+#include <list>
 #include <map>
 #include <queue>
+#include <set>
 #include <stack>
-#include <list>
+#include <vector>
+
 
 /* retrieve maximum independent sets
  *
