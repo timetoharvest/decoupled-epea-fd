@@ -113,6 +113,8 @@ protected:
     
     void exit_error(std::string message, ExitCode exit_code) const;
     
+    Factoring();
+    
     Factoring(const Options &ops);
     
 public:
