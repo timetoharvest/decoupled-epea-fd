@@ -1,22 +1,22 @@
 #ifndef SIMULATION_RELATION_H
 #define SIMULATION_RELATION_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
+#include "../leaf_state_id.h"
+
 #include <vector>
 #include <string>
 #include <iostream>
 
-#include "../ext/boost/dynamic_bitset.hpp"
-
 
 class Condition;
-class LeafStateID;
 
 
 class SimulationRelation {
     
 private:
     
-    static std::vector<std::vector<std::vector<size_t> > > simulated_states;
+    static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
     
     
     //For each operator, list of operators that dominate it in the
@@ -33,35 +33,35 @@ private:
 
     void compute_label_dominance();
 
-    void compute_simulation (size_t factor);
+    void compute_simulation (LeafFactorID factor);
 
-    inline bool simulates(size_t factor, int s, int t) const {
+    inline bool simulates(LeafFactorID factor, LeafStateHash s, LeafStateHash t) const {
         return relation[factor][s][t];
     }
 
-    inline bool similar(size_t factor,  int s, int t) const {
+    inline bool similar(LeafFactorID factor, LeafStateHash s, LeafStateHash t) const {
         return relation[factor][s][t] && relation[factor][t][s];
     }
 
-    inline void remove(size_t factor, int s, int t) {
+    inline void remove(LeafFactorID factor, LeafStateHash s, LeafStateHash t) {
         relation[factor][s][t] = false;
     }
 
-    inline const std::vector<boost::dynamic_bitset<> > & get_relation(size_t factor) const {
+    inline const std::vector<boost::dynamic_bitset<> > & get_relation(LeafFactorID factor) const {
         return relation[factor];
     }
 
-    size_t num_equivalences(size_t factor) const;
+    size_t num_equivalences(LeafFactorID factor) const;
     
-    size_t num_simulations(size_t factor, bool ignore_equivalences) const;
+    size_t num_simulations(LeafFactorID factor, bool ignore_equivalences) const;
     
-    size_t num_states(size_t factor) const { 
+    size_t num_states(LeafFactorID factor) const { 
         return relation[factor].size();
     }
 
-    void dump(size_t factor) const;
+    void dump(LeafFactorID factor) const;
 
-    const std::string & get_name(const LeafStateID &id) const;
+    const std::string & get_name(LeafStateHash id, LeafFactorID factor) const;
 
 public:
 
@@ -74,7 +74,7 @@ public:
     void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
     
     
-    static const std::vector<std::vector<std::vector<size_t> > >& get_simulation_relation() {
+    static const std::vector<std::vector<std::vector<LeafStateHash> > >& get_simulation_relation() {
         return simulated_states;
     }
 

@@ -86,12 +86,11 @@ void exit_with(ExitCode exitcode) {
         cout << "Time limit has been reached." << endl;
         break;
     case EXIT_ABSTAINED:
-        cout << "Factoring has been abstained." << endl;
+        cout << "Factoring strategy has abstained." << endl;
         break;
     case EXIT_NO_SEARCH:
-        cout << "Search is not going to be performed." << endl;
+        cout << "No search performed." << endl;
         break;
-
     default:
         cerr << "Exitcode: " << exitcode << endl;
         ABORT("Unknown exitcode.");

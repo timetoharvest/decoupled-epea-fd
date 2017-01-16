@@ -74,23 +74,18 @@ void Ranking::print_all_rankings(const std::vector<std::set<int>> & factoring) {
     MobilityRanking *mobility = new MobilityRanking(NULL);
     cout << "mis_ranking_mobility: ";
     mobility->get_rank(factoring).dump_number();
-    cout << endl;
     LeavesRanking *leaves = new LeavesRanking(NULL);
     cout << "mis_ranking_leaves: ";
     leaves->get_rank(factoring).dump_number();
-    cout << endl;
     DomSizeRanking *dom_size = new DomSizeRanking(NULL);
     cout << "mis_ranking_dom_size: ";
     dom_size->get_rank(factoring).dump_number();
-    cout << endl;
     VariablesRanking *vars = new VariablesRanking(NULL);
     cout << "mis_ranking_variables: ";
     vars->get_rank(factoring).dump_number();
-    cout << endl;
     AffActionsRanking *aff_actions = new AffActionsRanking(NULL);
     cout << "mis_ranking_aff_actions: ";
     aff_actions->get_rank(factoring).dump_number();
-    cout << endl;
 }
 
 VarInt MobilityRanking::rank(const vector<set<int>> &factoring) {

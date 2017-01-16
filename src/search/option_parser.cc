@@ -1,12 +1,13 @@
 #include "option_parser.h"
 
 #include "ext/tree_util.hh"
+#include "factoring.h"
 #include "plugin.h"
-#include "pruning/pruning.h"
 #include "rng.h"
 
 #include <algorithm>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -195,12 +196,9 @@ SearchEngine *OptionParser::parse_cmd_line(
 }
 
 void OptionParser::parse_decoupled_search(int argc, const char** argv) {
-    g_use_decoupled_search = false;
     for (int i = 0; i < argc; i++){
 	string arg = argv[i];
-	if (arg.compare("--decoupling") == 0){
-            g_use_decoupled_search = true;
-            
+	if (arg.compare("--decoupling") == 0){            
 	    if (i == argc - 1){
 		throw ArgError("missing argument after --decoupling");
 	    }
@@ -209,7 +207,7 @@ void OptionParser::parse_decoupled_search(int argc, const char** argv) {
             dry.start_parsing<Factoring *>();
             
             OptionParser p(argv[i+1], false);
-            g_factoring = p.start_parsing<Factoring *>();
+            g_factoring = unique_ptr<Factoring>(p.start_parsing<Factoring *>());
 	}
     }
 }

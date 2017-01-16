@@ -2,9 +2,6 @@
 #define REACHABILITY_FUNCTION_H
 
 #include "compliant_path_graph.h"
-#include "../ext/boost/dynamic_bitset.hpp"
-#include "../globals.h"
-#include "../leaf_state_id.h"
 
 #include <vector>
 
@@ -15,53 +12,49 @@ class Reachable : public CompliantPathGraph {
 
     static ReachableStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_reachable();
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
     
-    void handle_new_leaf_state_from_center_op(LeafStateID id);
+    
+    Reachable(const Reachable *tag);
+    
+    
+    void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
 protected:
     
     std::vector<boost::dynamic_bitset<> > reachable;
     
-    boost::dynamic_bitset<> goal_reached;
-        
-    Reachable(const Reachable *tag);
+    boost::dynamic_bitset<> goal_reached;    
     
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    bool add_state(const LeafStateID &fact);
-    
-    // returns the new duplicate counter
-    virtual std::unique_ptr<CompliantPathGraph> get_updated_successor_cpg(const State &base_state,
-                                                                          const Operator *op,
-                                                                          const State &predecessor) const override;
+    bool add_state(LeafStateHash id, LeafFactorID factor);
     
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
+    
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+
+    virtual void update(const State &base_state) override;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     Reachable(){};
-
-    virtual void store_new_graph(const State &state) const override;
     
-    virtual bool has_leaf_state(const LeafStateID &id) const override;
+    virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual bool has_effective_leaf_state(const LeafStateID &id) const override;
+    virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual int get_cost_of_state(const LeafStateID &id) const override;
+    virtual size_t get_number_states(LeafFactorID factor) const override;
     
-    virtual int get_effective_cost_of_state(const LeafStateID &id) const override;
+    virtual int get_goal_cost(LeafFactorID factor) const override;
     
-    virtual size_t get_number_states(size_t factor) const override;
-
-    virtual size_t get_number_effective_states(size_t factor) const override;
-    
-    virtual int get_goal_cost(size_t factor) const override;
-    
-    virtual bool goal_reachable(size_t factor) const override;
-    
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier() override;
+    virtual bool goal_reachable(LeafFactorID factor) const override;
     
     virtual void dump() const override;
 

@@ -1,38 +1,54 @@
 #include "mis.h"
-#include <iostream>
-#include "assert.h"
-#include "utilities.h"
+
 #include "countdown_timer.h"
+#include "utilities.h"
+
+#include "assert.h"
+#include <cstdlib>
+#include <iostream>
+
 
 using namespace std;
 
-set<int> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout) {
+
+vector<set<int>> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) {
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
     print_graph(graph);
 #endif
+    vector<set<int>> all_MIS;
     set<int> mis;
     switch (algo) {
         case A1: mis = find_mis_1(graph);
+            all_MIS.push_back(mis);
             break;
         //default: case A2: mis = find_mis_2(graph);
-        default: case A2: mis = find_mis_2_it(graph,x, arg_find_all, arg_timeout);
+        default: case A2: all_MIS = find_mis_2_it(graph,x, arg_find_all, arg_timeout, arg_multiple_mis);
             break;
         case DFS: mis = brute_force_mis_DFS(graph, x);
+            all_MIS.push_back(mis);
             break;
     }
 #ifdef DEBUG_FACTORING
-    if (!check_mis(mis)){
-        cout << "did not create valid mis" << endl;
+    for (set<int> m:all_MIS) {
+        if (!check_mis(m)) {
+            cout << "did not create valid mis" << endl;
+        }
     }
 #endif
-    cout << "MIS size: " << mis.size() << " - ";
-    for (set<int>::iterator it = mis.begin(); it != mis.end(); ++it){
-        cout << *it << " ";
+    cout << "MIS size: " << all_MIS[0].size() << endl;
+#ifdef DEBUG_FACTORING
+    int i = 0;
+    for (set<int> m:all_MIS) {
+        cout << "MIS " << i << " : ";
+        for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
+            cout << *it << " ";
+        }
+        cout << endl;
     }
-    cout << endl;
+#endif
     cout << "Graph size: " << graph.size() << endl;
-    return mis;
+    return all_MIS;
 }
 
 set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
@@ -270,7 +286,7 @@ set<int> MIS::find_mis_1(NGraph g) {
     }
 }
 
-std::set<int> MIS::ms_1(NGraph g, std::set<int> s) {
+set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     int s1, s2;
     s1 = *s.begin();
     s2 = *(++s.begin());
@@ -760,7 +776,7 @@ set<int> MIS::find_mis_2(NGraph g) {
     }
 }
 
-set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) {
+vector<set<int>> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) {
 
     vector<set<int>> all_mis;
     set<int> first_mis;
@@ -1042,7 +1058,11 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
         }
     }
     all_mis = temp;
-    cout << "MIS found: " << all_mis.size() << endl;
+    if (max != 0) {
+        cout << "MIS found: " << all_mis.size() << endl;
+    } else {
+        cout << "MIS found: 0" << endl;
+    }
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < all_mis.size(); i++) {
         cout << "MIS " << i << ": ";
@@ -1052,21 +1072,35 @@ set<int> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout) 
         cout << endl;
     }
 #endif
-    cout << "Select x-th factoring, x: " << x << endl;
     set<int> mis;
+    vector<set<int>> res_mis;
     if (all_mis.empty()) {
-        cout << "No MIS found" << endl;
-        return mis;
+        res_mis.push_back(mis);
+        return res_mis;
     }
-    if (x >= (int) all_mis.size()) {
-        cout << "No more factoring found: 1" << endl;
-        return mis;
+    if (arg_multiple_mis > 1) {
+        set<int> candidates;
+        while (candidates.size() < min((size_t)arg_multiple_mis,all_mis.size())) {
+            candidates.insert(rand() % all_mis.size());
+        }
+        for (int c:candidates){
+            res_mis.push_back(all_mis[c]);
+        }
+        return res_mis;
+    } else {
+        cout << "Select x-th factoring, x: " << x << endl;
+
+        if (x >= (int) all_mis.size()) {
+            cout << "Factoring x found: 0" << endl;
+            res_mis.push_back(mis);
+            return res_mis;
+        }
+
+        cout << "Factoring x found: 1" << endl;
+        assert(x >= 0 && x < (int) all_mis.size());
+        res_mis.push_back(all_mis[x]);
+        return res_mis;
     }
-
-    cout << "No more factoring found: 0" << endl;
-    assert(x >= 0 && x < (int) all_mis.size());
-
-    return all_mis[x];
 }
 
 bool MIS::check_mis(vector<bool> mis) {
