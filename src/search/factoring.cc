@@ -172,6 +172,9 @@ protected:
     bool arg_all_rankings;
     int arg_timeout;
     int arg_multiple_mis;
+    MIS mis;
+    NGraph g;
+    vector<FactoredVars> factorings;
 
 public:
 
@@ -1469,37 +1472,49 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
 }
 
 Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
-    const NGraph cg_g = generate_ngraph();
+    const NGraph *cg_g;
+    const MIS *mis;
+    vector<FactoredVars> *max_ind_sets;
+    if (this->g.empty()) {
+        this->g = generate_ngraph();
+        cg_g = &(this->g);
+        this->mis = MIS(*cg_g);
+        mis = &(this->mis);
+        vector<set<int>> found_mis = mis->get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
+        // generate factoring
 
-    MIS mis(cg_g);
-    vector<set<int>> found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
-
-    // generate factoring
-    vector<FactoredVars> max_ind_sets;
-    for (set<int> m: found_mis) {
-        FactoredVars mis;
-        int l = 0;
-        for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
-            set<int> s;
-            s.insert(*it);
-            mis.push_back(s);
-            l++;
+        vector<FactoredVars> all_mis;
+        for (set<int> m: found_mis) {
+            FactoredVars mis;
+            int l = 0;
+            for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
+                set<int> s;
+                s.insert(*it);
+                mis.push_back(s);
+                l++;
+            }
+            all_mis.push_back(mis);
         }
-        max_ind_sets.push_back(mis);
+        this->factorings = all_mis;
+        max_ind_sets = &(this->factorings);
+    } else {
+        cg_g = &(this->g);
+        mis = &(this->mis);
+        max_ind_sets = &(this->factorings);
     }
 
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
-    vector<int> c_rm(max_ind_sets.size(),0);
-    vector<int> f_rm(max_ind_sets.size(),0);
-    vector<int> f_c(max_ind_sets.size(),0);
-    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
-        optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
+    vector<int> c_rm(max_ind_sets->size(),0);
+    vector<int> f_rm(max_ind_sets->size(),0);
+    vector<int> f_c(max_ind_sets->size(),0);
+    for (size_t i = 0; i < max_ind_sets->size(); ++i) {
+        optimize_feature(max_ind_sets->at(i), *cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;
     VarInt x(0);
     vector<VarInt> max_rank (arg_rankings.size(),x);
-    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
-        FactoredVars m = max_ind_sets[i];
+    for (size_t i = 0; i < max_ind_sets->size(); ++i) {
+        FactoredVars m = max_ind_sets->at(i);
         bool update = false;
         vector<VarInt> rankings;
         uint64_t n = 0;
@@ -1522,7 +1537,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
             max_rank = rankings;
         }
     }
-    FactoredVars final_factoring = max_ind_sets[max];
+    FactoredVars final_factoring = max_ind_sets->at(max);
 
 #ifdef DEBUG_FACTORING
     cout << "optimized MIS: " << endl;
@@ -1561,7 +1576,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
     final_factoring = temp;
     cout << "Removed frozen leaves: " << f_rm_max << endl;
 
-    cout << "Number of factors: " << max_ind_sets.size() << endl;
+    cout << "Number of factors: " << max_ind_sets->size() << endl;
 
     bool valid = check_factoring(final_factoring);
     if (!valid) {
@@ -1687,30 +1702,34 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 
     bool minimize = true;
     bool removed_frozen_leaves = false;
-    bool update_candidates = true;
     vector<int> candidates; // pos -> var
     vector<int> candidates_to_leaf; // pos -> leaf
 
     while (minimize) {
-        if (update_candidates) {
-            candidates.clear();
-            candidates_to_leaf.clear();
+        candidates.clear();
+        candidates_to_leaf.clear();
 
-            // collect candidates (center vars with one leaf neighbour)
-            for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-                set<int> leaf_neighbours;
-                for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-                    if (!in_center[*n]) {
-                        leaf_neighbours.insert(var_to_factor.at(*n));
-                    }
-                }
-                if (leaf_neighbours.size() == 1) {
-                    candidates.push_back(*it);
-                    candidates_to_leaf.push_back(*leaf_neighbours.begin());
-
+        // collect candidates (center vars with one leaf neighbour)
+        for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+            set<int> leaf_neighbours;
+            for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
+                if (!in_center[*n]) {
+                    leaf_neighbours.insert(var_to_factor.at(*n));
                 }
             }
-            update_candidates = false;
+
+            if (leaf_neighbours.size() == 1) {
+                // check leaf factor size
+                uint64_t f_size = 1;
+                for (int v:mis[*leaf_neighbours.begin()]) {
+                    f_size *= g_variable_domain[v];
+                }
+                uint64_t tmp_size = f_size * g_variable_domain[*it];
+                if (tmp_size <= max_leaf_size) {
+                    candidates.push_back(*it);
+                    candidates_to_leaf.push_back(*leaf_neighbours.begin());
+                }
+            }
         }
         if (!candidates.empty()) {
             size_t max = 0;
@@ -1749,26 +1768,134 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
             }
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[max];
-            // check leaf factor size
-            uint64_t f_size = 1;
-            for (int v:mis[leaf]) {
-                f_size *= g_variable_domain[v];
-            }
-            uint64_t tmp_size = f_size * g_variable_domain[candidate];
-            if (tmp_size <= max_leaf_size) {
-                // and push it into the respective leaf
-                mis[leaf].insert(candidate);
-                var_to_factor[candidate] = leaf;
-                in_center[candidate] = false;
-                center.erase(candidate);
-                c_rm++;
-                update_candidates = true;
-            } else {
-                update_candidates = false;
-            }
+            // and push it into the respective leaf
+            mis[leaf].insert(candidate);
+            var_to_factor[candidate] = leaf;
+            in_center[candidate] = false;
+            center.erase(candidate);
+            c_rm++;
             candidates.erase(candidates.begin()+max);
             candidates_to_leaf.erase(candidates_to_leaf.begin()+max);
         } else {
+            if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
+                bool merge = true;
+                vector<int> merge_candidates;
+                vector<set<int>> merge_candidates_to_leaves;
+                vector<int> merged_leaves_counter(mis.size(), 0);
+
+                while (merge) {
+                    merge_candidates.clear();
+                    merge_candidates_to_leaves.clear();
+                    // try to merge frozen leaves
+
+                    // collect candidates (connected to frozen vars + max 1 unfrozen var)
+                    for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+                        set<int> leaf_neighbours;
+                        int max_merge_count = 0;
+                        for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
+                            if (!in_center[*n]) {
+                                leaf_neighbours.insert(var_to_factor.at(*n));
+                                if (merged_leaves_counter[var_to_factor.at(*n)] > max_merge_count)
+                                    max_merge_count = merged_leaves_counter[var_to_factor.at(*n)];
+                            }
+                        }
+                        if (leaf_neighbours.size() > 1 && max_merge_count < arg_merge_leaves) {
+                            // check leaf factor size
+                            uint64_t f_size = 1;
+                            for (int f:leaf_neighbours) {
+                                for (int v:mis[f]) {
+                                    f_size *= g_variable_domain[v];
+                                }
+                            }
+                            uint64_t tmp_size = f_size * g_variable_domain[*it];
+                            if (tmp_size <= max_leaf_size) {
+                                merge_candidates.push_back(*it);
+                                merge_candidates_to_leaves.push_back(leaf_neighbours);
+                            }
+                        }
+                    }
+
+                    // select best candidate
+                    if (!merge_candidates.empty()) {
+                        size_t max_elem = 0;
+                        VarInt max_value(0);
+                        vector<VarInt> max_rank(arg_rankings.size(), max_value);
+                        for (size_t i = 0; i < merge_candidates.size(); ++i) {
+                            FactoredVars new_mis(mis);
+                            set<int> new_leaf;
+                            new_leaf.insert(merge_candidates[i]);
+                            set<int> empty;
+                            for (int l:merge_candidates_to_leaves[i]) {
+                                for (int v:mis[l]) {
+                                    new_leaf.insert(v);
+                                }
+                                new_mis[l] = empty;
+                            }
+                            new_mis.push_back(new_leaf);
+
+                            FactoredVars tmp;
+                            for (set<int> f: new_mis) {
+                                if (!f.empty()) {
+                                    tmp.push_back(f);
+                                }
+                            }
+                            new_mis = tmp;
+
+                            bool update = false;
+                            vector<VarInt> rankings;
+                            uint64_t n = 0;
+                            for (Ranking *ranking:arg_rankings) {
+                                VarInt vi(ranking->get_rank(new_mis));
+                                rankings.push_back(vi);
+                                if (rankings[n] > max_rank[n]) {
+                                    update = true;
+                                }
+                                ++n;
+                            }
+                            if (update) {
+                                max_value = i;
+                                if (rankings.size() < arg_rankings.size()) {
+                                    for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
+                                        VarInt vi(arg_rankings[i]->get_rank(mis));
+                                        rankings.push_back(vi);
+                                    }
+                                }
+                                max_rank = rankings;
+                            }
+                        }
+
+                        set<int> new_leaf;
+                        new_leaf.insert(merge_candidates[max_elem]);
+                        in_center[max_elem] = false;
+                        var_to_factor.insert(pair<int,int>(max_elem,mis.size()));
+                        c_rm++;
+                        set<int> empty;
+                        int max_merge_counter = 0;
+                        for (int l:merge_candidates_to_leaves[max_elem]) {
+                            for (int v:mis[l]) {
+                                new_leaf.insert(v);
+                                var_to_factor[v] = mis.size();
+                            }
+                            mis[l] = empty;
+                            if (merged_leaves_counter[l] > max_merge_counter) {
+                                max_merge_counter = merged_leaves_counter[l];
+                            }
+                        }
+                        mis.push_back(new_leaf);
+                        merged_leaves_counter.push_back(max_merge_counter + 1);
+
+                        FactoredVars tmp;
+                        for (set<int> f: mis) {
+                            if (!f.empty()) {
+                                tmp.push_back(f);
+                            }
+                        }
+                        mis = tmp;
+                    } else {
+                        break;
+                    }
+                }
+            }
             if (!removed_frozen_leaves) {
                 // push frozen leaves back in center
                 removed_frozen_leaves = true;
@@ -1808,7 +1935,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
                     if (f_c == 0) {
                         break;
                     } else {
-                        update_candidates = true;
                         continue;
                     }
                 }

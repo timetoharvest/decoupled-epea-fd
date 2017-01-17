@@ -11,7 +11,7 @@
 using namespace std;
 
 
-vector<set<int>> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) {
+vector<set<int>> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) const {
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << graph.size() << endl;
     print_graph(graph);
@@ -51,7 +51,7 @@ vector<set<int>> MIS::get_mis(enum MIS_ALGO algo, int x, int arg_find_all, int a
     return all_MIS;
 }
 
-set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
+set<int> MIS::brute_force_mis_DFS(NGraph g, int x) const{
     cout << "DFS" << endl;
     if (g.size() <= 1) {
         set<int> mis;
@@ -113,7 +113,7 @@ set<int> MIS::brute_force_mis_DFS(NGraph g, int x){
     return mis;
 }
 
-void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, vector<vector<bool>> * maxindsets, vector<vector<bool>> * g, int first){
+void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, vector<vector<bool>> * maxindsets, vector<vector<bool>> * g, int first) const{
     bool mis = false;
     if (cur_size >= *max) {
         mis = check_mis(base);
@@ -143,7 +143,7 @@ void MIS::brute_force_mis_DFS(vector<bool> base, size_t * max, size_t cur_size, 
     }
 }
 
-set<int> MIS::find_mis_1(NGraph g) {
+set<int> MIS::find_mis_1(NGraph g) const {
     set<int> mis;
 
     if (g.size() <= 1) {
@@ -286,7 +286,7 @@ set<int> MIS::find_mis_1(NGraph g) {
     }
 }
 
-set<int> MIS::ms_1(NGraph g, std::set<int> s) {
+set<int> MIS::ms_1(NGraph g, std::set<int> s) const{
     int s1, s2;
     s1 = *s.begin();
     s2 = *(++s.begin());
@@ -394,7 +394,7 @@ set<int> MIS::ms_1(NGraph g, std::set<int> s) {
     }
 }
 
-std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
+std::set<int> MIS::ms_2(NGraph g, std::set<int> s) const{
     set<int> mis;
     if (s.size() <= 1) {
         return mis;
@@ -583,7 +583,7 @@ std::set<int> MIS::ms_2(NGraph g, std::set<int> s) {
     return find_mis_1(g);
 }
 
-set<int> MIS::find_mis_2(NGraph g) {
+set<int> MIS::find_mis_2(NGraph g) const{
     if (g.size() <= 1) {
         set<int> found_mis;
         found_mis.insert((*g.begin()).first);
@@ -776,7 +776,7 @@ set<int> MIS::find_mis_2(NGraph g) {
     }
 }
 
-vector<set<int>> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) {
+vector<set<int>> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) const{
 
     vector<set<int>> all_mis;
     set<int> first_mis;
@@ -1103,10 +1103,10 @@ vector<set<int>> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_t
     }
 }
 
-bool MIS::check_mis(vector<bool> mis) {
+bool MIS::check_mis(vector<bool> mis) const{
     for (size_t i = 0; i <  mis.size(); i++) {
         if (mis[i]) {
-            for (set<int>::iterator n = graph[i].begin(); n != graph[i].end(); ++n) {
+            for (set<int>::iterator n = graph.at(i).begin(); n != graph.at(i).end(); ++n) {
                 if (mis[*n]) {
                     return false;
                 }
@@ -1116,9 +1116,9 @@ bool MIS::check_mis(vector<bool> mis) {
     return true;
 }
 
-bool MIS::check_mis(set<int> mis) {
+bool MIS::check_mis(set<int> mis) const{
     for (set<int>::iterator i = mis.begin(); i != mis.end(); i++) {
-        for (set<int>::iterator n = graph[*i].begin(); n != graph[*i].end(); ++n) {
+        for (set<int>::iterator n = graph.at(*i).begin(); n != graph.at(*i).end(); ++n) {
             if (mis.find(*n) != mis.end()) {
                 return false;
             }
@@ -1127,7 +1127,7 @@ bool MIS::check_mis(set<int> mis) {
     return true;
 }
 
-NGraph MIS::remove_components(NGraph g, int c) {
+NGraph MIS::remove_components(NGraph g, int c) const{
     set<int> neighbours = g[c];
     g.erase(c);
     // remove var from neighbours' neighbours
@@ -1137,14 +1137,14 @@ NGraph MIS::remove_components(NGraph g, int c) {
     return g;
 }
 
-NGraph MIS::remove_components(NGraph g, std::set<int> cs) {
+NGraph MIS::remove_components(NGraph g, std::set<int> cs) const{
     for (set<int>::iterator it = cs.begin(); it != cs.end(); ++it) {
         g = remove_components(g, *it);
     }
     return g;
 }
 
-NGraph MIS::remove_components(NGraph g, NGraph cs) {
+NGraph MIS::remove_components(NGraph g, NGraph cs) const{
     for (NGraph::iterator it = cs.begin(); it != cs.end(); ++it) {
         g = remove_components(g, it->first);
     }
@@ -1152,7 +1152,7 @@ NGraph MIS::remove_components(NGraph g, NGraph cs) {
 }
 
 
-void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) {
+void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) const{
     stack<int> open_c;
     size_t seen = 0;
     while (seen < g.size()) {
@@ -1192,7 +1192,7 @@ void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) {
     return;
 }
 
-void MIS::print_graph(NGraph g) {
+void MIS::print_graph(NGraph g) const {
     for (NGraph::iterator it = g.begin(); it != g.end(); ++it) {
         cout << "Node: " << it->first << " - connected to: ";
         for(set<int>::iterator s = it->second.begin(); s != it->second.end(); ++s) {

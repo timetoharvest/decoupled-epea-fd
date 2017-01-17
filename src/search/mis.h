@@ -45,22 +45,23 @@ class MIS {
     NGraph graph;
 
 private:
-    void find_connected_components(NGraph, CtoCCMap *, ConComp *);
-    NGraph remove_components(NGraph, int);
-    NGraph remove_components(NGraph, std::set<int>);
-    NGraph remove_components(NGraph, NGraph);
-    std::set<int> find_mis_1(NGraph);
-    std::set<int> find_mis_2(NGraph);
-    std::vector<std::set<int>> find_mis_2_it(NGraph, int, int, int, int);
-    std::set<int> ms_1(NGraph, std::set<int>);
-    std::set<int> ms_2(NGraph, std::set<int>);
-    std::set<int> brute_force_mis_DFS(NGraph, int x);
-    void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::vector<std::vector<bool>> *, std::vector<std::vector<bool>> *, int);
+    void find_connected_components(NGraph, CtoCCMap *, ConComp *) const;
+    NGraph remove_components(NGraph, int) const;
+    NGraph remove_components(NGraph, std::set<int>) const;
+    NGraph remove_components(NGraph, NGraph) const;
+    std::set<int> find_mis_1(NGraph) const;
+    std::set<int> find_mis_2(NGraph) const;
+    std::vector<std::set<int>> find_mis_2_it(NGraph, int, int, int, int) const;
+    std::set<int> ms_1(NGraph, std::set<int>) const;
+    std::set<int> ms_2(NGraph, std::set<int>) const;
+    std::set<int> brute_force_mis_DFS(NGraph, int x) const;
+    void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::vector<std::vector<bool>> *, std::vector<std::vector<bool>> *, int) const;
 public:
-    MIS(NGraph g) : graph(g){}
-    std::vector<std::set<int>> get_mis(enum MIS_ALGO, int x, int, int, int);
-    void print_graph(NGraph);
-    bool check_mis(std::vector<bool> mis);
-    bool check_mis(std::set<int> mis);
+    MIS(const NGraph &g) : graph(g){}
+    MIS() : graph(){};
+    std::vector<std::set<int>> get_mis(enum MIS_ALGO, int x, int, int, int) const;
+    void print_graph(NGraph) const;
+    bool check_mis(std::vector<bool> mis) const;
+    bool check_mis(std::set<int> mis) const;
 };
 #endif
