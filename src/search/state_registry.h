@@ -243,6 +243,8 @@ public:
     size_t get_max_number_duplicates() const;
     
     void output_decoupled_state_space_size() const;
+    
+    size_t get_decoupled_state_space_size() const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is

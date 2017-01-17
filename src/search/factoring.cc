@@ -105,7 +105,7 @@ class AutoFactoring : public Factoring {
     
     void reset_globals() const;
     
-    vector<int> run_and_rank_search() const;
+    vector<size_t> run_and_rank_search() const;
     
 protected:
     
@@ -680,9 +680,9 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
     
     vector<FactoredVars> factorings;
     
-    for (const auto factoring : factoring_methods){
+    for (const auto factoring_method : factoring_methods){
         
-        MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring);
+        MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring_method);
         if (mis_factoring_method != nullptr){
             // is MIS factoring
             vector<vector<Ranking*> > rankings;
@@ -693,20 +693,24 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
             
             vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
             factorings.insert(factorings.end(), mis_factorings.begin(), mis_factorings.end());
-        } else {       
-            factorings.push_back(factoring->get_factoring());
+        } else {
+            FactoredVars factoring = factoring_method->get_factoring();
+            if (factoring.size() >= min_number_leaves){
+                factorings.push_back(factoring);
+            }
         }
     }
     
+    cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
+    
     FactoredVars best_factoring;
-    vector<int> best_ranking;    
+    vector<size_t> best_ranking;    
     for (const auto &factoring : factorings){
-        cout << "Running short search to test factoring." << endl;
+        cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
     
         g_factoring->apply_factoring(factoring);
-        print_factoring();
         
-        vector<int> ranking = run_and_rank_search();
+        vector<size_t> ranking = run_and_rank_search();
         
         if (best_ranking.empty()){
             best_factoring = factoring;
@@ -729,9 +733,15 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
     return best_factoring;
 }
 
-vector<int> AutoFactoring::run_and_rank_search() const {
+vector<size_t> AutoFactoring::run_and_rank_search() const {
     
-    assert(!g_variable_domain.empty());
+    cout << flush;
+    streambuf *real_out = cout.rdbuf();
+    ostringstream tmp_out;
+    cout.rdbuf(tmp_out.rdbuf());
+    
+    print_factoring();
+    
     if (g_factoring){        
         vector<int> center_domains;
         vector<vector<int> > leaf_domains(g_leaves.size());
@@ -800,9 +810,32 @@ vector<int> AutoFactoring::run_and_rank_search() const {
     }
 
     engine->set_max_time(max_test_search_time);
-    engine->search();
     
-    return vector<int>(); // TODO
+    Timer search_timer;
+    engine->search();
+    search_timer.stop();
+    
+    cout.rdbuf(real_out);
+    
+    if (engine->found_solution()){
+        g_timer.stop();
+        
+        cout << tmp_out.str();
+
+        engine->save_plan_if_necessary();
+        engine->statistics();
+        engine->heuristic_statistics();
+        cout << "Search time: " << search_timer << endl;
+        cout << "Total time: " << g_timer << endl;
+
+        exit_with(EXIT_PLAN_FOUND);
+    } else {
+        // TODO generate some reasonable output
+        cout << "did not find goal in test search" << endl;
+        cout << "dec state space size: " << g_state_registry->get_decoupled_state_space_size() << endl;
+    }   
+    
+    return vector<size_t>(1, g_state_registry->get_decoupled_state_space_size()); // TODO add more features
 }
 
 void AutoFactoring::reset_globals() const {
@@ -1854,7 +1887,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
     final_factoring = temp;
     cout << "Removed frozen leaves: " << f_rm_max << endl;
 
-    cout << "Number of factors: " << max_ind_sets.size() << endl;
+    cout << "Number of factors: " << final_factoring.size() << endl;
 
     bool valid = check_factoring(final_factoring);
     if (!valid) {
@@ -1865,13 +1898,11 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
 }
 
 vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*>> &rankings) {
-    vector<Ranking*> old_ranks = arg_rankings;
     vector<FactoredVars> factorings;
-    for (vector<Ranking*> ranking: rankings) {
+    for (const vector<Ranking*> &ranking: rankings) {
         arg_rankings = ranking;
         factorings.push_back(this->get_factoring());
     }
-    arg_rankings = old_ranks;
     return factorings;
 }
 
