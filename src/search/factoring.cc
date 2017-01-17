@@ -159,7 +159,7 @@ public:
 
 class MaxIndependentSetFactoring : public Factoring {
     
-    vector<FactoredVars> get_factorings(const vector<Ranking*> &rankings) const;
+    vector<FactoredVars> get_factorings(const vector<vector<Ranking*>> &rankings);
 
 protected:
     enum MIS_ALGO arg_mis_algo;
@@ -531,7 +531,7 @@ void Factoring::do_factoring_or_abstain() {
     
     cout << "factoring time " << t << endl;
     
-    if (best_factoring.empty()){
+    if (best_factoring.empty() or best_factoring.size() < min_number_leaves){
         exit_error("No factoring found!", EXIT_ABSTAINED);
     }
     
@@ -1468,7 +1468,7 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
     return is_frozen_factor;
 }
 
-Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
+Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
     const NGraph cg_g = generate_ngraph();
 
     MIS mis(cg_g);
@@ -1493,7 +1493,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     vector<int> f_rm(max_ind_sets.size(),0);
     vector<int> f_c(max_ind_sets.size(),0);
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
-        optimize_feature(max_ind_sets[i], cg_g, c_rm[i], f_rm[i], f_c[i]);
+        optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;
     VarInt x(0);
@@ -1569,6 +1569,18 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
 
     return final_factoring;
+}
+
+
+vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*>> &rankings) {
+    vector<Ranking*> old_ranks = arg_rankings;
+    vector<FactoredVars> factorings;
+    for (vector<Ranking*> ranking: rankings) {
+        arg_rankings = ranking;
+        factorings.push_back(this->get_factoring());
+    }
+    arg_rankings = old_ranks;
+    return factorings;
 }
 
 NGraph MaxIndependentSetFactoring::generate_ngraph() {
