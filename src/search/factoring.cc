@@ -237,7 +237,7 @@ public:
 class MaxIndependentSetFactoring : public Factoring {
     friend class AutoFactoring;
     
-    vector<FactoredVars> get_factorings(const vector<vector<Ranking*> > &rankings) const;
+    vector<FactoredVars> get_factorings(const vector<vector<Ranking*> > &rankings);
     
     MaxIndependentSetFactoring()
             : Factoring(),
@@ -1109,7 +1109,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() const {  ////////
     for (size_t l = 0; l < best_factoring.size(); ++l){
         cout << "leaf factor " << l << ":" << endl;
         for (set<int>::iterator it = best_factoring[l].begin(); it != best_factoring[l].end(); ++it){
-            cout << "   var: " << *it << " - " << g_fact_names[*it][0] << endl;
+            cout << "   " << g_fact_names[*it][0] << endl;
         }        
     }
     cout << endl;
@@ -1725,13 +1725,13 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
 vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const {
     vector<bool> is_frozen_factor(components.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
-
+    
     for (size_t i = 0; i < components.size(); i++){
         for (set<int>::iterator it = components[i].begin(); it != components[i].end(); ++it){
             belongs_to_factor[*it] = i;
         }
     }
-
+    
     for (size_t i = 0; i < g_operators.size(); i++){
         const Operator *op = &g_operators[i];
         int affects_factor = -1;
@@ -1761,11 +1761,6 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
     return is_frozen_factor;
 }
 
-vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*> > &) const {
-    // TODO implement this
-    return vector<FactoredVars>();
-}
-
 Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
     const NGraph cg_g = generate_ngraph();
 
@@ -1791,7 +1786,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
     vector<int> f_rm(max_ind_sets.size(),0);
     vector<int> f_c(max_ind_sets.size(),0);
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
-        optimize_feature(max_ind_sets[i], cg_g, c_rm[i], f_rm[i], f_c[i]);
+        optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;
     VarInt x(0);
@@ -1867,6 +1862,17 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
     }
 
     return final_factoring;
+}
+
+vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*>> &rankings) {
+    vector<Ranking*> old_ranks = arg_rankings;
+    vector<FactoredVars> factorings;
+    for (vector<Ranking*> ranking: rankings) {
+        arg_rankings = ranking;
+        factorings.push_back(this->get_factoring());
+    }
+    arg_rankings = old_ranks;
+    return factorings;
 }
 
 NGraph MaxIndependentSetFactoring::generate_ngraph() const {
