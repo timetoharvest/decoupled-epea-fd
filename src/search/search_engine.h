@@ -16,6 +16,7 @@ class Options;
 enum SearchStatus {IN_PROGRESS, TIMEOUT, FAILED, SOLVED};
 
 class SearchEngine {
+    friend class AutoFactoring; // to set max_time
 public:
     typedef std::vector<const Operator *> Plan;
 private:
@@ -24,6 +25,9 @@ private:
     mutable Plan plan;
     StateID cheapest_goal_state;
     bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
+    void set_max_time(double max_time) {
+        this->max_time = max_time;
+    }
 protected:
     SearchSpace search_space;
     SearchProgress search_progress;

@@ -149,6 +149,16 @@ public:
         return precompute_leaf_state_spaces[factor];
     }
     
+    static void clear_static_data() {
+        is_a_leaf_goal_state.clear();
+        leaf_goal_states.clear();
+        center_successors.clear();
+        leaf_state_successors.clear();
+        leaf_state_predecessors.clear();
+        leaf_state_id_map.clear();
+        curr_leaf_state_max_id.clear();
+    }
+    
 };
 
 #endif

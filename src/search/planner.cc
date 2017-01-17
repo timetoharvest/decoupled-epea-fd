@@ -1,5 +1,6 @@
 #include "globals.h"
 
+#include "factoring.h"
 #include "option_parser.h"
 #include "search_engine.h"
 #include "timer.h"
@@ -23,6 +24,9 @@ int main(int argc, const char **argv) {
     if (string(argv[1]).compare("--help") != 0){
 	try {
 	    OptionParser::parse_decoupled_search(argc, argv);
+            if (g_factoring){
+                g_factoring->set_main_input(argc, argv);
+            }
 	} catch (ArgError &error) {
 	    cerr << error << endl;
 	    OptionParser::usage(argv[0]);

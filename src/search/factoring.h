@@ -139,6 +139,9 @@ public:
         return search_type;
     }
     
+    virtual void set_main_input(int, const char**) {        
+    }
+    
 
     static void add_options_to_parser(OptionParser &parser);
     

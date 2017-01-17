@@ -2,6 +2,7 @@
 
 #include "causal_graph.h"
 #include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "globals.h"
 #include "mis.h"
 #include "operator.h"
@@ -10,6 +11,8 @@
 #include "../preprocess/scc.h"
 #include "pruning/pruning_options.h"
 #include "ranking.h"
+#include "search_engine.h"
+#include "state_registry.h"
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
@@ -87,13 +90,22 @@ Factoring::Factoring(const Options &opts) :
 
 class AutoFactoring : public Factoring {
     
+    int argc;
+    
+    const char** argv;
+    
     vector<Factoring*> factoring_methods;
+    
+    int max_test_search_time;
     
     mutable vector<pair<int, int> > safed_goal;
     
     mutable SuccessorGenerator *safed_successor_generator;
     
+    
     void reset_globals() const;
+    
+    vector<int> run_and_rank_search() const;
     
 protected:
     
@@ -102,6 +114,11 @@ protected:
 public:
     
     AutoFactoring(const Options &opts);
+    
+    virtual void set_main_input(int argc, const char** argv) {
+        this->argc = argc;
+        this->argv = argv;
+    }
     
 };
 
@@ -387,6 +404,8 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     g_belongs_to_factor = vector<LeafFactorID>(g_variable_domain.size(), LeafFactorID::CENTER);
     g_new_index = vector<size_t>(g_variable_domain.size());
     g_leaves.resize(factoring.size());
+    fork_leaf.resize(factoring.size(), false);
+    ifork_leaf.resize(factoring.size(), false);
     
     InteractionGraph interaction_graph(factoring.size());
     
@@ -500,15 +519,15 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (interaction_graph.get_successors(factor).empty()){
-            fork_leaf.push_back(true);
+            fork_leaf[factor] = true;
         } else {
-            fork_leaf.push_back(false);
+            fork_leaf[factor] = false;
             assert(!is_fork_factoring);
         }
         if (interaction_graph.get_predecessors(factor).empty()){
-            ifork_leaf.push_back(true);
+            ifork_leaf[factor] = true;
         } else {
-            ifork_leaf.push_back(false);
+            ifork_leaf[factor] = false;
             assert(!is_ifork_factoring);
         }
     }
@@ -640,7 +659,8 @@ void Factoring::do_factoring_or_abstain() {
     }
 }
 
-AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts) {
+AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts), 
+                                                    max_test_search_time(opts.get<int>("max_search_time")) {
     profile = STAR;
     cout << "using self-configuring factoring" << endl;
     if (opts.contains("factorings")){
@@ -663,7 +683,7 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
     for (const auto factoring : factoring_methods){
         
         MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring);
-        if (mis_factoring_method != nullptr && false){
+        if (mis_factoring_method != nullptr){
             // is MIS factoring
             vector<vector<Ranking*> > rankings;
             vector<Ranking*> tmp;
@@ -678,16 +698,111 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
         }
     }
     
+    FactoredVars best_factoring;
+    vector<int> best_ranking;    
     for (const auto &factoring : factorings){
+        cout << "Running short search to test factoring." << endl;
+    
         g_factoring->apply_factoring(factoring);
         print_factoring();
         
-        // TODO run and evaluate a short search here
+        vector<int> ranking = run_and_rank_search();
+        
+        if (best_ranking.empty()){
+            best_factoring = factoring;
+            best_ranking = ranking;
+        } else {
+            for (size_t i = 0; i < ranking.size(); ++i){
+                if (ranking[i] > best_ranking[i]){
+                    best_factoring = factoring;
+                    best_ranking = ranking;
+                    break;
+                }
+            }
+        }
         
         reset_globals();
+        
+        cout << endl << endl;
     }
     
-    return FactoredVars();
+    return best_factoring;
+}
+
+vector<int> AutoFactoring::run_and_rank_search() const {
+    
+    assert(!g_variable_domain.empty());
+    if (g_factoring){        
+        vector<int> center_domains;
+        vector<vector<int> > leaf_domains(g_leaves.size());
+        for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
+            LeafFactorID factor = g_belongs_to_factor[var];
+            if (factor == LeafFactorID::CENTER){
+                center_domains.push_back(g_variable_domain[var]);
+            } else {
+                if (leaf_domains[factor].empty()){
+                    leaf_domains[factor].resize(g_leaves[factor].size(), -1);
+                }
+                leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
+            }
+        }
+        
+        center_domains.push_back(MAX_DUPLICATE_COUNTER);
+        
+        cout << "packing state variables..." << flush;
+        g_state_packer = new IntPacker(center_domains);
+        cout << "Variables: " << g_center.size() << endl;
+        g_leaf_factor_packers = vector<IntPacker*>(g_leaves.size(), 0);
+        for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
+            g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
+        }
+    } else {
+	g_state_packer = new IntPacker(g_variable_domain);
+	g_leaf_factor_packers.push_back(new IntPacker(vector<int>(1, 2)));
+	cout << "Variables: " << g_variable_domain.size() << endl;
+    }
+    
+    cout << "Bytes per state: "
+         << g_state_packer->get_num_bins() *
+            g_state_packer->get_bin_size_in_bytes() << endl;
+    
+    if (g_factoring){
+	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+	    cout << "Bytes per state of leaf factor " << factor << ": "
+		<< g_leaf_factor_packers[factor]->get_num_bins() *
+		    g_leaf_factor_packers[factor]->get_bin_size_in_bytes() << endl;
+	}
+    }
+    
+    cout << "done! [t=" << g_timer << "]" << endl;
+
+    // NOTE: state registry stores the sizes of the state, so must be
+    // built after the problem has been read in.
+    g_state_registry = new StateRegistry();
+
+    cout << "done initalizing global data [t=" << g_timer << "]" << endl;
+    
+    SearchEngine *engine = 0;
+
+    // The command line is parsed twice: once in dry-run mode, to
+    // check for simple input errors, and then in normal mode.
+    bool unit_cost = is_unit_cost();
+    try {
+        OptionParser::parse_cmd_line(argc, argv, true, unit_cost);
+        engine = OptionParser::parse_cmd_line(argc, argv, false, unit_cost);
+    } catch (ArgError &error) {
+        cerr << error << endl;
+        OptionParser::usage(argv[0]);
+        exit_with(EXIT_INPUT_ERROR);
+    } catch (ParseError &error) {
+        cerr << error << endl;
+        exit_with(EXIT_INPUT_ERROR);
+    }
+
+    engine->set_max_time(max_test_search_time);
+    engine->search();
+    
+    return vector<int>(); // TODO
 }
 
 void AutoFactoring::reset_globals() const {
@@ -699,10 +814,16 @@ void AutoFactoring::reset_globals() const {
     }
     g_leaf_successor_generators.clear();
     
+    delete g_state_packer;
     for (auto l_packers : g_leaf_factor_packers){
         delete l_packers;
     }
     g_leaf_factor_packers.clear();
+    
+    delete g_state_registry;
+    
+    delete CPGStorage::storage;
+    CompliantPathGraph::clear_static_data();
     
     g_goal = safed_goal;
     
@@ -2702,6 +2823,10 @@ static Factoring *_parse_auto(OptionParser &parser) {
                                        "TODO",
                                        "",
                                        OptionFlags(false));
+    
+    parser.add_option<int>("max_search_time",
+                           "maximum time for test searches in seconds",
+                           "10");
 
     Options opts = parser.parse();
 
