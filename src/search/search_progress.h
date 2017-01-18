@@ -11,6 +11,7 @@
  * And it provides output in a uniform fashion for all search methods.
  */
 class SearchProgress {
+    friend class AutoFactoring;
 private:
     // General Statistics
     int expanded_states;  // nr states for which successors were generated
@@ -36,7 +37,7 @@ private:
     std::vector<Heuristic *> heuristics;
 public:
     SearchProgress();
-    virtual ~SearchProgress();
+    virtual ~SearchProgress() = default;
 
     void add_heuristic(Heuristic *h);
 

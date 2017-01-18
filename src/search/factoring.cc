@@ -837,9 +837,12 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
         exit_with(EXIT_PLAN_FOUND);
     } else {
         // TODO generate some reasonable output
+        // TODO e.g. get_max_number_duplicates() from g_state_registry and the data in search_engine->search_progress.*
         cout << "did not find goal in test search" << endl;
         cout << "dec state space size: " << g_state_registry->get_decoupled_state_space_size() << endl;
-    }   
+    } 
+    
+    delete engine;
     
     return vector<size_t>(1, g_state_registry->get_decoupled_state_space_size()); // TODO add more features
 }
