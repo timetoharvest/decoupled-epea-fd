@@ -31,7 +31,7 @@ enum MIS_ALGO {
 
 
 // NGraph, key = var, entry = set of neighbours
-typedef std::map<int,std::set<int>> NGraph;
+typedef std::vector<std::set<int>> NGraph;
 typedef std::pair<int,std::set<int>> NVertex;
 
 // ConCom(Connected Components),
@@ -45,10 +45,10 @@ class MIS {
     NGraph graph;
 
 private:
-    void find_connected_components(NGraph, CtoCCMap *, ConComp *) const;
+    void find_connected_components(const NGraph&, CtoCCMap *, ConComp *) const;
     NGraph remove_components(NGraph, int) const;
-    NGraph remove_components(NGraph, std::set<int>) const;
-    NGraph remove_components(NGraph, NGraph) const;
+    NGraph remove_components(const NGraph&, const std::set<int>&) const;
+    NGraph remove_components(const NGraph&, const NGraph&) const;
     std::set<int> find_mis_1(NGraph) const;
     std::set<int> find_mis_2(NGraph) const;
     std::vector<std::set<int>> find_mis_2_it(NGraph, int, int, int, int) const;
@@ -59,8 +59,8 @@ private:
 public:
     MIS(const NGraph &g) : graph(g){}
     std::vector<std::set<int>> get_mis(enum MIS_ALGO, int x, int, int, int) const;
-    void print_graph(NGraph) const;
-    bool check_mis(std::vector<bool> mis) const;
-    bool check_mis(std::set<int> mis) const;
+    void print_graph(const NGraph&) const;
+    bool check_mis(const std::vector<bool> &mis) const;
+    bool check_mis(const std::set<int> &mis) const;
 };
 #endif

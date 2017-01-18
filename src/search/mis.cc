@@ -1103,7 +1103,7 @@ vector<set<int>> MIS::find_mis_2_it(NGraph g, int x, int arg_find_all, int arg_t
     }
 }
 
-bool MIS::check_mis(vector<bool> mis) const {
+bool MIS::check_mis(const vector<bool> &mis) const {
     for (size_t i = 0; i <  mis.size(); i++) {
         if (mis[i]) {
             for (set<int>::iterator n = graph.at(i).begin(); n != graph.at(i).end(); ++n) {
@@ -1116,7 +1116,7 @@ bool MIS::check_mis(vector<bool> mis) const {
     return true;
 }
 
-bool MIS::check_mis(set<int> mis) const{
+bool MIS::check_mis(const set<int> &mis) const{
     for (set<int>::iterator i = mis.begin(); i != mis.end(); i++) {
         for (set<int>::iterator n = graph.at(*i).begin(); n != graph.at(*i).end(); ++n) {
             if (mis.find(*n) != mis.end()) {
@@ -1128,38 +1128,42 @@ bool MIS::check_mis(set<int> mis) const{
 }
 
 NGraph MIS::remove_components(NGraph g, int c) const {
-    set<int> neighbours = g[c];
-    g.erase(c);
     // remove var from neighbours' neighbours
-    for (set<int>::iterator it = neighbours.begin(); it != neighbours.end(); ++it) {
-        g[*it].erase(c);
+    for (int neighbour : g[c]) {
+        g[neighbour].erase(c);
     }
+    g[c].clear();
     return g;
 }
 
-NGraph MIS::remove_components(NGraph g, std::set<int> cs) const {
-    for (set<int>::iterator it = cs.begin(); it != cs.end(); ++it) {
-        g = remove_components(g, *it);
+NGraph MIS::remove_components(const NGraph &g, const set<int> &cs) const {
+    NGraph n_g(g.size(), set<int>());
+    for (size_t i = 0; i < g.size(); ++i) {
+        if (cs.find(i) == cs.end()){
+            n_g[i] = g[i];
+            n_g[i].erase(cs.begin(), cs.end());
+        }
     }
-    return g;
+    return n_g;
 }
 
-NGraph MIS::remove_components(NGraph g, NGraph cs) const {
-    for (NGraph::iterator it = cs.begin(); it != cs.end(); ++it) {
-        g = remove_components(g, it->first);
+NGraph MIS::remove_components(const NGraph &g, const NGraph &cs) const {
+    NGraph n_g(g.size(), set<int>());
+    for (size_t i = 0; i < g.size(); ++i) {
+        set_difference(g[i].begin(), g[i].end(), cs[i].begin(), cs[i].end(), n_g[i].begin());
     }
-    return g;
+    return n_g;
 }
 
 
-void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) const {
+void MIS::find_connected_components(const NGraph &g, CtoCCMap *c_to_cc, ConComp *cc) const {
     stack<int> open_c;
     size_t seen = 0;
     while (seen < g.size()) {
         if (open_c.empty()) {
-            NVertex c = *g.begin();
+            const NVertex &c = g[0];
             bool found = true;
-            for (NVertex it:g) {
+            for (const NVertex &it : g) {
                 if ((*c_to_cc)[it.first] == -1) {
                     c = it;
                     found = true;
@@ -1178,8 +1182,7 @@ void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) co
             int c = open_c.top();
             open_c.pop();
             seen++;
-            set<int> neighbours = g[c];
-            for (int n:neighbours) {
+            for (int n : g[c]) {
                 if ((*c_to_cc)[n] == -1) {
                     int comp = (*c_to_cc)[c];
                     (*c_to_cc)[n] = comp;
@@ -1192,7 +1195,7 @@ void MIS::find_connected_components(NGraph g, CtoCCMap *c_to_cc, ConComp *cc) co
     return;
 }
 
-void MIS::print_graph(NGraph g) const {
+void MIS::print_graph(const NGraph &g) const {
     for (NGraph::iterator it = g.begin(); it != g.end(); ++it) {
         cout << "Node: " << it->first << " - connected to: ";
         for(set<int>::iterator s = it->second.begin(); s != it->second.end(); ++s) {

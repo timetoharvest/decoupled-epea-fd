@@ -2025,9 +2025,9 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
         // collect candidates (center vars with one leaf neighbour)
         for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
             set<int> leaf_neighbours;
-            for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-                if (!in_center[*n]) {
-                    leaf_neighbours.insert(var_to_factor.at(*n));
+            for (const auto &n : g.at(*it)) {
+                if (!in_center[n]) {
+                    leaf_neighbours.insert(var_to_factor.at(n));
                 }
             }
 
