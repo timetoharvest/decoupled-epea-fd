@@ -1076,7 +1076,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     FactoredVars best_factoring;
-    int best_number_leaves = 0;
+    size_t best_number_leaves = 0;
     
     vector<bool> discarded_leaves;
     
