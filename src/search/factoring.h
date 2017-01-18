@@ -99,7 +99,7 @@ protected:
     
     std::vector<bool> ifork_leaf;
     
-    virtual FactoredVars get_factoring() const = 0;
+    virtual FactoredVars get_factoring() = 0;
     
     FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
     

@@ -109,7 +109,7 @@ class AutoFactoring : public Factoring {
     
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -126,7 +126,7 @@ class CenterFactoring : public Factoring {
     
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -166,7 +166,7 @@ protected:
     
     FactoredVars get_fork_maximize_mobility(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -199,7 +199,7 @@ class XShapeFactoring : public ForkFactoring {
         
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -222,7 +222,7 @@ class IncidentArcsFactoring : public Factoring {
     
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -279,7 +279,7 @@ protected:
     
     bool check_factoring(const FactoredVars &) const;
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
 
 public:
 
@@ -320,7 +320,7 @@ class SokobanFactoring : public Factoring {
             
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -336,7 +336,7 @@ class OpenstacksFactoring : public Factoring {
             
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -354,7 +354,7 @@ class TPPConstrainedFactoring : public Factoring {
             
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -370,7 +370,7 @@ class DocTransferFactoring : public Factoring {
             
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -386,7 +386,7 @@ class PegsolFactoring : public Factoring {
             
 protected:
     
-    FactoredVars get_factoring() const override;
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -674,7 +674,7 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
     }
 }
 
-Factoring::FactoredVars AutoFactoring::get_factoring() const {
+Factoring::FactoredVars AutoFactoring::get_factoring() {
     safed_goal = g_goal;
     safed_successor_generator = g_successor_generator->copy();
     
@@ -875,7 +875,7 @@ void AutoFactoring::reset_globals() const {
     g_sum_min_goal_cost = 0;
 }
 
-Factoring::FactoredVars XShapeFactoring::get_factoring() const {    ///////////////////////////  X-SHAPE
+Factoring::FactoredVars XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
     FactoredVars best_factoring;
     if (maximize_mobility){
@@ -962,7 +962,7 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() const {    ////////////
     return best_factoring;
 }
 
-Factoring::FactoredVars CenterFactoring::get_factoring() const { //////////////////////////////  CENTER
+Factoring::FactoredVars CenterFactoring::get_factoring() { //////////////////////////////  CENTER
     // TODO implement factoring
     FactoredVars best_factoring(1);
 
@@ -1040,7 +1040,7 @@ Factoring::FactoredVars CenterFactoring::get_factoring() const { ///////////////
     return best_factoring;
 }
 
-Factoring::FactoredVars ForkFactoring::get_factoring() const { ////////////////////////////////  (INVERTED) FORK
+Factoring::FactoredVars ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
     
     FactoredVars factoring;
     if (maximize_mobility){
@@ -1056,7 +1056,7 @@ Factoring::FactoredVars ForkFactoring::get_factoring() const { /////////////////
     return factoring;
 }
 
-Factoring::FactoredVars IncidentArcsFactoring::get_factoring() const {  ///////////////////// INCIDENT ARCS
+Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
     
     // TODO factoring has some bugs in several tasks,
     // e.g. scanalyzer-08-strips, p22-25; rover p16/19
@@ -1798,7 +1798,7 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
     return is_frozen_factor;
 }
 
-Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() const {
+Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     const NGraph cg_g = generate_ngraph();
 
     MIS mis(cg_g);
@@ -2577,7 +2577,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
 /////////////////////////////////////////////////////////////////////////////////////////////// domain specific factorings
 
 
-Factoring::FactoredVars SokobanFactoring::get_factoring() const {
+Factoring::FactoredVars SokobanFactoring::get_factoring() {
     
     FactoredVars best_factoring(1);
     
@@ -2607,7 +2607,7 @@ Factoring::FactoredVars SokobanFactoring::get_factoring() const {
     return best_factoring;
 }
 
-Factoring::FactoredVars OpenstacksFactoring::get_factoring() const {
+Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
     
     vector<int> leaf_vars;
     
@@ -2655,7 +2655,7 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() const {
 }
 
 
-Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() const {
+Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
         
     vector<int> leaf_vars;
     
@@ -2707,7 +2707,7 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() const {
     return best_factoring;
 }
 
-Factoring::FactoredVars DocTransferFactoring::get_factoring() const {
+Factoring::FactoredVars DocTransferFactoring::get_factoring() {
     FactoredVars factoring;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         if (strncmp(g_fact_names[var][0].c_str(), "Atom at(document", 16) == 0 || strncmp(g_fact_names[var][0].c_str(), "Atom at(fuel", 12) == 0){
@@ -2719,7 +2719,7 @@ Factoring::FactoredVars DocTransferFactoring::get_factoring() const {
     return factoring;
 }
 
-Factoring::FactoredVars PegsolFactoring::get_factoring() const {
+Factoring::FactoredVars PegsolFactoring::get_factoring() {
     FactoredVars factoring(4);
     vector<vector<string> > factors(4, vector<string>(7));
     factors[0][0] = "Atom free(pos-0-2)";factors[0][1] = "Atom free(pos-0-3)";factors[0][2] = "Atom free(pos-0-4)";factors[0][3] = "Atom free(pos-1-2)";factors[0][4] = "Atom free(pos-1-3)";factors[0][5] = "Atom free(pos-1-4)";//factors[0][6] = "Atom free(pos-2-3)";
