@@ -692,7 +692,11 @@ Factoring::FactoredVars AutoFactoring::get_factoring() const {
             rankings.push_back(tmp);
             
             vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
-            factorings.insert(factorings.end(), mis_factorings.begin(), mis_factorings.end());
+            for (const auto &factoring : mis_factorings){
+                if (factoring.size() >= min_number_leaves){
+                    factorings.push_back(factoring);
+                }
+            }
         } else {
             FactoredVars factoring = factoring_method->get_factoring();
             if (factoring.size() >= min_number_leaves){
