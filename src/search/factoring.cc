@@ -669,8 +669,8 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
         cout << "no factorings provided, using default settings" << endl;
         factoring_methods.push_back(new ForkFactoring());
         factoring_methods.push_back(new ForkFactoring(I_FORK));
+        factoring_methods.push_back(new IncidentArcsFactoring());
         factoring_methods.push_back(new MaxIndependentSetFactoring());
-//         factoring_methods.push_back(new IncidentArcsFactoring()); // TODO debug this first
     }
 }
 
