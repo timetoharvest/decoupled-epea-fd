@@ -325,6 +325,23 @@ void StateRegistry::output_decoupled_state_space_size() const {
     cout << "decoupled state space size [4] " << dec_size_4 << endl;
 }
 
+size_t StateRegistry::get_decoupled_state_space_size() const {
+    size_t dec_size = g_center.size() * size();  // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        dec_size += size(factor) * g_leaves[factor].size();
+    }
+    
+    for (size_t i = 0; i < size(); ++i){
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            dec_size += cpg->get_number_states(factor);
+        }
+    }
+    return dec_size;
+}
+
+
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
     subscribers.insert(psi);
 }

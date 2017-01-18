@@ -113,8 +113,14 @@ void EagerSearch::initialize() {
 }
 
 EagerSearch::~EagerSearch() {
-    // TODO also delete other members?
     delete partial_order_reduction_method;
+    delete open_list;
+    delete f_evaluator;
+    delete pruning_heuristic;
+    
+    for (auto heuristic : heuristics){
+        delete heuristic;
+    }    
 }
 
 void EagerSearch::statistics() const {

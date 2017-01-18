@@ -58,7 +58,6 @@ private:
     void brute_force_mis_DFS(std::vector<bool>, size_t *, size_t, std::vector<std::vector<bool>> *, std::vector<std::vector<bool>> *, int) const;
 public:
     MIS(const NGraph &g) : graph(g){}
-    MIS() : graph(){};
     std::vector<std::set<int>> get_mis(enum MIS_ALGO, int x, int, int, int) const;
     void print_graph(NGraph) const;
     bool check_mis(std::vector<bool> mis) const;

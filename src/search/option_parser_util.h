@@ -2,6 +2,7 @@
 #define OPTION_PARSER_UTIL_H
 
 #include "utilities.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>

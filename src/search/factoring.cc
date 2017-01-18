@@ -2,6 +2,7 @@
 
 #include "causal_graph.h"
 #include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "globals.h"
 #include "mis.h"
 #include "operator.h"
@@ -10,6 +11,8 @@
 #include "../preprocess/scc.h"
 #include "pruning/pruning_options.h"
 #include "ranking.h"
+#include "search_engine.h"
+#include "state_registry.h"
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
@@ -47,15 +50,21 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
 }
 
 
+Factoring::Factoring() {
+    max_leaf_size = numeric_limits<size_t>::max();
+    min_number_leaves = 2;
+    max_precompute_state_space_size = 10000;
+}
+
 Factoring::Factoring(const Options &opts) :
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))),
-            no_search(opts.get<bool>("no_search")){
+            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
         case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
         case SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
         case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
+        case NO_SEARCH : cout << "not running actual search" << endl; break;
         default : cout << "unknown decoupled search type " << search_type << endl; exit_with(EXIT_CRITICAL_ERROR);
     }
     if (opts.contains("max_leaf_size")){
@@ -79,23 +88,73 @@ Factoring::Factoring(const Options &opts) :
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
 }
 
+class AutoFactoring : public Factoring {
+    
+    int argc;
+    
+    const char** argv;
+    
+    vector<Factoring*> factoring_methods;
+    
+    int max_test_search_time;
+    
+    mutable vector<pair<int, int> > safed_goal;
+    
+    mutable SuccessorGenerator *safed_successor_generator;
+    
+    
+    void reset_globals() const;
+    
+    vector<size_t> run_and_rank_search() const;
+    
+protected:
+    
+    FactoredVars get_factoring() override;
+    
+public:
+    
+    AutoFactoring(const Options &opts);
+    
+    virtual void set_main_input(int argc, const char** argv) {
+        this->argc = argc;
+        this->argv = argv;
+    }
+    
+};
+
 class CenterFactoring : public Factoring {
+    
+protected:
+    
+    FactoredVars get_factoring() override;
     
 public:
     
     CenterFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = CENTER;
+        profile = STAR;
         cout << "using random 2-factor factoring profile" << endl;
-    };
-  
-    virtual FactoredVars get_factoring();
+    }
     
 };
 
 class ForkFactoring : public Factoring {
+    friend class AutoFactoring;
     
 protected:
+    
+    ForkFactoring(PROFILE profile = FORK) {
+        maximize_mobility = false;
+        extend_leaves = false;
+        average_mobility = false;
+        if (profile == I_FORK){
+            Factoring::profile = I_FORK;
+            cout << "using inverted-fork factoring profile" << endl;
+        } else if (profile == FORK){
+            Factoring::profile = FORK;
+            cout << "using fork factoring profile" << endl;
+        }
+    }
     
     bool maximize_mobility;
     
@@ -106,6 +165,8 @@ protected:
     FactoredVars get_fork_maximize_leaves(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
     
     FactoredVars get_fork_maximize_mobility(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
+    
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -121,15 +182,24 @@ public:
             Factoring::profile = FORK;
             cout << "using fork factoring profile" << endl;
         }
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
     
     static void add_options_to_parser(OptionParser &parser);
     
 };
 
 class XShapeFactoring : public ForkFactoring {
+    friend class AutoFactoring;
+    
+    XShapeFactoring()
+            : ForkFactoring(X_SHAPE) {
+        profile = X_SHAPE;
+        cout << "using X-shape factoring profile" << endl;
+    }
+        
+protected:
+    
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -137,29 +207,55 @@ public:
             : ForkFactoring(opts, X_SHAPE) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
     
 };
 
 class IncidentArcsFactoring : public Factoring {
+    friend class AutoFactoring;
+    
+    IncidentArcsFactoring()
+            : Factoring() {
+        profile = STAR;
+        cout << "using incident-arcs factoring profile" << endl;
+    }
+    
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
     IncidentArcsFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = INC_ARCS;
+        profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class MaxIndependentSetFactoring : public Factoring {
+    friend class AutoFactoring;
     
-    vector<FactoredVars> get_factorings(const vector<vector<Ranking*>> &rankings);
+    vector<FactoredVars> get_factorings(const vector<vector<Ranking*> > &rankings);
+    
+    MaxIndependentSetFactoring()
+            : Factoring(),
+              arg_mis_algo(MIS_ALGO::A2),
+              arg_minimize_center(1),
+              arg_minimize_frozen(false),
+              arg_xth_factoring(0),
+              arg_merge_leaves(0),
+              arg_find_all(0),
+              arg_all_rankings(true),
+              arg_timeout(30),
+              arg_multiple_mis(1){
+        profile = STAR;
+        cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: "
+             << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
+             << " minimize frozen " << arg_minimize_frozen << " select xth factoring: " << arg_xth_factoring
+             << " merge leaves level: " << arg_merge_leaves;
+    }
 
 protected:
     enum MIS_ALGO arg_mis_algo;
@@ -172,9 +268,20 @@ protected:
     bool arg_all_rankings;
     int arg_timeout;
     int arg_multiple_mis;
-    MIS mis;
-    NGraph g;
-    vector<FactoredVars> factorings;
+    NGraph cg_g; // cache used for AutoFactoring
+    vector<FactoredVars> max_ind_sets; // cache used for AutoFactoring
+    
+    FactoredVars minimize_center(FactoredVars, const NGraph &);
+    
+    void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &) const;
+    
+    //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
+    
+    NGraph generate_ngraph() const;
+    
+    bool check_factoring(const FactoredVars &) const;
+    
+    FactoredVars get_factoring() override;
 
 public:
 
@@ -183,41 +290,39 @@ public:
                 arg_mis_algo(MIS_ALGO(opts.get_enum("mis_algo"))),
                 arg_minimize_center(opts.get<int>("minimize_center")),
                 arg_minimize_frozen(opts.get<bool>("minimize_frozen")),
-                arg_rankings(opts.get_list<Ranking *>("rankings")),
                 arg_xth_factoring(opts.get<int>("xth_fact")),
                 arg_merge_leaves(opts.get<int>("merge_leaves")),
                 arg_find_all(opts.get<int>("find_all")),
                 arg_all_rankings(opts.get<bool>("all_rankings")),
                 arg_timeout(opts.get<int>("timeout")),
                 arg_multiple_mis(opts.get<int>("multiple_mis")){
-        profile = MAX_IND_SET;
+        profile = STAR;
         cout << "using maximum independet set factoring profile - algo: " << arg_mis_algo << " find all MIS: "
              << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
              << " minimize frozen " << arg_minimize_frozen << " select xth factoring: " << arg_xth_factoring
              << " merge leaves level: " << arg_merge_leaves;
         cout << " ranking_features: ";
-        if (arg_rankings.empty()) {
+        if (!opts.contains("rankings")) {
             cout << "None" << endl;
         } else {
-            for (Ranking * ranking:arg_rankings) {
+            arg_rankings = opts.get_list<Ranking *>("rankings");
+            for (Ranking *ranking : arg_rankings) {
                 cout << ranking->get_feature() << " ";
             }
             cout << endl;
         }
-    };
-
-    virtual FactoredVars get_factoring();
-    FactoredVars minimize_center(FactoredVars, const NGraph&);
-    void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &);
-    //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
-    NGraph generate_ngraph();
-    bool check_factoring(FactoredVars);
+    }
+    
 
     static void add_options_to_parser(OptionParser &parser);
 
 };
 
 class SokobanFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -225,13 +330,15 @@ public:
             : Factoring(opts) {
         profile = SOKOBAN;
         cout << "using sokoban factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class OpenstacksFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -239,15 +346,17 @@ public:
             : Factoring(opts) {
         profile = OPENSTACKS;
         cout << "using openstacks factoring profile" << endl;
-    };
+    }
     
-    virtual FactoredVars get_factoring();
-  
 };
 
 class TPPConstrainedFactoring : public Factoring {
     
     bool inverted;
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -255,13 +364,15 @@ public:
             : Factoring(opts), inverted(opts.get<bool>("inverted")) {
         profile = OPENSTACKS;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class DocTransferFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -269,13 +380,15 @@ public:
             : Factoring(opts) {
         profile = DOC_TRANSFER;
         cout << "using doc transfer factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
-  
+    }
+
 };
 
 class PegsolFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -283,18 +396,18 @@ public:
             : Factoring(opts) {
         profile = PEGSOL;
         cout << "using pegsol factoring profile" << endl;
-    };
+    }
     
-    virtual FactoredVars get_factoring();
-  
 };
 
 
 
-void Factoring::apply_factoring(FactoredVars factoring) {
+void Factoring::apply_factoring(const FactoredVars &factoring) {
     g_belongs_to_factor = vector<LeafFactorID>(g_variable_domain.size(), LeafFactorID::CENTER);
     g_new_index = vector<size_t>(g_variable_domain.size());
     g_leaves.resize(factoring.size());
+    fork_leaf.resize(factoring.size(), false);
+    ifork_leaf.resize(factoring.size(), false);
     
     InteractionGraph interaction_graph(factoring.size());
     
@@ -408,15 +521,15 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (interaction_graph.get_successors(factor).empty()){
-            fork_leaf.push_back(true);
+            fork_leaf[factor] = true;
         } else {
-            fork_leaf.push_back(false);
+            fork_leaf[factor] = false;
             assert(!is_fork_factoring);
         }
         if (interaction_graph.get_predecessors(factor).empty()){
-            ifork_leaf.push_back(true);
+            ifork_leaf[factor] = true;
         } else {
-            ifork_leaf.push_back(false);
+            ifork_leaf[factor] = false;
             assert(!is_ifork_factoring);
         }
     }
@@ -466,6 +579,19 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         cout << "no center goals" << endl;
     }
 #endif
+
+    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
+    
+    for (size_t i = 0; i < g_leaves.size(); ++i){
+        uint64_t f_size = 1;
+        for (size_t j = 0; j < g_leaves[i].size(); ++j){
+            f_size *= g_variable_domain[g_leaves[i][j]];
+            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
+                precompute_leaf_state_space[i] = false;
+            }
+        }
+    }
+    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
 }
 
 void Factoring::print_factoring() const {
@@ -487,8 +613,6 @@ void Factoring::print_factoring() const {
         cout << g_leaves[i].size() << " variables in leaf factor " << i << endl;
     }
     
-    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
-    
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
@@ -496,25 +620,14 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_leaves[factor].size(); ++j){
             f_size *= g_variable_domain[g_leaves[factor][j]];
-            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
-                precompute_leaf_state_space[factor] = false;
-            }
         }
         avg_size += f_size;
         min_size = min(min_size, f_size);
         max_size = max(max_size, f_size);
     }
-    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
-    
-    uint64_t avg = 0;
-    if (g_leaves.size() > 0){
-        avg = avg_size / g_leaves.size();
-    } else {
-        min_size = 0;
-    }
     
     cout << "min leaf factor size: " << min_size << endl;
-    cout << "average leaf factor size: " << avg << endl;
+    cout << "average leaf factor size: " << (avg_size / g_leaves.size()) << endl;
     cout << "max leaf factor size: " << max_size << endl;
 }
 
@@ -534,21 +647,237 @@ void Factoring::do_factoring_or_abstain() {
     
     cout << "factoring time " << t << endl;
     
-    if (best_factoring.empty() or best_factoring.size() < min_number_leaves){
+    if (best_factoring.size() < min_number_leaves){
         exit_error("No factoring found!", EXIT_ABSTAINED);
     }
     
     apply_factoring(best_factoring);    
     
     print_factoring();
-
-    if (no_search) {
+    
+    if (search_type == NO_SEARCH) {
         cout << "Factoring complete, do not perform search" << endl;
         exit_with(EXIT_NO_SEARCH);
     }
 }
 
-vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
+AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts), 
+                                                    max_test_search_time(opts.get<int>("max_search_time")) {
+    profile = STAR;
+    cout << "using self-configuring factoring" << endl;
+    if (opts.contains("factorings")){
+        factoring_methods = opts.get_list<Factoring*>("factorings"); 
+    } else {
+        cout << "no factorings provided, using default settings" << endl;
+        factoring_methods.push_back(new ForkFactoring());
+        factoring_methods.push_back(new ForkFactoring(I_FORK));
+        factoring_methods.push_back(new MaxIndependentSetFactoring());
+//         factoring_methods.push_back(new IncidentArcsFactoring()); // TODO debug this first
+    }
+}
+
+Factoring::FactoredVars AutoFactoring::get_factoring() {
+    safed_goal = g_goal;
+    safed_successor_generator = g_successor_generator->copy();
+    
+    vector<FactoredVars> factorings;
+    
+    for (const auto factoring_method : factoring_methods){
+        
+        MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring_method);
+        if (mis_factoring_method != nullptr){
+            // is MIS factoring
+            vector<vector<Ranking*> > rankings;
+            vector<Ranking*> tmp;
+            tmp.push_back(new LeavesRanking());
+            tmp.push_back(new MobilityRanking());
+            rankings.push_back(tmp);
+            
+            vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
+            for (const auto &factoring : mis_factorings){
+                if (factoring.size() >= min_number_leaves){
+                    factorings.push_back(factoring);
+                }
+            }
+        } else {
+            FactoredVars factoring = factoring_method->get_factoring();
+            if (factoring.size() >= min_number_leaves){
+                factorings.push_back(factoring);
+            }
+        }
+    }
+    
+    cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
+    
+    FactoredVars best_factoring;
+    vector<size_t> best_ranking;    
+    for (const auto &factoring : factorings){
+        cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
+    
+        g_factoring->apply_factoring(factoring);
+        
+        vector<size_t> ranking = run_and_rank_search();
+        
+        if (best_ranking.empty()){
+            best_factoring = factoring;
+            best_ranking = ranking;
+        } else {
+            for (size_t i = 0; i < ranking.size(); ++i){
+                if (ranking[i] > best_ranking[i]){
+                    best_factoring = factoring;
+                    best_ranking = ranking;
+                    break;
+                }
+            }
+        }
+        
+        reset_globals();
+        
+        cout << endl << endl;
+    }
+    
+    return best_factoring;
+}
+
+vector<size_t> AutoFactoring::run_and_rank_search() const {
+    
+    cout << flush;
+    streambuf *real_out = cout.rdbuf();
+    ostringstream tmp_out;
+    cout.rdbuf(tmp_out.rdbuf());
+    
+    print_factoring();
+    
+    if (g_factoring){        
+        vector<int> center_domains;
+        vector<vector<int> > leaf_domains(g_leaves.size());
+        for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
+            LeafFactorID factor = g_belongs_to_factor[var];
+            if (factor == LeafFactorID::CENTER){
+                center_domains.push_back(g_variable_domain[var]);
+            } else {
+                if (leaf_domains[factor].empty()){
+                    leaf_domains[factor].resize(g_leaves[factor].size(), -1);
+                }
+                leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
+            }
+        }
+        
+        center_domains.push_back(MAX_DUPLICATE_COUNTER);
+        
+        cout << "packing state variables..." << flush;
+        g_state_packer = new IntPacker(center_domains);
+        cout << "Variables: " << g_center.size() << endl;
+        g_leaf_factor_packers = vector<IntPacker*>(g_leaves.size(), 0);
+        for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
+            g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
+        }
+    } else {
+	g_state_packer = new IntPacker(g_variable_domain);
+	g_leaf_factor_packers.push_back(new IntPacker(vector<int>(1, 2)));
+	cout << "Variables: " << g_variable_domain.size() << endl;
+    }
+    
+    cout << "Bytes per state: "
+         << g_state_packer->get_num_bins() *
+            g_state_packer->get_bin_size_in_bytes() << endl;
+    
+    if (g_factoring){
+	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+	    cout << "Bytes per state of leaf factor " << factor << ": "
+		<< g_leaf_factor_packers[factor]->get_num_bins() *
+		    g_leaf_factor_packers[factor]->get_bin_size_in_bytes() << endl;
+	}
+    }
+    
+    cout << "done! [t=" << g_timer << "]" << endl;
+
+    // NOTE: state registry stores the sizes of the state, so must be
+    // built after the problem has been read in.
+    g_state_registry = new StateRegistry();
+
+    cout << "done initalizing global data [t=" << g_timer << "]" << endl;
+    
+    SearchEngine *engine = 0;
+
+    // The command line is parsed twice: once in dry-run mode, to
+    // check for simple input errors, and then in normal mode.
+    bool unit_cost = is_unit_cost();
+    try {
+        OptionParser::parse_cmd_line(argc, argv, true, unit_cost);
+        engine = OptionParser::parse_cmd_line(argc, argv, false, unit_cost);
+    } catch (ArgError &error) {
+        cerr << error << endl;
+        OptionParser::usage(argv[0]);
+        exit_with(EXIT_INPUT_ERROR);
+    } catch (ParseError &error) {
+        cerr << error << endl;
+        exit_with(EXIT_INPUT_ERROR);
+    }
+
+    engine->set_max_time(max_test_search_time);
+    
+    Timer search_timer;
+    engine->search();
+    search_timer.stop();
+    
+    cout.rdbuf(real_out);
+    
+    if (engine->found_solution()){
+        g_timer.stop();
+        
+        cout << tmp_out.str();
+
+        engine->save_plan_if_necessary();
+        engine->statistics();
+        engine->heuristic_statistics();
+        cout << "Search time: " << search_timer << endl;
+        cout << "Total time: " << g_timer << endl;
+
+        exit_with(EXIT_PLAN_FOUND);
+    } else {
+        // TODO generate some reasonable output
+        cout << "did not find goal in test search" << endl;
+        cout << "dec state space size: " << g_state_registry->get_decoupled_state_space_size() << endl;
+    }   
+    
+    return vector<size_t>(1, g_state_registry->get_decoupled_state_space_size()); // TODO add more features
+}
+
+void AutoFactoring::reset_globals() const {
+    delete g_successor_generator;    
+    g_successor_generator = safed_successor_generator->copy();
+    
+    for (auto l_succ_gen : g_leaf_successor_generators){
+        delete l_succ_gen;
+    }
+    g_leaf_successor_generators.clear();
+    
+    delete g_state_packer;
+    for (auto l_packers : g_leaf_factor_packers){
+        delete l_packers;
+    }
+    g_leaf_factor_packers.clear();
+    
+    delete g_state_registry;
+    
+    delete CPGStorage::storage;
+    CompliantPathGraph::clear_static_data();
+    
+    g_goal = safed_goal;
+    
+    g_belongs_to_factor.clear();
+    g_new_index.clear();
+    g_center.clear();
+    g_leaves.clear();
+    
+    g_min_action_cost_per_factor.clear();
+    g_goals_per_factor.clear();
+    g_min_goal_cost.clear();
+    g_sum_min_goal_cost = 0;
+}
+
+Factoring::FactoredVars XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
     FactoredVars best_factoring;
     if (maximize_mobility){
@@ -635,9 +964,9 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     return best_factoring;
 }
 
-vector<set<int> > CenterFactoring::get_factoring() { //////////////////////////////  CENTER
+Factoring::FactoredVars CenterFactoring::get_factoring() { //////////////////////////////  CENTER
     // TODO implement factoring
-    FactoredVars best_factoring = vector<set<int> >(1);
+    FactoredVars best_factoring(1);
 
     srand(time(NULL));
     
@@ -713,7 +1042,7 @@ vector<set<int> > CenterFactoring::get_factoring() { ///////////////////////////
     return best_factoring;
 }
 
-vector<set<int> > ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
+Factoring::FactoredVars ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
     
     FactoredVars factoring;
     if (maximize_mobility){
@@ -729,7 +1058,7 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
     return factoring;
 }
 
-vector<set<int> > IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
+Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
     
     // TODO factoring has some bugs in several tasks,
     // e.g. scanalyzer-08-strips, p22-25; rover p16/19
@@ -1371,7 +1700,7 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
     return real_sccs;
 }
 
-Factoring::FactoredVars Factoring::get_connected_components(vector<int> variables) const {
+Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
     FactoredVars components;
     
     vector<bool> vars(g_variable_domain.size(), false);
@@ -1432,7 +1761,7 @@ Factoring::FactoredVars Factoring::get_connected_components(vector<int> variable
     return components;
 }
 
-vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
+vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const {
     vector<bool> is_frozen_factor(components.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
     
@@ -1471,50 +1800,37 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
     return is_frozen_factor;
 }
 
-Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
-    const NGraph *cg_g;
-    const MIS *mis;
-    vector<FactoredVars> *max_ind_sets;
-    if (this->g.empty()) {
-        this->g = generate_ngraph();
-        cg_g = &(this->g);
-        this->mis = MIS(*cg_g);
-        mis = &(this->mis);
-        vector<set<int>> found_mis = mis->get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
-        // generate factoring
+Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
+    if (cg_g.empty()) {
+        cg_g = generate_ngraph();
 
-        vector<FactoredVars> all_mis;
+        MIS mis(cg_g);
+        vector<set<int> > found_mis = mis.get_mis(arg_mis_algo, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
+
+        // generate factoring
         for (set<int> m: found_mis) {
             FactoredVars mis;
-            int l = 0;
             for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
                 set<int> s;
                 s.insert(*it);
                 mis.push_back(s);
-                l++;
             }
-            all_mis.push_back(mis);
+            max_ind_sets.push_back(mis);
         }
-        this->factorings = all_mis;
-        max_ind_sets = &(this->factorings);
-    } else {
-        cg_g = &(this->g);
-        mis = &(this->mis);
-        max_ind_sets = &(this->factorings);
     }
 
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
-    vector<int> c_rm(max_ind_sets->size(),0);
-    vector<int> f_rm(max_ind_sets->size(),0);
-    vector<int> f_c(max_ind_sets->size(),0);
-    for (size_t i = 0; i < max_ind_sets->size(); ++i) {
-        optimize_feature(max_ind_sets->at(i), *cg_g, f_rm[i], c_rm[i], f_c[i]);
+    vector<int> c_rm(max_ind_sets.size(),0);
+    vector<int> f_rm(max_ind_sets.size(),0);
+    vector<int> f_c(max_ind_sets.size(),0);
+    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;
     VarInt x(0);
     vector<VarInt> max_rank (arg_rankings.size(),x);
-    for (size_t i = 0; i < max_ind_sets->size(); ++i) {
-        FactoredVars m = max_ind_sets->at(i);
+    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        FactoredVars m = max_ind_sets[i];
         bool update = false;
         vector<VarInt> rankings;
         uint64_t n = 0;
@@ -1537,7 +1853,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
             max_rank = rankings;
         }
     }
-    FactoredVars final_factoring = max_ind_sets->at(max);
+    FactoredVars final_factoring = max_ind_sets[max];
 
 #ifdef DEBUG_FACTORING
     cout << "optimized MIS: " << endl;
@@ -1576,7 +1892,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
     final_factoring = temp;
     cout << "Removed frozen leaves: " << f_rm_max << endl;
 
-    cout << "Number of factors: " << max_ind_sets->size() << endl;
+    cout << "Number of factors: " << final_factoring.size() << endl;
 
     bool valid = check_factoring(final_factoring);
     if (!valid) {
@@ -1586,19 +1902,16 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring(){
     return final_factoring;
 }
 
-
 vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*>> &rankings) {
-    vector<Ranking*> old_ranks = arg_rankings;
     vector<FactoredVars> factorings;
-    for (vector<Ranking*> ranking: rankings) {
+    for (const vector<Ranking*> &ranking: rankings) {
         arg_rankings = ranking;
         factorings.push_back(this->get_factoring());
     }
-    arg_rankings = old_ranks;
     return factorings;
 }
 
-NGraph MaxIndependentSetFactoring::generate_ngraph() {
+NGraph MaxIndependentSetFactoring::generate_ngraph() const {
     vector<int> vars;
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
         vars.push_back(var);
@@ -1622,7 +1935,7 @@ NGraph MaxIndependentSetFactoring::generate_ngraph() {
     return cg_g;
 }
 
-bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
+bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
     vector<int> vars;
     bool valid = true;
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
@@ -1679,7 +1992,7 @@ bool MaxIndependentSetFactoring::check_factoring(FactoredVars f) {
     return valid;
 }
 
-void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGraph & g, int & f_rm, int & c_rm, int & f_c) {
+void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGraph &g, int &f_rm, int &c_rm, int &f_c) const {
     if (arg_minimize_center == 0) {
         return;
     }
@@ -1946,7 +2259,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars & mis, const NGra
 }
 
 
-Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars max_ind_sets, const NGraph & cg_g) {
+Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars max_ind_sets, const NGraph &cg_g) {
     FactoredVars adapted_factoring;
     if (arg_minimize_center == 0) {
         cout << "do not minimize center" << endl;
@@ -2378,7 +2691,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars
 
 Factoring::FactoredVars SokobanFactoring::get_factoring() {
     
-    FactoredVars best_factoring = vector<set<int> >(1);
+    FactoredVars best_factoring(1);
     
     cout << "factoring sokoban" << endl;
     
@@ -2546,12 +2859,14 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "TODO", 
         "",
         OptionFlags(false));
+    
     vector<string> search_types;
     search_types.push_back("fra");
     search_types.push_back("asda");
     search_types.push_back("sda");
     search_types.push_back("sat");
     search_types.push_back("unsat");
+    search_types.push_back("no_search");
     parser.add_enum_option(
         "search_type",
         search_types,
@@ -2559,6 +2874,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "sda",
         vector<string>(),
         OptionFlags(false));
+    
     parser.add_option<int>(
         "max_leaf_size",
         "TODO",
@@ -2574,7 +2890,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "false");
 }
 
-void ForkFactoring::add_options_to_parser(OptionParser& parser) {
+void ForkFactoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
     parser.add_option<bool>(
         "maximize_mobility",
@@ -2591,7 +2907,7 @@ void ForkFactoring::add_options_to_parser(OptionParser& parser) {
     );
 }
 
-void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
+void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
     parser.add_option<int>(
             "minimize_center",
@@ -2631,7 +2947,10 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
             vector<string>(),
             OptionFlags(false));
 
-    parser.add_list_option<Ranking *>("rankings");
+    parser.add_list_option<Ranking *>("rankings",
+                                      "TODO",
+                                      "",
+                                      OptionFlags(false));
     parser.add_option<bool>(
             "all_rankings",
             "TODO",
@@ -2647,6 +2966,29 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser& parser) {
             "TODO",
             "1"
     );
+}
+
+static Factoring *_parse_auto(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+    
+    parser.add_list_option<Factoring*>("factorings",
+                                       "TODO",
+                                       "",
+                                       OptionFlags(false));
+    
+    parser.add_option<int>("max_search_time",
+                           "maximum time for test searches in seconds",
+                           "10");
+
+    Options opts = parser.parse();
+
+    AutoFactoring *factoring = 0;
+    if (!parser.dry_run()) {        
+        factoring = new AutoFactoring(opts);
+    }
+
+    return factoring;
 }
 
 static Factoring *_parse_fork(OptionParser &parser) {
@@ -2751,6 +3093,7 @@ static Factoring *_parse_pegsol(OptionParser &parser) {
     return factoring;
 }
 
+static Plugin<Factoring> _plugin_auto("auto", _parse_auto);
 static Plugin<Factoring> _plugin_fork("fork", _parse_fork);
 static Plugin<Factoring> _plugin_ifork("ifork", _parse_ifork);
 static Plugin<Factoring> _plugin_xshape("xshape", _parse_xshape);

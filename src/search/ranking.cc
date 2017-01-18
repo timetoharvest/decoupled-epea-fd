@@ -7,88 +7,31 @@
 
 using namespace std;
 
-Ranking::Ranking(const Options &) {
 
-}
-
-VarInt Ranking::get_rank(const std::vector<std::set<int>> & factoring) {
+VarInt Ranking::get_rank(const vector<set<int>> & factoring) {
     return rank(factoring);
 }
 
-class MobilityRanking : public Ranking {
 
-public:
-    MobilityRanking(const Options &opts)
-            : Ranking(opts) {
-        feature = MOBILITY;
-    };
-
-    virtual VarInt rank(const vector<set<int>> &);
-};
-
-class LeavesRanking : public Ranking {
-
-public:
-    LeavesRanking(const Options &opts)
-            : Ranking(opts) {
-        feature = LEAVES;
-    };
-
-    virtual VarInt rank(const vector<set<int>> &);
-};
-
-class DomSizeRanking : public Ranking {
-
-public:
-    DomSizeRanking(const Options &opts)
-            : Ranking(opts) {
-        feature = L_VS_C_DOM_SIZE;
-    };
-
-    virtual VarInt rank(const vector<set<int>> &);
-};
-
-class VariablesRanking : public Ranking {
-
-public:
-    VariablesRanking(const Options &opts)
-            : Ranking(opts) {
-        feature = L_VS_C_VARS;
-    };
-
-    virtual VarInt rank(const vector<set<int>> &);
-};
-
-class AffActionsRanking : public Ranking {
-
-public:
-    AffActionsRanking(const Options &opts)
-            : Ranking(opts) {
-        feature = L_VS_C_AFF_ACTIONS;
-    };
-
-    virtual VarInt rank(const vector<set<int>> &);
-};
-
-void Ranking::print_all_rankings(const std::vector<std::set<int>> & factoring) {
-    MobilityRanking *mobility = new MobilityRanking(NULL);
+void Ranking::print_all_rankings(const vector<set<int> > &factoring) {
+    MobilityRanking *mobility = new MobilityRanking();
     cout << "mis_ranking_mobility: ";
     mobility->get_rank(factoring).dump_number();
-    LeavesRanking *leaves = new LeavesRanking(NULL);
+    LeavesRanking *leaves = new LeavesRanking();
     cout << "mis_ranking_leaves: ";
     leaves->get_rank(factoring).dump_number();
-    DomSizeRanking *dom_size = new DomSizeRanking(NULL);
+    DomSizeRanking *dom_size = new DomSizeRanking();
     cout << "mis_ranking_dom_size: ";
     dom_size->get_rank(factoring).dump_number();
-    VariablesRanking *vars = new VariablesRanking(NULL);
+    VariablesRanking *vars = new VariablesRanking();
     cout << "mis_ranking_variables: ";
     vars->get_rank(factoring).dump_number();
-    AffActionsRanking *aff_actions = new AffActionsRanking(NULL);
+    AffActionsRanking *aff_actions = new AffActionsRanking();
     cout << "mis_ranking_aff_actions: ";
     aff_actions->get_rank(factoring).dump_number();
 }
 
-VarInt MobilityRanking::rank(const vector<set<int>> &factoring) {
+VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
     if (factoring.size() == 0){
         return 0;
     }
@@ -421,70 +364,50 @@ uint64_t rank_aff_a(const vector<set<int>> &factoring, bool all_data, bool aff_l
 }
 
 static Ranking *_parse_mobility(OptionParser &parser) {
-    //TODO docu
-    //Ranking::add_options_to_parser(parser);
-
-    Options opts = parser.parse();
 
     MobilityRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new MobilityRanking(opts);
+        ranking = new MobilityRanking();
     }
 
     return ranking;
 }
 
 static Ranking *_parse_leaves(OptionParser &parser) {
-    //TODO docu
-    //Ranking::add_options_to_parser(parser);
-
-    Options opts = parser.parse();
 
     LeavesRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new LeavesRanking(opts);
+        ranking = new LeavesRanking();
     }
 
     return ranking;
 }
 
 static Ranking *_parse_dom_size(OptionParser &parser) {
-    //TODO docu
-    //Ranking::add_options_to_parser(parser);
-
-    Options opts = parser.parse();
 
     DomSizeRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new DomSizeRanking(opts);
+        ranking = new DomSizeRanking();
     }
 
     return ranking;
 }
 
 static Ranking *_parse_vars(OptionParser &parser) {
-    //TODO docu
-    //Ranking::add_options_to_parser(parser);
-
-    Options opts = parser.parse();
 
     VariablesRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new VariablesRanking(opts);
+        ranking = new VariablesRanking();
     }
 
     return ranking;
 }
 
 static Ranking *_parse_aff_actions(OptionParser &parser) {
-    //TODO docu
-    //Ranking::add_options_to_parser(parser);
-
-    Options opts = parser.parse();
 
     AffActionsRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new AffActionsRanking(opts);
+        ranking = new AffActionsRanking();
     }
 
     return ranking;

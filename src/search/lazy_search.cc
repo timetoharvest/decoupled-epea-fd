@@ -31,6 +31,11 @@ LazySearch::LazySearch(const Options &opts)
 }
 
 LazySearch::~LazySearch() {
+    delete open_list;
+    
+    for (auto heuristic : heuristics){
+        delete heuristic;
+    } 
 }
 
 void LazySearch::set_pref_operator_heuristics(

@@ -7,6 +7,7 @@
 #include <set>
 #include <vector>
 
+
 enum FEATURE {
     MOBILITY,
     LEAVES,
@@ -21,7 +22,6 @@ enum FEATURE {
     NO
 };
 
-class Options;
 
 class Ranking {
 
@@ -29,9 +29,9 @@ protected:
 
     FEATURE feature;
 
-    virtual VarInt rank(const std::vector<std::set<int>> &) = 0;
+    virtual VarInt rank(const std::vector<std::set<int> > &) = 0;
 
-    Ranking(const Options &ops);
+    Ranking() {};
 
 public:
 
@@ -39,9 +39,62 @@ public:
         return feature;
     }
 
-    VarInt get_rank(const std::vector<std::set<int>> &);
+    VarInt get_rank(const std::vector<std::set<int> > &);
 
-    void print_all_rankings(const std::vector<std::set<int>> &);
+    void print_all_rankings(const std::vector<std::set<int> > &);
+};
+
+
+
+
+class MobilityRanking : public Ranking {
+
+public:
+    MobilityRanking() : Ranking() {
+        feature = MOBILITY;
+    };
+
+    virtual VarInt rank(const std::vector<std::set<int> > &);
+};
+
+class LeavesRanking : public Ranking {
+
+public:
+    LeavesRanking() : Ranking() {
+        feature = LEAVES;
+    };
+
+    virtual VarInt rank(const std::vector<std::set<int> > &);
+};
+
+class DomSizeRanking : public Ranking {
+
+public:
+    DomSizeRanking() : Ranking() {
+        feature = L_VS_C_DOM_SIZE;
+    };
+
+    virtual VarInt rank(const std::vector<std::set<int> > &);
+};
+
+class VariablesRanking : public Ranking {
+
+public:
+    VariablesRanking() : Ranking() {
+        feature = L_VS_C_VARS;
+    };
+
+    virtual VarInt rank(const std::vector<std::set<int> > &);
+};
+
+class AffActionsRanking : public Ranking {
+
+public:
+    AffActionsRanking() : Ranking() {
+        feature = L_VS_C_AFF_ACTIONS;
+    };
+
+    virtual VarInt rank(const std::vector<std::set<int> > &);
 };
 
 #endif

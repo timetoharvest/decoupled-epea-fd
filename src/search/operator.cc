@@ -172,6 +172,8 @@ bool Operator::is_center_applicable(const State &state) const {
     
 void Operator::set_affected_factor(LeafFactorID factor) {
     affects_factor = factor;
+    pre_by_factor.clear(); // need to do this to support short searches in AutoFactoring
+    eff_by_factor.clear();
 
     for (size_t i = 0; i < preconditions.size(); ++i){
         LeafFactorID f = g_belongs_to_factor[preconditions[i].var];
