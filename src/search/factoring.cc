@@ -1086,7 +1086,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
-        for (size_t cand = 0; cand < variables[arcs].size(); cand++){
+        for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
             //center.push_back(variables[arcs][cand]);
             
             leaf_vars.erase(variables[arcs][cand]);            
@@ -1095,15 +1095,15 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
             
             vector<bool> discard_leaf = get_frozen_leaves(factoring);
             
-            int number_leaves = factoring.size();
+            size_t number_leaves = factoring.size();
             for (size_t i = 0; i < factoring.size(); ++i){
                 if (discard_leaf[i]){
-                    number_leaves--;
+                    --number_leaves;
                     continue;
                 }
                 uint64_t size = 1;
-                for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-                    size *= g_variable_domain[*it];
+                for (int var : factoring[i]){
+                    size *= g_variable_domain[var];
                     if (max_leaf_size != 0 && size > max_leaf_size){
                         break;
                     }
