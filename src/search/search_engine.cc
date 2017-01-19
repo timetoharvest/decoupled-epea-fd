@@ -18,6 +18,7 @@ using namespace std;
 SearchEngine::SearchEngine(const Options &opts)
     : status(IN_PROGRESS),
       solution_found(false),
+      search_terminated(true),
       cheapest_goal_state(StateID::no_state),
       search_space(OperatorCost(opts.get_enum("cost_type"))),
       cost_type(OperatorCost(opts.get_enum("cost_type"))),
@@ -30,9 +31,6 @@ SearchEngine::SearchEngine(const Options &opts)
     if (g_factoring){
 	CompliantPathGraph::set_cost_type(cost_type);
     }
-}
-
-SearchEngine::~SearchEngine() {
 }
 
 void SearchEngine::statistics() const {
@@ -64,6 +62,7 @@ void SearchEngine::search() {
         status = step();
         if (timer.is_expired()) {
             cout << "Time limit reached. Abort search." << endl;
+            search_terminated = false;
             status = TIMEOUT;
             break;
         }

@@ -821,7 +821,10 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
     
     cout.rdbuf(real_out);
     
-    if (engine->found_solution()){
+    if (engine->found_solution() && engine->search_terminated){
+        // second condition is needed in optimal planning to check
+        // if the plan is proved optimal
+        
         g_timer.stop();
         
         cout << tmp_out.str();
