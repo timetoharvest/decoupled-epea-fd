@@ -824,6 +824,9 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
     if (engine->found_solution() && engine->search_terminated){
         // second condition is needed in optimal planning to check
         // if the plan is proved optimal
+        // TODO to follow up on this: it could make sense to pass the upper
+        // bound derived in an early search to later searches, to improve performance
+        // and allow for stronger upper-bound pruning
         
         g_timer.stop();
         
