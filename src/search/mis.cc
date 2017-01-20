@@ -427,7 +427,7 @@ void MIS::find_connected_components(const NGraph &g, CtoCCMap *c_to_cc, ConComp 
     int m = 0;
     while (seen < g.size()) {
         if (open_c.empty()) {
-            for (size_t i = m + 1; i < g.size(); ++i) {
+            for (size_t i = m; i < g.size(); ++i) {
                 if (!g[i].empty()) {
                     if ((*c_to_cc)[i] == -1) {
                         m = i;
@@ -449,11 +449,13 @@ void MIS::find_connected_components(const NGraph &g, CtoCCMap *c_to_cc, ConComp 
             open_c.pop();
             seen++;
             for (int n : g[c]) {
-                if ((*c_to_cc)[n] == -1) {
-                    int comp = (*c_to_cc)[c];
-                    (*c_to_cc)[n] = comp;
-                    (*cc)[comp].insert(n);
-                    open_c.push(n);
+                if (c != n) {
+                    if ((*c_to_cc)[n] == -1) {
+                        int comp = (*c_to_cc)[c];
+                        (*c_to_cc)[n] = comp;
+                        (*cc)[comp].insert(n);
+                        open_c.push(n);
+                    }
                 }
             }
         }
