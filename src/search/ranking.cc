@@ -13,7 +13,7 @@ VarInt Ranking::get_rank(const vector<set<int>> & factoring) {
 }
 
 
-void Ranking::print_all_rankings(const vector<set<int> > &factoring) {
+void print_all_rankings(const vector<set<int> > &factoring) {
     MobilityRanking *mobility = new MobilityRanking();
     cout << "mis_ranking_mobility: ";
     mobility->get_rank(factoring).dump_number();
@@ -234,7 +234,12 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     }
     vector<int> affecting_ratio(factoring.size(),0);
     for (size_t i = 0; i < factoring.size(); ++i) {
-        affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
+        int aff_actions = affecting_leaf[i] + affecting_center[i];
+        if (aff_actions != 0) {
+            affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
+        } else {
+            affecting_ratio[i] = 0;
+        }
     }
     int result = 0;
     for (size_t i = 0; i < factoring.size(); ++i) {
@@ -243,124 +248,6 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     result = result / factoring.size();
     VarInt res(result);
     return res;
-}
-
-
-// Deprecated functions ----------------------------------------
-
-uint64_t rank_leaf_size_avg(const vector<set<int>> &factoring, bool all_data) {
-    int avg = 0;
-    int max = 0;
-    int min = 0;
-    if (!factoring.empty()) {
-        min = factoring[0].size();
-        for (set<int> factor:factoring) {
-            int s = (int) factor.size();
-            avg += s;
-            if (s > max) {
-                max = s;
-            }
-            if (s < min) {
-                min = s;
-            }
-        }
-        avg = avg / factoring.size();
-    }
-    if (all_data) {
-        cout << "Ranking " << "leaf_size_min" << ": " << min << endl;
-        cout << "Ranking " << "leaf_size_max" << ": " << max << endl;
-    }
-    return (uint64_t)avg;
-}
-
-uint64_t rank_center_size(const vector<set<int>> &factoring, bool) {
-    size_t size = g_variable_domain.size();
-    for (set<int> f:factoring){
-        size -= f.size();
-    }
-    return size;
-}
-
-
-uint64_t rank_aff_a(const vector<set<int>> &factoring, bool all_data, bool aff_leaf, bool leaf_a) {
-    vector<int> factor_affecting_actions(factoring.size(), 0);
-    int affecting_center = 0;
-    vector<int> belongs_to_factor(g_variable_domain.size(), -1);
-
-    for (size_t i = 0; i < factoring.size(); i++){
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-            belongs_to_factor[*it] = i;
-        }
-    }
-
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
-        bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
-                center = true;
-            }
-        }
-        if (aff_leaf && leaf_a && !center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-            (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            ++factor_affecting_actions[affects_factor];
-        }
-        else if (aff_leaf && !leaf_a && (center || (eff_factors.size() > 1) || (pre_factors.size() > 1) ||
-                                         !(pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin())))) {
-            for (int eff:eff_factors) {
-                if (eff != -1) {
-                    ++factor_affecting_actions[eff];
-                }
-            }
-        }
-        else if (!aff_leaf && center) {
-            ++affecting_center;
-        }
-
-    }
-    if (aff_leaf) {
-        int avg = 0;
-        int max = 0;
-        int min = 0;
-        if (!factor_affecting_actions.empty()) {
-            min = factor_affecting_actions[0];
-            for (int i:factor_affecting_actions) {
-                avg += i;
-                if (i > max) {
-                    max = i;
-                }
-                if (i < min) {
-                    min = i;
-                }
-            }
-            avg = avg / factor_affecting_actions.size();
-        }
-        if (all_data) {
-            if (!leaf_a) {
-                cout << "Ranking " << "leaf_affecting_center_actions_min" << ": " << min << endl;
-                cout << "Ranking " << "leaf_affecting_center_actions_max" << ": " << max << endl;
-            } else {
-                cout << "Ranking " << "leaf_affecting_leaf_actions_min" << ": " << min << endl;
-                cout << "Ranking " << "leaf_affecting_leaf_actions_max" << ": " << max << endl;
-            }
-        }
-        return (uint64_t) avg;
-    } else {
-        return (uint64_t) affecting_center;
-    }
-
 }
 
 static Ranking *_parse_mobility(OptionParser &parser) {

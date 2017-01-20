@@ -41,10 +41,9 @@ public:
 
     VarInt get_rank(const std::vector<std::set<int> > &);
 
-    void print_all_rankings(const std::vector<std::set<int> > &);
 };
 
-
+void print_all_rankings(const std::vector<std::set<int> > &);
 
 
 class MobilityRanking : public Ranking {
