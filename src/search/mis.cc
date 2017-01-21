@@ -80,40 +80,42 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
                 int w = -1;
                 bool found = false;
                 bool equal = false;
-                for (size_t i = 0; i < g.size(); ++i) {
+                for (size_t i = 0; i < g.size() && !found; ++i) {
                     if (!g[i].empty()) {
                         for (size_t n:g[i]) {
-                            if (n != i && g[i].size() >= g[n].size()) {
-                                bool subset = true;
-                                for (set<int>::iterator nn = g[n].begin(); nn != g[n].end(); nn++) {
-                                    if (g[i].find(*nn) == g[i].end() && *nn != (int)i) {
-                                        subset = false;
+                            if (n != i) {
+                                if (g[i].size() >= g[n].size()) {
+                                    bool subset = true;
+                                    for (set<int>::iterator nn = g[n].begin(); nn != g[n].end(); nn++) {
+                                        if (g[i].find(*nn) == g[i].end() && *nn != (int) i) {
+                                            subset = false;
+                                            break;
+                                        }
+                                    }
+                                    if (subset) {
+                                        if (g[i].size() == g[n].size()) {
+                                            equal = true;
+                                        }
+                                        w = n;
+                                        found = true;
+                                        v1 = i;
                                         break;
                                     }
-                                }
-                                if (subset) {
-                                    if (g[i].size() == g[n].size()) {
-                                        equal = true;
-                                    }
-                                    w = n;
-                                    found = true;
-                                    v1 = i;
-                                    break;
-                                }
 
-                            } else if (g[i].size() < g[n].size()) {
-                                bool subset = true;
-                                for (size_t v:g[i]) {
-                                    if (g[n].find(v) == g[n].end() && v != n) {
-                                        subset = false;
+                                } else if (g[i].size() < g[n].size()) {
+                                    bool subset = true;
+                                    for (size_t v:g[i]) {
+                                        if (g[n].find(v) == g[n].end() && v != n) {
+                                            subset = false;
+                                            break;
+                                        }
+                                    }
+                                    if (subset) {
+                                        found = true;
+                                        w = i;
+                                        v1 = n;
                                         break;
                                     }
-                                }
-                                if (subset) {
-                                    found = true;
-                                    w = i;
-                                    v1 = n;
-                                    break;
                                 }
                             }
                         }
@@ -158,9 +160,18 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
                         }
                     }
                     if (found) {
-                        set<int>::iterator it = g[v2].begin();
-                        int u1 = *(it);
-                        int u2 = *(++it);
+                        pair<int,int> u(-1,-1);
+                        for (int i : g[v2]){
+                            if (i != v2) {
+                                if (u.first == -1) {
+                                    u.first = i;
+                                } else {
+                                    u.second = i;
+                                }
+                            }
+                        }
+                        int u1 = u.first;
+                        int u2 = u.second;
                         if (g[u1].find(u2) == g[u1].end()) {
                             // case 1: select v; remove v, u1, u2
                             NGraph gf = remove_components(remove_components(g, g[v2]), v2);
@@ -191,6 +202,7 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
 
                         } else {
                             // should never happen, as this case should have been resolved by dominance first
+                            print_graph(g);
                             cout <<  "###############   INVALID FOLDING   ###############" << endl;
                             exit_with(EXIT_CRITICAL_ERROR);
                         }
