@@ -2023,25 +2023,35 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
     while (minimize) {
         candidates.clear();
         candidates_to_leaf.clear();
+        var_to_factor.clear();
+        for (size_t i = 0; i < mis.size(); i++) {
+            for (set<int>::iterator it = mis[i].begin(); it != mis[i].end(); ++it) {
+                var_to_factor.insert(pair<int, int>(*it, i));
+            }
+        }
+        for (size_t i = 0; i < in_center.size(); i++) {
+            if (in_center[i]) {
+                var_to_factor.insert(make_pair(i, -1));
+            }
+        }
 
         // collect candidates (center vars with one leaf neighbour)
-        for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+        for (int c : center) {
             set<int> leaf_neighbours;
-            for (const auto &n : g.at(*it)) {
+            for (const auto &n : g.at(c)) {
                 if (!in_center[n]) {
                     leaf_neighbours.insert(var_to_factor.at(n));
                 }
             }
-
             if (leaf_neighbours.size() == 1) {
                 // check leaf factor size
                 uint64_t f_size = 1;
                 for (int v:mis[*leaf_neighbours.begin()]) {
                     f_size *= g_variable_domain[v];
                 }
-                uint64_t tmp_size = f_size * g_variable_domain[*it];
+                uint64_t tmp_size = f_size * g_variable_domain[c];
                 if (tmp_size <= max_leaf_size) {
-                    candidates.push_back(*it);
+                    candidates.push_back(c);
                     candidates_to_leaf.push_back(*leaf_neighbours.begin());
                 }
             }
@@ -2238,9 +2248,11 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     if (!frozen_leaves[i]) {
                         temp.push_back(mis[i]);
                     } else {
-                        in_center[i] = true;
-                        center.insert(i);
-                        var_to_factor[i] = -1;
+                        for (int v : mis[i]) {
+                            in_center[v] = true;
+                            center.insert(v);
+                            var_to_factor[v] = -1;
+                        }
                         f_rm++;
                     }
                 }
@@ -2251,8 +2263,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 } else if (!arg_minimize_frozen) {
                     break;
                 } else {
-
-
                     f_c = 0;
                     // only continue to minimize center, including frozen leaves, if minimize_frozen = true
                     for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
@@ -2907,10 +2917,6 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "build_state_space_size",
         "TODO",
         "10000");
-    parser.add_option<bool>(
-        "no_search",
-        "TODO",
-        "false");
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser &parser) {

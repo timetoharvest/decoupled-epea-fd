@@ -82,8 +82,8 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
                 bool equal = false;
                 for (size_t i = 0; i < g.size(); ++i) {
                     if (!g[i].empty()) {
-                        for (int n:g[i]) {
-                            if (g[i].size() >= g[n].size()) {
+                        for (size_t n:g[i]) {
+                            if (n != i && g[i].size() >= g[n].size()) {
                                 bool subset = true;
                                 for (set<int>::iterator nn = g[n].begin(); nn != g[n].end(); nn++) {
                                     if (g[i].find(*nn) == g[i].end() && *nn != (int)i) {
@@ -103,7 +103,7 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
 
                             } else if (g[i].size() < g[n].size()) {
                                 bool subset = true;
-                                for (int v:g[i]) {
+                                for (size_t v:g[i]) {
                                     if (g[n].find(v) == g[n].end() && v != n) {
                                         subset = false;
                                         break;
@@ -145,12 +145,12 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
                         stack.push_front(make_pair(make_pair(g_without_v, tag), mis));
                     }
                 } else {
-                    //find foldable vertex v (d(v) = 2)
+                    //find foldable vertex v (d(v) = 2) [ = 3 as every node is its own neighbour]
                     found = false;
                     
                     int v2;
                     for (size_t i = 0; i < g.size(); ++i) {
-                        if (g[i].size() == 2) {
+                        if (g[i].size() == 3) {
                             v2 = i;
                             found = true;
                             break;
