@@ -705,34 +705,43 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     }
     
     cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
-    
+
     FactoredVars best_factoring;
-    vector<size_t> best_ranking;    
+    vector<vector<size_t>> all_rankings;
     for (const auto &factoring : factorings){
         cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
-    
+
         g_factoring->apply_factoring(factoring);
-        
+
         vector<size_t> ranking = run_and_rank_search();
-        
-        if (best_ranking.empty()){
-            best_factoring = factoring;
-            best_ranking = ranking;
-        } else {
-            for (size_t i = 0; i < ranking.size(); ++i){
-                if (ranking[i] > best_ranking[i]){
-                    best_factoring = factoring;
-                    best_ranking = ranking;
-                    break;
-                }
-            }
-        }
-        
+        all_rankings.push_back(ranking);
+
         reset_globals();
-        
+
         cout << endl << endl;
     }
-    
+
+    if (!factorings.empty()) {
+        int best_ranking = 0;
+        int best_count = 0;
+        for (size_t r1 = 0; r1 < all_rankings.size(); ++r1) {
+            int better = 0;
+            for (size_t r2 = 0; r2 < all_rankings.size(); ++r2) {
+                if (r1 != r2) {
+                    for (size_t i = 0; i < all_rankings[r1].size(); ++i) {
+                        if (all_rankings[r1][i] >= all_rankings[r2][i]) {
+                            better++;
+                        }
+                    }
+                }
+            }
+            if (better > best_count) {
+                best_ranking = r1;
+                best_count = better;
+            }
+        }
+        best_factoring = factorings[best_ranking];
+    }
     return best_factoring;
 }
 
@@ -819,7 +828,17 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
     search_timer.stop();
     
     cout.rdbuf(real_out);
-    
+
+    vector<size_t> ranking;
+    size_t dec_state_space_size = g_state_registry->get_decoupled_state_space_size();
+    size_t heuristic_value_improv = engine->search_progress.best_heuristic_values[0] / engine->search_progress.initial_h_values[0];
+    size_t exp_states = engine->search_progress.expanded_states;
+    size_t eval_states = engine->search_progress.evaluated_states;
+    ranking.push_back(dec_state_space_size);
+    ranking.push_back(heuristic_value_improv);
+    ranking.push_back(exp_states);
+    ranking.push_back(eval_states);
+
     if (engine->found_solution()){
         g_timer.stop();
         
@@ -836,12 +855,16 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
         // TODO generate some reasonable output
         // TODO e.g. get_max_number_duplicates() from g_state_registry and the data in search_engine->search_progress.*
         cout << "did not find goal in test search" << endl;
-        cout << "dec state space size: " << g_state_registry->get_decoupled_state_space_size() << endl;
-    } 
-    
+        cout << "decoupled state space size: " << dec_state_space_size << endl;
+        cout << "improved heuristic value by: " << heuristic_value_improv << endl;
+        cout << "expanded states: " << exp_states << endl;
+        cout << "evaluated states: " << eval_states << endl;
+    }
+    cout << "max number duplicates: " << g_state_registry->get_max_number_duplicates() << endl;
+
     delete engine;
     
-    return vector<size_t>(1, g_state_registry->get_decoupled_state_space_size()); // TODO add more features
+    return ranking; // TODO add more features
 }
 
 void AutoFactoring::reset_globals() const {
