@@ -22,6 +22,10 @@ public:
 private:
     SearchStatus status;
     bool solution_found;
+    
+    // this is used in AutoFactoring for optimal search
+    // to check if the found solution is proved optimal
+    bool search_terminated;
     mutable Plan plan;
     StateID cheapest_goal_state;
     bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
@@ -44,7 +48,7 @@ protected:
     int get_adjusted_cost(const Operator &op) const;
 public:
     SearchEngine(const Options &opts);
-    virtual ~SearchEngine();
+    virtual ~SearchEngine() = default;
     virtual void statistics() const;
     virtual void heuristic_statistics() const {}
     virtual void save_plan_if_necessary() const;

@@ -668,8 +668,8 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
         cout << "no factorings provided, using default settings" << endl;
         factoring_methods.push_back(new ForkFactoring());
         factoring_methods.push_back(new ForkFactoring(I_FORK));
+        factoring_methods.push_back(new IncidentArcsFactoring());
         factoring_methods.push_back(new MaxIndependentSetFactoring());
-//         factoring_methods.push_back(new IncidentArcsFactoring()); // TODO debug this first
     }
 }
 
@@ -705,14 +705,14 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     }
     
     cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
-
+    
     FactoredVars best_factoring;
     vector<vector<size_t>> all_rankings;
     for (const auto &factoring : factorings){
         cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
-
+    
         g_factoring->apply_factoring(factoring);
-
+        
         vector<size_t> ranking = run_and_rank_search();
         all_rankings.push_back(ranking);
 
@@ -742,6 +742,7 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         }
         best_factoring = factorings[best_ranking];
     }
+    
     return best_factoring;
 }
 
@@ -853,7 +854,6 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
         exit_with(EXIT_PLAN_FOUND);
     } else {
         // TODO generate some reasonable output
-        // TODO e.g. get_max_number_duplicates() from g_state_registry and the data in search_engine->search_progress.*
         cout << "did not find goal in test search" << endl;
         cout << "decoupled state space size: " << dec_state_space_size << endl;
         cout << "improved heuristic value by: " << heuristic_value_improv << endl;
@@ -1101,7 +1101,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     FactoredVars best_factoring;
-    int best_number_leaves = 0;
+    size_t best_number_leaves = 0;
     
     vector<bool> discarded_leaves;
     
@@ -1111,7 +1111,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
-        for (size_t cand = 0; cand < variables[arcs].size(); cand++){
+        for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
             //center.push_back(variables[arcs][cand]);
             
             leaf_vars.erase(variables[arcs][cand]);            
@@ -1120,15 +1120,15 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
             
             vector<bool> discard_leaf = get_frozen_leaves(factoring);
             
-            int number_leaves = factoring.size();
+            size_t number_leaves = factoring.size();
             for (size_t i = 0; i < factoring.size(); ++i){
                 if (discard_leaf[i]){
-                    number_leaves--;
+                    --number_leaves;
                     continue;
                 }
                 uint64_t size = 1;
-                for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-                    size *= g_variable_domain[*it];
+                for (int var : factoring[i]){
+                    size *= g_variable_domain[var];
                     if (max_leaf_size != 0 && size > max_leaf_size){
                         break;
                     }
@@ -1139,7 +1139,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
             
-            if (number_leaves > best_number_leaves){
+            if (number_leaves >= best_number_leaves){
                 best_factoring = factoring;
                 discarded_leaves = discard_leaf;
                 best_number_leaves = number_leaves;
@@ -1787,36 +1787,52 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
 vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const {
     vector<bool> is_frozen_factor(components.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
+    size_t num_frozen = components.size();
     
     for (size_t i = 0; i < components.size(); i++){
-        for (set<int>::iterator it = components[i].begin(); it != components[i].end(); ++it){
-            belongs_to_factor[*it] = i;
+        for (int var : components[i]){
+            belongs_to_factor[var] = i;
         }
     }
     
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
+    for (const Operator &op : g_operators){
         bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
+        set<int> eff_factors;
+        int affects_factor = -1;
+        
+        for (const Effect &eff : op.get_effects()){
+            eff_factors.insert(belongs_to_factor[eff.var]);
+            affects_factor = belongs_to_factor[eff.var];
+            if (affects_factor == -1 || eff_factors.size() > 1){
                 center = true;
+                break;
             }
         }
-        if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-                (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            is_frozen_factor[affects_factor] = false;
+        
+        if (center){
+            // op affects center variable or has effect on more than 1 factor
+            continue;
+        }
+        if (!is_frozen_factor[affects_factor]){
+            // factor is mobile, no need to continue
+            continue;
+        }
+        
+        set<int> pre_factors;
+        for (const Condition &pre : op.get_preconditions()) {
+            pre_factors.insert(belongs_to_factor[pre.var]);
+        }
+        pre_factors.erase(-1);
+        
+        if (pre_factors.size() <= 1  && (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())){
+            // op has only preconditions and effects on (at most) a single leaf factor
+            if (is_frozen_factor[affects_factor]){
+                --num_frozen;
+                is_frozen_factor[affects_factor] = false;
+                if (num_frozen == 0){
+                    return is_frozen_factor;
+                }
+            }
         }
     }
 
