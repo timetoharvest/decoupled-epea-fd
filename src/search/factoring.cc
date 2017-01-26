@@ -1876,8 +1876,14 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         for (Ranking * ranking:arg_rankings) {
             VarInt vi(ranking->get_rank(m));
             rankings.push_back(vi);
-            if (rankings[n] > max_rank[n]) {
-                update = true;
+            if (ranking->maximizes()) {
+                if (rankings[n] > max_rank[n]) {
+                    update = true;
+                }
+            } else {
+                if (rankings[n] < max_rank[n]) {
+                    update = true;
+                }
             }
             ++n;
         }
@@ -2112,8 +2118,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 for (Ranking * ranking:arg_rankings) {
                     VarInt vi(ranking->get_rank(mis));
                     rankings.push_back(vi);
-                    if (rankings[n] > max_rank[n]) {
-                        update = true;
+                    if (ranking->maximizes()) {
+                        if (rankings[n] > max_rank[n]) {
+                            update = true;
+                        }
+                    } else {
+                        if (rankings[n] < max_rank[n]) {
+                            update = true;
+                        }
                     }
                     ++n;
                 }
@@ -2223,8 +2235,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             for (Ranking *ranking:arg_rankings) {
                                 VarInt vi(ranking->get_rank(new_mis));
                                 rankings.push_back(vi);
-                                if (rankings[n] > max_rank[n]) {
-                                    update = true;
+                                if (ranking->maximizes()) {
+                                    if (rankings[n] > max_rank[n]) {
+                                        update = true;
+                                    }
+                                } else {
+                                    if (rankings[n] < max_rank[n]) {
+                                        update = true;
+                                    }
                                 }
                                 ++n;
                             }

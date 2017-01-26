@@ -7,6 +7,9 @@
 
 using namespace std;
 
+Ranking::Ranking(const Options &opts) :
+            maximize(opts.get<bool>("maximize")) { }
+
 
 VarInt Ranking::get_rank(const vector<set<int>> & factoring) {
     return rank(factoring);
@@ -244,12 +247,7 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     }
     vector<int> affecting_ratio(factoring.size(),0);
     for (size_t i = 0; i < factoring.size(); ++i) {
-        int aff_actions = affecting_leaf[i] + affecting_center[i];
-        if (aff_actions != 0) {
-            affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
-        } else {
-            affecting_ratio[i] = 0;
-        }
+        affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
     }
     int result = 0;
     for (size_t i = 0; i < factoring.size(); ++i) {
@@ -260,11 +258,20 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     return res;
 }
 
+void Ranking::add_options_to_parser(OptionParser &parser) {
+    parser.add_option<bool>(
+            "maximize",
+            "TODO",
+            "true");
+}
+
 static Ranking *_parse_mobility(OptionParser &parser) {
 
+    Ranking::add_options_to_parser(parser);
+    Options opts = parser.parse();
     MobilityRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new MobilityRanking();
+        ranking = new MobilityRanking(opts);
     }
 
     return ranking;
@@ -272,9 +279,11 @@ static Ranking *_parse_mobility(OptionParser &parser) {
 
 static Ranking *_parse_leaves(OptionParser &parser) {
 
+    Ranking::add_options_to_parser(parser);
+    Options opts = parser.parse();
     LeavesRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new LeavesRanking();
+        ranking = new LeavesRanking(opts);
     }
 
     return ranking;
@@ -282,9 +291,11 @@ static Ranking *_parse_leaves(OptionParser &parser) {
 
 static Ranking *_parse_dom_size(OptionParser &parser) {
 
+    Ranking::add_options_to_parser(parser);
+    Options opts = parser.parse();
     DomSizeRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new DomSizeRanking();
+        ranking = new DomSizeRanking(opts);
     }
 
     return ranking;
@@ -292,9 +303,11 @@ static Ranking *_parse_dom_size(OptionParser &parser) {
 
 static Ranking *_parse_vars(OptionParser &parser) {
 
+    Ranking::add_options_to_parser(parser);
+    Options opts = parser.parse();
     VariablesRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new VariablesRanking();
+        ranking = new VariablesRanking(opts);
     }
 
     return ranking;
@@ -302,9 +315,11 @@ static Ranking *_parse_vars(OptionParser &parser) {
 
 static Ranking *_parse_aff_actions(OptionParser &parser) {
 
+    Ranking::add_options_to_parser(parser);
+    Options opts = parser.parse();
     AffActionsRanking *ranking = 0;
     if (!parser.dry_run()) {
-        ranking = new AffActionsRanking();
+        ranking = new AffActionsRanking(opts);
     }
 
     return ranking;

@@ -1,6 +1,7 @@
 #ifndef RANKING_H
 #define RANKING_H
 
+#include "globals.h"
 #include "utilities.h"
 #include "variable_int.h"
 
@@ -22,6 +23,8 @@ enum FEATURE {
     NO
 };
 
+class OptionParser;
+class Options;
 
 class Ranking {
 
@@ -29,9 +32,15 @@ protected:
 
     FEATURE feature;
 
+    bool maximize;
+
     virtual VarInt rank(const std::vector<std::set<int> > &) = 0;
 
-    Ranking() {};
+    Ranking() {
+        maximize = true;
+    };
+
+    Ranking(const Options &ops);
 
 public:
 
@@ -39,7 +48,13 @@ public:
         return feature;
     }
 
+    bool maximizes() const {
+        return maximize;
+    }
+
     VarInt get_rank(const std::vector<std::set<int> > &);
+
+    static void add_options_to_parser(OptionParser &parser);
 
 };
 
@@ -50,6 +65,10 @@ class MobilityRanking : public Ranking {
 
 public:
     MobilityRanking() : Ranking() {
+        maximize = true;
+        feature = MOBILITY;
+    }
+    MobilityRanking(const Options &opts) : Ranking(opts) {
         feature = MOBILITY;
     };
 
@@ -60,6 +79,10 @@ class LeavesRanking : public Ranking {
 
 public:
     LeavesRanking() : Ranking() {
+        maximize = true;
+        feature = LEAVES;
+    }
+    LeavesRanking(const Options &opts) : Ranking(opts) {
         feature = LEAVES;
     };
 
@@ -70,6 +93,10 @@ class DomSizeRanking : public Ranking {
 
 public:
     DomSizeRanking() : Ranking() {
+        maximize = true;
+        feature = L_VS_C_DOM_SIZE;
+    }
+    DomSizeRanking(const Options &opts) : Ranking(opts) {
         feature = L_VS_C_DOM_SIZE;
     };
 
@@ -80,6 +107,10 @@ class VariablesRanking : public Ranking {
 
 public:
     VariablesRanking() : Ranking() {
+        maximize = true;
+        feature = L_VS_C_VARS;
+    }
+    VariablesRanking(const Options &opts) : Ranking(opts) {
         feature = L_VS_C_VARS;
     };
 
@@ -90,6 +121,10 @@ class AffActionsRanking : public Ranking {
 
 public:
     AffActionsRanking() : Ranking() {
+        maximize = true;
+        feature = L_VS_C_AFF_ACTIONS;
+    }
+    AffActionsRanking(const Options &opts) : Ranking(opts) {
         feature = L_VS_C_AFF_ACTIONS;
     };
 
