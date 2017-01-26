@@ -47,28 +47,33 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
         }
     }
 
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
+    for (const Operator &op : g_operators){
         bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
+        set<int> eff_factors;
+        int affects_factor = -1;
+
+        for (const Effect &eff : op.get_effects()){
+            eff_factors.insert(belongs_to_factor[eff.var]);
+            affects_factor = belongs_to_factor[eff.var];
+            if (affects_factor == -1 || eff_factors.size() > 1){
                 center = true;
+                break;
             }
         }
-        if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-            (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
+
+        if (center){
+            // op affects center variable or has effect on more than 1 factor
+            continue;
+        }
+
+        set<int> pre_factors;
+        for (const Condition &pre : op.get_preconditions()) {
+            pre_factors.insert(belongs_to_factor[pre.var]);
+        }
+        pre_factors.erase(-1);
+
+        if (pre_factors.size() <= 1  && (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())){
+            // op has only preconditions and effects on (at most) a single leaf factor
             ++factor_actions[affects_factor];
         }
     }
@@ -211,32 +216,42 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
         }
     }
 
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        set<int> pre_factors;
-        set<int> eff_factors;
-
-        for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-            const Condition &prevail = op->get_preconditions()[prev];
-            pre_factors.insert(belongs_to_factor[prevail.var]);
-        }
-        pre_factors.erase(-1);
+    for (const Operator &op : g_operators){
         bool center = false;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            eff_factors.insert(belongs_to_factor[prepost.var]);
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
+        set<int> eff_factors;
+        int affects_factor = -1;
+
+        for (const Effect &eff : op.get_effects()){
+            eff_factors.insert(belongs_to_factor[eff.var]);
+            affects_factor = belongs_to_factor[eff.var];
+            if (affects_factor == -1 || eff_factors.size() > 1){
                 center = true;
             }
         }
-        if (!center && !(eff_factors.size() > 1) && !(pre_factors.size() > 1) &&
-            (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
+
+        if (center) {
+            if (eff_factors.size() == 1) {
+                // op affects only center
+                continue;
+            } else {
+                for (int f:eff_factors) {
+                    if (f != -1) {
+                        ++affecting_center[f];
+
+                    }
+                }
+            }
+        }
+        set<int> pre_factors;
+        for (const Condition &pre : op.get_preconditions()) {
+            pre_factors.insert(belongs_to_factor[pre.var]);
+        }
+        pre_factors.erase(-1);
+
+        if ((pre_factors.size() <= 1) && (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
             ++affecting_leaf[affects_factor];
         }
-        else if (center || (eff_factors.size() > 1) || (pre_factors.size() > 1) ||
-                 !(pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
+        else {
             for (int f:eff_factors) {
                 if (f != -1) {
                     ++affecting_center[f];
