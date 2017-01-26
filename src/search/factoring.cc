@@ -268,8 +268,7 @@ protected:
     int arg_multiple_mis;
     NGraph cg_g; // cache used for AutoFactoring
     vector<FactoredVars> max_ind_sets; // cache used for AutoFactoring
-    
-    FactoredVars minimize_center(FactoredVars, const NGraph &);
+
     
     void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &) const;
     
@@ -1000,7 +999,7 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
             best_factoring[0].insert(var);
 	    current_size *= g_variable_domain[var];
         }
-        if (current_size > max_leaf_size){
+        if (max_leaf_size != 0 && current_size > max_leaf_size){
             best_factoring[0].erase(var);
 	    break;
 	}
@@ -1206,7 +1205,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
         
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
-            if (current_size <= max_leaf_size){
+            if (max_leaf_size == 0 || current_size <= max_leaf_size){
                 current_size *= g_variable_domain[var];
             }
 
@@ -1323,7 +1322,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                 uint64_t new_size = it->first;
                 for (set<int>::const_iterator scc_it = best_factoring[successor].begin(); scc_it != best_factoring[successor].end(); ++scc_it){
                     new_size *= g_variable_domain[*scc_it];
-                    if (new_size > max_leaf_size){
+                    if (max_leaf_size != 0 && new_size > max_leaf_size){
                         can_add = false;
                         break;
                     }
@@ -1411,7 +1410,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             vars_to_sccs[var] = i;
-            if (current_size <= max_leaf_size){
+            if (max_leaf_size == 0 || current_size <= max_leaf_size){
                 current_size *= g_variable_domain[var];
             }
 
@@ -1847,7 +1846,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         vector<set<int> > found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
 
         // generate factoring
-        for (set<int> m: found_mis) {
+        for (const set<int> &m : found_mis) {
             FactoredVars mis;
             for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
                 set<int> s;
@@ -1866,14 +1865,13 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;
-    VarInt x(0);
-    vector<VarInt> max_rank (arg_rankings.size(),x);
+    vector<VarInt> max_rank(arg_rankings.size(), VarInt(0));
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
-        FactoredVars m = max_ind_sets[i];
+        const FactoredVars &m = max_ind_sets[i];
         bool update = false;
         vector<VarInt> rankings;
         uint64_t n = 0;
-        for (Ranking * ranking:arg_rankings) {
+        for (Ranking *ranking : arg_rankings) {
             VarInt vi(ranking->get_rank(m));
             rankings.push_back(vi);
             if (ranking->maximizes()) {
@@ -1888,13 +1886,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             ++n;
         }
         if (update) {
+            assert(rankings.size() == arg_rankings.size());
             max = i;
-            if (rankings.size() < arg_rankings.size()) {
-                for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
-                    VarInt vi(arg_rankings[i]->get_rank(m));
-                    rankings.push_back(vi);
-                }
-            }
             max_rank = rankings;
         }
     }
@@ -1915,7 +1908,10 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     if (!arg_rankings.empty()) {
         cout << "Ranking of Factoring: ";
-        arg_rankings[0]->get_rank(final_factoring).dump_number();
+        for (size_t i = 0; i < arg_rankings.size(); ++i){
+            cout << "   ";
+            arg_rankings[i]->get_rank(final_factoring).dump_number();
+        }
         cout << endl;
     }
     if (arg_all_rankings) {
@@ -1926,18 +1922,16 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
 
     // push frozen leaves back in center
-    FactoredVars temp;
     int f_rm_max = f_rm[max];
 
     vector<bool> frozen_leaves = get_frozen_leaves(final_factoring);
-    for (size_t i = 0; i < frozen_leaves.size(); i++) {
-        if (!frozen_leaves[i]) {
-            temp.push_back(final_factoring[i]);
-        } else {
+    for (int i = frozen_leaves.size() - 1; i >= 0; --i) {
+        if (frozen_leaves[i]) {
+            final_factoring.erase(final_factoring.begin() + i);
             f_rm_max++;
         }
     }
-    final_factoring = temp;
+
     cout << "Removed frozen leaves: " << f_rm_max << endl;
 
     cout << "Number of factors: " << final_factoring.size() << endl;
@@ -1960,23 +1954,16 @@ vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const
 }
 
 NGraph MaxIndependentSetFactoring::generate_ngraph() const {
-    vector<int> vars;
-    for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        vars.push_back(var);
-    }
-
     // build neighbour representation of causal graph (easier to modify)
     // graph of vars (var -> neighbours)
-    NGraph cg_g(vars.size(), set<int>());
-    for (size_t i = 0; i < vars.size(); i++) {
-        cg_g[i].insert(i);
-        for (size_t pre = 0; pre < g_causal_graph->get_predecessors(vars[i]).size(); pre++) {
-            int var = g_causal_graph->get_predecessors(vars[i])[pre];
-            cg_g[i].insert(var);
+    NGraph cg_g(g_variable_domain.size(), set<int>());
+    for (size_t var = 0; var < g_variable_domain.size(); ++var) {
+        cg_g[var].insert(var);
+        for (auto pre : g_causal_graph->get_predecessors(var)) {
+            cg_g[var].insert(pre);
         }
-        for (size_t succ = 0; succ < g_causal_graph->get_successors(vars[i]).size(); succ++) {
-            int var = g_causal_graph->get_successors(vars[i])[succ];
-            cg_g[i].insert(var);
+        for (auto succ : g_causal_graph->get_successors(var)) {
+            cg_g[var].insert(succ);
         }
     }
     return cg_g;
@@ -2045,66 +2032,55 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
     }
 
     set<int> center;
-    vector<bool> in_center(g.size(), true);
-    vector<int> var_to_factor(g.size(), -1);
-    for (size_t i = 0; i < mis.size(); i++) {
-        for (set<int>::iterator it = mis[i].begin(); it != mis[i].end(); ++it) {
-            in_center[*it] = false;
-            var_to_factor[*it] = i;
+    vector<bool> in_center(g_variable_domain.size(), true);
+    vector<int> var_to_factor(g_variable_domain.size(), -1);
+    for (size_t i = 0; i < mis.size(); ++i) {
+        for (int var : mis[i]){
+            in_center[var] = false;
+            var_to_factor[var] = i;
         }
     }
-    for (size_t i = 0; i < in_center.size(); i++) {
-        if (in_center[i]) {
-            center.insert(i);
-            var_to_factor[i] = -1;
+    for (size_t var = 0; var < in_center.size(); ++var) {
+        if (in_center[var]) {
+            assert(var_to_factor[var] == -1);
+            center.insert(var);
         }
     }
 
     bool minimize = true;
     bool removed_frozen_leaves = false;
-    vector<int> candidates; // pos -> var
-    vector<int> candidates_to_leaf; // pos -> leaf
 
     while (minimize) {
-        candidates.clear();
-        candidates_to_leaf.clear();
-        var_to_factor.clear();
-        for (size_t i = 0; i < mis.size(); i++) {
-            for (set<int>::iterator it = mis[i].begin(); it != mis[i].end(); ++it) {
-                var_to_factor[*it] = i;
-            }
-        }
-        for (size_t i = 0; i < in_center.size(); i++) {
-            if (in_center[i]) {
-                var_to_factor[i] = -1;
-            }
-        }
+        vector<int> candidates; // pos -> var
+        vector<int> candidates_to_leaf; // pos -> leaf
 
         // collect candidates (center vars with one leaf neighbour)
         for (int c : center) {
-            set<int> leaf_neighbours;
-            for (const auto &n : g.at(c)) {
+            set<int> neighbour_leaves;
+            for (int n : g[c]) {
                 if (!in_center[n]) {
-                    leaf_neighbours.insert(var_to_factor[n]);
+                    neighbour_leaves.insert(var_to_factor[n]);
                 }
             }
-            if (leaf_neighbours.size() == 1) {
+            if (neighbour_leaves.size() == 1) {
                 // check leaf factor size
-                uint64_t f_size = 1;
-                for (int v:mis[*leaf_neighbours.begin()]) {
+                uint64_t f_size = g_variable_domain[c];
+                for (int v : mis[*neighbour_leaves.begin()]) {
                     f_size *= g_variable_domain[v];
                 }
-                uint64_t tmp_size = f_size * g_variable_domain[c];
-                if (tmp_size <= max_leaf_size) {
+                if (max_leaf_size == 0 || f_size <= max_leaf_size) {
                     candidates.push_back(c);
-                    candidates_to_leaf.push_back(*leaf_neighbours.begin());
+                    candidates_to_leaf.push_back(*neighbour_leaves.begin());
                 }
             }
         }
         if (!candidates.empty()) {
+            // TODO in general, if none of the current candidates does improve the ranking
+            // over "mis", we should not force candidate[0] to be put into a leaf!
+            // it should be enough to initialize max_rank to the ranking of mis and have some
+            // way to prevent infinite looping over candidate sets that never change
             size_t max = 0;
-            VarInt x(0);
-            vector<VarInt> max_rank (arg_rankings.size(),x);
+            vector<VarInt> max_rank (arg_rankings.size(), VarInt(0));
             for (size_t i = 0; i < candidates.size(); ++i) {
                 int candidate = candidates[i];
                 int leaf = candidates_to_leaf[i];
@@ -2114,34 +2090,26 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 // call ranking (multiple rankings?)
                 bool update = false;
                 vector<VarInt> rankings;
-                uint64_t n = 0;
-                for (Ranking * ranking:arg_rankings) {
-                    VarInt vi(ranking->get_rank(mis));
-                    rankings.push_back(vi);
-                    if (ranking->maximizes()) {
+                for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                    rankings.push_back(VarInt(arg_rankings[n]->get_rank(mis)));
+                    if (arg_rankings[n]->maximizes()) {
                         if (rankings[n] > max_rank[n]) {
                             update = true;
                         }
                     } else {
-                        if (rankings[n] < max_rank[n]) {
+                        if (rankings[n] < max_rank[n]) { // TODO max_rank is initialized to all 0!
                             update = true;
                         }
                     }
-                    ++n;
                 }
                 if (update) {
+                    assert(rankings.size() == arg_rankings.size());
                     max = i;
-                    if (rankings.size() < arg_rankings.size()) {
-                        for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
-                            VarInt vi(arg_rankings[i]->get_rank(mis));
-                            rankings.push_back(vi);
-                        }
-                    }
                     max_rank = rankings;
                 }
-                mis[leaf].erase(mis[leaf].find(candidate));
-
+                mis[leaf].erase(candidate);
             }
+            
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[max];
             // and push it into the respective leaf
@@ -2150,109 +2118,90 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             in_center[candidate] = false;
             center.erase(candidate);
             c_rm++;
-            candidates.erase(candidates.begin()+max);
-            candidates_to_leaf.erase(candidates_to_leaf.begin()+max);
         } else {
             if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
+                
                 bool merge = true;
-                vector<int> merge_candidates;
-                vector<set<int>> merge_candidates_to_leaves;
                 vector<int> merged_leaves_counter(mis.size(), 0);
 
                 while (merge) {
-                    merge_candidates.clear();
-                    merge_candidates_to_leaves.clear();
-                    var_to_factor.clear();
-                    for (size_t i = 0; i < mis.size(); i++) {
-                        for (set<int>::iterator it = mis[i].begin(); it != mis[i].end(); ++it) {
-                            var_to_factor[*it] = i;
-                        }
-                    }
-                    for (size_t i = 0; i < in_center.size(); i++) {
-                        if (in_center[i]) {
-                            var_to_factor[i] = -1;
-                        }
-                    }
-                    // try to merge frozen leaves
+                    vector<int> merge_candidates;
+                    vector<set<int>> merge_candidates_to_leaves;
 
+                    // try to merge frozen leaves
                     // collect candidates (connected to frozen vars + max 1 unfrozen var)
-                    for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-                        set<int> leaf_neighbours;
+                    for (int var : center) {
+                        set<int> neighbour_leaves;
                         int max_merge_count = 0;
-                        for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-                            if (!in_center[*n]) {
-                                leaf_neighbours.insert(var_to_factor[*n]);
-                                if (merged_leaves_counter[var_to_factor[*n]] > max_merge_count)
-                                    max_merge_count = merged_leaves_counter[var_to_factor[*n]];
+                        for (int n : g[var]) {
+                            if (!in_center[n]) {
+                                neighbour_leaves.insert(var_to_factor[n]);
+                                if (merged_leaves_counter[var_to_factor[n]] > max_merge_count){
+                                    max_merge_count = merged_leaves_counter[var_to_factor[n]];
+                                }
                             }
                         }
-                        if (leaf_neighbours.size() > 1 && max_merge_count < arg_merge_leaves) {
+                        if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves) {
                             // check leaf factor size
-                            uint64_t f_size = 1;
-                            for (int f:leaf_neighbours) {
-                                set<int> l = mis[f];
-                                for (int v:l) {
+                            uint64_t f_size = g_variable_domain[var];
+                            for (int f : neighbour_leaves) {
+                                for (int v : mis[f]) {
                                     f_size *= g_variable_domain[v];
                                 }
                             }
-                            uint64_t tmp_size = f_size * g_variable_domain[*it];
-                            if (tmp_size <= max_leaf_size && min_number_leaves <= (mis.size() - leaf_neighbours.size() + 1)) {
-                                merge_candidates.push_back(*it);
-                                merge_candidates_to_leaves.push_back(leaf_neighbours);
+                            if ((max_leaf_size == 0 || f_size <= max_leaf_size) && 
+                                    min_number_leaves <= (mis.size() - neighbour_leaves.size() + 1)) {
+                                merge_candidates.push_back(var);
+                                merge_candidates_to_leaves.push_back(neighbour_leaves);
                             }
                         }
                     }
 
                     // select best candidate
                     if (!merge_candidates.empty()) {
+                        // TODO in general, if none of the current merge_candidates does improve the ranking
+                        // over "mis", we should not force candidate[0] to be put into a leaf!
+                        // it should be enough to initialize max_rank to the ranking of mis, have a flag that indicates
+                        // whether if max_elem==0, it actually improves the ranking, and have some
+                        // way to prevent infinite looping over candidate sets that never change
                         size_t max_elem = 0;
                         vector<VarInt> max_rank(arg_rankings.size(), VarInt(0));
                         for (size_t i = 0; i < merge_candidates.size(); ++i) {
                             FactoredVars new_mis(mis);
                             set<int> new_leaf;
                             new_leaf.insert(merge_candidates[i]);
-                            set<int> empty;
-                            for (int l:merge_candidates_to_leaves[i]) {
-                                for (int v:mis[l]) {
+                            for (int l : merge_candidates_to_leaves[i]) {
+                                for (int v : mis[l]) {
                                     new_leaf.insert(v);
                                 }
-                                new_mis[l] = empty;
+                                new_mis[l].clear();
                             }
                             new_mis.push_back(new_leaf);
 
                             FactoredVars tmp;
-                            for (set<int> f: new_mis) {
-                                if (!f.empty()) {
-                                    tmp.push_back(f);
+                            for (int m = new_mis.size() - 1; m >= 0; --m) {
+                                if (new_mis[m].empty()){
+                                    new_mis.erase(new_mis.begin() + m);
                                 }
                             }
-                            new_mis = tmp;
 
                             bool update = false;
                             vector<VarInt> rankings;
-                            uint64_t n = 0;
-                            for (Ranking *ranking:arg_rankings) {
-                                VarInt vi(ranking->get_rank(new_mis));
-                                rankings.push_back(vi);
-                                if (ranking->maximizes()) {
+                            for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                                rankings.push_back(VarInt(arg_rankings[n]->get_rank(new_mis)));
+                                if (arg_rankings[n]->maximizes()) {
                                     if (rankings[n] > max_rank[n]) {
                                         update = true;
                                     }
                                 } else {
-                                    if (rankings[n] < max_rank[n]) {
+                                    if (rankings[n] < max_rank[n]) { // TODO max_rank is initialized to all 0!
                                         update = true;
                                     }
                                 }
-                                ++n;
                             }
                             if (update) {
+                                assert(rankings.size() == arg_rankings.size());
                                 max_elem = i;
-                                if (rankings.size() < arg_rankings.size()) {
-                                    for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
-                                        VarInt vi(arg_rankings[i]->get_rank(mis));
-                                        rankings.push_back(vi);
-                                    }
-                                }
                                 max_rank = rankings;
                             }
                         }
@@ -2263,13 +2212,12 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         in_center[c] = false;
                         center.erase(c);
                         c_rm++;
-                        set<int> empty;
                         int max_merge_counter = 0;
-                        for (int l:merge_candidates_to_leaves[max_elem]) {
-                            for (int v:mis[l]) {
+                        for (int l : merge_candidates_to_leaves[max_elem]){
+                            for (int v : mis[l]) {
                                 new_leaf.insert(v);
                             }
-                            mis[l] = empty;
+                            mis[l].clear();
                             if (merged_leaves_counter[l] > max_merge_counter) {
                                 max_merge_counter = merged_leaves_counter[l];
                             }
@@ -2277,16 +2225,19 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         mis.push_back(new_leaf);
                         merged_leaves_counter.push_back(max_merge_counter + 1);
 
-                        FactoredVars tmp;
-                        vector<int> tmp_merged_count;
-                        for (size_t i = 0; i < mis.size(); ++i) {
-                            if (!mis[i].empty()) {
-                                tmp.push_back(mis[i]);
-                                tmp_merged_count.push_back(merged_leaves_counter[i]);
+                        for (int i = mis.size() - 1; i >= 0; --i) {
+                            if (mis[i].empty()) {
+                                mis.erase(mis.begin() + i);
+                                merged_leaves_counter.erase(merged_leaves_counter.begin() + i);
                             }
                         }
-                        mis = tmp;
-                        merged_leaves_counter = tmp_merged_count;
+                        assert(mis.size() == merged_leaves_counter.size());
+                        
+                        for (size_t f = 0; f < mis.size(); ++f){
+                            for (int var : mis[f]){
+                                var_to_factor[var] = f;
+                            }
+                        }
 
                     } else {
                         break;
@@ -2296,23 +2247,21 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             if (!removed_frozen_leaves) {
                 // push frozen leaves back in center
                 removed_frozen_leaves = true;
-                FactoredVars temp;
-                f_rm = 0;
 
+                f_rm = 0;
                 vector<bool> frozen_leaves = get_frozen_leaves(mis);
-                for (size_t i = 0; i < frozen_leaves.size(); i++) {
-                    if (!frozen_leaves[i]) {
-                        temp.push_back(mis[i]);
-                    } else {
+                for (int i = frozen_leaves.size() - 1; i >= 0; --i) {
+                    if (frozen_leaves[i]) {
                         for (int v : mis[i]) {
                             in_center[v] = true;
                             center.insert(v);
                             var_to_factor[v] = -1;
                         }
+                        mis.erase(mis.begin() + i);
                         f_rm++;
                     }
                 }
-                mis = temp;
+
                 if (f_rm == 0 || mis.empty()) {
                     // removed no frozen leaves or no leaves left
                     break;
@@ -2321,16 +2270,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 } else {
                     f_c = 0;
                     // only continue to minimize center, including frozen leaves, if minimize_frozen = true
-                    for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-                        set<int> leaf_neighbours;
-                        for (set<int>::iterator n = g.at(*it).begin(); n != g.at(*it).end(); ++n) {
-                            if (!in_center[*n]) {
-                                leaf_neighbours.insert(var_to_factor[*n]);
+                    for (int var : center) {
+                        set<int> neighbour_leaves;
+                        for (int n : g[var]) {
+                            if (!in_center[n]) {
+                                neighbour_leaves.insert(var_to_factor[n]);
                             }
                         }
-                        if (leaf_neighbours.size() == 1) {
-                            candidates.push_back(*it);
-                            candidates_to_leaf.push_back(*leaf_neighbours.begin());
+                        if (neighbour_leaves.size() == 1) {
                             ++f_c;
                         }
                     }
@@ -2348,431 +2295,431 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
 }
 
 
-Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars max_ind_sets, const NGraph &cg_g) {
-    FactoredVars adapted_factoring;
-    if (arg_minimize_center == 0) {
-        cout << "do not minimize center" << endl;
-        adapted_factoring =  max_ind_sets;
-    }
-    else if (arg_minimize_center == 1 || arg_minimize_center == 2) {
-        cout << "minimize center - baseline - greedily increase mobility" << endl;
-        // baseline - greedily maximize mobility
-
-        // retrieve center vars
-        set<int> center;
-        vector<bool> in_center(cg_g.size(), true);
-        map<int, int> var_to_factor;
-        for (size_t i = 0; i < max_ind_sets.size(); i++) {
-            for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); ++it) {
-                in_center[*it] = false;
-                var_to_factor.insert(pair<int, int>(*it, i));
-            }
-        }
-        for (size_t i = 0; i < in_center.size(); i++) {
-            if (in_center[i]) {
-                center.insert(i);
-                var_to_factor.insert(make_pair(i, -1));
-            }
-        }
-
-        bool minimize = true;
-        int c_rm = 0;
-
-        vector<int> candidates; // pos -> var
-        map<int,int> var_to_candidate; // var -> pos in candidates
-        map<int, int> candidates_to_leaf; // var -> leaf
-
-        bool removed_frozen_leaves = false;
-
-        while (minimize) {
-            candidates.clear();
-            var_to_candidate.clear();
-            candidates_to_leaf.clear();
-            // collect candidates (center vars with one leaf neighbour)
-            for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
-                set<int> leaf_neighbours;
-                for (set<int>::iterator n = cg_g.at(*it).begin(); n != cg_g.at(*it).end(); ++n) {
-                    if (!in_center[*n]) {
-                        leaf_neighbours.insert(var_to_factor[*n]);
-                    }
-                }
-                if (leaf_neighbours.size() == 1) {
-                    candidates.push_back(*it);
-                    var_to_candidate.insert(make_pair(*it,var_to_candidate.size()));
-                    candidates_to_leaf.insert(make_pair(*it, *leaf_neighbours.begin()));
-
-                }
-            }
-
-            if (candidates_to_leaf.empty()){
-                if (!removed_frozen_leaves){
-                    // push frozen leaves back in center
-                    removed_frozen_leaves = true;
-                    FactoredVars temp;
-                    int f_rm = 0;
-
-                    vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
-                    for (size_t i = 0; i < frozen_leaves.size(); i++) {
-                        if (!frozen_leaves[i]) {
-                            temp.push_back(max_ind_sets[i]);
-                        } else {
-                            f_rm++;
-                        }
-                    }
-                    max_ind_sets = temp;
-                    cout << "Removed frozen leaves: " << f_rm << endl;
-                    if (f_rm == 0 || max_ind_sets.empty()) {
-                        cout << "removed no frozen leaves or no leaves left" << endl;
-                        break;
-                    } else if(arg_minimize_center == 1) {
-                        break;
-                    } else {
-                        // only continue to minimize center, including frozen leaves, if arg_min_center == 2
-                        continue;
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            // count how many actions affect each center var exclusively (no shared actions)
-            vector<int> affecting_actions(var_to_candidate.size(), 0);
-            for (size_t i = 0; i < g_operators.size(); i++) {
-                const Operator *op = &g_operators[i];
-                set<int> eff_factors;
-                set<int> eff_center_vars;
-
-                // test first whether this action affects one of the candidates, otherwise skip it
-                for (size_t post = 0; post < op->get_effects().size(); post++) {
-                    const int prepost = (op->get_effects()[post]).var;
-                    eff_factors.insert(var_to_factor[prepost]);
-                    if (var_to_factor[prepost] == -1) {
-                        eff_center_vars.insert(prepost);
-                    }
-                }
-                // has to affect center
-                if (eff_center_vars.empty()) {
-                    continue;
-                }
-
-                // has to affect a candidate
-                bool affects_candidate = false;
-                int candidate = -1; // var, not pos in candidates
-                for (set<int>::iterator cv = eff_center_vars.begin(); cv != eff_center_vars.end(); ++cv) {
-                    if (candidates_to_leaf.find(*cv) != candidates_to_leaf.end()) {
-                        affects_candidate = true;
-                        candidate = *cv;
-                        break;
-                    }
-                }
-                if (!affects_candidate) {
-                    continue;
-                }
-                assert(candidate != -1);
-
-                // may only affect candidate and/or respective candidate leaf
-                if (eff_factors.size() >= 2) {
-                    if (eff_factors.size() != 2 ||
-                        (eff_factors.find(candidates_to_leaf[candidate]) == eff_factors.end())) {
-                        continue;
-                    }
-                }
-
-                // preconditions only on center or candidate leaf
-                bool invalid = false;
-                for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
-                    const Condition &prevail = op->get_preconditions()[prev];
-                    if ((var_to_factor[prevail.var] != -1) &&
-                        (var_to_factor[prevail.var] != candidates_to_leaf[candidate])) {
-                        invalid = true;
-                        break;
-                    }
-                }
-                if (invalid) {
-                    continue;
-                }
-
-                // action either affects a center var exclusively,
-                // or is shared between a center var and its only leaf neighbour
-                affecting_actions[var_to_candidate[candidate]]++;
-            }
-
-            // find candidate that increases mobility the most
-            int max = 0;
-            for (size_t i = 1; i < affecting_actions.size(); i++) {
-                if (affecting_actions[i] > affecting_actions[max]) {
-                    max = i;
-                }
-            }
-
-            // and push it into the respective leaf
-            int candidate = candidates[max];
-            int leaf = candidates_to_leaf[candidates[max]];
-            max_ind_sets[leaf].insert(candidate);
-            in_center[candidate] = false;
-            center.erase(candidate);
-            var_to_factor[candidate] = leaf;
-            c_rm++;
-        }
-        cout << "Minimized center, variables removed: " << c_rm << endl;
-        adapted_factoring = max_ind_sets;
-    }
-    else if (arg_minimize_center == 3 || arg_minimize_center == 4) {
-        cout << "minimize center - experimental + merge leaves" << endl;
-        // experimental + merge leaves
-        // minimize center, by pushing center variables into leaves
-        int c_rm = 0;
-        int f_rm = 0;
-        int c_rm_o = 0;
-        int f_rm_o = 0;
-        bool changed = true;
-        bool removed_frozen_leaves = false;
-        int times_minimized = 0;
-        while (changed) {
-            changed = false;
-            times_minimized++;
-            map<int, int> var_to_leaf;
-            // extract center variables
-            list<int> center;
-            vector<bool> in_center(cg_g.size(), true);
-            for (size_t i = 0; i < max_ind_sets.size(); i++) {
-                for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); ++it) {
-                    in_center[*it] = false;
-                    var_to_leaf.insert(pair<int, int>(*it, i));
-                }
-            }
-            // sort center variables increasingly by number of neighbours
-            for (size_t i = 0; i < cg_g.size(); i++) {
-                if (in_center[i]) {
-                    if (center.empty() || cg_g.at(i).size() <= cg_g.at(center.front()).size()) {
-                        center.push_front(i);
-                    } else if (cg_g.at(i).size() >= cg_g.at(center.back()).size()) {
-                        center.push_back(i);
-                    } else {
-                        for (list<int>::iterator s_it = center.begin(); s_it != center.end(); ++s_it) {
-                            if (cg_g.at(i).size() <= cg_g.at(*s_it).size()) {
-                                center.insert(s_it, i);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            vector<bool> merged_leaf(max_ind_sets.size(), false);
-            for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
-                if (cg_g.at(*c).size() == 0) {
-                    continue;
-                } else if (cg_g.at(*c).size() == 1) {
-
-                    set<int>::iterator n = cg_g.at(*c).begin();
-                    if (!in_center[*n]) {
-                        // add c to respective leaf
-                        max_ind_sets[var_to_leaf[*n]].insert(*c);
-                        in_center[*c] = false;
-                        var_to_leaf.insert(pair<int, int>(*c, var_to_leaf[*n]));
-                        c_rm++;
-                    }
-                } else {
-                    // if all neighbours lie in the center we can skip this var
-                    set<int> leaf_neighbours;
-                    for (set<int>::iterator n = cg_g.at(*c).begin(); n != cg_g.at(*c).end(); ++n) {
-                        if (!in_center[*n]) {
-                            leaf_neighbours.insert(var_to_leaf[*n]);
-                        }
-                    }
-                    if (leaf_neighbours.size() == 0) {
-                        continue;
-                    }
-                    if (leaf_neighbours.size() == 1) {
-                        int l = *leaf_neighbours.begin();
-                        max_ind_sets[l].insert(*c);
-                        in_center[*c] = false;
-                        var_to_leaf.insert(pair<int, int>(*c, l));
-                        c_rm++;
-                    } else {
-                        if (arg_merge_leaves == 2 || arg_merge_leaves == 3) {
-                            set<int> temp;
-                            int pos = max_ind_sets.size();
-                            bool invalid_merge = false;
-                            map<int, int> temp_map(var_to_leaf);
-                            for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
-                                if (arg_merge_leaves == 3 || (arg_merge_leaves == 2 && !merged_leaf[*l])) {
-                                    temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
-                                    set<int> empty;
-                                    max_ind_sets[*l] = empty;
-                                    for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
-                                        temp_map[*it] = pos;
-                                    }
-                                }
-                                else if (arg_merge_leaves == 2 && merged_leaf[*l]) {
-                                    invalid_merge = true;
-                                    break;
-                                }
-                            }
-                            if (!invalid_merge) {
-                                var_to_leaf = temp_map;
-                                temp.insert(*c);
-                                in_center[*c] = false;
-                                var_to_leaf.insert(pair<int, int>(*c, pos));
-                                c_rm++;
-                                merged_leaf.push_back(true);
-                                max_ind_sets.push_back(temp);
-                            }
-                        }
-                    }
-                }
-            }
-            for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();) {
-                if (it->empty()) {
-                    it = max_ind_sets.erase(it);
-                } else {
-                    it++;
-                }
-            }
-            cout << "Minimized center, variables removed: " << c_rm << endl;
-#ifdef DEBUG_FACTORING
-            for (size_t i = 0; i < max_ind_sets.size(); i++) {
-                cout << "   (";
-                set<int> factor = max_ind_sets[i];
-                for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
-                    cout << *it << " ";
-                }
-                cout << ")" << endl;
-            }
-            cout << endl;
-#endif
-            if (!removed_frozen_leaves) {
-                if (arg_merge_leaves == 1){
-                    f_rm = 0;
-                    for (const int &c: center) {
-                        if (in_center[c]) {
-                            // if all neighbours lie in the center we can skip this var
-                            set<int> leaf_neighbours;
-                            for (set<int>::iterator n = cg_g.at(c).begin(); n != cg_g.at(c).end(); ++n) {
-                                if (!in_center[*n]) {
-                                    leaf_neighbours.insert(var_to_leaf[*n]);
-                                }
-                            }
-                            if (leaf_neighbours.empty()) {
-                                continue;
-                            }
-                            set<int> temp;
-                            int pos = max_ind_sets.size();
-                            map<int, int> temp_map(var_to_leaf);
-                            vector<bool> frozen = get_frozen_leaves(max_ind_sets);
-                            int not_frozen = 0;
-                            for (const int &l: leaf_neighbours) {
-                                temp.insert(max_ind_sets[l].begin(), max_ind_sets[l].end());
-                                set<int> empty;
-                                max_ind_sets[l] = empty;
-                                for (const int &it: temp) {
-                                    temp_map[it] = pos;
-                                }
-                                if (!frozen[l]) {
-                                    not_frozen++;
-                                } else {
-                                    f_rm++;
-                                }
-                            }
-                            if (not_frozen <= 1) {
-                                var_to_leaf = temp_map;
-                                temp.insert(c);
-                                in_center[c] = false;
-                                var_to_leaf.insert(pair<int, int>(c, pos));
-                                c_rm++;
-                                merged_leaf.push_back(true);
-                                max_ind_sets.push_back(temp);
-                            }
-                        }
-                    }
-                    cout << "merged " << f_rm << " frozen leaves" << endl;
-#ifdef DEBUG_FACTORING
-                    cout << "Factoring" << endl;
-                    for (size_t i = 0; i < max_ind_sets.size(); i++) {
-                        cout << "   (";
-                        set<int> factor = max_ind_sets[i];
-                        for (const int &it: factor) {
-                            cout << it << " ";
-                        }
-                        cout << ")" << endl;
-                    }
-                    cout << endl;
-#endif
-                }
-                f_rm = 0;
-                // put frozen leaves back in center
-                FactoredVars temp;
-                vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
-                for (size_t i = 0; i < frozen_leaves.size(); i++) {
-                    if (!frozen_leaves[i]) {
-                        temp.push_back(max_ind_sets[i]);
-                    } else {
-                        f_rm++;
-                    }
-                }
-                max_ind_sets.clear();
-                max_ind_sets.insert(max_ind_sets.begin(), temp.begin(), temp.end());
-                if (f_rm != f_rm_o) {
-                    changed = true;
-                    f_rm_o = f_rm;
-                }
-                cout << "Removed frozen leaves: " << f_rm << endl;
-#ifdef DEBUG_FACTORING
-                cout << "Factoring" << endl;
-                for (size_t i = 0; i < max_ind_sets.size(); i++) {
-                    cout << "   (";
-                    set<int> factor = max_ind_sets[i];
-                    for (const int &it: factor) {
-                        cout << it << " ";
-                    }
-                    cout << ")" << endl;
-                }
-                cout << endl;
-#endif
-            }
-
-            if ((c_rm_o != c_rm) && arg_minimize_center == 4) {
-#ifdef DEBUG_FACTORING
-                cout << "removed center" << c_rm << "vars in round: " << times_minimized << endl;
-#endif
-                changed = true;
-                c_rm_o = c_rm;
-                c_rm = 0;
-            } else if (changed && !(arg_minimize_center == 4)) {
-                // only count removing frozen leaves as a change, if iterativ minimize_center is active
-                changed = false;
-            }
-        }
-#ifdef DEBUG_FACTORING
-        cout << "do not repeat arg_minimize_center, round: " << times_minimized << endl;
-#endif
-        adapted_factoring = max_ind_sets;
-    }
-
-    // if center is empty, use biggest leaf as center
-    size_t leaf_vars = 0;
-    for (FactoredVars::iterator factor = adapted_factoring.begin(); factor != adapted_factoring.end(); ++factor){
-        for (set<int>::iterator var = factor->begin(); var != factor->end(); ++var) {
-            leaf_vars++;
-        }
-    }
-    if (leaf_vars == g_variable_domain.size()) {
-        FactoredVars::iterator max = adapted_factoring.begin();
-        if (adapted_factoring.size() > 1) {
-            for (FactoredVars::iterator i = adapted_factoring.begin(); i != adapted_factoring.end(); i++) {
-                if (i->size() > max->size()) {
-                    max = i;
-                }
-            }
-        }
-        adapted_factoring.erase(max);
-        cout << "Repopulated center: 1" << endl;
-    } else {
-        cout << "Repopulated center: 0" << endl;
-    }
-
-    return adapted_factoring;
-}
+// Factoring::FactoredVars MaxIndependentSetFactoring::minimize_center(FactoredVars max_ind_sets, const NGraph &cg_g) {
+//     FactoredVars adapted_factoring;
+//     if (arg_minimize_center == 0) {
+//         cout << "do not minimize center" << endl;
+//         adapted_factoring =  max_ind_sets;
+//     }
+//     else if (arg_minimize_center == 1 || arg_minimize_center == 2) {
+//         cout << "minimize center - baseline - greedily increase mobility" << endl;
+//         // baseline - greedily maximize mobility
+// 
+//         // retrieve center vars
+//         set<int> center;
+//         vector<bool> in_center(cg_g.size(), true);
+//         map<int, int> var_to_factor;
+//         for (size_t i = 0; i < max_ind_sets.size(); i++) {
+//             for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); ++it) {
+//                 in_center[*it] = false;
+//                 var_to_factor.insert(pair<int, int>(*it, i));
+//             }
+//         }
+//         for (size_t i = 0; i < in_center.size(); i++) {
+//             if (in_center[i]) {
+//                 center.insert(i);
+//                 var_to_factor.insert(make_pair(i, -1));
+//             }
+//         }
+// 
+//         bool minimize = true;
+//         int c_rm = 0;
+// 
+//         vector<int> candidates; // pos -> var
+//         map<int,int> var_to_candidate; // var -> pos in candidates
+//         map<int, int> candidates_to_leaf; // var -> leaf
+// 
+//         bool removed_frozen_leaves = false;
+// 
+//         while (minimize) {
+//             candidates.clear();
+//             var_to_candidate.clear();
+//             candidates_to_leaf.clear();
+//             // collect candidates (center vars with one leaf neighbour)
+//             for (set<int>::iterator it = center.begin(); it != center.end(); ++it) {
+//                 set<int> leaf_neighbours;
+//                 for (set<int>::iterator n = cg_g.at(*it).begin(); n != cg_g.at(*it).end(); ++n) {
+//                     if (!in_center[*n]) {
+//                         leaf_neighbours.insert(var_to_factor[*n]);
+//                     }
+//                 }
+//                 if (leaf_neighbours.size() == 1) {
+//                     candidates.push_back(*it);
+//                     var_to_candidate.insert(make_pair(*it,var_to_candidate.size()));
+//                     candidates_to_leaf.insert(make_pair(*it, *leaf_neighbours.begin()));
+// 
+//                 }
+//             }
+// 
+//             if (candidates_to_leaf.empty()){
+//                 if (!removed_frozen_leaves){
+//                     // push frozen leaves back in center
+//                     removed_frozen_leaves = true;
+//                     FactoredVars temp;
+//                     int f_rm = 0;
+// 
+//                     vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+//                     for (size_t i = 0; i < frozen_leaves.size(); i++) {
+//                         if (!frozen_leaves[i]) {
+//                             temp.push_back(max_ind_sets[i]);
+//                         } else {
+//                             f_rm++;
+//                         }
+//                     }
+//                     max_ind_sets = temp;
+//                     cout << "Removed frozen leaves: " << f_rm << endl;
+//                     if (f_rm == 0 || max_ind_sets.empty()) {
+//                         cout << "removed no frozen leaves or no leaves left" << endl;
+//                         break;
+//                     } else if(arg_minimize_center == 1) {
+//                         break;
+//                     } else {
+//                         // only continue to minimize center, including frozen leaves, if arg_min_center == 2
+//                         continue;
+//                     }
+//                 } else {
+//                     break;
+//                 }
+//             }
+// 
+//             // count how many actions affect each center var exclusively (no shared actions)
+//             vector<int> affecting_actions(var_to_candidate.size(), 0);
+//             for (size_t i = 0; i < g_operators.size(); i++) {
+//                 const Operator *op = &g_operators[i];
+//                 set<int> eff_factors;
+//                 set<int> eff_center_vars;
+// 
+//                 // test first whether this action affects one of the candidates, otherwise skip it
+//                 for (size_t post = 0; post < op->get_effects().size(); post++) {
+//                     const int prepost = (op->get_effects()[post]).var;
+//                     eff_factors.insert(var_to_factor[prepost]);
+//                     if (var_to_factor[prepost] == -1) {
+//                         eff_center_vars.insert(prepost);
+//                     }
+//                 }
+//                 // has to affect center
+//                 if (eff_center_vars.empty()) {
+//                     continue;
+//                 }
+// 
+//                 // has to affect a candidate
+//                 bool affects_candidate = false;
+//                 int candidate = -1; // var, not pos in candidates
+//                 for (set<int>::iterator cv = eff_center_vars.begin(); cv != eff_center_vars.end(); ++cv) {
+//                     if (candidates_to_leaf.find(*cv) != candidates_to_leaf.end()) {
+//                         affects_candidate = true;
+//                         candidate = *cv;
+//                         break;
+//                     }
+//                 }
+//                 if (!affects_candidate) {
+//                     continue;
+//                 }
+//                 assert(candidate != -1);
+// 
+//                 // may only affect candidate and/or respective candidate leaf
+//                 if (eff_factors.size() >= 2) {
+//                     if (eff_factors.size() != 2 ||
+//                         (eff_factors.find(candidates_to_leaf[candidate]) == eff_factors.end())) {
+//                         continue;
+//                     }
+//                 }
+// 
+//                 // preconditions only on center or candidate leaf
+//                 bool invalid = false;
+//                 for (size_t prev = 0; prev < op->get_preconditions().size(); ++prev) {
+//                     const Condition &prevail = op->get_preconditions()[prev];
+//                     if ((var_to_factor[prevail.var] != -1) &&
+//                         (var_to_factor[prevail.var] != candidates_to_leaf[candidate])) {
+//                         invalid = true;
+//                         break;
+//                     }
+//                 }
+//                 if (invalid) {
+//                     continue;
+//                 }
+// 
+//                 // action either affects a center var exclusively,
+//                 // or is shared between a center var and its only leaf neighbour
+//                 affecting_actions[var_to_candidate[candidate]]++;
+//             }
+// 
+//             // find candidate that increases mobility the most
+//             int max = 0;
+//             for (size_t i = 1; i < affecting_actions.size(); i++) {
+//                 if (affecting_actions[i] > affecting_actions[max]) {
+//                     max = i;
+//                 }
+//             }
+// 
+//             // and push it into the respective leaf
+//             int candidate = candidates[max];
+//             int leaf = candidates_to_leaf[candidates[max]];
+//             max_ind_sets[leaf].insert(candidate);
+//             in_center[candidate] = false;
+//             center.erase(candidate);
+//             var_to_factor[candidate] = leaf;
+//             c_rm++;
+//         }
+//         cout << "Minimized center, variables removed: " << c_rm << endl;
+//         adapted_factoring = max_ind_sets;
+//     }
+//     else if (arg_minimize_center == 3 || arg_minimize_center == 4) {
+//         cout << "minimize center - experimental + merge leaves" << endl;
+//         // experimental + merge leaves
+//         // minimize center, by pushing center variables into leaves
+//         int c_rm = 0;
+//         int f_rm = 0;
+//         int c_rm_o = 0;
+//         int f_rm_o = 0;
+//         bool changed = true;
+//         bool removed_frozen_leaves = false;
+//         int times_minimized = 0;
+//         while (changed) {
+//             changed = false;
+//             times_minimized++;
+//             map<int, int> var_to_leaf;
+//             // extract center variables
+//             list<int> center;
+//             vector<bool> in_center(cg_g.size(), true);
+//             for (size_t i = 0; i < max_ind_sets.size(); i++) {
+//                 for (set<int>::iterator it = max_ind_sets[i].begin(); it != max_ind_sets[i].end(); ++it) {
+//                     in_center[*it] = false;
+//                     var_to_leaf.insert(pair<int, int>(*it, i));
+//                 }
+//             }
+//             // sort center variables increasingly by number of neighbours
+//             for (size_t i = 0; i < cg_g.size(); i++) {
+//                 if (in_center[i]) {
+//                     if (center.empty() || cg_g.at(i).size() <= cg_g.at(center.front()).size()) {
+//                         center.push_front(i);
+//                     } else if (cg_g.at(i).size() >= cg_g.at(center.back()).size()) {
+//                         center.push_back(i);
+//                     } else {
+//                         for (list<int>::iterator s_it = center.begin(); s_it != center.end(); ++s_it) {
+//                             if (cg_g.at(i).size() <= cg_g.at(*s_it).size()) {
+//                                 center.insert(s_it, i);
+//                                 break;
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//             vector<bool> merged_leaf(max_ind_sets.size(), false);
+//             for (list<int>::iterator c = center.begin(); c != center.end(); ++c) {
+//                 if (cg_g.at(*c).size() == 0) {
+//                     continue;
+//                 } else if (cg_g.at(*c).size() == 1) {
+// 
+//                     set<int>::iterator n = cg_g.at(*c).begin();
+//                     if (!in_center[*n]) {
+//                         // add c to respective leaf
+//                         max_ind_sets[var_to_leaf[*n]].insert(*c);
+//                         in_center[*c] = false;
+//                         var_to_leaf.insert(pair<int, int>(*c, var_to_leaf[*n]));
+//                         c_rm++;
+//                     }
+//                 } else {
+//                     // if all neighbours lie in the center we can skip this var
+//                     set<int> leaf_neighbours;
+//                     for (set<int>::iterator n = cg_g.at(*c).begin(); n != cg_g.at(*c).end(); ++n) {
+//                         if (!in_center[*n]) {
+//                             leaf_neighbours.insert(var_to_leaf[*n]);
+//                         }
+//                     }
+//                     if (leaf_neighbours.size() == 0) {
+//                         continue;
+//                     }
+//                     if (leaf_neighbours.size() == 1) {
+//                         int l = *leaf_neighbours.begin();
+//                         max_ind_sets[l].insert(*c);
+//                         in_center[*c] = false;
+//                         var_to_leaf.insert(pair<int, int>(*c, l));
+//                         c_rm++;
+//                     } else {
+//                         if (arg_merge_leaves == 2 || arg_merge_leaves == 3) {
+//                             set<int> temp;
+//                             int pos = max_ind_sets.size();
+//                             bool invalid_merge = false;
+//                             map<int, int> temp_map(var_to_leaf);
+//                             for (set<int>::iterator l = leaf_neighbours.begin(); l != leaf_neighbours.end(); ++l) {
+//                                 if (arg_merge_leaves == 3 || (arg_merge_leaves == 2 && !merged_leaf[*l])) {
+//                                     temp.insert(max_ind_sets[*l].begin(), max_ind_sets[*l].end());
+//                                     set<int> empty;
+//                                     max_ind_sets[*l] = empty;
+//                                     for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it){
+//                                         temp_map[*it] = pos;
+//                                     }
+//                                 }
+//                                 else if (arg_merge_leaves == 2 && merged_leaf[*l]) {
+//                                     invalid_merge = true;
+//                                     break;
+//                                 }
+//                             }
+//                             if (!invalid_merge) {
+//                                 var_to_leaf = temp_map;
+//                                 temp.insert(*c);
+//                                 in_center[*c] = false;
+//                                 var_to_leaf.insert(pair<int, int>(*c, pos));
+//                                 c_rm++;
+//                                 merged_leaf.push_back(true);
+//                                 max_ind_sets.push_back(temp);
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//             for (vector<set<int>>::iterator it = max_ind_sets.begin(); it != max_ind_sets.end();) {
+//                 if (it->empty()) {
+//                     it = max_ind_sets.erase(it);
+//                 } else {
+//                     it++;
+//                 }
+//             }
+//             cout << "Minimized center, variables removed: " << c_rm << endl;
+// #ifdef DEBUG_FACTORING
+//             for (size_t i = 0; i < max_ind_sets.size(); i++) {
+//                 cout << "   (";
+//                 set<int> factor = max_ind_sets[i];
+//                 for (set<int>::iterator it = factor.begin(); it != factor.end(); it++) {
+//                     cout << *it << " ";
+//                 }
+//                 cout << ")" << endl;
+//             }
+//             cout << endl;
+// #endif
+//             if (!removed_frozen_leaves) {
+//                 if (arg_merge_leaves == 1){
+//                     f_rm = 0;
+//                     for (const int &c: center) {
+//                         if (in_center[c]) {
+//                             // if all neighbours lie in the center we can skip this var
+//                             set<int> leaf_neighbours;
+//                             for (set<int>::iterator n = cg_g.at(c).begin(); n != cg_g.at(c).end(); ++n) {
+//                                 if (!in_center[*n]) {
+//                                     leaf_neighbours.insert(var_to_leaf[*n]);
+//                                 }
+//                             }
+//                             if (leaf_neighbours.empty()) {
+//                                 continue;
+//                             }
+//                             set<int> temp;
+//                             int pos = max_ind_sets.size();
+//                             map<int, int> temp_map(var_to_leaf);
+//                             vector<bool> frozen = get_frozen_leaves(max_ind_sets);
+//                             int not_frozen = 0;
+//                             for (const int &l: leaf_neighbours) {
+//                                 temp.insert(max_ind_sets[l].begin(), max_ind_sets[l].end());
+//                                 set<int> empty;
+//                                 max_ind_sets[l] = empty;
+//                                 for (const int &it: temp) {
+//                                     temp_map[it] = pos;
+//                                 }
+//                                 if (!frozen[l]) {
+//                                     not_frozen++;
+//                                 } else {
+//                                     f_rm++;
+//                                 }
+//                             }
+//                             if (not_frozen <= 1) {
+//                                 var_to_leaf = temp_map;
+//                                 temp.insert(c);
+//                                 in_center[c] = false;
+//                                 var_to_leaf.insert(pair<int, int>(c, pos));
+//                                 c_rm++;
+//                                 merged_leaf.push_back(true);
+//                                 max_ind_sets.push_back(temp);
+//                             }
+//                         }
+//                     }
+//                     cout << "merged " << f_rm << " frozen leaves" << endl;
+// #ifdef DEBUG_FACTORING
+//                     cout << "Factoring" << endl;
+//                     for (size_t i = 0; i < max_ind_sets.size(); i++) {
+//                         cout << "   (";
+//                         set<int> factor = max_ind_sets[i];
+//                         for (const int &it: factor) {
+//                             cout << it << " ";
+//                         }
+//                         cout << ")" << endl;
+//                     }
+//                     cout << endl;
+// #endif
+//                 }
+//                 f_rm = 0;
+//                 // put frozen leaves back in center
+//                 FactoredVars temp;
+//                 vector<bool> frozen_leaves = get_frozen_leaves(max_ind_sets);
+//                 for (size_t i = 0; i < frozen_leaves.size(); i++) {
+//                     if (!frozen_leaves[i]) {
+//                         temp.push_back(max_ind_sets[i]);
+//                     } else {
+//                         f_rm++;
+//                     }
+//                 }
+//                 max_ind_sets.clear();
+//                 max_ind_sets.insert(max_ind_sets.begin(), temp.begin(), temp.end());
+//                 if (f_rm != f_rm_o) {
+//                     changed = true;
+//                     f_rm_o = f_rm;
+//                 }
+//                 cout << "Removed frozen leaves: " << f_rm << endl;
+// #ifdef DEBUG_FACTORING
+//                 cout << "Factoring" << endl;
+//                 for (size_t i = 0; i < max_ind_sets.size(); i++) {
+//                     cout << "   (";
+//                     set<int> factor = max_ind_sets[i];
+//                     for (const int &it: factor) {
+//                         cout << it << " ";
+//                     }
+//                     cout << ")" << endl;
+//                 }
+//                 cout << endl;
+// #endif
+//             }
+// 
+//             if ((c_rm_o != c_rm) && arg_minimize_center == 4) {
+// #ifdef DEBUG_FACTORING
+//                 cout << "removed center" << c_rm << "vars in round: " << times_minimized << endl;
+// #endif
+//                 changed = true;
+//                 c_rm_o = c_rm;
+//                 c_rm = 0;
+//             } else if (changed && !(arg_minimize_center == 4)) {
+//                 // only count removing frozen leaves as a change, if iterativ minimize_center is active
+//                 changed = false;
+//             }
+//         }
+// #ifdef DEBUG_FACTORING
+//         cout << "do not repeat arg_minimize_center, round: " << times_minimized << endl;
+// #endif
+//         adapted_factoring = max_ind_sets;
+//     }
+// 
+//     // if center is empty, use biggest leaf as center
+//     size_t leaf_vars = 0;
+//     for (FactoredVars::iterator factor = adapted_factoring.begin(); factor != adapted_factoring.end(); ++factor){
+//         for (set<int>::iterator var = factor->begin(); var != factor->end(); ++var) {
+//             leaf_vars++;
+//         }
+//     }
+//     if (leaf_vars == g_variable_domain.size()) {
+//         FactoredVars::iterator max = adapted_factoring.begin();
+//         if (adapted_factoring.size() > 1) {
+//             for (FactoredVars::iterator i = adapted_factoring.begin(); i != adapted_factoring.end(); i++) {
+//                 if (i->size() > max->size()) {
+//                     max = i;
+//                 }
+//             }
+//         }
+//         adapted_factoring.erase(max);
+//         cout << "Repopulated center: 1" << endl;
+//     } else {
+//         cout << "Repopulated center: 0" << endl;
+//     }
+// 
+//     return adapted_factoring;
+// }
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////// domain specific factorings
@@ -2826,11 +2773,11 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
 	uint64_t current_size = 1;
 	for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
 	    current_size *= g_variable_domain[*it];
-	    if (current_size > max_leaf_size){
+	    if (max_leaf_size != 0 && current_size > max_leaf_size){
 		break;
 	    }
 	}
-	if (current_size <= max_leaf_size){
+	if (max_leaf_size == 0 || current_size <= max_leaf_size){
 	    best_factoring.push_back(sccs[i]);
 	}
     }
@@ -2879,11 +2826,11 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
         uint64_t current_size = 1;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             current_size *= g_variable_domain[*it];
-            if (current_size > max_leaf_size){
+            if (max_leaf_size != 0 && current_size > max_leaf_size){
                 break;
             }
         }
-        if (current_size <= max_leaf_size){
+        if (max_leaf_size == 0 || current_size <= max_leaf_size){
             best_factoring.push_back(sccs[i]);
         }
     }
