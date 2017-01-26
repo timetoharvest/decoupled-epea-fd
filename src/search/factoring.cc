@@ -2206,8 +2206,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     // select best candidate
                     if (!merge_candidates.empty()) {
                         size_t max_elem = 0;
-                        VarInt max_value(0);
-                        vector<VarInt> max_rank(arg_rankings.size(), max_value);
+                        vector<VarInt> max_rank(arg_rankings.size(), VarInt(0));
                         for (size_t i = 0; i < merge_candidates.size(); ++i) {
                             FactoredVars new_mis(mis);
                             set<int> new_leaf;
@@ -2247,7 +2246,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                                 ++n;
                             }
                             if (update) {
-                                max_value = i;
+                                max_elem = i;
                                 if (rankings.size() < arg_rankings.size()) {
                                     for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
                                         VarInt vi(arg_rankings[i]->get_rank(mis));
