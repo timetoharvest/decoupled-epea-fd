@@ -386,7 +386,7 @@ vector<set<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_
 bool MIS::check_mis(const NGraph &g, const set<int> &mis) const{
     for (set<int>::iterator i = mis.begin(); i != mis.end(); i++) {
         for (set<int>::iterator n = g.at(*i).begin(); n != g.at(*i).end(); ++n) {
-            if (mis.find(*n) != mis.end()) {
+            if (*i != *n && mis.find(*n) != mis.end()) {
                 return false;
             }
         }

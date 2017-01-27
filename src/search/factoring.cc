@@ -2120,8 +2120,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 }
                 if (update) {
                     if (rankings.size() < arg_rankings.size()) {
-                        for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
-                            VarInt vi(arg_rankings[i]->get_rank(mis));
+                        for (size_t j = rankings.size(); j < arg_rankings.size(); ++j) {
+                            VarInt vi(arg_rankings[j]->get_rank(mis));
                             rankings.push_back(vi);
                         }
                     }
@@ -2146,7 +2146,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             for (size_t n = 0; n < arg_rankings.size(); ++n) {
                 if (arg_rankings[n]->maximizes()) {
                     if (local_best_ranking[n] >= best_ranking[n]) {
-                        if (local_best_ranking[n] > local_best_ranking[n]) {
+                        if (local_best_ranking[n] > best_ranking[n]) {
                             update_global = true;
                         } else {
                             continue;
@@ -2303,7 +2303,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         for (size_t n = 0; n < arg_rankings.size(); ++n) {
                             if (arg_rankings[n]->maximizes()) {
                                 if (local_best_ranking[n] >= best_ranking[n]) {
-                                    if (local_best_ranking[n] > local_best_ranking[n]) {
+                                    if (local_best_ranking[n] > best_ranking[n]) {
                                         update_global = true;
                                     } else {
                                         continue;
