@@ -230,17 +230,15 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
         }
 
         if (center) {
-            if (eff_factors.size() == 1) {
-                // op affects only center
-                continue;
-            } else {
+            // op affects only center
+            if (eff_factors.size() > 1) {
                 for (int f:eff_factors) {
                     if (f != -1) {
                         ++affecting_center[f];
-
                     }
                 }
             }
+            continue;
         }
         set<int> pre_factors;
         for (const Condition &pre : op.get_preconditions()) {

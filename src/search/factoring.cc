@@ -2048,7 +2048,13 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
     }
 
     bool removed_frozen_leaves = false;
-    bool still_improving = true;
+    FactoredVars best_factoring(mis);
+    vector<VarInt> best_ranking;
+    for (size_t i = 0; i < arg_rankings.size(); ++i) {
+        VarInt vi(arg_rankings[i]->get_rank(mis));
+        best_ranking.push_back(vi);
+    }
+    int best_c_rm = 0;
 
     while (true) {
         vector<int> candidates; // pos -> var
@@ -2074,13 +2080,12 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 }
             }
         }
-        if (!candidates.empty() && still_improving) {
+        if (!candidates.empty()) {
             size_t max = 0;
-            vector<VarInt> max_rank;
-            bool improvement = false;
+            vector<VarInt> local_best_ranking;
             for (size_t i = 0; i < arg_rankings.size(); ++i) {
                 VarInt vi(arg_rankings[i]->get_rank(mis));
-                max_rank.push_back(vi);
+                local_best_ranking.push_back(vi);
             }
             for (size_t i = 0; i < candidates.size(); ++i) {
                 int candidate = candidates[i];
@@ -2094,8 +2099,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 for (size_t n = 0; n < arg_rankings.size(); ++n) {
                     rankings.push_back(VarInt(arg_rankings[n]->get_rank(mis)));
                     if (arg_rankings[n]->maximizes()) {
-                        if (rankings[n] >= max_rank[n]) {
-                            if (rankings[n] > max_rank[n]) {
+                        if (rankings[n] >= local_best_ranking[n]) {
+                            if (rankings[n] > local_best_ranking[n]) {
                                 update = true;
                             } else {
                                 continue;
@@ -2103,8 +2108,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         }
                         break;
                     } else {
-                        if (rankings[n] <= max_rank[n]) {
-                            if (rankings[n] < max_rank[n]) {
+                        if (rankings[n] <= local_best_ranking[n]) {
+                            if (rankings[n] < local_best_ranking[n]) {
                                 update = true;
                             } else {
                                 continue;
@@ -2114,34 +2119,63 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     }
                 }
                 if (update) {
-                    if (!improvement) {
-                        improvement = true;
+                    if (rankings.size() < arg_rankings.size()) {
+                        for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
+                            VarInt vi(arg_rankings[i]->get_rank(mis));
+                            rankings.push_back(vi);
+                        }
                     }
-                    assert(rankings.size() == arg_rankings.size());
                     max = i;
-                    max_rank = rankings;
+                    local_best_ranking = rankings;
                 }
                 mis[leaf].erase(candidate);
             }
 
-            if (improvement) {
-                int candidate = candidates[max];
-                int leaf = candidates_to_leaf[max];
-                // and push it into the respective leaf
-                mis[leaf].insert(candidate);
-                var_to_factor[candidate] = leaf;
-                in_center[candidate] = false;
-                center.erase(candidate);
-                c_rm++;
-            } else {
-                still_improving = false;
+            // if no local max is found, pick first candidate
+            int candidate = candidates[max];
+            int leaf = candidates_to_leaf[max];
+            // and push it into the respective leaf
+            mis[leaf].insert(candidate);
+            var_to_factor[candidate] = leaf;
+            in_center[candidate] = false;
+            center.erase(candidate);
+            c_rm++;
+
+            // check if global best factoring has to be updated
+            bool update_global = false;
+            for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                if (arg_rankings[n]->maximizes()) {
+                    if (local_best_ranking[n] >= best_ranking[n]) {
+                        if (local_best_ranking[n] > local_best_ranking[n]) {
+                            update_global = true;
+                        } else {
+                            continue;
+                        }
+                    }
+                    break;
+                } else {
+                    if (local_best_ranking[n] <= best_ranking[n]) {
+                        if (local_best_ranking[n] < best_ranking[n]) {
+                            update_global = true;
+                        } else {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (update_global) {
+                assert(best_ranking.size() == arg_rankings.size());
+                assert(local_best_ranking.size() == arg_rankings.size());
+                best_ranking = local_best_ranking;
+                best_factoring = mis;
+                best_c_rm = c_rm;
             }
         } else {
             if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
                 
                 vector<int> merged_leaves_counter(mis.size(), 0);
 
-                bool still_improving_merge = true;
                 while (true) {
                     vector<int> merge_candidates;
                     vector<set<int>> merge_candidates_to_leaves;
@@ -2176,13 +2210,12 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     }
 
                     // select best candidate
-                    if (!merge_candidates.empty() && still_improving_merge) {
+                    if (!merge_candidates.empty()) {
                         size_t max_elem = 0;
-                        vector<VarInt> max_rank;
-                        bool improvement = false;
+                        vector<VarInt> local_best_ranking;
                         for (size_t i = 0; i < arg_rankings.size(); ++i) {
                             VarInt vi(arg_rankings[i]->get_rank(mis));
-                            max_rank.push_back(vi);
+                            local_best_ranking.push_back(vi);
                         }
                         for (size_t i = 0; i < merge_candidates.size(); ++i) {
                             FactoredVars new_mis(mis);
@@ -2207,8 +2240,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             for (size_t n = 0; n < arg_rankings.size(); ++n) {
                                 rankings.push_back(VarInt(arg_rankings[n]->get_rank(new_mis)));
                                 if (arg_rankings[n]->maximizes()) {
-                                    if (rankings[n] >= max_rank[n]) {
-                                        if (rankings[n] > max_rank[n]) {
+                                    if (rankings[n] >= local_best_ranking[n]) {
+                                        if (rankings[n] > local_best_ranking[n]) {
                                             update = true;
                                         } else {
                                             continue;
@@ -2216,8 +2249,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                                     }
                                     break;
                                 } else {
-                                    if (rankings[n] <= max_rank[n]) {
-                                        if (rankings[n] < max_rank[n]) {
+                                    if (rankings[n] <= local_best_ranking[n]) {
+                                        if (rankings[n] < local_best_ranking[n]) {
                                             update = true;
                                         } else {
                                             continue;
@@ -2227,37 +2260,36 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                                 }
                             }
                             if (update) {
-                                if (!improvement) {
-                                    improvement = true;
+                                if (rankings.size() < arg_rankings.size()) {
+                                    for (size_t i = rankings.size(); i < arg_rankings.size(); ++i) {
+                                        VarInt vi(arg_rankings[i]->get_rank(mis));
+                                        rankings.push_back(vi);
+                                    }
                                 }
-                                assert(rankings.size() == arg_rankings.size());
                                 max_elem = i;
-                                max_rank = rankings;
+                                local_best_ranking = rankings;
                             }
                         }
 
-                        if (improvement) {
-                            set<int> new_leaf;
-                            int c = merge_candidates[max_elem];
-                            new_leaf.insert(c);
-                            in_center[c] = false;
-                            center.erase(c);
-                            c_rm++;
-                            int max_merge_counter = 0;
-                            for (int l : merge_candidates_to_leaves[max_elem]) {
-                                for (int v : mis[l]) {
-                                    new_leaf.insert(v);
-                                }
-                                mis[l].clear();
-                                if (merged_leaves_counter[l] > max_merge_counter) {
-                                    max_merge_counter = merged_leaves_counter[l];
-                                }
+                        set<int> new_leaf;
+                        int c = merge_candidates[max_elem];
+                        new_leaf.insert(c);
+                        in_center[c] = false;
+                        center.erase(c);
+                        c_rm++;
+                        int max_merge_counter = 0;
+                        for (int l : merge_candidates_to_leaves[max_elem]) {
+                            for (int v : mis[l]) {
+                                new_leaf.insert(v);
                             }
-                            mis.push_back(new_leaf);
-                            merged_leaves_counter.push_back(max_merge_counter + 1);
-                        } else {
-                            still_improving = false;
+                            mis[l].clear();
+                            if (merged_leaves_counter[l] > max_merge_counter) {
+                                max_merge_counter = merged_leaves_counter[l];
+                            }
                         }
+                        mis.push_back(new_leaf);
+                        merged_leaves_counter.push_back(max_merge_counter + 1);
+
                         for (int i = mis.size() - 1; i >= 0; --i) {
                             if (mis[i].empty()) {
                                 mis.erase(mis.begin() + i);
@@ -2265,7 +2297,38 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             }
                         }
                         assert(mis.size() == merged_leaves_counter.size());
-                        
+
+                        // check if global best factoring has to be updated
+                        bool update_global = false;
+                        for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                            if (arg_rankings[n]->maximizes()) {
+                                if (local_best_ranking[n] >= best_ranking[n]) {
+                                    if (local_best_ranking[n] > local_best_ranking[n]) {
+                                        update_global = true;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                break;
+                            } else {
+                                if (local_best_ranking[n] <= best_ranking[n]) {
+                                    if (local_best_ranking[n] < best_ranking[n]) {
+                                        update_global = true;
+                                    } else {
+                                        continue;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                        if (update_global) {
+                            assert(best_ranking.size() == arg_rankings.size());
+                            assert(local_best_ranking.size() == arg_rankings.size());
+                            best_ranking = local_best_ranking;
+                            best_factoring = mis;
+                            best_c_rm = c_rm;
+                        }
+
                         for (size_t f = 0; f < mis.size(); ++f){
                             for (int var : mis[f]){
                                 var_to_factor[var] = f;
@@ -2317,7 +2380,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     if (frozen_candidates == 0) {
                         break;
                     } else {
-                        still_improving = true;
                         continue;
                     }
                 }
@@ -2326,6 +2388,8 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             }
         }
     }
+    mis = best_factoring;
+    c_rm = best_c_rm;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////// domain specific factorings
