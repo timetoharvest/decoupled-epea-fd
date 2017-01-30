@@ -2055,6 +2055,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
         best_ranking.push_back(vi);
     }
     int best_c_rm = 0;
+    int best_f_rm = 0;
 
     while (true) {
         vector<int> candidates; // pos -> var
@@ -2170,6 +2171,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 best_ranking = local_best_ranking;
                 best_factoring = mis;
                 best_c_rm = c_rm;
+                best_f_rm = f_rm;
             }
         } else {
             if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
@@ -2327,6 +2329,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             best_ranking = local_best_ranking;
                             best_factoring = mis;
                             best_c_rm = c_rm;
+                            best_f_rm = f_rm;
                         }
 
                         for (size_t f = 0; f < mis.size(); ++f){
@@ -2390,6 +2393,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
     }
     mis = best_factoring;
     c_rm = best_c_rm;
+    f_rm = best_f_rm;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////// domain specific factorings

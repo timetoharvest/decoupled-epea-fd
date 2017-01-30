@@ -203,7 +203,7 @@ VarInt VariablesRanking::rank(const vector<set<int>> & factoring) {
 }
 
 VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
-    if (factoring.size() == 0){
+    if (factoring.size() == 0 || g_operators.size() == 0){
         return 0;
     }
     vector<int> affecting_center(factoring.size(),0);
