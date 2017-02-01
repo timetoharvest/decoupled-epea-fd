@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "leaf_state_id.h"
 #include "utilities.h"
+#include "ranking.h"
 
 #include <set>
 #include <string>
@@ -80,12 +81,21 @@ class Options;
 
 class Factoring {
     friend class AutoFactoring; // to get the factoring from other subclasses
+    friend class Ranking;
+    friend class MobilityRanking;
+    friend class LeavesRanking;
+    friend class AffActionsRanking;
+    friend class DomSizeRanking;
+    friend class VariablesRanking;
     
     SEARCH_TYPE search_type;
     
     size_t max_precompute_state_space_size;
     
 protected:
+
+    static std::vector<std::set<int>> var_to_affecting_op;
+    static std::vector<bool> op_affects_center;
     
     typedef std::vector<std::set<int> > FactoredVars;
     
@@ -110,6 +120,8 @@ protected:
     void apply_factoring(const FactoredVars &factoring);
     
     void print_factoring() const;
+
+    void init_ops_helper();
     
     void exit_error(std::string message, ExitCode exit_code) const;
     

@@ -1,6 +1,6 @@
 #include "ranking.h"
 
-#include "globals.h"
+#include "factoring.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
@@ -8,7 +8,8 @@
 using namespace std;
 
 Ranking::Ranking(const Options &opts) :
-            maximize(opts.get<bool>("maximize")) { }
+            maximize(opts.get<bool>("maximize")) {
+}
 
 
 VarInt Ranking::get_rank(const vector<set<int>> & factoring) {
@@ -34,49 +35,76 @@ void print_all_rankings(const vector<set<int> > &factoring) {
     aff_actions->get_rank(factoring).dump_number();
 }
 
+set<int> diff_factorings(const vector<set<int>> & old_factoring, const vector<set<int>> & new_factoring) {
+    vector<bool> var_missing(g_variable_domain.size(),false);
+    vector<bool> var_changed(g_variable_domain.size(),false);
+
+    size_t pos_o = 0;
+    size_t pos_n = 0;
+    while (pos_o < old_factoring.size() && pos_n < new_factoring.size()){
+        size_t f_pos_o = 0;
+        size_t f_pos_n = 0;
+        while (f_pos_o < old_factoring[pos_o].size() && f_pos_n < new_factoring[pos_n].size()) {
+
+        }
+    }
+    set<int> ret;
+    return ret;
+}
+
 VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
     if (factoring.size() == 0){
         return 0;
     }
     vector<int> factor_actions(factoring.size(), 0);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
+    vector<bool> operator_seen(g_operators.size(), false);
 
     for (size_t i = 0; i < factoring.size(); i++){
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-            belongs_to_factor[*it] = i;
+        for (int var : factoring[i]){
+            belongs_to_factor[var] = i;
         }
     }
 
-    for (const Operator &op : g_operators){
-        bool center = false;
-        set<int> eff_factors;
-        int affects_factor = -1;
+    for (size_t f = 0; f < factoring.size(); ++f) {
+        for (int v: factoring[f]){
 
-        for (const Effect &eff : op.get_effects()){
-            eff_factors.insert(belongs_to_factor[eff.var]);
-            affects_factor = belongs_to_factor[eff.var];
-            if (affects_factor == -1 || eff_factors.size() > 1){
-                center = true;
-                break;
+            for (int op: Factoring::var_to_affecting_op[v]) {
+                if (!operator_seen[op]) {
+                    operator_seen[op] = true;
+
+                    if (Factoring::op_affects_center[op]) {
+                        continue;
+                    }
+
+                    bool center = false;
+                    set<int> eff_factors;
+                    for (const Effect &eff : g_operators[op].get_effects()) {
+                        eff_factors.insert(belongs_to_factor[eff.var]);
+                        if (eff_factors.size() > 1) {
+                            center = true;
+                            break;
+                        }
+                    }
+                    if (center) {
+                        continue;
+                    }
+                    set<int> pre_factors;
+                    for (const Condition &pre : g_operators[op].get_preconditions()) {
+                        pre_factors.insert(belongs_to_factor[pre.var]);
+                    }
+                    pre_factors.erase(-1);
+
+                    if (pre_factors.size() <= 1 &&
+                        (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())) {
+                        // op has only preconditions and effects on (at most) a single leaf factor
+                        ++factor_actions[belongs_to_factor[v]];
+                    }
+                }
             }
         }
-
-        if (center){
-            // op affects center variable or has effect on more than 1 factor
-            continue;
-        }
-
-        set<int> pre_factors;
-        for (const Condition &pre : op.get_preconditions()) {
-            pre_factors.insert(belongs_to_factor[pre.var]);
-        }
-        pre_factors.erase(-1);
-
-        if (pre_factors.size() <= 1  && (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())){
-            // op has only preconditions and effects on (at most) a single leaf factor
-            ++factor_actions[affects_factor];
-        }
     }
+
     VarInt mobility(1);
     bool any_actions = false;
     for (int i:factor_actions) {
@@ -99,49 +127,58 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
     vector<bool> is_frozen_factor(factoring.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
     size_t num_frozen = factoring.size();
+    vector<bool> operator_seen(g_operators.size(), false);
     
     for (size_t i = 0; i < factoring.size(); i++){
         for (int var : factoring[i]){
             belongs_to_factor[var] = i;
         }
     }
-    
-    for (const Operator &op : g_operators){
-        bool center = false;
-        set<int> eff_factors;
-        int affects_factor = -1;
-        
-        for (const Effect &eff : op.get_effects()){
-            eff_factors.insert(belongs_to_factor[eff.var]);
-            affects_factor = belongs_to_factor[eff.var];
-            if (affects_factor == -1 || eff_factors.size() > 1){
-                center = true;
-                break;
+
+    for (size_t f = 0; f < factoring.size(); ++f) {
+        for (int v: factoring[f]){
+            if (!is_frozen_factor[belongs_to_factor[v]]) {
+                continue;
             }
-        }
-        
-        if (center){
-            // op affects center variable or has effect on more than 1 factor
-            continue;
-        }
-        if (!is_frozen_factor[affects_factor]){
-            // factor is mobile, no need to continue
-            continue;
-        }
-        
-        set<int> pre_factors;
-        for (const Condition &pre : op.get_preconditions()) {
-            pre_factors.insert(belongs_to_factor[pre.var]);
-        }
-        pre_factors.erase(-1);
-        
-        if (pre_factors.size() <= 1  && (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())){
-            // op has only preconditions and effects on (at most) a single leaf factor
-            if (is_frozen_factor[affects_factor]){
-                --num_frozen;
-                is_frozen_factor[affects_factor] = false;
-                if (num_frozen == 0){
-                    return VarInt(factoring.size());
+            for (int op: Factoring::var_to_affecting_op[v]) {
+                if (!operator_seen[op]) {
+                    operator_seen[op] = true;
+
+                    if (Factoring::op_affects_center[op]) {
+                        continue;
+                    }
+
+                    bool center = false;
+                    set<int> eff_factors;
+
+                    for (const Effect &eff : g_operators[op].get_effects()) {
+                        eff_factors.insert(belongs_to_factor[eff.var]);
+                        if (eff_factors.size() > 1) {
+                            center = true;
+                            break;
+                        }
+                    }
+                    if (center) {
+                        continue;
+                    }
+                    set<int> pre_factors;
+                    for (const Condition &pre : g_operators[op].get_preconditions()) {
+                        pre_factors.insert(belongs_to_factor[pre.var]);
+                    }
+                    pre_factors.erase(-1);
+
+                    if (pre_factors.size() <= 1 &&
+                        (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())) {
+                        // op has only preconditions and effects on (at most) a single leaf factor
+                        if (is_frozen_factor[belongs_to_factor[v]]) {
+                            --num_frozen;
+                            is_frozen_factor[belongs_to_factor[v]] = false;
+                            if (num_frozen == 0) {
+                                return VarInt(factoring.size());
+                            }
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -209,51 +246,59 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     vector<int> affecting_center(factoring.size(),0);
     vector<int> affecting_leaf(factoring.size(),0);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
+    vector<bool> operator_seen(g_operators.size(), false);
 
     for (size_t i = 0; i < factoring.size(); i++){
-        for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-            belongs_to_factor[*it] = i;
+        for (int var : factoring[i]){
+            belongs_to_factor[var] = i;
         }
     }
 
-    for (const Operator &op : g_operators){
-        bool center = false;
-        set<int> eff_factors;
-        int affects_factor = -1;
+    for (size_t f = 0; f < factoring.size(); ++f) {
+        for (int v: factoring[f]){
 
-        for (const Effect &eff : op.get_effects()){
-            eff_factors.insert(belongs_to_factor[eff.var]);
-            affects_factor = belongs_to_factor[eff.var];
-            if (affects_factor == -1 || eff_factors.size() > 1){
-                center = true;
-            }
-        }
+            for (int op: Factoring::var_to_affecting_op[v]) {
+                if (!operator_seen[op]) {
+                    operator_seen[op] = true;
 
-        if (center) {
-            // op affects only center
-            if (eff_factors.size() > 1) {
-                for (int f:eff_factors) {
-                    if (f != -1) {
-                        ++affecting_center[f];
+                    bool center = Factoring::op_affects_center[op];
+
+                    set<int> eff_factors;
+                    for (const Effect &eff : g_operators[op].get_effects()) {
+                        eff_factors.insert(belongs_to_factor[eff.var]);
+                        if (eff_factors.size() > 1) {
+                            center = true;
+                        }
                     }
-                }
-            }
-            continue;
-        }
-        set<int> pre_factors;
-        for (const Condition &pre : op.get_preconditions()) {
-            pre_factors.insert(belongs_to_factor[pre.var]);
-        }
-        pre_factors.erase(-1);
+                    if (center) {
+                        if (eff_factors.size() > 1) {
+                            for (int f:eff_factors) {
+                                if (f != -1) {
+                                    ++affecting_center[f];
+                                }
+                            }
+                        }
+                        continue;
+                    }
+                    set<int> pre_factors;
+                    for (const Condition &pre : g_operators[op].get_preconditions()) {
+                        pre_factors.insert(belongs_to_factor[pre.var]);
+                    }
+                    pre_factors.erase(-1);
 
-        if ((pre_factors.size() <= 1) && (pre_factors.empty() || (*pre_factors.begin() == *eff_factors.begin()))) {
-            ++affecting_leaf[affects_factor];
-        }
-        else {
-            for (int f:eff_factors) {
-                if (f != -1) {
-                    ++affecting_center[f];
+                    if (pre_factors.size() <= 1 &&
+                        (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())) {
+                        // op has only preconditions and effects on (at most) a single leaf factor
+                        ++affecting_leaf[belongs_to_factor[v]];
+                    }
+                    else {
+                        for (int f:eff_factors) {
+                            if (f != -1) {
+                                ++affecting_center[f];
 
+                            }
+                        }
+                    }
                 }
             }
         }

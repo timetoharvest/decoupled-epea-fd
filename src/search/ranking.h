@@ -59,7 +59,7 @@ public:
 };
 
 void print_all_rankings(const std::vector<std::set<int> > &);
-
+std::set<int> diff_factorings(const std::vector<std::set<int>> &, const std::vector<std::set<int>> &);
 
 class MobilityRanking : public Ranking {
 
