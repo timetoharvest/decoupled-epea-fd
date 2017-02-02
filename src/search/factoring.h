@@ -95,8 +95,7 @@ class Factoring {
 protected:
 
     static std::vector<std::set<int>> var_to_affecting_op;
-    static std::vector<bool> op_affects_center;
-    
+
     typedef std::vector<std::set<int> > FactoredVars;
     
     size_t max_leaf_size;

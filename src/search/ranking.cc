@@ -73,15 +73,11 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
-                    if (Factoring::op_affects_center[op]) {
-                        continue;
-                    }
-
                     bool center = false;
                     set<int> eff_factors;
                     for (const Effect &eff : g_operators[op].get_effects()) {
                         eff_factors.insert(belongs_to_factor[eff.var]);
-                        if (eff_factors.size() > 1) {
+                        if (belongs_to_factor[eff.var] == -1 || eff_factors.size() > 1) {
                             center = true;
                             break;
                         }
@@ -144,16 +140,12 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
-                    if (Factoring::op_affects_center[op]) {
-                        continue;
-                    }
-
                     bool center = false;
                     set<int> eff_factors;
 
                     for (const Effect &eff : g_operators[op].get_effects()) {
                         eff_factors.insert(belongs_to_factor[eff.var]);
-                        if (eff_factors.size() > 1) {
+                        if (belongs_to_factor[eff.var] == -1 || eff_factors.size() > 1) {
                             center = true;
                             break;
                         }
@@ -178,7 +170,6 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
                             }
                         }
                     }
-                    break;
                 }
             }
         }
@@ -261,12 +252,11 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
-                    bool center = Factoring::op_affects_center[op];
-
+                    bool center = false;
                     set<int> eff_factors;
                     for (const Effect &eff : g_operators[op].get_effects()) {
                         eff_factors.insert(belongs_to_factor[eff.var]);
-                        if (eff_factors.size() > 1) {
+                        if (belongs_to_factor[eff.var] == -1 || eff_factors.size() > 1) {
                             center = true;
                         }
                     }

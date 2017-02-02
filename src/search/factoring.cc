@@ -49,22 +49,13 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
     }
 }
 std::vector<std::set<int>> Factoring::var_to_affecting_op;
-std::vector<bool> Factoring::op_affects_center;
 
 void Factoring::init_ops_helper() {
     if (var_to_affecting_op.empty()) {
         var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());
-        op_affects_center = vector<bool>(g_operators.size(), false);
         for (size_t op = 0; op < g_operators.size(); ++op) {
-            bool center = false;
             for (const Effect &eff : g_operators[op].get_effects()) {
                 var_to_affecting_op[eff.var].insert(op);
-                if (eff.var == -1) {
-                    center = true;
-                }
-            }
-            if (center) {
-                op_affects_center[op] = true;
             }
         }
     }
@@ -1826,16 +1817,12 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
-                    if (Factoring::op_affects_center[op]) {
-                        continue;
-                    }
-
                     bool center = false;
                     set<int> eff_factors;
 
                     for (const Effect &eff : g_operators[op].get_effects()) {
                         eff_factors.insert(belongs_to_factor[eff.var]);
-                        if (eff_factors.size() > 1) {
+                        if (belongs_to_factor[eff.var] == -1 || eff_factors.size() > 1) {
                             center = true;
                             break;
                         }
@@ -1860,7 +1847,6 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
                             }
                         }
                     }
-                    break;
                 }
             }
         }
