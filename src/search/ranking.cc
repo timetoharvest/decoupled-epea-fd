@@ -132,12 +132,10 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
     }
 
     for (size_t f = 0; f < factoring.size(); ++f) {
-        for (int v: factoring[f]){
-            if (!is_frozen_factor[belongs_to_factor[v]]) {
-                continue;
-            }
-            for (int op: Factoring::var_to_affecting_op[v]) {
+        for (int v : factoring[f]){
+            for (int op : Factoring::var_to_affecting_op[v]) {
                 if (!operator_seen[op]) {
+                    // if an operator has been handled by another leaf factor, it has to be a center action
                     operator_seen[op] = true;
 
                     bool center = false;
@@ -169,8 +167,12 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
                                 return VarInt(factoring.size());
                             }
                         }
+                        break;
                     }
                 }
+            }
+            if (!is_frozen_factor[f]) {
+                break;
             }
         }
     }

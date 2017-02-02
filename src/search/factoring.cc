@@ -1809,12 +1809,10 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
     }
 
     for (size_t f = 0; f < components.size(); ++f) {
-        for (int v: components[f]){
-            if (!is_frozen_factor[belongs_to_factor[v]]) {
-                continue;
-            }
-            for (int op: Factoring::var_to_affecting_op[v]) {
+        for (int v : components[f]){
+            for (int op : Factoring::var_to_affecting_op[v]) {
                 if (!operator_seen[op]) {
+                    // if an operator has been handled by another leaf factor, it has to be a center action
                     operator_seen[op] = true;
 
                     bool center = false;
@@ -1846,8 +1844,12 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
                                 return is_frozen_factor;
                             }
                         }
+                        break;
                     }
                 }
+            }
+            if (!is_frozen_factor[f]) {
+                break;
             }
         }
     }
