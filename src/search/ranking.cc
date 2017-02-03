@@ -125,7 +125,7 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
     size_t num_frozen = factoring.size();
     vector<bool> operator_seen(g_operators.size(), false);
     
-    for (size_t i = 0; i < factoring.size(); i++){
+    for (size_t i = 0; i < factoring.size(); ++i){
         for (int var : factoring[i]){
             belongs_to_factor[var] = i;
         }
@@ -139,11 +139,14 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
                     operator_seen[op] = true;
 
                     bool center = false;
-                    set<int> eff_factors;
-
+                    int eff_factor = -1;
                     for (const Effect &eff : g_operators[op].get_effects()) {
-                        eff_factors.insert(belongs_to_factor[eff.var]);
-                        if (belongs_to_factor[eff.var] == -1 || eff_factors.size() > 1) {
+                        if (belongs_to_factor[eff.var] == -1){
+                            center = true;
+                            break;
+                        } else if (eff_factor == -1){
+                            eff_factor = belongs_to_factor[eff.var];
+                        }  else if (eff_factor != belongs_to_factor[eff.var]){
                             center = true;
                             break;
                         }
@@ -151,18 +154,24 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
                     if (center) {
                         continue;
                     }
-                    set<int> pre_factors;
+                    int pre_factor = -1;
+                    bool single_pre_factor = true;
                     for (const Condition &pre : g_operators[op].get_preconditions()) {
-                        pre_factors.insert(belongs_to_factor[pre.var]);
+                        if (belongs_to_factor[pre.var] != -1){
+                            if (pre_factor == -1){
+                                pre_factor = belongs_to_factor[pre.var];
+                            } else if (pre_factor != belongs_to_factor[pre.var]) {
+                                single_pre_factor = false;
+                                break;
+                            }
+                        }
                     }
-                    pre_factors.erase(-1);
 
-                    if (pre_factors.size() <= 1 &&
-                        (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())) {
-                        // op has only preconditions and effects on (at most) a single leaf factor
-                        if (is_frozen_factor[belongs_to_factor[v]]) {
+                    if (single_pre_factor && (pre_factor == -1 || pre_factor == eff_factor)) {
+                        // op has preconditions and effects on (at most) a single leaf factor
+                        if (is_frozen_factor[f]) {
                             --num_frozen;
-                            is_frozen_factor[belongs_to_factor[v]] = false;
+                            is_frozen_factor[f] = false;
                             if (num_frozen == 0) {
                                 return VarInt(factoring.size());
                             }
