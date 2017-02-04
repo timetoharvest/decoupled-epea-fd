@@ -1151,7 +1151,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
             
-            if (number_leaves > best_number_leaves){
+            if (number_leaves >= best_number_leaves){
                 best_factoring = factoring;
                 discarded_leaves = discard_leaf;
                 best_number_leaves = number_leaves;
