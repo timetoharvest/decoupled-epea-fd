@@ -253,12 +253,12 @@ class MaxIndependentSetFactoring : public Factoring {
     MaxIndependentSetFactoring()
             : Factoring(),
               arg_minimize_center(1),
-              arg_minimize_frozen(false),
+              arg_minimize_frozen(true),
               arg_xth_factoring(0),
               arg_merge_leaves(0),
               arg_find_all(0),
               arg_all_rankings(true),
-              arg_timeout(30),
+              arg_timeout(10),
               arg_multiple_mis(1){
         profile = STAR;
         cout << "using maximum independet set factoring profile - find all MIS: "
@@ -697,7 +697,6 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
             vector<vector<Ranking*> > rankings;
             vector<Ranking*> tmp;
             tmp.push_back(new LeavesRanking());
-            tmp.push_back(new MobilityRanking());
             rankings.push_back(tmp);
             
             vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
