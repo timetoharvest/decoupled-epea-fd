@@ -730,13 +730,16 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
                         factorings.push_back(factoring);
                         names.push_back(factoring_method->get_name());
                     } else {
+                        bool found = false;
                         for (const auto &generated_factoring : factorings) {
                             if (factoring == generated_factoring) {
+                                found = true;
                                 break;
-                            } else {
-                                factorings.push_back(factoring);
-                                names.push_back(factoring_method->get_name());
                             }
+                        }
+                        if (!found) {
+                            factorings.push_back(factoring);
+                            names.push_back(factoring_method->get_name());
                         }
                     }
                 }
@@ -748,13 +751,16 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
                     factorings.push_back(factoring);
                     names.push_back(factoring_method->get_name());
                 } else {
+                    bool found = false;
                     for (const auto &generated_factoring : factorings) {
                         if (factoring == generated_factoring) {
+                            found = true;
                             break;
-                        } else {
-                            factorings.push_back(factoring);
-                            names.push_back(factoring_method->get_name());
                         }
+                    }
+                    if (!found) {
+                        factorings.push_back(factoring);
+                        names.push_back(factoring_method->get_name());
                     }
                 }
             }
