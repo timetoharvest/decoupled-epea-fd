@@ -1,5 +1,6 @@
 #include "compliant_path_graph.h"
 
+#include "../countdown_timer.h"
 #include "cpg_storage.h"
 #include "../factoring.h"
 #include "../leaf_state_id.h"
@@ -24,6 +25,8 @@ const int CompliantPathGraph::INF = -1;
 const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
 bool CompliantPathGraph::compute_leaf_backwards_graph = false;
+
+int CompliantPathGraph::build_leaf_state_space_timeout = -1;
 
 SearchSpace* CompliantPathGraph::search_space;
 
@@ -277,6 +280,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         goal_price_tag.add_state(LeafStateHash(0), factor, 0);
     }
     
+    CountdownTimer timer(build_leaf_state_space_timeout);
+    
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 
         if (!precompute_leaf_state_spaces[factor]){
@@ -309,6 +314,18 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             change = false;
 
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (build_leaf_state_space_timeout != -1 && timer.is_expired()){
+                    cout << "building leaf state spaces timed out" << endl;
+                    for (LeafFactorID remain_factor(factor); remain_factor < g_leaves.size(); ++remain_factor){
+                        leaf_state_successors[remain_factor].resize(g_state_registry->size(remain_factor));
+                        center_successors[remain_factor].resize(g_state_registry->size(remain_factor));
+                        if (compute_leaf_backwards_graph) { 
+                            leaf_state_predecessors[remain_factor].resize(g_state_registry->size(remain_factor));
+                        }
+                    }
+                    g_factoring->set_building_leaf_state_spaces_timed_out();
+                    return;
+                }
                 if (!goal_price_tag.has_leaf_state(id, factor)){
                     continue;
                 }

@@ -34,6 +34,10 @@ class CompliantPathGraph {
     
 protected:
     
+    // so far only used to keep precomputation time at bay for AutoFactoring
+    // -1 => no timeout
+    static int build_leaf_state_space_timeout;
+    
     static SearchSpace *search_space;
     
     static OperatorCost cost_type;
@@ -147,6 +151,10 @@ public:
     
     static bool precompute_leaf_state_space(LeafFactorID factor) {
         return precompute_leaf_state_spaces[factor];
+    }
+    
+    static void set_build_leaf_state_spaces_timeout(int seconds) {
+        build_leaf_state_space_timeout = seconds;
     }
     
     static void clear_static_data() {
