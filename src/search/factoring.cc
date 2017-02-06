@@ -66,6 +66,7 @@ Factoring::Factoring() {
     max_leaf_size = numeric_limits<size_t>::max();
     min_number_leaves = 2;
     max_precompute_state_space_size = 10000;
+    building_leaf_state_spaces_timed_out = false;
 }
 
 Factoring::Factoring(const Options &opts) :
@@ -98,6 +99,7 @@ Factoring::Factoring(const Options &opts) :
     }
     min_number_leaves = 2;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
+    building_leaf_state_spaces_timed_out = false;
 }
 
 class AutoFactoring : public Factoring {
@@ -840,6 +842,7 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
             if (leaf_domains[factor].empty()){
                 leaf_domains[factor].resize(g_leaves[factor].size(), -1);
             }
+            leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
         }
     }
     
@@ -885,6 +888,8 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     }
 
     engine->set_max_time(max_test_search_time);
+    CompliantPathGraph::set_build_leaf_state_spaces_timeout(max_test_search_time);
+    building_leaf_state_spaces_timed_out = false;
     
     Timer search_timer;
     engine->search();

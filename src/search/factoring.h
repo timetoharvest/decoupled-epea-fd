@@ -153,7 +153,7 @@ public:
         return search_type;
     }
     
-    virtual void set_main_input(int, const char**) {        
+    virtual void set_main_input(int, const char**) {
     }    
     
     void set_building_leaf_state_spaces_timed_out() {
