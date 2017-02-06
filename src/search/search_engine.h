@@ -23,9 +23,6 @@ private:
     SearchStatus status;
     bool solution_found;
     
-    // this is used in AutoFactoring for optimal search
-    // to check if the found solution is proved optimal
-    bool search_terminated;
     mutable Plan plan;
     StateID cheapest_goal_state;
     bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
