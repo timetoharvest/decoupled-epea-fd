@@ -56,6 +56,11 @@ void SearchEngine::set_plan(const Plan &p) {
 void SearchEngine::search() {
     initialize();
     
+    if (g_factoring && g_factoring->get_building_leaf_state_spaces_timed_out()){
+        // only relevant for short test searches of AutoFactoring
+        return;
+    }
+    
     CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
         status = step();
