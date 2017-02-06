@@ -93,10 +93,13 @@ class Factoring {
     size_t max_precompute_state_space_size;
     
 protected:
-
+    
     static std::vector<std::set<int>> var_to_affecting_op;
 
+
     typedef std::vector<std::set<int> > FactoredVars;
+    
+    mutable bool building_leaf_state_spaces_timed_out;
     
     size_t max_leaf_size;
     
@@ -151,12 +154,20 @@ public:
     }
     
     virtual void set_main_input(int, const char**) {        
+    }    
+    
+    void set_building_leaf_state_spaces_timed_out() {
+        building_leaf_state_spaces_timed_out = true;
     }
+    
+    bool get_building_leaf_state_spaces_timed_out() const {
+        return building_leaf_state_spaces_timed_out;
+    }
+    
+    virtual std::string get_name() const = 0;
     
 
     static void add_options_to_parser(OptionParser &parser);
-
-    virtual std::string get_name() = 0;
     
 };
 

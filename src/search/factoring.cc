@@ -48,7 +48,8 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
         predecessors[to].push_back(from);
     }
 }
-std::vector<std::set<int>> Factoring::var_to_affecting_op;
+
+vector<set<int>> Factoring::var_to_affecting_op;
 
 void Factoring::init_ops_helper() {
     if (var_to_affecting_op.empty()) {
@@ -126,9 +127,9 @@ public:
 
     AutoFactoring(const Options &opts);
 
-    string get_name() override;
+    string get_name() const override;
 
-    virtual void set_main_input(int argc, const char** argv) {
+    void set_main_input(int argc, const char** argv) override {
         this->argc = argc;
         this->argv = argv;
     }
@@ -149,7 +150,7 @@ public:
         cout << "using random 2-factor factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
     
 };
 
@@ -199,7 +200,7 @@ public:
         }
     }
 
-    string get_name() override;
+    string get_name() const override;
 
     static void add_options_to_parser(OptionParser &parser);
     
@@ -226,7 +227,7 @@ public:
         cout << "using X-shape factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
     
 };
 
@@ -251,7 +252,7 @@ public:
         cout << "using incident-arcs factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
   
 };
 
@@ -330,7 +331,7 @@ public:
         }
     }
 
-    string get_name() override;
+    string get_name() const override;
 
     static void add_options_to_parser(OptionParser &parser);
 
@@ -350,7 +351,7 @@ public:
         cout << "using sokoban factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
   
 };
 
@@ -368,7 +369,7 @@ public:
         cout << "using openstacks factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
     
 };
 
@@ -388,7 +389,7 @@ public:
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
   
 };
 
@@ -405,8 +406,8 @@ public:
         profile = DOC_TRANSFER;
         cout << "using doc transfer factoring profile" << endl;
     }
-
-    string get_name() override;
+    
+    string get_name() const override;
 
 };
 
@@ -424,7 +425,7 @@ public:
         cout << "using pegsol factoring profile" << endl;
     }
 
-    string get_name() override;
+    string get_name() const override;
     
 };
 
@@ -762,11 +763,12 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     
     cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
     
-    FactoredVars best_factoring;
+    OptionParser::parse_cmd_line(argc, argv, true, is_unit_cost());
+
     vector<pair<vector<size_t>,vector<size_t>>> all_rankings;
     int name_pos = 0;
     for (const auto &factoring : factorings){
-        cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
+        cout << "Running short search for " << max_test_search_time << "s to test factoring (" << factoring.size() << " leaves)." << endl;
     
         g_factoring->apply_factoring(factoring);
         
@@ -779,6 +781,7 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         ++name_pos;
     }
 
+    FactoredVars best_factoring;
     if (!factorings.empty()) {
         int best_ranking = 0;
         int best_count = 0;
@@ -821,46 +824,37 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     
     print_factoring();
     
-    if (g_factoring){        
-        vector<int> center_domains;
-        vector<vector<int> > leaf_domains(g_leaves.size());
-        for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
-            LeafFactorID factor = g_belongs_to_factor[var];
-            if (factor == LeafFactorID::CENTER){
-                center_domains.push_back(g_variable_domain[var]);
-            } else {
-                if (leaf_domains[factor].empty()){
-                    leaf_domains[factor].resize(g_leaves[factor].size(), -1);
-                }
-                leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
+    vector<int> center_domains;
+    vector<vector<int> > leaf_domains(g_leaves.size());
+    for (size_t var = 0; var < g_belongs_to_factor.size(); ++var){
+        LeafFactorID factor = g_belongs_to_factor[var];
+        if (factor == LeafFactorID::CENTER){
+            center_domains.push_back(g_variable_domain[var]);
+        } else {
+            if (leaf_domains[factor].empty()){
+                leaf_domains[factor].resize(g_leaves[factor].size(), -1);
             }
         }
-        
-        center_domains.push_back(MAX_DUPLICATE_COUNTER);
-        
-        cout << "packing state variables..." << flush;
-        g_state_packer = new IntPacker(center_domains);
-        cout << "Variables: " << g_center.size() << endl;
-        g_leaf_factor_packers = vector<IntPacker*>(g_leaves.size(), 0);
-        for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
-            g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
-        }
-    } else {
-	g_state_packer = new IntPacker(g_variable_domain);
-	g_leaf_factor_packers.push_back(new IntPacker(vector<int>(1, 2)));
-	cout << "Variables: " << g_variable_domain.size() << endl;
+    }
+    
+    center_domains.push_back(MAX_DUPLICATE_COUNTER);
+    
+    cout << "packing state variables..." << flush;
+    g_state_packer = new IntPacker(center_domains);
+    cout << "Variables: " << g_center.size() << endl;
+    g_leaf_factor_packers = vector<IntPacker*>(g_leaves.size(), 0);
+    for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
+        g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
     }
     
     cout << "Bytes per state: "
          << g_state_packer->get_num_bins() *
             g_state_packer->get_bin_size_in_bytes() << endl;
     
-    if (g_factoring){
-	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-	    cout << "Bytes per state of leaf factor " << factor << ": "
-		<< g_leaf_factor_packers[factor]->get_num_bins() *
-		    g_leaf_factor_packers[factor]->get_bin_size_in_bytes() << endl;
-	}
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        cout << "Bytes per state of leaf factor " << factor << ": "
+            << g_leaf_factor_packers[factor]->get_num_bins() *
+                g_leaf_factor_packers[factor]->get_bin_size_in_bytes() << endl;
     }
     
     cout << "done! [t=" << g_timer << "]" << endl;
@@ -873,12 +867,8 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     
     SearchEngine *engine = 0;
 
-    // The command line is parsed twice: once in dry-run mode, to
-    // check for simple input errors, and then in normal mode.
-    bool unit_cost = is_unit_cost();
     try {
-        OptionParser::parse_cmd_line(argc, argv, true, unit_cost);
-        engine = OptionParser::parse_cmd_line(argc, argv, false, unit_cost);
+        engine = OptionParser::parse_cmd_line(argc, argv, false, is_unit_cost());
     } catch (ArgError &error) {
         cerr << error << endl;
         OptionParser::usage(argv[0]);
@@ -896,12 +886,13 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     
     cout.rdbuf(real_out);
 
-    vector<size_t> rankings_min;
-    vector<size_t> rankings_max;
     size_t dec_state_space_size = g_state_registry->get_decoupled_state_space_size();
     size_t heuristic_value_improv = engine->search_progress.initial_h_values[0] * 100 / max(1,engine->search_progress.best_heuristic_values[0]);
     size_t exp_states = engine->search_progress.expanded_states;
     size_t eval_states = engine->search_progress.evaluated_states;
+
+    vector<size_t> rankings_min;
+    vector<size_t> rankings_max;
     rankings_min.push_back(g_state_registry->get_max_number_duplicates());
     /*
     rankings_max.push_back(dec_state_space_size);
@@ -910,7 +901,7 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     rankings_max.push_back(eval_states);
      */
 
-    if (engine->found_solution()){
+    if (engine->found_solution() && engine->get_status() != TIMEOUT && !building_leaf_state_spaces_timed_out){
         g_timer.stop();
         
         cout << tmp_out.str();
@@ -925,6 +916,9 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
 
         exit_with(EXIT_PLAN_FOUND);
     } else {
+        if (building_leaf_state_spaces_timed_out){
+            cout << "Skipped this run, building leaf state spaces timed out." << endl;
+        }
         cout << "did not find goal in test search" << endl;
         cout << "decoupled state space size: " << dec_state_space_size << endl;
         cout << "improved heuristic value by: " << heuristic_value_improv << endl;
@@ -957,6 +951,7 @@ void AutoFactoring::reset_globals() const {
     
     delete CPGStorage::storage;
     CompliantPathGraph::clear_static_data();
+    CompliantPathGraph::set_build_leaf_state_spaces_timeout(-1);
     
     g_goal = safed_goal;
     
@@ -2651,15 +2646,15 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
     return factoring;
 }
 
-string AutoFactoring::get_name() {
+string AutoFactoring::get_name() const {
     return "Auto";
 }
 
-string CenterFactoring::get_name() {
+string CenterFactoring::get_name() const {
     return "Center";
 }
 
-string ForkFactoring::get_name() {
+string ForkFactoring::get_name() const {
     if (this->profile == I_FORK) {
         return "IFork";
     } else {
@@ -2667,35 +2662,35 @@ string ForkFactoring::get_name() {
     }
 }
 
-string XShapeFactoring::get_name() {
+string XShapeFactoring::get_name() const {
     return "XShape";
 }
 
-string IncidentArcsFactoring::get_name() {
+string IncidentArcsFactoring::get_name() const {
     return "IncidentArgs";
 }
 
-string MaxIndependentSetFactoring::get_name() {
+string MaxIndependentSetFactoring::get_name() const {
     return "MaxIndependentSet";
 }
 
-string SokobanFactoring::get_name() {
+string SokobanFactoring::get_name() const {
     return "Sokoban";
 }
 
-string OpenstacksFactoring::get_name() {
+string OpenstacksFactoring::get_name() const {
     return "Openstacks";
 }
 
-string TPPConstrainedFactoring::get_name() {
+string TPPConstrainedFactoring::get_name() const {
     return "TPPConstrained";
 }
 
-string DocTransferFactoring::get_name() {
+string DocTransferFactoring::get_name() const {
     return "DocTransfer";
 }
 
-string PegsolFactoring::get_name() {
+string PegsolFactoring::get_name() const {
     return "Pegsol";
 }
 
