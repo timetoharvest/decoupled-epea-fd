@@ -708,6 +708,32 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
     }
 }
 
+inline bool contains_factoring(const vector<vector<set<int> > > &factorings, const vector<set<int> > &factoring) {
+    // we assume here that factorings are well-formed, i.e., every variable is contained in at most one factor
+    for (const auto &check : factorings){
+        if (check.size() == factoring.size()){
+            bool found_all = true;
+            for (const auto &check_leaf : check){
+                bool found = false;
+                for (const auto &leaf : factoring){
+                    if (check_leaf == leaf){
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found){
+                    found_all = false;
+                    break;
+                }
+            }
+            if (found_all){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 Factoring::FactoredVars AutoFactoring::get_factoring() {
     safed_goal = g_goal;
     safed_successor_generator = g_successor_generator->copy();
@@ -727,44 +753,16 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
             
             vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
             for (const auto &factoring : mis_factorings){
-                if (factoring.size() >= min_number_leaves){
-                    if (factorings.empty()) {
-                        factorings.push_back(factoring);
-                        names.push_back(factoring_method->get_name());
-                    } else {
-                        bool found = false;
-                        for (const auto &generated_factoring : factorings) {
-                            if (factoring == generated_factoring) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            factorings.push_back(factoring);
-                            names.push_back(factoring_method->get_name());
-                        }
-                    }
+                if (factoring.size() >= min_number_leaves && !contains_factoring(factorings, factoring)){
+                    factorings.push_back(factoring);
+                    names.push_back(factoring_method->get_name());
                 }
             }
         } else {
             FactoredVars factoring = factoring_method->get_factoring();
-            if (factoring.size() >= min_number_leaves){
-                if (factorings.empty()) {
-                    factorings.push_back(factoring);
-                    names.push_back(factoring_method->get_name());
-                } else {
-                    bool found = false;
-                    for (const auto &generated_factoring : factorings) {
-                        if (factoring == generated_factoring) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        factorings.push_back(factoring);
-                        names.push_back(factoring_method->get_name());
-                    }
-                }
+            if (factoring.size() >= min_number_leaves && !contains_factoring(factorings, factoring)){
+                factorings.push_back(factoring);
+                names.push_back(factoring_method->get_name());
             }
         }
     }
