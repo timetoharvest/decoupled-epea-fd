@@ -116,21 +116,23 @@ class AutoFactoring : public Factoring {
     
     void reset_globals() const;
     
-    vector<size_t> run_and_rank_search() const;
+    pair<vector<size_t>, vector<size_t>> run_and_rank_search(string name) const;
     
 protected:
     
     FactoredVars get_factoring() override;
-    
+
 public:
-    
+
     AutoFactoring(const Options &opts);
-    
+
+    string get_name() override;
+
     virtual void set_main_input(int argc, const char** argv) {
         this->argc = argc;
         this->argv = argv;
     }
-    
+
 };
 
 class CenterFactoring : public Factoring {
@@ -146,6 +148,8 @@ public:
         profile = STAR;
         cout << "using random 2-factor factoring profile" << endl;
     }
+
+    string get_name() override;
     
 };
 
@@ -194,7 +198,9 @@ public:
             cout << "using fork factoring profile" << endl;
         }
     }
-    
+
+    string get_name() override;
+
     static void add_options_to_parser(OptionParser &parser);
     
 };
@@ -219,6 +225,8 @@ public:
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
     }
+
+    string get_name() override;
     
 };
 
@@ -242,6 +250,8 @@ public:
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
     }
+
+    string get_name() override;
   
 };
 
@@ -319,7 +329,8 @@ public:
             cout << endl;
         }
     }
-    
+
+    string get_name() override;
 
     static void add_options_to_parser(OptionParser &parser);
 
@@ -338,6 +349,8 @@ public:
         profile = SOKOBAN;
         cout << "using sokoban factoring profile" << endl;
     }
+
+    string get_name() override;
   
 };
 
@@ -354,6 +367,8 @@ public:
         profile = OPENSTACKS;
         cout << "using openstacks factoring profile" << endl;
     }
+
+    string get_name() override;
     
 };
 
@@ -372,6 +387,8 @@ public:
         profile = OPENSTACKS;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
     }
+
+    string get_name() override;
   
 };
 
@@ -389,6 +406,8 @@ public:
         cout << "using doc transfer factoring profile" << endl;
     }
 
+    string get_name() override;
+
 };
 
 class PegsolFactoring : public Factoring {
@@ -404,6 +423,8 @@ public:
         profile = PEGSOL;
         cout << "using pegsol factoring profile" << endl;
     }
+
+    string get_name() override;
     
 };
 
@@ -678,6 +699,7 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
         cout << "no factorings provided, using default settings" << endl;
         factoring_methods.push_back(new ForkFactoring());
         factoring_methods.push_back(new ForkFactoring(I_FORK));
+        factoring_methods.push_back(new XShapeFactoring());
         factoring_methods.push_back(new IncidentArcsFactoring());
         factoring_methods.push_back(new MaxIndependentSetFactoring());
     }
@@ -688,7 +710,8 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     safed_successor_generator = g_successor_generator->copy();
     
     vector<FactoredVars> factorings;
-    
+    vector<string> names;
+
     for (const auto factoring_method : factoring_methods){
         
         MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring_method);
@@ -702,13 +725,37 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
             vector<FactoredVars> mis_factorings =  mis_factoring_method->get_factorings(rankings);
             for (const auto &factoring : mis_factorings){
                 if (factoring.size() >= min_number_leaves){
-                    factorings.push_back(factoring);
+                    if (factorings.empty()) {
+                        factorings.push_back(factoring);
+                        names.push_back(factoring_method->get_name());
+                    } else {
+                        for (const auto &generated_factoring : factorings) {
+                            if (factoring == generated_factoring) {
+                                break;
+                            } else {
+                                factorings.push_back(factoring);
+                                names.push_back(factoring_method->get_name());
+                            }
+                        }
+                    }
                 }
             }
         } else {
             FactoredVars factoring = factoring_method->get_factoring();
             if (factoring.size() >= min_number_leaves){
-                factorings.push_back(factoring);
+                if (factorings.empty()) {
+                    factorings.push_back(factoring);
+                    names.push_back(factoring_method->get_name());
+                } else {
+                    for (const auto &generated_factoring : factorings) {
+                        if (factoring == generated_factoring) {
+                            break;
+                        } else {
+                            factorings.push_back(factoring);
+                            names.push_back(factoring_method->get_name());
+                        }
+                    }
+                }
             }
         }
     }
@@ -716,18 +763,20 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     cout << endl << "Number factoring candidates: " << factorings.size() << endl << endl;
     
     FactoredVars best_factoring;
-    vector<vector<size_t>> all_rankings;
+    vector<pair<vector<size_t>,vector<size_t>>> all_rankings;
+    int name_pos = 0;
     for (const auto &factoring : factorings){
         cout << "Running short search for " << max_test_search_time << "s to test factoring(" << factoring.size() << " leaves)." << endl;
     
         g_factoring->apply_factoring(factoring);
         
-        vector<size_t> ranking = run_and_rank_search();
-        all_rankings.push_back(ranking);
+        pair<vector<size_t>,vector<size_t>> rankings = run_and_rank_search(names[name_pos]);
+        all_rankings.push_back(rankings);
 
         reset_globals();
 
         cout << endl << endl;
+        ++name_pos;
     }
 
     if (!factorings.empty()) {
@@ -737,8 +786,15 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
             int better = 0;
             for (size_t r2 = 0; r2 < all_rankings.size(); ++r2) {
                 if (r1 != r2) {
-                    for (size_t i = 0; i < all_rankings[r1].size(); ++i) {
-                        if (all_rankings[r1][i] >= all_rankings[r2][i]) {
+                    for (size_t i = 0; i < all_rankings[r1].first.size(); ++i) {
+                        // TODO do we allow equality here?
+                        if (all_rankings[r1].first[i] >= all_rankings[r2].first[i]) {
+                            better++;
+                        }
+                    }
+                    for (size_t i = 0; i < all_rankings[r1].second.size(); ++i) {
+                        // TODO do we allow equality here?
+                        if (all_rankings[r1].second[i] <= all_rankings[r2].second[i]) {
                             better++;
                         }
                     }
@@ -750,12 +806,13 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
             }
         }
         best_factoring = factorings[best_ranking];
+        cout << "Factoring: " << names[best_ranking] << endl;
     }
     
     return best_factoring;
 }
 
-vector<size_t> AutoFactoring::run_and_rank_search() const {
+pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string name) const {
     
     cout << flush;
     streambuf *real_out = cout.rdbuf();
@@ -839,15 +896,19 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
     
     cout.rdbuf(real_out);
 
-    vector<size_t> ranking;
+    vector<size_t> rankings_min;
+    vector<size_t> rankings_max;
     size_t dec_state_space_size = g_state_registry->get_decoupled_state_space_size();
-    size_t heuristic_value_improv = engine->search_progress.best_heuristic_values[0] / engine->search_progress.initial_h_values[0];
+    size_t heuristic_value_improv = engine->search_progress.initial_h_values[0] * 100 / max(1,engine->search_progress.best_heuristic_values[0]);
     size_t exp_states = engine->search_progress.expanded_states;
     size_t eval_states = engine->search_progress.evaluated_states;
-    ranking.push_back(dec_state_space_size);
-    ranking.push_back(heuristic_value_improv);
-    ranking.push_back(exp_states);
-    ranking.push_back(eval_states);
+    rankings_min.push_back(g_state_registry->get_max_number_duplicates());
+    /*
+    rankings_max.push_back(dec_state_space_size);
+    rankings_max.push_back(heuristic_value_improv);
+    rankings_max.push_back(exp_states);
+    rankings_max.push_back(eval_states);
+     */
 
     if (engine->found_solution()){
         g_timer.stop();
@@ -859,10 +920,11 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
         engine->heuristic_statistics();
         cout << "Search time: " << search_timer << endl;
         cout << "Total time: " << g_timer << endl;
+        cout << "factoring time " << (g_timer() - search_timer()) << "s" << endl;
+        cout << "Factoring: " << name << endl;
 
         exit_with(EXIT_PLAN_FOUND);
     } else {
-        // TODO generate some reasonable output
         cout << "did not find goal in test search" << endl;
         cout << "decoupled state space size: " << dec_state_space_size << endl;
         cout << "improved heuristic value by: " << heuristic_value_improv << endl;
@@ -873,7 +935,7 @@ vector<size_t> AutoFactoring::run_and_rank_search() const {
 
     delete engine;
     
-    return ranking; // TODO add more features
+    return make_pair(rankings_max, rankings_min);
 }
 
 void AutoFactoring::reset_globals() const {
@@ -2587,6 +2649,54 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
         }
     }
     return factoring;
+}
+
+string AutoFactoring::get_name() {
+    return "Auto";
+}
+
+string CenterFactoring::get_name() {
+    return "Center";
+}
+
+string ForkFactoring::get_name() {
+    if (this->profile == I_FORK) {
+        return "IFork";
+    } else {
+        return "Fork";
+    }
+}
+
+string XShapeFactoring::get_name() {
+    return "XShape";
+}
+
+string IncidentArcsFactoring::get_name() {
+    return "IncidentArgs";
+}
+
+string MaxIndependentSetFactoring::get_name() {
+    return "MaxIndependentSet";
+}
+
+string SokobanFactoring::get_name() {
+    return "Sokoban";
+}
+
+string OpenstacksFactoring::get_name() {
+    return "Openstacks";
+}
+
+string TPPConstrainedFactoring::get_name() {
+    return "TPPConstrained";
+}
+
+string DocTransferFactoring::get_name() {
+    return "DocTransfer";
+}
+
+string PegsolFactoring::get_name() {
+    return "Pegsol";
 }
 
 

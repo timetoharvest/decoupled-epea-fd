@@ -155,6 +155,8 @@ public:
     
 
     static void add_options_to_parser(OptionParser &parser);
+
+    virtual std::string get_name() = 0;
     
 };
 
