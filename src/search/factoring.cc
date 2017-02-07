@@ -776,7 +776,8 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     for (const auto &factoring : factorings){
         cout << "Running short search for " << max_test_search_time << "s to test factoring (" << factoring.size() << " leaves)." << endl;
     
-        g_factoring->apply_factoring(factoring);
+        profile = STAR;
+        apply_factoring(factoring);
         
         pair<vector<size_t>,vector<size_t>> rankings = run_and_rank_search(names[name_pos]);
         all_rankings.push_back(rankings);
@@ -817,6 +818,8 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         best_factoring = factorings[best_ranking];
         cout << "Factoring: " << names[best_ranking] << endl;
     }
+    
+    profile = STAR;
     
     return best_factoring;
 }
