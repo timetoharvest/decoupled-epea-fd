@@ -111,6 +111,8 @@ class AutoFactoring : public Factoring {
     vector<Factoring*> factoring_methods;
     
     int max_test_search_time;
+
+    bool portfolio;
     
     mutable vector<pair<int, int> > safed_goal;
     
@@ -693,7 +695,8 @@ void Factoring::do_factoring_or_abstain() {
 }
 
 AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts), 
-                                                    max_test_search_time(opts.get<int>("max_search_time")) {
+                                                    max_test_search_time(opts.get<int>("max_search_time")),
+                                                    portfolio(opts.get<bool>("portfolio")){
     profile = STAR;
     cout << "using self-configuring factoring" << endl;
     if (opts.contains("factorings")){
@@ -771,10 +774,14 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     
     OptionParser::parse_cmd_line(argc, argv, true, is_unit_cost());
 
+    if (portfolio) {
+        max_test_search_time = max_test_search_time / factorings.size();
+    }
+
     vector<pair<vector<size_t>,vector<size_t>>> all_rankings;
     int name_pos = 0;
     for (const auto &factoring : factorings){
-        cout << "Running short search for " << max_test_search_time << "s to test factoring (" << factoring.size() << " leaves)." << endl;
+        cout << "Running short search for " << max_test_search_time << "s to test factoring " << names[name_pos] << " (" << factoring.size() << " leaves)." << endl;
     
         profile = STAR;
         apply_factoring(factoring);
@@ -2826,6 +2833,10 @@ static Factoring *_parse_auto(OptionParser &parser) {
     parser.add_option<int>("max_search_time",
                            "maximum time for test searches in seconds",
                            "10");
+
+    parser.add_option<bool>("portfolio",
+                           "run candidate factorings with equal time limits",
+                           "false");
 
     Options opts = parser.parse();
 
