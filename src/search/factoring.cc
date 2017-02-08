@@ -883,7 +883,14 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
 
     cout << "done initalizing global data [t=" << g_timer << "]" << endl;
     
-    CompliantPathGraph::set_build_leaf_state_spaces_timeout(10); // fixed timeout for now
+    int leaf_state_space_timeout = 10; // fixed base timeout
+    if (portfolio) {
+        leaf_state_space_timeout = max_test_search_time;
+    }
+
+    Timer preprocess_timer;
+
+    CompliantPathGraph::set_build_leaf_state_spaces_timeout(leaf_state_space_timeout); // fixed timeout for now
     building_leaf_state_spaces_timed_out = false;
     
     SearchEngine *engine = 0;
@@ -899,7 +906,12 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
         exit_with(EXIT_INPUT_ERROR);
     }
 
-    engine->set_max_time(max_test_search_time);
+    preprocess_timer.stop();
+    int max_search_time = 0;
+    if (preprocess_timer() < max_test_search_time) {
+        max_search_time = max_test_search_time - preprocess_timer();
+    }
+    engine->set_max_time(max_search_time);
     
     Timer search_timer;
     engine->search();
