@@ -906,7 +906,7 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
 
     vector<size_t> rankings_min;
     vector<size_t> rankings_max;
-    rankings_max.push_back(dec_state_space_size);
+    rankings_max.push_back(heuristic_value_improv);
     /*
     rankings_min.push_back(g_state_registry->get_max_number_duplicates());
     rankings_max.push_back(dec_state_space_size);
