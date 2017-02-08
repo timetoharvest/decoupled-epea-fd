@@ -277,7 +277,7 @@ class MaxIndependentSetFactoring : public Factoring {
         cout << "using maximum independet set factoring profile - find all MIS: "
              << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
              << " minimize frozen " << arg_minimize_frozen << " select xth factoring: " << arg_xth_factoring
-             << " merge leaves level: " << arg_merge_leaves;
+             << " merge leaves level: " << arg_merge_leaves << endl;
     }
 
 protected:
@@ -876,6 +876,9 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
 
     cout << "done initalizing global data [t=" << g_timer << "]" << endl;
     
+    CompliantPathGraph::set_build_leaf_state_spaces_timeout(10); // fixed timeout for now
+    building_leaf_state_spaces_timed_out = false;
+    
     SearchEngine *engine = 0;
 
     try {
@@ -890,8 +893,6 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     }
 
     engine->set_max_time(max_test_search_time);
-    CompliantPathGraph::set_build_leaf_state_spaces_timeout(max_test_search_time);
-    building_leaf_state_spaces_timed_out = false;
     
     Timer search_timer;
     engine->search();
@@ -900,7 +901,11 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     cout.rdbuf(real_out);
 
     size_t dec_state_space_size = g_state_registry->get_decoupled_state_space_size();
-    size_t heuristic_value_improv = engine->search_progress.initial_h_values[0] * 100 / max(1,engine->search_progress.best_heuristic_values[0]);
+    size_t heuristic_value_improv = 0;
+    if (!engine->search_progress.initial_h_values.empty() && !engine->search_progress.best_heuristic_values.empty()){
+        // in case building the leaf state spaces timed out, those are not set
+        heuristic_value_improv = engine->search_progress.initial_h_values[0] * 100 / max(1,engine->search_progress.best_heuristic_values[0]);
+    }
     size_t exp_states = engine->search_progress.expanded_states;
     size_t eval_states = engine->search_progress.evaluated_states;
 
