@@ -820,6 +820,7 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     }
     
     profile = STAR;
+    building_leaf_state_spaces_timed_out = false;
     
     return best_factoring;
 }
