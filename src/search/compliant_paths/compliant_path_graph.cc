@@ -316,6 +316,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (build_leaf_state_space_timeout != -1 && timer.is_expired()){
                     cout << "building leaf state spaces timed out" << endl;
+                    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                        // in case one of the lower ID factors is not precomputed
+                        factor = LeafFactorID(0);
+                    }
                     for (LeafFactorID remain_factor(factor); remain_factor < g_leaves.size(); ++remain_factor){
                         leaf_state_successors[remain_factor].resize(g_state_registry->size(remain_factor));
                         center_successors[remain_factor].resize(g_state_registry->size(remain_factor));
