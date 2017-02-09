@@ -774,7 +774,7 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
     
     OptionParser::parse_cmd_line(argc, argv, true, is_unit_cost());
 
-    if (portfolio) {
+    if (portfolio && factorings.size() > 0) {
         max_test_search_time = max_test_search_time / factorings.size();
     }
 
