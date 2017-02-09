@@ -324,6 +324,9 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         }
                     }
                     g_factoring->set_building_leaf_state_spaces_timed_out();
+                    // otherwise, in satisficing planning, the update will assume that g_leaf_successor_generators
+                    // is initialized properly
+                    precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
                     return;
                 }
                 if (!goal_price_tag.has_leaf_state(id, factor)){
