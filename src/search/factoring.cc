@@ -615,12 +615,15 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 
     vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
     
-    for (size_t i = 0; i < g_leaves.size(); ++i){
-        uint64_t f_size = 1;
-        for (size_t j = 0; j < g_leaves[i].size(); ++j){
-            f_size *= g_variable_domain[g_leaves[i][j]];
-            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
-                precompute_leaf_state_space[i] = false;
+    if (search_type == SAT || search_type == UNSAT){
+        for (size_t i = 0; i < g_leaves.size(); ++i){
+            uint64_t f_size = 1;
+            for (size_t j = 0; j < g_leaves[i].size(); ++j){
+                f_size *= g_variable_domain[g_leaves[i][j]];
+                if (f_size > max_precompute_state_space_size){
+                    precompute_leaf_state_space[i] = false;
+                    break;
+                }
             }
         }
     }
@@ -907,9 +910,9 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     }
 
     preprocess_timer.stop();
-    int max_search_time = 0;
-    if (preprocess_timer() < max_test_search_time) {
-        max_search_time = max_test_search_time - preprocess_timer();
+    int max_search_time = max_test_search_time;
+    if (portfolio) {
+        max_search_time = max(0, max_test_search_time - (int) preprocess_timer());
     }
     engine->set_max_time(max_search_time);
     
