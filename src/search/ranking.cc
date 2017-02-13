@@ -56,7 +56,7 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
     if (factoring.size() == 0){
         return 0;
     }
-    vector<int> factor_actions(factoring.size(), 0);
+    int factor_actions = 0;
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
     vector<bool> operator_seen(g_operators.size(), false);
 
@@ -94,25 +94,15 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
                     if (pre_factors.size() <= 1 &&
                         (pre_factors.empty() || *pre_factors.begin() == *eff_factors.begin())) {
                         // op has only preconditions and effects on (at most) a single leaf factor
-                        ++factor_actions[belongs_to_factor[v]];
+                        ++factor_actions;
                     }
                 }
             }
         }
     }
 
-    VarInt mobility(1);
-    bool any_actions = false;
-    for (int i:factor_actions) {
-        if (i > 0) {
-            any_actions = true;
-            VarInt f(i);
-            mobility *= f;
-        }
-    }
-    if (!any_actions) {
-        mobility = 0;
-    }
+    VarInt mobility(0);
+    mobility = factor_actions*100 / max(1,(int)g_operators.size());
     return mobility;
 }
 
