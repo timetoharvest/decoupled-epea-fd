@@ -245,7 +245,9 @@ class IncidentArcsFactoring : public Factoring {
     }
     
 protected:
-    
+
+    vector<Ranking* > arg_rankings;
+
     FactoredVars get_factoring() override;
   
 public:
@@ -254,9 +256,21 @@ public:
             : Factoring(opts) {
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
+        cout << " - ranking_features: ";
+        if (!opts.contains("rankings")) {
+            cout << "None" << endl;
+        } else {
+            arg_rankings = opts.get_list<Ranking *>("rankings");
+            for (Ranking *ranking : arg_rankings) {
+                cout << ranking->get_feature() << " ";
+            }
+            cout << endl;
+        }
     }
 
     string get_name() const override;
+
+    static void add_options_to_parser(OptionParser &parser);
   
 };
 
@@ -1210,7 +1224,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     FactoredVars best_factoring;
-    size_t best_number_leaves = 0;
+    vector<VarInt> best_ranking;
     
     vector<bool> discarded_leaves;
     
@@ -1247,11 +1261,48 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                     discard_leaf[i] = true;
                 }
             }
-            
-            if (number_leaves >= best_number_leaves){
-                best_factoring = factoring;
-                discarded_leaves = discard_leaf;
-                best_number_leaves = number_leaves;
+            if (best_ranking.empty()) {
+                for (size_t i = 0; i < arg_rankings.size(); ++i) {
+                    VarInt vi(arg_rankings[i]->get_rank(factoring));
+                    best_ranking.push_back(vi);
+                }
+            }
+            else{
+                bool update = false;
+                vector<VarInt> rankings;
+                for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                    rankings.push_back(VarInt(arg_rankings[n]->get_rank(factoring)));
+                    if (arg_rankings[n]->maximizes()) {
+                        if (rankings[n] >= best_ranking[n]) {
+                            if (rankings[n] > best_ranking[n]) {
+                                update = true;
+                            } else {
+                                continue;
+                            }
+                        }
+                        break;
+                    } else {
+                        if (rankings[n] <= best_ranking[n]) {
+                            if (rankings[n] < best_ranking[n]) {
+                                update = true;
+                            } else {
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (update) {
+                    if (rankings.size() < arg_rankings.size()) {
+                        for (size_t j = rankings.size(); j < arg_rankings.size(); ++j) {
+                            VarInt vi(arg_rankings[j]->get_rank(factoring));
+                            rankings.push_back(vi);
+                        }
+                    }
+                    best_factoring = factoring;
+                    discarded_leaves = discard_leaf;
+                    best_ranking = rankings;
+                }
             }
         }
     }
@@ -2815,10 +2866,12 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "0"
     );
 
-    parser.add_list_option<Ranking *>("rankings",
-                                      "TODO",
-                                      "",
-                                      OptionFlags(false));
+    parser.add_list_option<Ranking *>(
+            "rankings",
+            "TODO",
+            "",
+            OptionFlags(false));
+
     parser.add_option<bool>(
             "all_rankings",
             "TODO",
@@ -2834,6 +2887,14 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "TODO",
             "1"
     );
+}
+
+void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
+    parser.add_list_option<Ranking *>(
+            "rankings",
+            "TODO",
+            "",
+            OptionFlags(false));
 }
 
 static Factoring *_parse_auto(OptionParser &parser) {
@@ -2911,6 +2972,7 @@ static Factoring *_parse_xshape(OptionParser &parser) {
 static Factoring *_parse_incarcs(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
+    IncidentArcsFactoring::add_options_to_parser(parser);
     
     Options opts = parser.parse();
 
