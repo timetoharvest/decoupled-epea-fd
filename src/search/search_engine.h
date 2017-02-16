@@ -9,6 +9,7 @@
 #include <vector>
 
 class CompliantPathGraph;
+class CountdownTimer;
 class Heuristic;
 class OptionParser;
 class Options;
@@ -38,7 +39,7 @@ protected:
     double max_time;
 
     virtual void initialize() {}
-    virtual SearchStatus step() = 0;
+    virtual SearchStatus step(const CountdownTimer *timer) = 0;
 
     void set_plan(const Plan &plan);
     bool check_goal_and_set_plan(const State &state);

@@ -1,5 +1,6 @@
 #include "eager_search.h"
 
+#include "countdown_timer.h"
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "globals.h"
@@ -131,7 +132,7 @@ void EagerSearch::statistics() const {
     }
 }
 
-SearchStatus EagerSearch::step() {
+SearchStatus EagerSearch::step(const CountdownTimer *timer) {
     pair<SearchNode, bool> n = fetch_next_node();
     if (!n.second) {
         return FAILED;
@@ -178,6 +179,10 @@ SearchStatus EagerSearch::step() {
     search_progress.inc_evaluations(preferred_operator_heuristics.size());
 
     for (size_t i = 0; i < applicable_ops.size(); ++i) {
+        if (timer && timer->is_expired()){
+            return FAILED;
+        }
+        
         const Operator *op = applicable_ops[i];
 
 	// g-value upper bound pruning for factored search => g_sum_min_goal_cost

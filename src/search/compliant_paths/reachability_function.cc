@@ -1,5 +1,6 @@
 #include "reachability_function.h"
 
+#include "../countdown_timer.h"
 #include "cpg_storage.h"
 #include "../factoring.h"
 #include "../operator.h"
@@ -13,6 +14,8 @@
 
 using namespace std;
 
+
+bool Reachable::update_init_state_for_auto_factoring = false;
 
 ReachableStorage* Reachable::cpg_storage;
 
@@ -68,6 +71,11 @@ void Reachable::update(const State &base_state) {
 #endif
 
     assert(leaf_tags_to_cache.empty());
+    
+    CountdownTimer timer(0);
+    if (update_init_state_for_auto_factoring){
+        timer = CountdownTimer(build_leaf_state_space_timeout);
+    }
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -135,7 +143,7 @@ void Reachable::update(const State &base_state) {
         bool change = true;
 
         while (change) {
-           
+          
             change = false;
             
             size_t num_states = 0;
@@ -164,6 +172,14 @@ void Reachable::update(const State &base_state) {
                 assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
                 
                 size_t added = 0;
+                
+                if (update_init_state_for_auto_factoring && timer.is_expired()){
+                    if (build_leaf_state_space_timeout != -1 && timer.is_expired()){
+                        cout << "updating leaf state spaces timed out" << endl;
+                        g_factoring->set_building_leaf_state_spaces_timed_out();
+                        return;
+                    }
+                }
                 
                 if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
@@ -540,7 +556,12 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
         }
+        if (build_leaf_state_space_timeout != -1){
+            // using AutoFactoring with limited time preprocessing
+            update_init_state_for_auto_factoring = true;
+        }
         reach->update(g_initial_state());
+        update_init_state_for_auto_factoring = false;
         
         return reach;
     }

@@ -528,6 +528,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
+    if (build_leaf_state_space_timeout != -1){
+        build_leaf_state_space_timeout = max(0.0, build_leaf_state_space_timeout - timer.get_remaining());
+    }
+    
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "leaving calculate_min_goal_cost function" << endl;
 #endif

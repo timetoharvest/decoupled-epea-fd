@@ -60,10 +60,10 @@ void SearchEngine::search() {
         // only relevant for short test searches of AutoFactoring
         return;
     }
-    
+
     CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
-        status = step();
+        status = step(&timer);
         if (timer.is_expired()) {
             cout << "Time limit reached. Abort search." << endl;
             status = TIMEOUT;

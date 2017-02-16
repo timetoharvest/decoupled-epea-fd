@@ -55,7 +55,7 @@ SearchEngine *IteratedSearch::create_phase(int p) {
     return get_search_engine(p);
 }
 
-SearchStatus IteratedSearch::step() {
+SearchStatus IteratedSearch::step(const CountdownTimer *) {
     current_search = create_phase(phase);
     if (current_search == NULL) {
         return found_solution() ? SOLVED : FAILED;

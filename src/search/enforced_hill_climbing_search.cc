@@ -124,7 +124,7 @@ void EnforcedHillClimbingSearch::get_successors(const State &state, vector<const
     search_progress.inc_generated_ops(ops.size());
 }
 
-SearchStatus EnforcedHillClimbingSearch::step() {
+SearchStatus EnforcedHillClimbingSearch::step(const CountdownTimer *) {
     //cout << "s = ";
     //for (int i = 0; i < g_variable_domain.size(); ++i) {
     //    cout << current_state[i] << " ";

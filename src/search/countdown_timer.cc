@@ -1,6 +1,7 @@
 #include "countdown_timer.h"
 
 #include <limits>
+#include <math.h>
 
 using namespace std;
 
@@ -18,6 +19,10 @@ bool CountdownTimer::is_expired() const {
       millions of times.
     */
     return max_time != numeric_limits<double>::infinity() && timer() >= max_time;
+}
+
+double CountdownTimer::get_remaining() const {
+    return max(0.0, max_time - timer());
 }
 
 ostream &operator<<(ostream &os, const CountdownTimer &cd_timer) {

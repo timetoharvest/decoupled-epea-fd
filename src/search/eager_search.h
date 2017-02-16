@@ -38,7 +38,7 @@ protected: // TODO: Remove this hack (added for POR integration)
     bool insert_state(const SearchNode &succ_node);
 
 protected:
-    SearchStatus step();
+    SearchStatus step(const CountdownTimer *timer);
     std::pair<SearchNode, bool> fetch_next_node();
     void update_jump_statistic(const SearchNode &node);
     void print_heuristic_values(const std::vector<int> &values) const;

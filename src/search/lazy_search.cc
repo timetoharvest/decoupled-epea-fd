@@ -148,7 +148,7 @@ SearchStatus LazySearch::fetch_next_state() {
     return IN_PROGRESS;
 }
 
-SearchStatus LazySearch::step() {
+SearchStatus LazySearch::step(const CountdownTimer *) {
     // Invariants:
     // - current_state is the next state for which we want to compute the heuristic.
     // - current_predecessor is a permanent pointer to the predecessor of that state.

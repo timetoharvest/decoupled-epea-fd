@@ -37,7 +37,7 @@ protected:
     int current_real_g;
 
     virtual void initialize();
-    virtual SearchStatus step();
+    virtual SearchStatus step(const CountdownTimer *timer);
 
     void generate_successors();
     SearchStatus fetch_next_state();

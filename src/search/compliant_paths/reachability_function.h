@@ -9,6 +9,8 @@ class ReachableStorage;
 
 class Reachable : public CompliantPathGraph {
     friend class CompliantPathGraph; // to get init state cpg
+    
+    static bool update_init_state_for_auto_factoring;
 
     static ReachableStorage *cpg_storage;
     

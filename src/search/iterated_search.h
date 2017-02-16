@@ -29,7 +29,7 @@ class IteratedSearch : public SearchEngine {
     SearchStatus step_return_value();
 
     virtual void initialize();
-    virtual SearchStatus step();
+    virtual SearchStatus step(const CountdownTimer *timer);
 public:
     IteratedSearch(const Options &opts);
     virtual ~IteratedSearch();
