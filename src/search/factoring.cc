@@ -256,7 +256,7 @@ public:
             : Factoring(opts) {
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
-        cout << " - ranking_features: ";
+        cout << "ranking_features: ";
         if (!opts.contains("rankings")) {
             cout << "None" << endl;
         } else {
@@ -1206,11 +1206,6 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
 
     init_ops_helper();
 
-    // TODO factoring has some bugs in several tasks,
-    // e.g. scanalyzer-08-strips, p22-25; rover p16/19
-    // takes ages to find solution e.g. in zenotravel pfile6 when not
-    // using lmcut
-    
     // all variables sorted descendingly by number of incident arcs
     vector<vector<int> > variables;
     
@@ -1226,8 +1221,6 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     FactoredVars best_factoring;
     vector<VarInt> best_ranking;
     
-    vector<bool> discarded_leaves;
-    
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         leaf_vars.insert(var);
@@ -1235,20 +1228,12 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
         for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
-            //center.push_back(variables[arcs][cand]);
             
             leaf_vars.erase(variables[arcs][cand]);            
             
             FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
             
-            vector<bool> discard_leaf = get_frozen_leaves(factoring);
-            
-            size_t number_leaves = factoring.size();
-            for (size_t i = 0; i < factoring.size(); ++i){
-                if (discard_leaf[i]){
-                    --number_leaves;
-                    continue;
-                }
+            for (int i = factoring.size() - 1; i >= 0; --i){
                 uint64_t size = 1;
                 for (int var : factoring[i]){
                     size *= g_variable_domain[var];
@@ -1257,17 +1242,20 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                     }
                 }
                 if (max_leaf_size != 0 && size > max_leaf_size){
-                    --number_leaves;
-                    discard_leaf[i] = true;
+                    factoring.erase(factoring.begin() + i);
                 }
             }
+            if (factoring.size() < min_number_leaves){
+                continue;
+            }
+            
             if (best_ranking.empty()) {
                 for (size_t i = 0; i < arg_rankings.size(); ++i) {
                     VarInt vi(arg_rankings[i]->get_rank(factoring));
                     best_ranking.push_back(vi);
                 }
-            }
-            else{
+                best_factoring = factoring;
+            } else {
                 bool update = false;
                 vector<VarInt> rankings;
                 for (size_t n = 0; n < arg_rankings.size(); ++n) {
@@ -1300,25 +1288,17 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                         }
                     }
                     best_factoring = factoring;
-                    discarded_leaves = discard_leaf;
                     best_ranking = rankings;
                 }
             }
         }
     }
     
-    bool change = true;         // put frozen leaves back to center
-    int ind = best_factoring.size();
-    while (change){
-        change = false;
-        for (int i = ind - 1; i >= 0; --i){
-            if (discarded_leaves[i]){
-                best_factoring.erase(best_factoring.begin() + i);
-                
-                change = true;
-                ind = i;
-                break;
-            }
+    vector<bool> is_frozen_leaf = get_frozen_leaves(best_factoring);
+            
+    for (int i = best_factoring.size(); i >= 0; --i){
+        if (is_frozen_leaf[i]){
+            best_factoring.erase(best_factoring.begin() + i);
         }
     }
     
