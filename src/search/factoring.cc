@@ -241,6 +241,7 @@ class IncidentArcsFactoring : public Factoring {
     IncidentArcsFactoring()
             : Factoring() {
         profile = STAR;
+        arg_rankings.push_back(new LeavesRanking());
         cout << "using incident-arcs factoring profile" << endl;
     }
     
@@ -1296,7 +1297,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     
     vector<bool> is_frozen_leaf = get_frozen_leaves(best_factoring);
             
-    for (int i = best_factoring.size(); i >= 0; --i){
+    for (int i = best_factoring.size() - 1; i >= 0; --i){
         if (is_frozen_leaf[i]){
             best_factoring.erase(best_factoring.begin() + i);
         }
