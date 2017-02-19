@@ -259,13 +259,15 @@ public:
         cout << "using incident-arcs factoring profile" << endl;
         cout << "ranking_features: ";
         if (!opts.contains("rankings")) {
-            cout << "None" << endl;
+            cout << "No ranking specified, taking number of mobile leaves as default." << endl;
+	    arg_rankings.push_back(new LeavesRanking());
         } else {
             arg_rankings = opts.get_list<Ranking *>("rankings");
             for (Ranking *ranking : arg_rankings) {
                 cout << ranking->get_feature() << " ";
             }
             cout << endl;
+            cout << "WARNING: Provided rankings are completely ignored. Instead, the number of mobile leaves is used." << endl;
         }
     }
 
@@ -1220,7 +1222,9 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     
     FactoredVars best_factoring;
-    vector<VarInt> best_ranking;
+    size_t best_number_leaves = 0;
+    
+    vector<bool> discarded_leaves;
     
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
@@ -1246,59 +1250,26 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                     factoring.erase(factoring.begin() + i);
                 }
             }
-            if (factoring.size() < min_number_leaves){
-                continue;
+            
+            size_t number_leaves = factoring.size();
+            vector<bool> discard_leaf = get_frozen_leaves(factoring);
+            for (bool discard : discard_leaf){
+                if (discard){
+                    --number_leaves;
+                }
             }
             
-            if (best_ranking.empty()) {
-                for (size_t i = 0; i < arg_rankings.size(); ++i) {
-                    VarInt vi(arg_rankings[i]->get_rank(factoring));
-                    best_ranking.push_back(vi);
-                }
+            if (number_leaves >= best_number_leaves){
                 best_factoring = factoring;
-            } else {
-                bool update = false;
-                vector<VarInt> rankings;
-                for (size_t n = 0; n < arg_rankings.size(); ++n) {
-                    rankings.push_back(VarInt(arg_rankings[n]->get_rank(factoring)));
-                    if (arg_rankings[n]->maximizes()) {
-                        if (rankings[n] >= best_ranking[n]) {
-                            if (rankings[n] > best_ranking[n]) {
-                                update = true;
-                            } else {
-                                continue;
-                            }
-                        }
-                        break;
-                    } else {
-                        if (rankings[n] <= best_ranking[n]) {
-                            if (rankings[n] < best_ranking[n]) {
-                                update = true;
-                            } else {
-                                continue;
-                            }
-                        }
-                        break;
-                    }
-                }
-                if (update) {
-                    if (rankings.size() < arg_rankings.size()) {
-                        for (size_t j = rankings.size(); j < arg_rankings.size(); ++j) {
-                            VarInt vi(arg_rankings[j]->get_rank(factoring));
-                            rankings.push_back(vi);
-                        }
-                    }
-                    best_factoring = factoring;
-                    best_ranking = rankings;
-                }
+                discarded_leaves = discard_leaf;
+                best_number_leaves = number_leaves;
             }
         }
     }
     
-    vector<bool> is_frozen_leaf = get_frozen_leaves(best_factoring);
-            
+    // put frozen leaves back to center
     for (int i = best_factoring.size() - 1; i >= 0; --i){
-        if (is_frozen_leaf[i]){
+        if (discarded_leaves[i]){
             best_factoring.erase(best_factoring.begin() + i);
         }
     }
