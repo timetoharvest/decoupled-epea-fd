@@ -138,7 +138,7 @@ void Prices::update(const State &base_state) {
                     }
                     ++leaf_id;
                 }
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
+                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){
                     const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
                     
                     int cost_delta = get_cost_of_state(leaf_id, factor);
@@ -409,7 +409,7 @@ bool Prices::goal_reachable(LeafFactorID factor) const {
 }
 
 void Prices::store_new_graph(const State &state) const {
-    discard_new_graph();
+    cache_leaf_price_tags(state);
     cpg_storage->store_cpg(state, *this);
 }
 
