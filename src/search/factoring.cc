@@ -1985,12 +1985,15 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             max_ind_sets.push_back(mis);
         }
     }
-
+    if (max_ind_sets.empty()) {
+        exit_with(EXIT_ABSTAINED);
+    }
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
     vector<int> c_rm(max_ind_sets.size(),0);
     vector<int> f_rm(max_ind_sets.size(),0);
     vector<int> f_c(max_ind_sets.size(),0);
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        check_factoring(max_ind_sets[i]);
         optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
     }
     size_t max = 0;

@@ -470,7 +470,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
 //                        for (int m:mv) {
 //                            cout << " " << m;
 //                        }
-                        cout << endl;
+//                        cout << endl;
                         size_t pos1 = subgraphs.size();
                         size_t pos2 = subgraphs.size() + 1;
                         NGraph g_without_v = remove_components(remove_components(g, v3), mv);
@@ -552,9 +552,12 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     vector<vector<int>> temp = root.get_mis();
 
     assert(subgraphs[0].is_finalized());
-    size_t max = temp[0].size();
+    size_t max_size = 0;
+    if (!temp.empty()) {
+        max_size = max(0, (int)temp[0].size());
+    }
 
-    if (max > 0) {
+    if (max_size > 0) {
         cout << "MIS found: " << temp.size() << endl;
     } else {
         cout << "MIS found: 0" << endl;
