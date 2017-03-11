@@ -330,16 +330,12 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                                     // mapped to different child,
                                     // however this child will never again contact its parent
                                     // add additional mis elements obtained by folding
-                                    current_subgraph->add_dup_mis(c_mis[i]);
                                     twin->add_parent(parent_pos, i);
                                     ch[i] = new_pos;
                                     c_hashs[i] = 0;
                                     offset++;
                                 } else if (offset > 0){
-                                    current_subgraph->add_dup_mis(vector<int>());
                                     ch[i] -= offset;
-                                } else {
-                                    current_subgraph->add_dup_mis(vector<int>());
                                 }
                             }
                             current_subgraph->add_children(ch, true);
@@ -347,12 +343,11 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                                 size_t hash = c_hashs[i];
                                 if (hash != 0) {
                                     Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
-                                    c.add_mis_elems(c_mis[i]);
                                     hash_to_subgraph[hash] = ch[i];
                                     subgraphs.push_back(c);
                                     stack.push_front(c_graphs[i]);
                                 }
-
+                                current_subgraph->add_dup_mis(c_mis[i]);
                             }
                         } else {
                             // should never happen, as this case should have been resolved by dominance first
@@ -498,24 +493,20 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                                 // mapped to different child,
                                 // however this child will never again contact its parent
                                 // add additional mis elements obtained in the base case
-                                current_subgraph->add_dup_mis(c_mis[i]);
                                 twin->add_parent(parent_pos, i);
                                 ch[i] = new_pos;
                                 c_hashs[i] = 0;
                                 offset++;
-                            } else if (offset > 0){
-                                current_subgraph->add_dup_mis(vector<int>());
+                            } else if (offset > 0) {
                                 ch[i] -= offset;
-                            } else {
-                                current_subgraph->add_dup_mis(vector<int>());
                             }
+                            current_subgraph->add_dup_mis(c_mis[i]);
                         }
                         current_subgraph->add_children(ch, true);
                         for (size_t i = 0; i < c_hashs.size(); ++i) {
                             size_t hash = c_hashs[i];
                             if (hash != 0) {
                                 Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
-                                c.add_mis_elems(c_mis[i]);
                                 hash_to_subgraph[hash] = ch[i];
                                 subgraphs.push_back(c);
                                 stack.push_front(c_graphs[i]);
@@ -755,14 +746,14 @@ boost::dynamic_bitset<> ngraph_to_bitset (const NGraph &g) {
 }
 
 void Subgraph::mis_finalized(vector<vector<int>> is, bool leaf, size_t no) {
-    if (!leaf) {
+    if (!children.empty()) {
         --pending_mis;
         if (!branch) {
             // if children are no branches (connected components)
             // all permutations of child_mis have to be generated
             if (child_mis.empty()) {
                 child_mis.push_back(is);
-            } else {
+            } else if (!is.empty()){
                 vector<vector<int>> tmp_children;
                 for (vector<int> new_mis: is) {
                     for (vector<vector<int>> o_m: child_mis) {
@@ -793,61 +784,53 @@ void Subgraph::mis_finalized(vector<vector<int>> is, bool leaf, size_t no) {
             child_mis[no] = is;
         }
 
-        if (pending_mis == 0) {
+        if (pending_mis == 0 || leaf) {
             finalized = true;
-            if (!leaf) {
-                if (branch) {
-                    // add dup_child_mis to child_mis (folding, base_case)
-                    for (size_t i = 0; i < child_mis.size(); ++i) {
-                        for (int d_c: dup_child_mis[i]) {
-                            for (vector<int> cm: child_mis[i]) {
-                                cm.push_back(d_c);
-                            }
+            if (branch) {
+                // add dup_child_mis to child_mis (folding, base_case)
+                for (size_t i = 0; i < child_mis.size(); ++i) {
+                    for (int d_c: dup_child_mis[i]) {
+                        for (vector<int> &cm: child_mis[i]) {
+                            cm.push_back(d_c);
                         }
                     }
-                    vector<vector<int>> child_mis_max;
-                    size_t max = 0;
-                    for (vector<vector<int>> ch_mi:child_mis) {
-                        for (vector<int> cm:ch_mi) {
-                            if (cm.size() > max) {
-                                max = cm.size();
-                                child_mis_max.clear();
-                                child_mis_max.push_back(cm);
-                            } else if (cm.size() >= max) {
-                                child_mis_max.push_back(cm);
-                            }
-                        }
-                    }
-                    child_mis = vector<vector<vector<int>>> {child_mis_max};
                 }
-                // merge child_mis with current_subgraph's mis
-                if (mis.empty()) {
-                    for (vector<vector<int>> ch_mi : child_mis) {
-                        for (vector<int> cm: ch_mi) {
-                            mis.push_back(cm);
+                vector<vector<int>> child_mis_max;
+                size_t max = 0;
+                for (vector<vector<int>> ch_mi:child_mis) {
+                    for (vector<int> cm:ch_mi) {
+                        if (cm.size() > max) {
+                            max = cm.size();
+                            child_mis_max.clear();
+                            child_mis_max.push_back(cm);
+                        } else if (cm.size() >= max) {
+                            child_mis_max.push_back(cm);
                         }
                     }
-                } else {
-                    vector<vector<int>> tmp_mis;
-                    for (vector<int> m:mis) {
-                        for (vector<vector<int>> ch_mi:child_mis) {
-                            for (vector<int> cm:ch_mi) {
-                                vector<int> tmp(cm);
-                                for (int v: m) {
-                                    tmp.push_back(v);
-                                }
-                                tmp_mis.push_back(tmp);
-                            }
-                        }
-                    }
-                    mis = tmp_mis;
                 }
-            } else {
+                child_mis = vector<vector<vector<int>>> {child_mis_max};
+            }
+            // merge child_mis with current_subgraph's mis
+            if (mis.empty()) {
                 for (vector<vector<int>> ch_mi : child_mis) {
                     for (vector<int> cm: ch_mi) {
                         mis.push_back(cm);
                     }
                 }
+            } else if (!child_mis.empty()) {
+                vector<vector<int>> tmp_mis;
+                for (vector<int> m:mis) {
+                    for (vector<vector<int>> ch_mi:child_mis) {
+                        for (vector<int> cm:ch_mi) {
+                            vector<int> tmp(cm);
+                            for (int v: m) {
+                                tmp.push_back(v);
+                            }
+                            tmp_mis.push_back(tmp);
+                        }
+                    }
+                }
+                mis = tmp_mis;
             }
             vector<vector<int>> resulting_mis = mis;
             vector<size_t> my_parents = parents;
@@ -890,7 +873,6 @@ void Subgraph::add_children (vector<size_t> h, bool b) {
     assert(children.empty());
     if (b) {
         child_mis = vector<vector<vector<int>>>(h.size());
-        dup_child_mis = vector<vector<int>>(h.size());
     }
     for (size_t ch:h) {
         children.push_back(ch);
@@ -922,6 +904,25 @@ void Subgraph::print() const {
             cout << endl;
         }
     }
+    cout << "dup child MIS elems:" << endl;
+    for (vector<int> m:dup_child_mis) {
+        cout << "     ";
+        for (int v: m) {
+            cout << " " << v;
+        }
+        cout << endl;
+    }
+    cout << "child MIS elems:" << endl;
+    for (vector<vector<int>> mis:child_mis) {
+        for (vector<int> m:mis) {
+            cout << "     ";
+            for (int v: m) {
+                cout << " " << v;
+            }
+            cout << "   ";
+        }
+        cout << endl;
+    }
     if (!children.empty()) {
         for (size_t c: children) {
             subgraphs->at(c).print(" ");
@@ -931,11 +932,31 @@ void Subgraph::print() const {
 
 void Subgraph::print(std::string offset) const {
     cout << offset << "root " << root << " - " << this->hash << " pending: " << pending_mis << ", children: " << children.size() << ", parents: " << parents.size() << endl;
+    cout << offset << "branch: " << branch << endl;
     cout << offset << "MIS:" << endl;
     for (vector<int> m:mis) {
         cout << offset << "     ";
         for (int v: m) {
             cout << " " << v;
+        }
+        cout << endl;
+    }
+    cout << offset << "dup child MIS elems:" << endl;
+    for (vector<int> m:dup_child_mis) {
+        cout << offset << "     ";
+        for (int v: m) {
+            cout << " " << v;
+        }
+        cout << endl;
+    }
+    cout << offset << "child MIS elems:" << endl;
+    for (vector<vector<int>> mis:child_mis) {
+        for (vector<int> m:mis) {
+            cout << offset << "     ";
+            for (int v: m) {
+                cout << " " << v;
+            }
+            cout << "   ";
         }
         cout << endl;
     }

@@ -55,7 +55,7 @@ protected:
     size_t pending_mis = 0;
     std::vector<size_t> children;
     bool finalized = false;
-    bool branch;
+    bool branch = false;
     size_t hash;
     std::vector<Subgraph> * subgraphs;
     std::vector<size_t> parents;
