@@ -31,10 +31,12 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     list<NGraph> stack;
     stack.push_front(g);
 
+    size_t mis_steps = 0;
     CountdownTimer timer(arg_timeout);
     bool timeout = arg_timeout != 0;
 
     while (!stack.empty() && (!timeout || !timer.is_expired())) {
+        ++mis_steps;
 
         NGraph g = stack.front();
         stack.pop_front();
@@ -265,7 +267,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
 
                     int v2;
                     for (size_t i = 0; i < g.size(); ++i) {
-                        if (g[i].size() == 3) {
+                        if (g[i].count() == 3) {
                             v2 = i;
                             found = true;
                             break;
@@ -288,7 +290,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                         }
                         int u1 = u.first;
                         int u2 = u.second;
-                        if (g[u1][u2]) {
+                        if (!g[u1][u2]) {
                             // case 1: select v; remove v, u1, u2
                             assert(v2 != -1);
                             NGraph gf = remove_components(remove_components(g, g[v2]), v2);
@@ -301,10 +303,14 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                             set<int> tmp;
                             boost::dynamic_bitset<> remove(g.size(),0);
                             for (size_t c = 0; c < g[u1].size(); ++c){
-                                remove[g[u1][c]] = true;
+                                if (g[u1][c]) {
+                                    remove[c] = true;
+                                }
                             }
                             for (size_t c = 0; c < g[u2].size(); ++c){
-                                remove[g[u2][c]] = true;
+                                if (g[u2][c]) {
+                                    remove[c] = true;
+                                }
                             }
                             remove[u1] = true;
                             remove[u2] = true;
@@ -317,8 +323,6 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                             vector<size_t> c_hashs = {h1,h2};
                             vector<NGraph> c_graphs = {gf, gf2};
                             vector<vector<int>> c_mis = {mis1,mis2};
-
-                            assert(c_hashs.size() == ch.size());
                             int offset = 0;
                             for (size_t i = 0; i < c_hashs.size(); ++i) {
                                 size_t hash = c_hashs[i];
@@ -337,6 +341,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                                 } else if (offset > 0){
                                     ch[i] -= offset;
                                 }
+                                current_subgraph->add_dup_mis(c_mis[i]);
                             }
                             current_subgraph->add_children(ch, true);
                             for (size_t i = 0; i < c_hashs.size(); ++i) {
@@ -347,7 +352,6 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                                     subgraphs.push_back(c);
                                     stack.push_front(c_graphs[i]);
                                 }
-                                current_subgraph->add_dup_mis(c_mis[i]);
                             }
                         } else {
                             // should never happen, as this case should have been resolved by dominance first
@@ -518,6 +522,10 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
         }
     }
     Timer timer_final;
+
+    cout << "MIS algo steps: " << mis_steps << endl;
+    cout << "MIS algo leaves: " << leaves.size() + stack.size() << endl;
+
     // finalize all leaves
     for (size_t l:leaves) {
         subgraphs[l].mis_finalized(vector<vector<int>>(),true, 0);
@@ -607,6 +615,11 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     }
 #endif
     cout << "Graph size: " << g.size() << endl;
+    // print Graph statistic
+
+    //TODO
+
+
     return res_mis;
 }
 
