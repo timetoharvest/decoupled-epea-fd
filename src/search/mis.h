@@ -11,6 +11,7 @@
 #include <stack>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 
 
 /* retrieve maximum independent sets
@@ -39,9 +40,9 @@ private:
     NGraph remove_components(const NGraph&, const std::set<int>&) const;
 public:
     MIS() {}
-    std::vector<std::vector<int>> get_mis(const NGraph&, int, int, int, int) const;
+    std::vector<boost::dynamic_bitset<>> get_mis(const NGraph&, int, int, int, int) const;
     void print_graph(const NGraph&) const;
-    bool check_mis(const NGraph&, const std::vector<int> &mis) const;
+    bool check_mis(const NGraph&, const boost::dynamic_bitset<> &mis) const;
 };
 
 class Subgraph;
@@ -49,8 +50,10 @@ class Subgraph;
 class Subgraph {
 protected:
 
-    std::vector<std::vector<int>> mis;
-    std::vector<std::vector<std::vector<int>>> child_mis;
+    std::vector<boost::dynamic_bitset<>> mis;
+    size_t mis_elem;
+    bool has_elem;
+    std::vector<std::vector<boost::dynamic_bitset<>>> child_mis;
     std::vector<std::vector<int>> dup_child_mis;
     size_t pending_mis = 0;
     std::vector<size_t> children;
@@ -61,19 +64,23 @@ protected:
     std::vector<size_t> parents;
     bool root;
     std::vector<size_t> child_no;
+    size_t graph_size;
 public:
 
-    Subgraph (size_t h, std::vector<Subgraph> * sg, size_t p, bool r, size_t no) : hash(h), subgraphs(sg), root(r){
+    Subgraph (size_t h, std::vector<Subgraph> * sg, size_t p, bool r, size_t no, size_t g_size) : hash(h), subgraphs(sg), root(r), graph_size(g_size){
         child_no.push_back(no);
         parents.push_back(p);
+        has_elem = false;
+        mis_elem = 0;
+        dup_child_mis = std::vector<std::vector<int>>();
     };
     void add_child (size_t);
     void add_children (std::vector<size_t>, bool);
     void add_parent (size_t, size_t);
-    void mis_finalized(std::vector<std::vector<int>>, bool, size_t);
+    void mis_finalized(std::vector<boost::dynamic_bitset<>>, bool, size_t, size_t);
     void clear();
 
-    std::vector<std::vector<int>> get_mis() {
+    std::vector<boost::dynamic_bitset<>> get_mis() {
         return mis;
     };
 
@@ -89,19 +96,22 @@ public:
         return hash;
     }
 
-    void print() const;
+    std::vector<size_t> get_parents() {
+        return parents;
+    }
+
+    std::vector<size_t> get_child_nos() {
+        return child_no;
+    }
+
+    void print() const {
+        print("");
+    }
     void print(std::string offset) const;
 
-    void add_mis_elems(std::vector<int> m) {
-        if (mis.empty()) {
-            mis.push_back(m);
-        } else {
-            for (std::vector<int> &mi:mis) {
-                for (int v:m) {
-                    mi.push_back(v);
-                }
-            }
-        }
+    void add_mis_elems(size_t m) {
+        mis_elem = m;
+        has_elem = true;
     }
 
     void add_dup_mis(std::vector<int> m) {
@@ -122,5 +132,7 @@ size_t hash_value(const boost::dynamic_bitset<B, A>& bs) {
     std::hash<std::string> hash;
     return hash(str);
 }
+
+void print_bitset(boost::dynamic_bitset<> &);
 
 #endif

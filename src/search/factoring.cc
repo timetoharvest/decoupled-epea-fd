@@ -2028,18 +2028,20 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             cg_g = generate_ngraph();
 
             MIS mis = MIS();
-            vector<vector<int> > found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout,
-                                                         arg_multiple_mis);
+            vector<boost::dynamic_bitset<>> found_mis;
+            found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
 
             // generate factoring
-            for (const vector<int> &m : found_mis) {
-                FactoredVars mis;
-                for (int it :m) {
-                    set<int> s;
-                    s.insert(it);
-                    mis.push_back(s);
+            for (const boost::dynamic_bitset<> &m : found_mis) {
+                FactoredVars f;
+                for (size_t it = 0; it < m.size(); ++it) {
+                    if (m[it]) {
+                        set<int> s;
+                        s.insert((int)it);
+                        f.push_back(s);
+                    }
                 }
-                max_ind_sets.push_back(mis);
+                max_ind_sets.push_back(f);
             }
         }
     } else {

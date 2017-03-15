@@ -10,7 +10,7 @@
 
 using namespace std;
 
-vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) const {
+vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) const {
 
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << g.size() << endl;
@@ -23,10 +23,10 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     vector<int> first_mis;
     boost::dynamic_bitset<> elem = boost::dynamic_bitset<>(g.size());
     elem.flip();
-    Subgraph sg = Subgraph(hash_value(elem), &subgraphs, 0, true, 0);
+    Subgraph sg = Subgraph(hash_value(elem), &subgraphs, 0, true, 0, g.size());
     hash_to_subgraph[hash_value(elem)] = subgraphs.size();
     subgraphs.push_back(sg);
-    vector<int> leaves;
+    vector<size_t> leaves;
 
     list<NGraph> stack;
     stack.push_front(g);
@@ -50,7 +50,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
 //        cout << "current hash: " << current_hash << endl;
 //        subgraphs[0].print();
 
-        int only_elem = -1;
+        size_t only_elem = 0;
         size_t g_size = 0;
         for (size_t i = 0; i < g.size(); ++i){
             if (!g[i].none()){
@@ -61,12 +61,9 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
             }
         }
         if (g_size <= 1) {
-            vector<int> m;
             if (g_size == 1) {
-                m.push_back(only_elem);
-            } else {
+                current_subgraph->add_mis_elems(only_elem);
             }
-            current_subgraph->add_mis_elems(m);
             leaves.push_back(parent_pos);
         } else {
             ConComp connected_components;
@@ -88,14 +85,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                 vector<size_t> c_hashs;
                 vector<NGraph> c_graphs;
 
-                size_t pos = subgraphs.size() + ch.size();
                 boost::dynamic_bitset<> bs = ngraph_to_bitset(g_without_c);
-                if (bs.count() > 0) {
-                    size_t h = hash_value(bs);
-                    ch.push_back(pos);
-                    c_hashs.push_back(h);
-                    c_graphs.push_back(g_without_c);
-                }
                 for (set<int> c:connected_components) {
                     size_t pos1 = subgraphs.size() + ch.size();
                     ch.push_back(pos1);
@@ -110,6 +100,13 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                     size_t h1 = hash_value(ngraph_to_bitset(g_c));
                     c_hashs.push_back(h1);
                     c_graphs.push_back(g_c);
+                }
+                size_t pos = subgraphs.size() + ch.size();
+                if (bs.count() > 0) {
+                    size_t h = hash_value(bs);
+                    ch.push_back(pos);
+                    c_hashs.push_back(h);
+                    c_graphs.push_back(g_without_c);
                 }
 
                 assert(c_hashs.size() == ch.size());
@@ -135,7 +132,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                 for (size_t i = 0; i < c_hashs.size(); ++i) {
                     size_t hash = c_hashs[i];
                     if (hash != 0) {
-                        Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
+                        Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i, g.size());
                         hash_to_subgraph[hash] = ch[i];
                         subgraphs.push_back(c);
                         stack.push_front(c_graphs[i]);
@@ -232,7 +229,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                         for (size_t i = 0; i < c_hashs.size(); ++i) {
                             size_t hash = c_hashs[i];
                             if (hash != 0) {
-                                Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
+                                Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i, g.size());
                                 hash_to_subgraph[hash] = ch[i];
                                 subgraphs.push_back(c);
                                 stack.push_front(c_graphs[i]);
@@ -254,7 +251,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                         } else {
                             size_t pos1 = subgraphs.size();
                             size_t h1 = hash_value(ngraph_to_bitset(g_without_v));
-                            Subgraph c1 = Subgraph(h1, &subgraphs, parent_pos, false, 0);
+                            Subgraph c1 = Subgraph(h1, &subgraphs, parent_pos, false, 0, g.size());
                             current_subgraph->add_child(pos1);
                             stack.push_front(g_without_v);
                             hash_to_subgraph[h1] = pos1;
@@ -347,7 +344,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                             for (size_t i = 0; i < c_hashs.size(); ++i) {
                                 size_t hash = c_hashs[i];
                                 if (hash != 0) {
-                                    Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
+                                    Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i, g.size());
                                     hash_to_subgraph[hash] = ch[i];
                                     subgraphs.push_back(c);
                                     stack.push_front(c_graphs[i]);
@@ -510,7 +507,7 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
                         for (size_t i = 0; i < c_hashs.size(); ++i) {
                             size_t hash = c_hashs[i];
                             if (hash != 0) {
-                                Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i);
+                                Subgraph c = Subgraph(hash, &subgraphs, parent_pos, false, i, g.size());
                                 hash_to_subgraph[hash] = ch[i];
                                 subgraphs.push_back(c);
                                 stack.push_front(c_graphs[i]);
@@ -526,9 +523,11 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     cout << "MIS algo steps: " << mis_steps << endl;
     cout << "MIS algo leaves: " << leaves.size() + stack.size() << endl;
 
+    list<size_t> finalization_stack;
     // finalize all leaves
     for (size_t l:leaves) {
-        subgraphs[l].mis_finalized(vector<vector<int>>(),true, 0);
+        subgraphs[l].mis_finalized(vector<boost::dynamic_bitset<>>(),true, 0, arg_multiple_mis);
+        finalization_stack.push_back(l);
     }
 
     // if timer timed out, finalize all subgraphs in stack
@@ -542,13 +541,37 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
         size_t current_hash = hash_value(subelems);
         size_t parent_pos = hash_to_subgraph[current_hash];
         Subgraph *current_subgraph = &subgraphs[parent_pos];
-        vector<vector<int>> m;
-        current_subgraph->mis_finalized(m, true, 0);
+        vector<boost::dynamic_bitset<>> m(g.size());
+        current_subgraph->mis_finalized(m, true, 0, (size_t)arg_multiple_mis);
+        finalization_stack.push_back(parent_pos);
     }
+
+    while (!finalization_stack.empty()) {
+        size_t pos = finalization_stack.front();
+        finalization_stack.pop_front();
+        Subgraph &current_subgraph = subgraphs[pos];
+        const vector<boost::dynamic_bitset<>> &m = current_subgraph.get_mis();
+        const vector<size_t> &parents = current_subgraph.get_parents();
+        const vector<size_t> &child_no = current_subgraph.get_child_nos();
+        bool root = current_subgraph.is_root();
+        if (!root) {
+            for (size_t i = 0; i < parents.size(); ++i) {
+                size_t parent_pos = parents[i];
+                Subgraph &p_g = subgraphs[parent_pos];
+                p_g.mis_finalized(m, false, child_no[i], (size_t)arg_multiple_mis);
+                if (p_g.is_finalized()) {
+                    finalization_stack.push_back(parent_pos);
+                }
+            }
+        }
+        current_subgraph.clear();
+    }
+
+
     cout << "finalizing stack took: " << timer_final << endl;
     Subgraph root = subgraphs[0];
 //    subgraphs[0].print();
-    vector<vector<int>> temp = root.get_mis();
+    vector<boost::dynamic_bitset<>> temp = root.get_mis();
 
     assert(subgraphs[0].is_finalized());
     size_t max_size = 0;
@@ -564,52 +587,46 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < temp.size(); i++) {
         cout << "MIS " << i << ": ";
-        for (const int v:temp[i]) {
-            cout << v <<  " ";
+        for (size_t v = 0; v < temp[i].size(); ++v) {
+            if (temp[i][v]) {
+                cout << v << " ";
+            }
         }
         cout << endl;
     }
 #endif
-    vector<vector<int>> res_mis;
+    vector<boost::dynamic_bitset<>> res_mis;
     if (!temp.empty()) {
-        if (arg_multiple_mis > 1) {
-            set<int> candidates;
-            while (candidates.size() < min((size_t)arg_multiple_mis,temp.size())) {
-                candidates.insert(rand() % temp.size());
-            }
-            for (int c:candidates){
-                res_mis.push_back(temp[c]);
-            }
-        } else {
-            cout << "Select x-th factoring, x: " << x << endl;
+        cout << "Select x-th factoring, x: " << x << endl;
 
-            if (x >= (int) temp.size()) {
-                cout << "Factoring x found: 0" << endl;
-            }
-
-            cout << "Factoring x found: 1" << endl;
-            assert(x >= 0 && x < (int) temp.size());
-            res_mis.push_back(temp[x]);
+        if (x >= (int) temp.size()) {
+            cout << "Factoring x found: 0" << endl;
         }
+
+        cout << "Factoring x found: 1" << endl;
+        assert(x >= 0 && x < (int) temp.size());
+        res_mis.push_back(temp[x]);
     }
 #ifdef DEBUG_FACTORING
-    for (vector<int> m:res_mis) {
+    for (boost::dynamic_bitset<> &m:res_mis) {
         if (!check_mis(g, m)) {
             cout << "did not create valid mis" << endl;
         }
     }
 #endif
     if (!res_mis.empty()) {
-        cout << "MIS size: " << res_mis[0].size() << endl;
+        cout << "MIS size: " << res_mis[0].count() << endl;
     } else {
         cout << "MIS size: " << 0 << endl;
     }
 #ifdef DEBUG_FACTORING
     int i = 0;
-    for (vector<int> m:res_mis) {
+    for (boost::dynamic_bitset<> &m:res_mis) {
         cout << "MIS " << i << " : ";
-        for (int it: m) {
-            cout << it << " ";
+        for (size_t it = 0; it < m.size(); ++it) {
+            if (m[it]) {
+                cout << it << " ";
+            }
         }
         cout << endl;
     }
@@ -623,13 +640,13 @@ vector<vector<int>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int a
     return res_mis;
 }
 
-bool MIS::check_mis(const NGraph &g, const vector<int> &mis) const{
-    for (int i:mis) {
-        for (size_t n = 0; n < g[i].size(); ++n) {
-            if (g[i][n]) {
-                if ((size_t) i != n) {
-                    for (int j: mis) {
-                        if (n == (size_t)j) {
+bool MIS::check_mis(const NGraph &g, const boost::dynamic_bitset<> &mis) const{
+    for (size_t i = 0; i < mis.size(); ++i) {
+        if (mis[i]) {
+            for (size_t n = 0; n < g[i].size(); ++n) {
+                if (g[i][n]) {
+                    if ((size_t) i != n) {
+                        if (mis[n]) {
                             return false;
                         }
                     }
@@ -758,110 +775,109 @@ boost::dynamic_bitset<> ngraph_to_bitset (const NGraph &g) {
     return subelems;
 }
 
-void Subgraph::mis_finalized(vector<vector<int>> is, bool leaf, size_t no) {
+void Subgraph::mis_finalized(vector<boost::dynamic_bitset<>> is, bool leaf, size_t no, size_t arg_multiple_mis) {
     if (!children.empty()) {
         --pending_mis;
-        if (!branch) {
-            // if children are no branches (connected components)
-            // all permutations of child_mis have to be generated
-            if (child_mis.empty()) {
-                child_mis.push_back(is);
-            } else if (!is.empty()){
-                vector<vector<int>> tmp_children;
-                for (vector<int> new_mis: is) {
-                    for (vector<vector<int>> o_m: child_mis) {
-                        for (vector<int> old_mis: o_m) {
-                            vector<int> tmp_mis;
-                            vector<int> *second_mis;
-                            if (old_mis.size() >= new_mis.size()) {
-                                tmp_mis = old_mis;
-                                second_mis = &new_mis;
-                            } else {
-                                tmp_mis = new_mis;
-                                second_mis = &old_mis;
+        if (!is.empty()) {
+            if (!branch) {
+                // if children are no branches (connected components)
+                // all permutations of child_mis have to be generated
+                if (child_mis.empty()) {
+                    child_mis.push_back(is);
+                } else if (!is.empty()) {
+                    vector<boost::dynamic_bitset<>> tmp_children;
+                    for (const boost::dynamic_bitset<> &new_mis: is) {
+                        for (const vector<boost::dynamic_bitset<>> &o_m: child_mis) {
+                            for (const boost::dynamic_bitset<> &old_mis: o_m) {
+                                boost::dynamic_bitset<> tmp_mis(graph_size);
+                                const boost::dynamic_bitset<> *second_mis;
+                                if (old_mis.count() >= new_mis.count()) {
+                                    tmp_mis = old_mis;
+                                    second_mis = &new_mis;
+                                } else {
+                                    tmp_mis = new_mis;
+                                    second_mis = &old_mis;
+                                }
+                                assert(second_mis->size() == tmp_mis.size());
+                                for (size_t v = 0; v < second_mis->size(); ++v) {
+                                    if ((*second_mis)[v]) {
+                                        tmp_mis.set(v);
+                                    }
+                                }
+                                tmp_children.push_back(tmp_mis);
                             }
-                            for (int v: *second_mis) {
-                                tmp_mis.push_back(v);
-                            }
-                            tmp_children.push_back(tmp_mis);
                         }
                     }
+                    child_mis = vector<vector<boost::dynamic_bitset<>>>();
+                    child_mis.push_back(tmp_children);
                 }
-                child_mis = vector<vector<vector<int>>> {tmp_children};
+            } else {
+                // if children are branches (folding, domination, base case)
+                // children need to be inserted at the correct position
+                // such that dup_child_mis (folding, base case)
+                // can be added to the correct child_mis
+                child_mis[no] = is;
             }
-        } else {
-            // if children are branches (folding, domination, base case)
-            // children need to be inserted at the correct position
-            // such that dup_child_mis (folding, base case)
-            // can be added to the correct child_mis
+        } else if (branch) {
             child_mis[no] = is;
         }
 
         if (pending_mis == 0 || leaf) {
             finalized = true;
             if (branch) {
-                // add dup_child_mis to child_mis (folding, base_case)
-                for (size_t i = 0; i < child_mis.size(); ++i) {
-                    for (int d_c: dup_child_mis[i]) {
-                        for (vector<int> &cm: child_mis[i]) {
-                            cm.push_back(d_c);
+                if (!dup_child_mis.empty()) {
+                    // add dup_child_mis to child_mis (folding, base_case)
+                    assert(child_mis.size() == dup_child_mis.size());
+                    for (size_t i = 0; i < child_mis.size(); ++i) {
+                        for (size_t d_c:dup_child_mis[i]) {
+                            for (boost::dynamic_bitset<> &cm: child_mis[i]) {
+                                cm.set(d_c);
+                            }
                         }
                     }
                 }
-                vector<vector<int>> child_mis_max;
+                vector<pair<size_t,size_t>> child_mis_max;
                 size_t max = 0;
-                for (vector<vector<int>> ch_mi:child_mis) {
-                    for (vector<int> cm:ch_mi) {
-                        if (cm.size() > max) {
-                            max = cm.size();
+                for (size_t ch_mi = 0; ch_mi < child_mis.size(); ++ch_mi) {
+                    for (size_t cm = 0; cm < child_mis[ch_mi].size(); ++cm) {
+                        if (child_mis[ch_mi][cm].count() > max) {
+                            max = child_mis[ch_mi][cm].count();
                             child_mis_max.clear();
-                            child_mis_max.push_back(cm);
-                        } else if (cm.size() >= max) {
-                            child_mis_max.push_back(cm);
+                            child_mis_max.push_back(make_pair(ch_mi,cm));
+                        } else if (child_mis[ch_mi][cm].count() == max) {
+                            if (child_mis_max.size() < arg_multiple_mis) {
+                                child_mis_max.push_back(make_pair(ch_mi, cm));
+                            }
                         }
                     }
                 }
-                child_mis = vector<vector<vector<int>>> {child_mis_max};
+                vector<boost::dynamic_bitset<>> tmp;
+                for (pair<size_t,size_t> i: child_mis_max) {
+                    tmp.push_back(child_mis[i.first][i.second]);
+                }
+                child_mis = vector<vector<boost::dynamic_bitset<>>> {tmp};
             }
             // merge child_mis with current_subgraph's mis
-            if (mis.empty()) {
-                for (vector<vector<int>> ch_mi : child_mis) {
-                    for (vector<int> cm: ch_mi) {
-                        mis.push_back(cm);
-                    }
+            for (vector<boost::dynamic_bitset<>> &ch_mi : child_mis) {
+                if (mis.size() == arg_multiple_mis) {
+                    break;
                 }
-            } else if (!child_mis.empty()) {
-                vector<vector<int>> tmp_mis;
-                for (vector<int> m:mis) {
-                    for (vector<vector<int>> ch_mi:child_mis) {
-                        for (vector<int> cm:ch_mi) {
-                            vector<int> tmp(cm);
-                            for (int v: m) {
-                                tmp.push_back(v);
-                            }
-                            tmp_mis.push_back(tmp);
-                        }
+                for (boost::dynamic_bitset<> &cm: ch_mi) {
+                    if (has_elem) {
+                        cm.set(mis_elem);
                     }
-                }
-                mis = tmp_mis;
-            }
-            vector<vector<int>> resulting_mis = mis;
-            vector<size_t> my_parents = parents;
-            vector<size_t> my_no = child_no;
-            clear();
-            if (!root) {
-                for (size_t i = 0; i < my_parents.size(); ++i) {
-                    Subgraph &p_g = subgraphs->at(my_parents[i]);
-                    p_g.mis_finalized(resulting_mis, false, my_no[i]);
+                    mis.push_back(cm);
                 }
             }
+            assert(mis.size() <= arg_multiple_mis);
         }
     } else {
-        if (!root) {
-            for (size_t i = 0; i < parents.size(); ++i) {
-                Subgraph &p_g = subgraphs->at(parents[i]);
-                p_g.mis_finalized(mis, false, child_no[i]);
-            }
+        assert(mis.size() <= 1);
+        if (mis.empty()) {
+            mis.push_back(boost::dynamic_bitset<>(graph_size));
+        }
+        if (has_elem) {
+            mis[0].set(mis_elem);
         }
     }
 }
@@ -875,8 +891,7 @@ void Subgraph::add_child (size_t h) {
     assert(children.empty());
     branch = true;
     if (branch) {
-        child_mis = vector<vector<vector<int>>>(1);
-        dup_child_mis = vector<vector<int>>(1);
+        child_mis = vector<vector<boost::dynamic_bitset<>>>(1);
     }
     children.push_back(h);
     pending_mis = 1;
@@ -885,7 +900,7 @@ void Subgraph::add_child (size_t h) {
 void Subgraph::add_children (vector<size_t> h, bool b) {
     assert(children.empty());
     if (b) {
-        child_mis = vector<vector<vector<int>>>(h.size());
+        child_mis = vector<vector<boost::dynamic_bitset<>>>(h.size());
     }
     for (size_t ch:h) {
         children.push_back(ch);
@@ -905,75 +920,53 @@ void Subgraph::clear() {
     dup_child_mis.clear();
 }
 
-void Subgraph::print() const {
-    cout << "root " << root << " - " << this->hash << " pending: " << pending_mis << ", children: " << children.size() << endl;
-    cout << "MIS:" << endl;
-    if (!this->mis.empty()) {
-        for (vector<int> m:mis) {
-            cout << "     ";
-            for (int v: m) {
-                cout << " " << v;
-            }
-            cout << endl;
-        }
-    }
-    cout << "dup child MIS elems:" << endl;
-    for (vector<int> m:dup_child_mis) {
-        cout << "     ";
-        for (int v: m) {
-            cout << " " << v;
-        }
-        cout << endl;
-    }
-    cout << "child MIS elems:" << endl;
-    for (vector<vector<int>> mis:child_mis) {
-        for (vector<int> m:mis) {
-            cout << "     ";
-            for (int v: m) {
-                cout << " " << v;
-            }
-            cout << "   ";
-        }
-        cout << endl;
-    }
-    if (!children.empty()) {
-        for (size_t c: children) {
-            subgraphs->at(c).print(" ");
-        }
-    }
-}
-
 void Subgraph::print(std::string offset) const {
     cout << offset << "root " << root << " - " << this->hash << " pending: " << pending_mis << ", children: " << children.size() << ", parents: " << parents.size() << endl;
     cout << offset << "branch: " << branch << endl;
     cout << offset << "MIS:" << endl;
-    for (vector<int> m:mis) {
+    for (const boost::dynamic_bitset<> &m:mis) {
         cout << offset << "     ";
-        for (int v: m) {
-            cout << " " << v;
+        for (size_t v = 0; v < m.size(); ++v) {
+            if (m[v]) {
+                cout << " " << v;
+            }
         }
         cout << endl;
     }
+    if (has_elem) {
+        cout << offset << "mis_elem: " << mis_elem << endl;
+    }
     cout << offset << "dup child MIS elems:" << endl;
-    for (vector<int> m:dup_child_mis) {
+    for (const vector<int> &m:dup_child_mis) {
         cout << offset << "     ";
-        for (int v: m) {
+        for (size_t v:m) {
             cout << " " << v;
         }
         cout << endl;
     }
     cout << offset << "child MIS elems:" << endl;
-    for (vector<vector<int>> mis:child_mis) {
-        for (vector<int> m:mis) {
+    for (const vector<boost::dynamic_bitset<>> &mis:child_mis) {
+        for (const boost::dynamic_bitset<> &m:mis) {
             cout << offset << "     ";
-            for (int v: m) {
-                cout << " " << v;
+            for (size_t v = 0; v < m.size(); ++v) {
+                if(m[v]) {
+                    cout << " " << v;
+                }
             }
-            cout << "   ";
+            cout << endl;
         }
         cout << endl;
     }
     for (size_t c: children) {
         subgraphs->at(c).print(offset + " ");
     }
+}
+
+void print_bitset(boost::dynamic_bitset<> &b) {
+    for (size_t i = 0; i  < b.size(); ++i) {
+        if (b[i]) {
+            cout << " " << i;
+        }
+    }
+    cout << endl;
 }
