@@ -101,13 +101,6 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                     c_hashs.push_back(h1);
                     c_graphs.push_back(g_c);
                 }
-                size_t pos = subgraphs.size() + ch.size();
-                if (bs.count() > 0) {
-                    size_t h = hash_value(bs);
-                    ch.push_back(pos);
-                    c_hashs.push_back(h);
-                    c_graphs.push_back(g_without_c);
-                }
 
                 assert(c_hashs.size() == ch.size());
                 int offset = 0;
