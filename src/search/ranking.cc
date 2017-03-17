@@ -325,7 +325,7 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     }
     vector<int> affecting_ratio(factoring.size(),0);
     for (size_t i = 0; i < factoring.size(); ++i) {
-        affecting_ratio[i] = (affecting_leaf[i] * 100) / (affecting_leaf[i] + affecting_center[i]);
+        affecting_ratio[i] = (affecting_leaf[i] * 100) / (max(1,affecting_leaf[i] + affecting_center[i]));
     }
     int result = 0;
     for (size_t i = 0; i < factoring.size(); ++i) {

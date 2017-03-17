@@ -26,6 +26,8 @@
 #include <sstream>
 #include <time.h>
 
+#include <set>
+
 
 using namespace std;
 
@@ -312,6 +314,7 @@ protected:
     bool arg_all_rankings;
     int arg_timeout;
     int arg_multiple_mis;
+    vector<size_t> arg_mis;
     NGraph cg_g; // cache used for AutoFactoring
     vector<FactoredVars> max_ind_sets; // cache used for AutoFactoring
 
@@ -350,6 +353,16 @@ public:
             arg_rankings = opts.get_list<FactoringRanking *>("rankings");
             for (FactoringRanking *ranking : arg_rankings) {
                 cout << ranking->print_feature() << " ";
+            }
+            cout << endl;
+        }
+        cout << " initial MIS: ";
+        if (!opts.contains("mis")) {
+            cout << "None" << endl;
+        } else {
+            arg_mis = opts.get_list<size_t>("mis");
+            for (size_t v: arg_mis) {
+                cout << v << " ";
             }
             cout << endl;
         }
@@ -593,6 +606,48 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         profile = I_FORK;
         cout << "factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
     }
+
+    // print edge statistic of interaction graph
+//    size_t c_to_l = 0;
+//    size_t l_to_c = 0;
+//    size_t bidirec = 0;
+//    LeafFactorID c = LeafFactorID::CENTER;
+//    vector<LeafFactorID> p = interaction_graph.get_predecessors(c);
+//    set<LeafFactorID> p_set;
+//    for (size_t i = 0; i < p.size(); ++i) {
+//        p_set.insert(p[i]);
+//    }
+//    vector<LeafFactorID> s = interaction_graph.get_successors(c);
+//    set<LeafFactorID> s_set;
+//    for (size_t i = 0; i < s.size(); ++i) {
+//        s_set.insert(s[i]);
+//    }
+//    set<LeafFactorID>::iterator p_pos = p_set.begin();
+//    set<LeafFactorID>::iterator s_pos = s_set.begin();
+//    while (p_pos != p_set.end() || s_pos != s_set.end()) {
+//        if (p_pos == p_set.end()) {
+//            ++c_to_l;
+//            ++s_pos;
+//        } else if (s_pos == s_set.end()) {
+//            ++l_to_c;
+//            ++p_pos;
+//        } else {
+//            if (*s_pos == *p_pos) {
+//                ++bidirec;
+//                ++s_pos;
+//                ++p_pos;
+//            } else if (*s_pos < *p_pos) {
+//                ++c_to_l;
+//                ++s_pos;
+//            } else {
+//                ++l_to_c;
+//                ++p_pos;
+//            }
+//        }
+//    }
+//    cout << "Center to Leaf: " << c_to_l << endl;
+//    cout << "Leaf to Leaf: " << c_to_l << endl;
+//    cout << "Bidirectional: " << bidirec << endl;
     
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < num_ops_per_factor.size(); i++) {
@@ -2022,24 +2077,45 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
 
 Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     init_ops_helper();
-    if (cg_g.empty()) {
-        cg_g = generate_ngraph();
+    if (arg_mis.empty()) {
+        if (cg_g.empty()) {
+            cg_g = generate_ngraph();
 
-        MIS mis = MIS();
-        vector<set<int> > found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
+            MIS mis = MIS();
+            vector<boost::dynamic_bitset<>> found_mis;
+            found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
 
-        // generate factoring
-        for (const set<int> &m : found_mis) {
-            FactoredVars mis;
-            for (set<int>::iterator it = m.begin(); it != m.end(); ++it) {
-                set<int> s;
-                s.insert(*it);
-                mis.push_back(s);
+            // generate factoring
+            for (const boost::dynamic_bitset<> &m : found_mis) {
+                FactoredVars f;
+                for (size_t it = 0; it < m.size(); ++it) {
+                    if (m[it]) {
+                        set<int> s;
+                        s.insert((int)it);
+                        f.push_back(s);
+                    }
+                }
+                max_ind_sets.push_back(f);
             }
-            max_ind_sets.push_back(mis);
+        }
+    } else {
+        FactoredVars f;
+        for (size_t v: arg_mis) {
+            set<int> m;
+            m.insert(v);
+            f.push_back(m);
+        }
+        max_ind_sets.push_back(f);
+    }
+    if (max_ind_sets.empty()) {
+        exit_with(EXIT_ABSTAINED);
+    }
+    for (size_t i = 0; i < max_ind_sets.size(); ++i) {
+        bool valid = check_factoring(max_ind_sets[i]);
+        if (!valid) {
+            exit_with(EXIT_INVALID_FACTORING);
         }
     }
-
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
     vector<int> c_rm(max_ind_sets.size(),0);
     vector<int> f_rm(max_ind_sets.size(),0);
@@ -2121,7 +2197,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
 
     bool valid = check_factoring(final_factoring);
     if (!valid) {
-        exit_with(EXIT_ABSTAINED);
+        exit_with(EXIT_INVALID_FACTORING);
     }
 
     return final_factoring;
@@ -2139,14 +2215,14 @@ vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const
 NGraph MaxIndependentSetFactoring::generate_ngraph() const {
     // build neighbour representation of causal graph (easier to modify)
     // graph of vars (var -> neighbours)
-    NGraph cg_g(g_variable_domain.size(), set<int>());
+    NGraph cg_g(g_variable_domain.size(), boost::dynamic_bitset<>(g_variable_domain.size()));
     for (size_t var = 0; var < g_variable_domain.size(); ++var) {
-        cg_g[var].insert(var);
+        cg_g[var].set(var);
         for (auto pre : g_causal_graph->get_predecessors(var)) {
-            cg_g[var].insert(pre);
+            cg_g[var].set(pre);
         }
         for (auto succ : g_causal_graph->get_successors(var)) {
-            cg_g[var].insert(succ);
+            cg_g[var].set(succ);
         }
     }
     return cg_g;
@@ -2180,6 +2256,18 @@ bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
         }
         ig.insert(make_pair(i, make_pair(parents, children)));
     }
+    for (map<int, pair<set<int>,set<int>>>::iterator it = ig.begin(); it != ig.end(); ++it) {
+        for (set<int>::iterator p = it->second.first.begin(); p != it->second.first.end(); ++p) {
+            if (it->first != -1 && (*p != it->first && *p != -1)) {
+                valid = false;
+            }
+        }
+        for (set<int>::iterator c = it->second.second.begin(); c != it->second.second.end(); ++c) {
+            if (it->first != -1 && (*c != it->first && *c != -1)) {
+                valid = false;
+            }
+        }
+    }
 #ifdef DEBUG_FACTORING
     cout << "Factoring: " << endl;
     for (map<int, pair<set<int>,set<int>>>::iterator it = ig.begin(); it != ig.end(); ++it) {
@@ -2188,7 +2276,7 @@ bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
         for (set<int>::iterator p = it->second.first.begin(); p != it->second.first.end(); ++p) {
             if (it->first != -1 && (*p != it->first && *p != -1)) {
                 valid = false;
-                cout << "invalid parent: " << *p;
+                cout << " invalid parent: " << *p;
             } else {
                 cout << *p << " ";
             }
@@ -2198,7 +2286,7 @@ bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
         for (set<int>::iterator c = it->second.second.begin(); c != it->second.second.end(); ++c) {
             if (it->first != -1 && (*c != it->first && *c != -1)) {
                 valid = false;
-                cout << "invalid child: " << *c;
+                cout << " invalid child: " << *c;
             } else {
                 cout << *c << " ";
             }
@@ -2247,9 +2335,11 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
         // collect candidates (center vars with one leaf neighbour)
         for (int c : center) {
             set<int> neighbour_leaves;
-            for (int n : g[c]) {
-                if (!in_center[n]) {
-                    neighbour_leaves.insert(var_to_factor[n]);
+            for (size_t n = 0; n < g[c].size(); ++n) {
+                if (g[c][n]) {
+                    if (!in_center[n]) {
+                        neighbour_leaves.insert(var_to_factor[n]);
+                    }
                 }
             }
             if (neighbour_leaves.size() == 1) {
@@ -2316,6 +2406,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             }
 
             // if no local max is found, pick first candidate
+            // TODO pick candidate with least center neighbours, which are connected to different leaves
             int candidate = candidates[max];
             int leaf = candidates_to_leaf[max];
             // and push it into the respective leaf
@@ -2358,7 +2449,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             }
         } else {
             if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
-                
+
                 vector<int> merged_leaves_counter(mis.size(), 0);
 
                 while (true) {
@@ -2370,11 +2461,13 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     for (int var : center) {
                         set<int> neighbour_leaves;
                         int max_merge_count = 0;
-                        for (int n : g[var]) {
-                            if (!in_center[n]) {
-                                neighbour_leaves.insert(var_to_factor[n]);
-                                if (merged_leaves_counter[var_to_factor[n]] > max_merge_count){
-                                    max_merge_count = merged_leaves_counter[var_to_factor[n]];
+                        for (size_t n = 0; n < g[var].size(); ++n) {
+                            if (g[var][n]) {
+                                if (!in_center[n]) {
+                                    neighbour_leaves.insert(var_to_factor[n]);
+                                    if (merged_leaves_counter[var_to_factor[n]] > max_merge_count) {
+                                        max_merge_count = merged_leaves_counter[var_to_factor[n]];
+                                    }
                                 }
                             }
                         }
@@ -2386,7 +2479,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                                     f_size *= g_variable_domain[v];
                                 }
                             }
-                            if ((max_leaf_size == 0 || f_size <= max_leaf_size) && 
+                            if ((max_leaf_size == 0 || f_size <= max_leaf_size) &&
                                     min_number_leaves <= (mis.size() - neighbour_leaves.size() + 1)) {
                                 merge_candidates.push_back(var);
                                 merge_candidates_to_leaves.push_back(neighbour_leaves);
@@ -2554,9 +2647,11 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     // only continue to minimize center, including frozen leaves, if minimize_frozen = true
                     for (int var : center) {
                         set<int> neighbour_leaves;
-                        for (int n : g[var]) {
-                            if (!in_center[n]) {
-                                neighbour_leaves.insert(var_to_factor[n]);
+                        for (size_t n = 0; n < g[var].size(); ++n) {
+                            if (g[var][n]) {
+                                if (!in_center[n]) {
+                                    neighbour_leaves.insert(var_to_factor[n]);
+                                }
                             }
                         }
                         if (neighbour_leaves.size() == 1) {
@@ -2888,6 +2983,12 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
 
     parser.add_list_option<FactoringRanking *>(
             "rankings",
+            "TODO",
+            "",
+            OptionFlags(false));
+
+    parser.add_list_option<size_t>(
+            "mis",
             "TODO",
             "",
             OptionFlags(false));

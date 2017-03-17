@@ -91,6 +91,9 @@ void exit_with(ExitCode exitcode) {
     case EXIT_NO_SEARCH:
         cout << "No search performed." << endl;
         break;
+    case EXIT_INVALID_FACTORING:
+        cout << "An invalid factoring has been created." << endl;
+        break;
     default:
         cerr << "Exitcode: " << exitcode << endl;
         ABORT("Unknown exitcode.");
