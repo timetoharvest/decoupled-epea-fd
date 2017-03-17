@@ -49,6 +49,8 @@ template<class Entry>
 class OpenList;
 class PruningOptions;
 class Ranking;
+class SearchRanking;
+class FactoringRanking;
 class SearchEngine;
 class ShrinkStrategy;
 
@@ -139,6 +141,16 @@ template <>
 class TokenParser<Ranking *> {
 public:
     static inline Ranking *parse(OptionParser &p);
+};
+template <>
+class TokenParser<SearchRanking *> {
+public:
+    static inline SearchRanking *parse(OptionParser &p);
+};
+template <>
+class TokenParser<FactoringRanking *> {
+public:
+    static inline FactoringRanking *parse(OptionParser &p);
 };
 
 template <>
@@ -454,6 +466,12 @@ Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
 
 Ranking *TokenParser<Ranking *>::parse(OptionParser &p) {
     return lookup_in_registry<Ranking>(p);
+}
+FactoringRanking *TokenParser<FactoringRanking *>::parse(OptionParser &p) {
+    return lookup_in_registry<FactoringRanking>(p);
+}
+SearchRanking *TokenParser<SearchRanking *>::parse(OptionParser &p) {
+    return lookup_in_registry<SearchRanking>(p);
 }
 
 PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {

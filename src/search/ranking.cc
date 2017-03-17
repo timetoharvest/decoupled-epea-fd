@@ -4,6 +4,8 @@
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
+#include "search_engine.h"
+#include "state_registry.h"
 
 using namespace std;
 
@@ -12,10 +14,54 @@ Ranking::Ranking(const Options &opts) :
 }
 
 
-VarInt Ranking::get_rank(const vector<set<int>> & factoring) {
+VarInt FactoringRanking::get_rank(const vector<set<int>> & factoring) {
     return rank(factoring);
 }
 
+size_t SearchRanking::get_rank(SearchEngine *engine) {
+    return rank(engine);
+}
+
+string FactoringRanking::print_feature() const{
+    switch (feature) {
+        case LEAVES:
+            return "L";
+            break;
+        case DOM_SIZE:
+            return "D";
+            break;
+        case AFF_ACTIONS:
+            return "A";
+            break;
+        case VARS:
+            return "V";
+            break;
+        case MOBILITY:
+            return "M";
+            break;
+        default: case NO_FACTORING_FEATURE:
+            return "";
+    }
+}
+
+string SearchRanking::print_feature() const{
+    switch (feature) {
+        case EXP_STATES:
+            return "E";
+            break;
+        case DEC_STATE_SPACE:
+            return "D";
+            break;
+        case HEUR_VAL_IMP:
+            return "H";
+            break;
+        case MAX_DUP:
+            return "M";
+            break;
+        default: case NO_SEARCH_FEATURE:
+            return "";
+    }
+}
 
 void print_all_rankings(const vector<set<int> > &factoring) {
     MobilityRanking *mobility = new MobilityRanking();
@@ -33,23 +79,6 @@ void print_all_rankings(const vector<set<int> > &factoring) {
     AffActionsRanking *aff_actions = new AffActionsRanking();
     cout << "mis_ranking_aff_actions: ";
     aff_actions->get_rank(factoring).dump_number();
-}
-
-set<int> diff_factorings(const vector<set<int>> & old_factoring, const vector<set<int>> & new_factoring) {
-    vector<bool> var_missing(g_variable_domain.size(),false);
-    vector<bool> var_changed(g_variable_domain.size(),false);
-
-    size_t pos_o = 0;
-    size_t pos_n = 0;
-    while (pos_o < old_factoring.size() && pos_n < new_factoring.size()){
-        size_t f_pos_o = 0;
-        size_t f_pos_n = 0;
-        while (f_pos_o < old_factoring[pos_o].size() && f_pos_n < new_factoring[pos_n].size()) {
-
-        }
-    }
-    set<int> ret;
-    return ret;
 }
 
 VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
@@ -307,6 +336,27 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     return res;
 }
 
+size_t ExpStatesRanking::rank(SearchEngine* engine) {
+    return (size_t)engine->search_progress.expanded_states;
+}
+
+size_t HeurValImpRanking::rank(SearchEngine* engine) {
+    size_t heuristic_value_improv = 0;
+    if (!engine->search_progress.initial_h_values.empty() && !engine->search_progress.best_heuristic_values.empty()){
+        // in case building the leaf state spaces timed out, those are not set
+        heuristic_value_improv = (size_t)engine->search_progress.initial_h_values[0] * 100 / max(1,engine->search_progress.best_heuristic_values[0]);
+    }
+    return heuristic_value_improv;
+}
+
+size_t DecStateSpaceRanking::rank(SearchEngine*) {
+    return g_state_registry->get_decoupled_state_space_size();
+}
+
+size_t MaxDupRanking::rank(SearchEngine*) {
+    return g_state_registry->get_max_number_duplicates();
+}
+
 void Ranking::add_options_to_parser(OptionParser &parser) {
     parser.add_option<bool>(
             "maximize",
@@ -314,9 +364,9 @@ void Ranking::add_options_to_parser(OptionParser &parser) {
             "true");
 }
 
-static Ranking *_parse_mobility(OptionParser &parser) {
+static FactoringRanking *_parse_mobility(OptionParser &parser) {
 
-    Ranking::add_options_to_parser(parser);
+    FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
     MobilityRanking *ranking = 0;
     if (!parser.dry_run()) {
@@ -326,9 +376,9 @@ static Ranking *_parse_mobility(OptionParser &parser) {
     return ranking;
 }
 
-static Ranking *_parse_leaves(OptionParser &parser) {
+static FactoringRanking *_parse_leaves(OptionParser &parser) {
 
-    Ranking::add_options_to_parser(parser);
+    FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
     LeavesRanking *ranking = 0;
     if (!parser.dry_run()) {
@@ -338,9 +388,9 @@ static Ranking *_parse_leaves(OptionParser &parser) {
     return ranking;
 }
 
-static Ranking *_parse_dom_size(OptionParser &parser) {
+static FactoringRanking *_parse_dom_size(OptionParser &parser) {
 
-    Ranking::add_options_to_parser(parser);
+    FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
     DomSizeRanking *ranking = 0;
     if (!parser.dry_run()) {
@@ -350,9 +400,9 @@ static Ranking *_parse_dom_size(OptionParser &parser) {
     return ranking;
 }
 
-static Ranking *_parse_vars(OptionParser &parser) {
+static FactoringRanking *_parse_vars(OptionParser &parser) {
 
-    Ranking::add_options_to_parser(parser);
+    FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
     VariablesRanking *ranking = 0;
     if (!parser.dry_run()) {
@@ -362,9 +412,9 @@ static Ranking *_parse_vars(OptionParser &parser) {
     return ranking;
 }
 
-static Ranking *_parse_aff_actions(OptionParser &parser) {
+static FactoringRanking *_parse_aff_actions(OptionParser &parser) {
 
-    Ranking::add_options_to_parser(parser);
+    FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
     AffActionsRanking *ranking = 0;
     if (!parser.dry_run()) {
@@ -374,8 +424,61 @@ static Ranking *_parse_aff_actions(OptionParser &parser) {
     return ranking;
 }
 
-static Plugin<Ranking> _plugin_mobility("mobility", _parse_mobility);
-static Plugin<Ranking> _plugin_leaves("leaves", _parse_leaves);
-static Plugin<Ranking> _plugin_dom_size("dom_size", _parse_dom_size);
-static Plugin<Ranking> _plugin_vars("vars", _parse_vars);
-static Plugin<Ranking> _plugin_aff_actions("aff_actions", _parse_aff_actions);
+static SearchRanking *_parse_exp_states(OptionParser &parser) {
+
+    SearchRanking::add_options_to_parser(parser);
+    Options opts = parser.parse();
+    ExpStatesRanking *ranking = 0;
+    if (!parser.dry_run()) {
+        ranking = new ExpStatesRanking(opts);
+    }
+
+    return ranking;
+}
+
+static SearchRanking *_parse_heur_val_imp(OptionParser &parser) {
+
+    SearchRanking::add_options_to_parser(parser);
+    Options opts = parser.parse();
+    HeurValImpRanking *ranking = 0;
+    if (!parser.dry_run()) {
+        ranking = new HeurValImpRanking(opts);
+    }
+
+    return ranking;
+}
+
+static SearchRanking *_parse_dec_state_space(OptionParser &parser) {
+
+    SearchRanking::add_options_to_parser(parser);
+    Options opts = parser.parse();
+    DecStateSpaceRanking *ranking = 0;
+    if (!parser.dry_run()) {
+        ranking = new DecStateSpaceRanking(opts);
+    }
+
+    return ranking;
+}
+
+static SearchRanking *_parse_max_dup(OptionParser &parser) {
+
+    SearchRanking::add_options_to_parser(parser);
+    Options opts = parser.parse();
+    MaxDupRanking *ranking = 0;
+    if (!parser.dry_run()) {
+        ranking = new MaxDupRanking(opts);
+    }
+
+    return ranking;
+}
+
+static Plugin<SearchRanking> _plugin_exp_states("exp_states", _parse_exp_states);
+static Plugin<SearchRanking> _plugin_heur_val_imp("heur_val_imp", _parse_heur_val_imp);
+static Plugin<SearchRanking> _plugin_dec_state_space("dec_state_space", _parse_dec_state_space);
+static Plugin<SearchRanking> _plugin_max_dup("max_dup", _parse_max_dup);
+
+static Plugin<FactoringRanking> _plugin_mobility("mobility", _parse_mobility);
+static Plugin<FactoringRanking> _plugin_leaves("leaves", _parse_leaves);
+static Plugin<FactoringRanking> _plugin_dom_size("dom_size", _parse_dom_size);
+static Plugin<FactoringRanking> _plugin_vars("vars", _parse_vars);
+static Plugin<FactoringRanking> _plugin_aff_actions("aff_actions", _parse_aff_actions);

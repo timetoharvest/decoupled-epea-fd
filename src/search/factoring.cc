@@ -117,11 +117,12 @@ class AutoFactoring : public Factoring {
     mutable vector<pair<int, int> > safed_goal;
     
     mutable SuccessorGenerator *safed_successor_generator;
-    
+
+    vector<SearchRanking*> arg_rankings;
     
     void reset_globals() const;
     
-    pair<vector<size_t>, vector<size_t>> run_and_rank_search(string name) const;
+    vector<size_t> run_and_rank_search(string name) const;
     
 protected:
     
@@ -241,33 +242,35 @@ class IncidentArcsFactoring : public Factoring {
     IncidentArcsFactoring()
             : Factoring() {
         profile = STAR;
+        arg_all_rankings = true;
         arg_rankings.push_back(new LeavesRanking());
         cout << "using incident-arcs factoring profile" << endl;
     }
     
 protected:
 
-    vector<Ranking* > arg_rankings;
+    bool arg_all_rankings;
+    vector<FactoringRanking* > arg_rankings;
 
     FactoredVars get_factoring() override;
   
 public:
     
     IncidentArcsFactoring(const Options &opts)
-            : Factoring(opts) {
+            : Factoring(opts),
+              arg_all_rankings(opts.get<bool>("all_rankings")) {
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
         cout << "ranking_features: ";
         if (!opts.contains("rankings")) {
             cout << "No ranking specified, taking number of mobile leaves as default." << endl;
-	    arg_rankings.push_back(new LeavesRanking());
+	        arg_rankings.push_back(new LeavesRanking());
         } else {
-            arg_rankings = opts.get_list<Ranking *>("rankings");
-            for (Ranking *ranking : arg_rankings) {
-                cout << ranking->get_feature() << " ";
+            arg_rankings = opts.get_list<FactoringRanking *>("rankings");
+            for (FactoringRanking *ranking : arg_rankings) {
+                cout << ranking->print_feature() << " ";
             }
             cout << endl;
-            cout << "WARNING: Provided rankings are completely ignored. Instead, the number of mobile leaves is used." << endl;
         }
     }
 
@@ -280,7 +283,7 @@ public:
 class MaxIndependentSetFactoring : public Factoring {
     friend class AutoFactoring;
     
-    vector<FactoredVars> get_factorings(const vector<vector<Ranking*> > &rankings);
+    vector<FactoredVars> get_factorings(const vector<vector<FactoringRanking*> > &rankings);
     
     MaxIndependentSetFactoring()
             : Factoring(),
@@ -302,7 +305,7 @@ class MaxIndependentSetFactoring : public Factoring {
 protected:
     int arg_minimize_center;
     bool arg_minimize_frozen;
-    vector<Ranking* > arg_rankings;
+    vector<FactoringRanking* > arg_rankings;
     int arg_xth_factoring = 0;
     int arg_merge_leaves = 0;
     int arg_find_all;
@@ -344,9 +347,9 @@ public:
         if (!opts.contains("rankings")) {
             cout << "None" << endl;
         } else {
-            arg_rankings = opts.get_list<Ranking *>("rankings");
-            for (Ranking *ranking : arg_rankings) {
-                cout << ranking->get_feature() << " ";
+            arg_rankings = opts.get_list<FactoringRanking *>("rankings");
+            for (FactoringRanking *ranking : arg_rankings) {
+                cout << ranking->print_feature() << " ";
             }
             cout << endl;
         }
@@ -718,9 +721,8 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
                                                     max_test_search_time(opts.get<int>("max_search_time")),
                                                     portfolio(opts.get<bool>("portfolio")){
     profile = STAR;
-    cout << "using self-configuring factoring" << endl;
     if (opts.contains("factorings")){
-        factoring_methods = opts.get_list<Factoring*>("factorings"); 
+        factoring_methods = opts.get_list<Factoring*>("factorings");
     } else {
         cout << "no factorings provided, using default settings" << endl;
         factoring_methods.push_back(new ForkFactoring());
@@ -728,6 +730,22 @@ AutoFactoring::AutoFactoring(const Options &opts) : Factoring(opts),
         factoring_methods.push_back(new XShapeFactoring());
         factoring_methods.push_back(new IncidentArcsFactoring());
         factoring_methods.push_back(new MaxIndependentSetFactoring());
+    }
+    cout << "using self-configuring factoring with ";
+    for (Factoring *f : factoring_methods) {
+        cout << " " << f->get_name();
+    }
+    cout << endl;
+    cout << "Rankings: ";
+    if (!opts.contains("rankings")) {
+        cout << "No ranking specified, taking number of expanded states as default." << endl;
+        arg_rankings.push_back(new ExpStatesRanking());
+    } else {
+        arg_rankings = opts.get_list<SearchRanking *>("rankings");
+        for (SearchRanking *ranking : arg_rankings) {
+            cout << ranking->print_feature() << " ";
+        }
+        cout << endl;
     }
 }
 
@@ -769,8 +787,8 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         MaxIndependentSetFactoring *mis_factoring_method = dynamic_cast<MaxIndependentSetFactoring*>(factoring_method);
         if (mis_factoring_method != nullptr){
             // is MIS factoring
-            vector<vector<Ranking*> > rankings;
-            vector<Ranking*> tmp;
+            vector<vector<FactoringRanking*> > rankings;
+            vector<FactoringRanking*> tmp;
             tmp.push_back(new LeavesRanking());
             rankings.push_back(tmp);
             
@@ -798,41 +816,43 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         max_test_search_time = max_test_search_time / factorings.size();
     }
 
-    vector<pair<vector<size_t>,vector<size_t>>> all_rankings;
+    vector<vector<size_t>> all_rankings;
     int name_pos = 0;
-    for (const auto &factoring : factorings){
-        cout << "Running short search for " << max_test_search_time << "s to test factoring " << names[name_pos] << " (" << factoring.size() << " leaves)." << endl;
-    
-        profile = STAR;
-        apply_factoring(factoring);
-        
-        pair<vector<size_t>,vector<size_t>> rankings = run_and_rank_search(names[name_pos]);
-        all_rankings.push_back(rankings);
-
-        reset_globals();
-
-        cout << endl << endl;
-        ++name_pos;
-    }
-
     FactoredVars best_factoring;
-    if (!factorings.empty()) {
+    if (factorings.size() > 1) {
+        for (const auto &factoring : factorings) {
+            cout << "Running short search for " << max_test_search_time << "s to test factoring " << names[name_pos]
+                 << " (" << factoring.size() << " leaves)." << endl;
+
+            profile = STAR;
+            apply_factoring(factoring);
+
+            vector<size_t> rankings = run_and_rank_search(names[name_pos]);
+            all_rankings.push_back(rankings);
+
+            reset_globals();
+
+            cout << endl << endl;
+            ++name_pos;
+        }
+
         int best_ranking = 0;
         int best_count = 0;
         for (size_t r1 = 0; r1 < all_rankings.size(); ++r1) {
             int better = 0;
             for (size_t r2 = 0; r2 < all_rankings.size(); ++r2) {
                 if (r1 != r2) {
-                    for (size_t i = 0; i < all_rankings[r1].first.size(); ++i) {
+                    for (size_t i = 0; i < arg_rankings.size(); ++i) {
                         // TODO do we allow equality here?
-                        if (all_rankings[r1].first[i] >= all_rankings[r2].first[i]) {
-                            better++;
-                        }
-                    }
-                    for (size_t i = 0; i < all_rankings[r1].second.size(); ++i) {
-                        // TODO do we allow equality here?
-                        if (all_rankings[r1].second[i] <= all_rankings[r2].second[i]) {
-                            better++;
+                        if (arg_rankings[i]->maximizes()) {
+                            if (all_rankings[r1][i] >= all_rankings[r2][i]) {
+                                better++;
+                            }
+                        } else {
+                            // TODO do we allow equality here?
+                            if (all_rankings[r1][i] <= all_rankings[r2][i]) {
+                                better++;
+                            }
                         }
                     }
                 }
@@ -844,15 +864,20 @@ Factoring::FactoredVars AutoFactoring::get_factoring() {
         }
         best_factoring = factorings[best_ranking];
         cout << "Factoring: " << names[best_ranking] << endl;
+    } else {
+        if (!factorings.empty()) {
+            best_factoring = factorings[0];
+            cout << "Factoring: " << names[0] << endl;
+        }
     }
-    
+
     profile = STAR;
     building_leaf_state_spaces_timed_out = false;
-    
+
     return best_factoring;
 }
 
-pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string name) const {
+vector<size_t> AutoFactoring::run_and_rank_search(string name) const {
     
     cout << flush;
     streambuf *real_out = cout.rdbuf();
@@ -948,16 +973,10 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
     size_t exp_states = engine->search_progress.expanded_states;
     size_t eval_states = engine->search_progress.evaluated_states;
 
-    vector<size_t> rankings_min;
-    vector<size_t> rankings_max;
-    rankings_max.push_back(exp_states);
-    /*
-    rankings_min.push_back(g_state_registry->get_max_number_duplicates());
-    rankings_max.push_back(dec_state_space_size);
-    rankings_max.push_back(heuristic_value_improv);
-    rankings_max.push_back(exp_states);
-    rankings_max.push_back(eval_states);
-     */
+    vector<size_t> rankings;
+    for (SearchRanking* r : arg_rankings) {
+        rankings.push_back(r->get_rank(engine));
+    }
 
     if (engine->found_solution() && engine->get_status() != TIMEOUT && !building_leaf_state_spaces_timed_out){
         g_timer.stop();
@@ -987,7 +1006,7 @@ pair<vector<size_t>, vector<size_t>> AutoFactoring::run_and_rank_search(string n
 
     delete engine;
     
-    return make_pair(rankings_max, rankings_min);
+    return rankings;
 }
 
 void AutoFactoring::reset_globals() const {
@@ -1211,7 +1230,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
 
     // all variables sorted descendingly by number of incident arcs
     vector<vector<int> > variables;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         size_t arcs = g_causal_graph->get_successors(var).size();
         arcs += g_causal_graph->get_predecessors(var).size();
@@ -1220,24 +1239,22 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
         }
         variables[arcs].push_back(var);
     }
-    
+
     FactoredVars best_factoring;
-    size_t best_number_leaves = 0;
-    
-    vector<bool> discarded_leaves;
-    
+    vector<VarInt> best_ranking;
+
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         leaf_vars.insert(var);
     }
-    
+
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
         for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
-            
-            leaf_vars.erase(variables[arcs][cand]);            
-            
+
+            leaf_vars.erase(variables[arcs][cand]);
+
             FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
-            
+
             for (int i = factoring.size() - 1; i >= 0; --i){
                 uint64_t size = 1;
                 for (int var : factoring[i]){
@@ -1250,26 +1267,58 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                     factoring.erase(factoring.begin() + i);
                 }
             }
-            
-            size_t number_leaves = factoring.size();
-            vector<bool> discard_leaf = get_frozen_leaves(factoring);
-            for (bool discard : discard_leaf){
-                if (discard){
-                    --number_leaves;
-                }
+            if (factoring.size() < min_number_leaves){
+                continue;
             }
-            
-            if (number_leaves >= best_number_leaves){
+
+            if (best_ranking.empty()) {
+                for (size_t i = 0; i < arg_rankings.size(); ++i) {
+                    VarInt vi(arg_rankings[i]->get_rank(factoring));
+                    best_ranking.push_back(vi);
+                }
                 best_factoring = factoring;
-                discarded_leaves = discard_leaf;
-                best_number_leaves = number_leaves;
+            } else {
+                bool update = false;
+                vector<VarInt> rankings;
+                for (size_t n = 0; n < arg_rankings.size(); ++n) {
+                    rankings.push_back(VarInt(arg_rankings[n]->get_rank(factoring)));
+                    if (arg_rankings[n]->maximizes()) {
+                        if (rankings[n] >= best_ranking[n]) {
+                            if (rankings[n] > best_ranking[n]) {
+                                update = true;
+                            } else {
+                                continue;
+                            }
+                        }
+                        break;
+                    } else {
+                        if (rankings[n] <= best_ranking[n]) {
+                            if (rankings[n] < best_ranking[n]) {
+                                update = true;
+                            } else {
+                                continue;
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (update) {
+                    if (rankings.size() < arg_rankings.size()) {
+                        for (size_t j = rankings.size(); j < arg_rankings.size(); ++j) {
+                            VarInt vi(arg_rankings[j]->get_rank(factoring));
+                            rankings.push_back(vi);
+                        }
+                    }
+                    best_factoring = factoring;
+                    best_ranking = rankings;
+                }
             }
         }
     }
-    
-    // put frozen leaves back to center
+    vector<bool> is_frozen_leaf = get_frozen_leaves(best_factoring);
+
     for (int i = best_factoring.size() - 1; i >= 0; --i){
-        if (discarded_leaves[i]){
+        if (is_frozen_leaf[i]){
             best_factoring.erase(best_factoring.begin() + i);
         }
     }
@@ -1288,7 +1337,12 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     cout << endl;
 #endif
-    
+    if (arg_all_rankings) {
+        cout << "All Rankings: " << endl;
+
+        print_all_rankings(best_factoring);
+        cout << endl;
+    }
     return best_factoring;
 }
 
@@ -2000,7 +2054,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         bool update = false;
         vector<VarInt> rankings;
         uint64_t n = 0;
-        for (Ranking *ranking : arg_rankings) {
+        for (FactoringRanking *ranking : arg_rankings) {
             VarInt vi(ranking->get_rank(m));
             rankings.push_back(vi);
             if (ranking->maximizes()) {
@@ -2073,9 +2127,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     return final_factoring;
 }
 
-vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<Ranking*>> &rankings) {
+vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<FactoringRanking*>> &rankings) {
     vector<FactoredVars> factorings;
-    for (const vector<Ranking*> &ranking: rankings) {
+    for (const vector<FactoringRanking*> &ranking: rankings) {
         arg_rankings = ranking;
         factorings.push_back(this->get_factoring());
     }
@@ -2711,11 +2765,25 @@ string XShapeFactoring::get_name() const {
 }
 
 string IncidentArcsFactoring::get_name() const {
-    return "IncidentArgs";
+    string name = "IncidentArcs";
+    if (!arg_rankings.empty()) {
+        name += "-";
+        for (const Ranking *r:arg_rankings) {
+            name += r->print_feature();
+        }
+    }
+    return name;
 }
 
 string MaxIndependentSetFactoring::get_name() const {
-    return "MaxIndependentSet";
+    string name = "MaxIndependentSet";
+    if (!arg_rankings.empty()) {
+        name += "-";
+        for (const Ranking *r:arg_rankings) {
+            name += r->print_feature();
+        }
+    }
+    return name;
 }
 
 string SokobanFactoring::get_name() const {
@@ -2818,7 +2886,7 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "0"
     );
 
-    parser.add_list_option<Ranking *>(
+    parser.add_list_option<FactoringRanking *>(
             "rankings",
             "TODO",
             "",
@@ -2842,11 +2910,17 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
 }
 
 void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
-    parser.add_list_option<Ranking *>(
+    parser.add_list_option<FactoringRanking *>(
             "rankings",
             "TODO",
             "",
             OptionFlags(false));
+
+    parser.add_option<bool>(
+            "all_rankings",
+            "TODO",
+            "false"
+    );
 }
 
 static Factoring *_parse_auto(OptionParser &parser) {
@@ -2865,6 +2939,12 @@ static Factoring *_parse_auto(OptionParser &parser) {
     parser.add_option<bool>("portfolio",
                            "run candidate factorings with equal time limits",
                            "false");
+
+    parser.add_list_option<SearchRanking *>(
+            "rankings",
+            "TODO",
+            "",
+            OptionFlags(false));
 
     Options opts = parser.parse();
 

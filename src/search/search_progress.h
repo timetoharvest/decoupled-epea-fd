@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "timer.h"
 #include "heuristic.h"
+#include "ranking.h"
 
 /**
  * This class is a class that helps track search progress.
@@ -12,6 +13,10 @@
  */
 class SearchProgress {
     friend class AutoFactoring;
+    friend class ExpStatesRanking;
+    friend class HeurValImpRanking;
+    friend class DecStateSpaceRanking;
+    friend class MaxDupRanking;
 private:
     // General Statistics
     int expanded_states;  // nr states for which successors were generated

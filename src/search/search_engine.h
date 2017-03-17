@@ -18,6 +18,10 @@ enum SearchStatus {IN_PROGRESS, TIMEOUT, FAILED, SOLVED};
 
 class SearchEngine {
     friend class AutoFactoring; // to set max_time
+    friend class ExpStatesRanking; // to retrieve search features
+    friend class HeurValImpRanking;
+    friend class DecStateSpaceRanking;
+    friend class MaxDupRanking;
 public:
     typedef std::vector<const Operator *> Plan;
 private:

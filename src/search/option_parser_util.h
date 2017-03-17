@@ -21,6 +21,8 @@ class Heuristic;
 class LandmarkGraph;
 class MergeStrategy;
 class Ranking;
+class FactoringRanking;
+class SearchRanking;
 class ScalarEvaluator;
 class Synergy;
 class SearchEngine;
@@ -222,6 +224,20 @@ template <>
 struct TypeNamer<Ranking *> {
     static std::string name() {
         return "Ranking";
+    }
+};
+
+template <>
+struct TypeNamer<FactoringRanking *> {
+    static std::string name() {
+        return "FactoringRanking";
+    }
+};
+
+template <>
+struct TypeNamer<SearchRanking *> {
+    static std::string name() {
+        return "SearchRanking";
     }
 };
 
