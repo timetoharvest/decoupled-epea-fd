@@ -90,14 +90,14 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
-                if (!is_optimal_leaf_plan(*cpg)){
+                if (!is_optimal_leaf_plan(state, *cpg)){
                     cout << ", cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
                     exit_with(EXIT_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == ASDA){
-                if (is_optimal_leaf_plan(*cpg)){
+                if (is_optimal_leaf_plan(state, *cpg)){
                     solution_found = true;
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
@@ -134,14 +134,33 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
     return false;
 }
 
-bool SearchEngine::is_optimal_leaf_plan(const CompliantPathGraph &cpg) {
+bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg) {
+    int sum_goal_cost = search_space.get_node(state).get_leaf_part_g();
     for (LeafFactorID factor(0); factor < g_min_goal_cost.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
             assert(cpg.get_goal_cost(factor) >= 0);
-            if (cpg.get_goal_cost(factor) > g_min_goal_cost[factor]){
+            sum_goal_cost += cpg.get_goal_cost(factor);
+            if (sum_goal_cost > g_sum_min_goal_cost){
                 return false;
             }
+        } 
+#ifndef NDEBUG
+        // g-adjustment should ensure that there always exists a leaf state with cost 0 in non-fork leaves
+        // for fork leaves, it is trivially true
+        else {
+            int min_compliant_path_cost = numeric_limits<int>::max();
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (cpg.has_leaf_state(id, factor)){
+                    assert(cpg.get_cost_of_state(id, factor) >= 0);
+                    min_compliant_path_cost = min(min_compliant_path_cost, cpg.get_cost_of_state(id, factor));
+                    if (min_compliant_path_cost == 0){
+                        break;
+                    }
+                }
+            }
+            assert(min_compliant_path_cost == 0);
         }
+#endif
     }
     return true;
 }
