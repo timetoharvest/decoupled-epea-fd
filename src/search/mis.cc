@@ -851,16 +851,23 @@ void Subgraph::mis_finalized(vector<boost::dynamic_bitset<>> is, bool leaf, size
                 child_mis = vector<vector<boost::dynamic_bitset<>>> {tmp};
             }
             // merge child_mis with current_subgraph's mis
-            for (vector<boost::dynamic_bitset<>> &ch_mi : child_mis) {
-                if (mis.size() == arg_multiple_mis) {
-                    break;
-                }
-                for (boost::dynamic_bitset<> &cm: ch_mi) {
-                    if (has_elem) {
-                        cm.set(mis_elem);
+            size_t i = 0;
+            bool done = false;
+            while (mis.size() < arg_multiple_mis and !done) {
+                done = true;
+                for (vector<boost::dynamic_bitset<>> &ch_mi : child_mis) {
+                    if (mis.size() == arg_multiple_mis) {
+                        break;
                     }
-                    mis.push_back(cm);
+                    if (i < ch_mi.size()) {
+                        if (has_elem) {
+                            ch_mi[i].set(mis_elem);
+                        }
+                        mis.push_back(ch_mi[i]);
+                        done = false;
+                    }
                 }
+                ++i;
             }
             assert(mis.size() <= arg_multiple_mis);
         }

@@ -2661,6 +2661,12 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     if (frozen_candidates == 0) {
                         break;
                     } else {
+                        var_to_factor.clear();
+                        for (size_t i = 0; i < mis.size(); i++) {
+                            for (set<int>::iterator it = mis[i].begin(); it != mis[i].end(); ++it) {
+                                var_to_factor[*it] = i;
+                            }
+                        }
                         continue;
                     }
                 }
