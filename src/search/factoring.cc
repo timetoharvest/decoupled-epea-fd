@@ -2450,7 +2450,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
         } else {
             if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
 
-                vector<int> merged_leaves_counter(mis.size(), 0);
+//                vector<int> merged_leaves_counter(mis.size(), 0);
 
                 while (true) {
                     vector<int> merge_candidates;
@@ -2460,18 +2460,19 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                     // collect candidates (connected to frozen vars + max 1 unfrozen var)
                     for (int var : center) {
                         set<int> neighbour_leaves;
-                        int max_merge_count = 0;
+//                        int max_merge_count = 0;
                         for (size_t n = 0; n < g[var].size(); ++n) {
                             if (g[var][n]) {
                                 if (!in_center[n]) {
                                     neighbour_leaves.insert(var_to_factor[n]);
-                                    if (merged_leaves_counter[var_to_factor[n]] > max_merge_count) {
-                                        max_merge_count = merged_leaves_counter[var_to_factor[n]];
-                                    }
+//                                    if (merged_leaves_counter[var_to_factor[n]] > max_merge_count) {
+//                                        max_merge_count = merged_leaves_counter[var_to_factor[n]];
+//                                    }
                                 }
                             }
                         }
-                        if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves) {
+//                        if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves) {
+                        if (neighbour_leaves.size() > 1) {
                             // check leaf factor size
                             uint64_t f_size = g_variable_domain[var];
                             for (int f : neighbour_leaves) {
@@ -2555,26 +2556,26 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         in_center[c] = false;
                         center.erase(c);
                         c_rm++;
-                        int max_merge_counter = 0;
+//                        int max_merge_counter = 0;
                         for (int l : merge_candidates_to_leaves[max_elem]) {
                             for (int v : mis[l]) {
                                 new_leaf.insert(v);
                             }
                             mis[l].clear();
-                            if (merged_leaves_counter[l] > max_merge_counter) {
-                                max_merge_counter = merged_leaves_counter[l];
-                            }
+//                            if (merged_leaves_counter[l] > max_merge_counter) {
+//                                max_merge_counter = merged_leaves_counter[l];
+//                            }
                         }
                         mis.push_back(new_leaf);
-                        merged_leaves_counter.push_back(max_merge_counter + 1);
+//                        merged_leaves_counter.push_back(max_merge_counter + 1);
 
                         for (int i = mis.size() - 1; i >= 0; --i) {
                             if (mis[i].empty()) {
                                 mis.erase(mis.begin() + i);
-                                merged_leaves_counter.erase(merged_leaves_counter.begin() + i);
+//                                merged_leaves_counter.erase(merged_leaves_counter.begin() + i);
                             }
                         }
-                        assert(mis.size() == merged_leaves_counter.size());
+//                        assert(mis.size() == merged_leaves_counter.size());
 
                         // check if global best factoring has to be updated
                         bool update_global = false;
