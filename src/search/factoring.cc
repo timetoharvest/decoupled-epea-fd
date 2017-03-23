@@ -608,46 +608,46 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     }
 
     // print edge statistic of interaction graph
-//    size_t c_to_l = 0;
-//    size_t l_to_c = 0;
-//    size_t bidirec = 0;
-//    LeafFactorID c = LeafFactorID::CENTER;
-//    vector<LeafFactorID> p = interaction_graph.get_predecessors(c);
-//    set<LeafFactorID> p_set;
-//    for (size_t i = 0; i < p.size(); ++i) {
-//        p_set.insert(p[i]);
-//    }
-//    vector<LeafFactorID> s = interaction_graph.get_successors(c);
-//    set<LeafFactorID> s_set;
-//    for (size_t i = 0; i < s.size(); ++i) {
-//        s_set.insert(s[i]);
-//    }
-//    set<LeafFactorID>::iterator p_pos = p_set.begin();
-//    set<LeafFactorID>::iterator s_pos = s_set.begin();
-//    while (p_pos != p_set.end() || s_pos != s_set.end()) {
-//        if (p_pos == p_set.end()) {
-//            ++c_to_l;
-//            ++s_pos;
-//        } else if (s_pos == s_set.end()) {
-//            ++l_to_c;
-//            ++p_pos;
-//        } else {
-//            if (*s_pos == *p_pos) {
-//                ++bidirec;
-//                ++s_pos;
-//                ++p_pos;
-//            } else if (*s_pos < *p_pos) {
-//                ++c_to_l;
-//                ++s_pos;
-//            } else {
-//                ++l_to_c;
-//                ++p_pos;
-//            }
-//        }
-//    }
-//    cout << "Center to Leaf: " << c_to_l << endl;
-//    cout << "Leaf to Leaf: " << c_to_l << endl;
-//    cout << "Bidirectional: " << bidirec << endl;
+    size_t c_to_l = 0;
+    size_t l_to_c = 0;
+    size_t bidirec = 0;
+    LeafFactorID c = LeafFactorID::CENTER;
+    vector<LeafFactorID> p = interaction_graph.get_predecessors(c);
+    set<LeafFactorID> p_set;
+    for (size_t i = 0; i < p.size(); ++i) {
+        p_set.insert(p[i]);
+    }
+    vector<LeafFactorID> s = interaction_graph.get_successors(c);
+    set<LeafFactorID> s_set;
+    for (size_t i = 0; i < s.size(); ++i) {
+        s_set.insert(s[i]);
+    }
+    set<LeafFactorID>::iterator p_pos = p_set.begin();
+    set<LeafFactorID>::iterator s_pos = s_set.begin();
+    while (p_pos != p_set.end() || s_pos != s_set.end()) {
+        if (p_pos == p_set.end()) {
+            ++c_to_l;
+            ++s_pos;
+        } else if (s_pos == s_set.end()) {
+            ++l_to_c;
+            ++p_pos;
+        } else {
+            if (*s_pos == *p_pos) {
+                ++bidirec;
+                ++s_pos;
+                ++p_pos;
+            } else if (*s_pos < *p_pos) {
+                ++c_to_l;
+                ++s_pos;
+            } else {
+                ++l_to_c;
+                ++p_pos;
+            }
+        }
+    }
+    cout << "Center to Leaf: " << c_to_l << endl;
+    cout << "Leaf to Leaf: " << c_to_l << endl;
+    cout << "Bidirectional: " << bidirec << endl;
     
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < num_ops_per_factor.size(); i++) {
