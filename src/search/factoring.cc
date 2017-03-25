@@ -2472,7 +2472,6 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             }
                         }
                         if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves) {
-                        if (neighbour_leaves.size() > 1) {
                             // check leaf factor size
                             uint64_t f_size = g_variable_domain[var];
                             for (int f : neighbour_leaves) {
