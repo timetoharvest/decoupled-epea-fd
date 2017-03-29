@@ -1327,6 +1327,11 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
             }
 
             size_t number_leaves = factoring.size();
+            if (number_leaves < best_number_leaves){
+                // no need to perform the expensive frozen leaf check if it cannot
+                // possibly result in more leaves
+                continue;
+            }
             vector<bool> discard_leaf = get_frozen_leaves(factoring);
             for (bool discard : discard_leaf){
                 if (discard){
