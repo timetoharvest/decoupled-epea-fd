@@ -136,7 +136,7 @@ void PruningReachable::compute_frontier() {
 }
 
 void PruningReachable::store_new_graph(const State &state) const {
-    discard_new_graph();
+    discard_new_graph(); // the cache is set by the parent class
     cpg_storage->store_cpg(state, *this);
 }
 

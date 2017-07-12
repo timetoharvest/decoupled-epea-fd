@@ -543,7 +543,7 @@ bool Reachable::goal_reachable(LeafFactorID factor) const {
 }
 
 void Reachable::store_new_graph(const State &state) const {
-    discard_new_graph();
+    cache_leaf_price_tags(state);
     cpg_storage->store_cpg(state, *this);
 }
 

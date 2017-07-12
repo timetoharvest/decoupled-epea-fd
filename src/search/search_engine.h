@@ -30,7 +30,7 @@ private:
     
     mutable Plan plan;
     StateID cheapest_goal_state;
-    bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
+    bool is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg);
     void set_max_time(double max_time) {
         this->max_time = max_time;
     }

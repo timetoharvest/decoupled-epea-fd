@@ -70,8 +70,8 @@ void FrontierPrices::update(const State &base_state) {
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
-        // skip fork leaves that don't have a goal!
-        if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
+        if (g_goals_per_factor[factor].empty()){
+            // skip fork leaves that don't have a goal!
             continue;
         }
         
@@ -88,48 +88,7 @@ void FrontierPrices::update(const State &base_state) {
         }
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
-        
-        bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
-        
-        if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
-            // the two above conditions together prevent errors in case the CG is not connected.
-            // i.e. leaf_price_cache is empty for fork topologies
-            
-            // no need to rebuild the reachable leaf state space every time
-            // instead: do it once, cache which State has the same start leaf state
-            // and copy everything from that state
-            if (number_states[factor] == 1){
-                LeafStateHash leaf_id(0);
-                for (;;){
-                    // TODO there should be a better way to find the state
-                    if (has_leaf_state(leaf_id, factor)){
-                        break;
-                    }
-                    ++leaf_id;
-                }
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
-                    
-                    int cost_delta = get_cost_of_state(leaf_id, factor);
-                    cost_delta -= tag_to_copy->get_cost_of_state(leaf_id, factor);
-                    
-                    size_t num_states = tag_to_copy->get_number_states(factor) - 1;
-                    for (LeafStateHash id(0) ; id < number_leaf_states; ++id){
-                        if (id != leaf_id && tag_to_copy->has_leaf_state(id, factor)){
-                            int cost = tag_to_copy->get_cost_of_state(id, factor);
-                            add_state(id, factor, cost + cost_delta);
-                            if (--num_states == 0){
-                                break;
-                            }
-                        }       
-                    }
-                    continue;
-                } else {
-                    leaf_tags_to_cache.push_back(LeafStateID(leaf_id, factor));
-                }
-            }
-        }
-        
+             
         vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
         
         bool change = true;
@@ -156,10 +115,10 @@ void FrontierPrices::update(const State &base_state) {
                     bool all_applicable = !pruning->propagate_goal_prices();
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                        if (op->is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             bool added = add_state(successor, factor, 
-                                                                cost + get_adjusted_action_cost(*op, cost_type));
+                                                   cost + get_adjusted_action_cost(*op, cost_type));
                             change |= added;
                             if (added){
                                 frontier[factor][successor] = true;
@@ -304,7 +263,6 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 }
 
 void FrontierPrices::store_new_graph(const State &state) const {
-    discard_new_graph();
     cpg_storage->store_cpg(state, *this);
 }
 
