@@ -99,7 +99,7 @@ void StubbornSetsSimple::handle_stubborn_operator(const State &state,
     }
 }
 
-static PORMethod* _parse(OptionParser &parser) {
+static PruningMethod* _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets simple",
         "Stubborn sets represent a state pruning method which computes a subset "
@@ -130,5 +130,5 @@ static PORMethod* _parse(OptionParser &parser) {
     return new StubbornSetsSimple(parser.parse());
 }
 
-static Plugin<PORMethod> _plugin("stubborn_sets_simple", _parse);
+static Plugin<PruningMethod> _plugin("stubborn_sets_simple", _parse);
 }

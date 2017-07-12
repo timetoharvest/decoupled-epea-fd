@@ -239,7 +239,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
     }
 }
 
-static PORMethod* _parse(OptionParser &parser) {
+static PruningMethod* _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets decoupled",
         "TODO");
@@ -255,5 +255,5 @@ static PORMethod* _parse(OptionParser &parser) {
     return new StubbornSetsDecoupled(parser.parse());
 }
 
-static Plugin<PORMethod> _plugin("stubborn_sets_decoupled", _parse);
+static Plugin<PruningMethod> _plugin("stubborn_sets_decoupled", _parse);
 }

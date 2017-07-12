@@ -15,12 +15,11 @@
 class Heuristic;
 class Operator;
 class Options;
-class PORMethod;
+class PruningMethod;
 class ScalarEvaluator;
 
 
 class EagerSearch : public SearchEngine {
-protected: // TODO: Remove this hack (added for POR integration)
     // Search Behavior parameters
     bool reopen_closed_nodes; // whether to reopen closed nodes upon finding lower g paths
     bool do_pathmax; // whether to use pathmax correction
@@ -31,7 +30,7 @@ protected: // TODO: Remove this hack (added for POR integration)
     // used for upper bound pruning in anytime decoupled search
     Heuristic *pruning_heuristic;
     
-    PORMethod *partial_order_reduction_method;
+    std::unique_ptr<PruningMethod> pruning_method;
     
     bool insert_state(const SearchNode &succ_node);
 
@@ -52,7 +51,8 @@ protected:
 
 public:
     EagerSearch(const Options &opts);
-    virtual ~EagerSearch();
+    ~EagerSearch() = default;
+    
     void statistics() const;
 
     void dump_search_space();
