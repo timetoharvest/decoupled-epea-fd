@@ -4,7 +4,6 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
-#include "pruning_method.h"
 
 #include <algorithm>
 #include <iostream>
@@ -47,6 +46,7 @@ class OptionParser;
 class LandmarkGraph;
 template<class Entry>
 class OpenList;
+class PruningMethod;
 class PruningOptions;
 class SearchEngine;
 class MergeStrategy;
