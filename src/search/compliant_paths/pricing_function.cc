@@ -5,7 +5,7 @@
 #include "../globals.h"
 #include "../operator.h"
 #include "effective_prices.h"
-#include "../pruning/pruning_options.h"
+#include "pruning_options.h"
 #include "../state_registry.h"
 #include "../utilities.h"
 

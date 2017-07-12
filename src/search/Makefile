@@ -61,7 +61,7 @@ HEADERS = \
           option_parser_util.h \
           segmented_vector.h \
           per_state_information.h \
-          por/por_method.h \
+          pruning/por_method.h \
           pref_evaluator.h \
           relaxation_heuristic.h \
           rng.h \
@@ -156,19 +156,16 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
-HEADERS += por/stubborn_sets.h \
-           por/stubborn_sets_decoupled.h \
-           por/stubborn_sets_simple.h \
-           por/stubborn_sets_ec.h
+HEADERS += pruning/stubborn_sets.h \
+           pruning/stubborn_sets_decoupled.h \
+           pruning/stubborn_sets_simple.h \
+           pruning/stubborn_sets_ec.h
 
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
            leaf_state.h\
            leaf_state_id.h\
-           ../preprocess/scc.h       
-
-HEADERS += pruning/pruning_options.h \
-           pruning/simulation_relation.h
+           ../preprocess/scc.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
@@ -176,8 +173,10 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/frontier_prices.h \
            compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
+           compliant_paths/pruning_options.h \
            compliant_paths/pruning_reachable.h \
-           compliant_paths/reachability_function.h
+           compliant_paths/reachability_function.h \
+           compliant_paths/simulation_relation.h
            
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)

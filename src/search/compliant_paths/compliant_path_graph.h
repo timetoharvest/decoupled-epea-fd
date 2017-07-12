@@ -5,8 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator_cost.h"
-#include "../pruning/pruning_options.h"
-#include "../pruning/simulation_relation.h"
+#include "pruning_options.h"
 
 #include <vector>
 

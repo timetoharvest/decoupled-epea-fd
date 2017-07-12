@@ -6,7 +6,7 @@
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "pruning/pruning_options.h"
+#include "compliant_paths/pruning_options.h"
 #include "../preprocess/scc.h"
 #include "successor_generator.h"
 #include "timer.h"

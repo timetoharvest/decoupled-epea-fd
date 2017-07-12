@@ -1,6 +1,6 @@
 #include "pruning_options.h"
 
-#include "../compliant_paths/compliant_path_graph.h"
+#include "compliant_path_graph.h"
 #include "../factoring.h"
 #include "../plugin.h"
 #include "simulation_relation.h"

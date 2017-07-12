@@ -4,7 +4,7 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
-#include "por/por_method.h"
+#include "pruning/por_method.h"
 
 #include <algorithm>
 #include <iostream>
@@ -40,6 +40,7 @@ If NT shall be predefinable:
   You will also need to extend OptionParser::parse_cmd_line(), and
   should add an explanation to OptionParser::usage().
 */
+
 
 class Factoring;
 class OptionParser;

@@ -1,6 +1,6 @@
 #include "simulation_relation.h"
 
-#include "../compliant_paths/compliant_path_graph.h"
+#include "compliant_path_graph.h"
 #include "../operator.h"
 #include "../factoring.h"
 #include "../state_registry.h"
