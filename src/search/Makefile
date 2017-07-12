@@ -61,7 +61,7 @@ HEADERS = \
           option_parser_util.h \
           segmented_vector.h \
           per_state_information.h \
-          por/por_method.h \
+          pruning/por_method.h \
           pref_evaluator.h \
           relaxation_heuristic.h \
           rng.h \
@@ -158,18 +158,15 @@ HEADERS += max_heuristic.h
 
 # TODO check how to decouple this from the POR interface, so we can comment
 # this out here
-HEADERS += por/expansion_core.h \
-           por/simple_stubborn_sets.h \
-           por/sss_expansion_core.h
+HEADERS += pruning/expansion_core.h \
+           pruning/simple_stubborn_sets.h \
+           pruning/sss_expansion_core.h
            
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
            leaf_state.h\
            leaf_state_id.h\
-           ../preprocess/scc.h       
-
-HEADERS += pruning/pruning_options.h \
-           pruning/simulation_relation.h
+           ../preprocess/scc.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
@@ -177,8 +174,10 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/frontier_prices.h \
            compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
+           compliant_paths/pruning_options.h \
            compliant_paths/pruning_reachable.h \
-           compliant_paths/reachability_function.h
+           compliant_paths/reachability_function.h \
+           compliant_paths/simulation_relation.h
            
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)

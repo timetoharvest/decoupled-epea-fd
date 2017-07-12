@@ -6,7 +6,7 @@
 #include "plugin.h"
 #include "successor_generator.h"
 #include "sum_evaluator.h"
-#include "pruning/pruning_options.h"
+#include "compliant_paths/pruning_options.h"
 #include "weighted_evaluator.h"
 
 #include <algorithm>
