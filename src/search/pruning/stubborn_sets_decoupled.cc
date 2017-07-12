@@ -5,6 +5,7 @@
 #include "../operator.h"
 #include "../option_parser.h"
 #include "../plugin.h"
+#include "../search_space.h"
 
 
 using namespace std;
@@ -80,7 +81,8 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
-StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &) {
+StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
+            goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")) {
     // TODO implement safety belt in base class
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
@@ -154,59 +156,59 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
+    // TODO double-check this code
+    // TODO maybe it's better not to mark all ingoing transitions, but to
+    // add a NES for all open goal facts, similar to open preconditions
+    // on the other hand, including the ingoing transitions to goal states is fast!
+    
     current_cpg = CPGStorage::storage->get_cpg(state);
 
-    // if goal in a factor not reached, mark all ingoing transition to all
-    // goal states as stubborn
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && !current_cpg->goal_reachable(factor)){
-            
-            
-            
-            
-            
-            vector<bool> unsat(g_goals_per_factor[factor].size(), true);
-            vector<bool> sat(g_goals_per_factor[factor].size(), false);
-            
-            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                if (current_cpg->has_leaf_state(id, factor)){
-                    assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
-                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
-                    for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
-                        if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
-                            unsat[i] = false;
-                        } else {
-                            sat[i] = true;
+            if (goal_ingoing_transitions){
+                // if goal in a factor not reached, mark all ingoing transition to all
+                // goal states as stubborn
+                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
+                        assert(!current_cpg->has_leaf_state(id, factor));
+                        for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
+                            mark_as_stubborn(pred.first->get_index());
                         }
                     }
                 }
-            }
-            for (size_t i = 0; i < sat.size(); ++i){
-                if (!sat[i]){
-                    add_necessary_enabling_set(g_goals_per_factor[factor][i]);
-                    return;
+            } else {
+                // if there exists a leaf fact that is not achieved in any reached leaf state => add enablers
+                // otherwise, all leaf goal facts are reached in some state and we need to include the
+                // enablers of all leaf goal facts unsatisfied in any reached leaf state.
+                vector<bool> unsat(g_goals_per_factor[factor].size(), true);
+                vector<bool> sat(g_goals_per_factor[factor].size(), false);
+                
+                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    if (current_cpg->has_leaf_state(id, factor)){
+                        assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+                        const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
+                        for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
+                            if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
+                                unsat[i] = false;
+                            } else {
+                                sat[i] = true;
+                            }
+                        }
+                    }
                 }
-            }
-            for (size_t i = 0; i < unsat.size(); ++i){
-                if (unsat[i]){
-                    add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                for (size_t i = 0; i < sat.size(); ++i){
+                    if (!sat[i]){
+                        add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                        return;
+                    }
+                }
+                for (size_t i = 0; i < unsat.size(); ++i){
+                    if (unsat[i]){
+                        add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                    }
                 }
             }
             return;
-            
-            
-            
-//             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-//                 if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
-//                     assert(!current_cpg->has_leaf_state(id, factor));
-//                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
-//                         // TODO maybe it's better not to mark all ingoing transitions, but to
-//                         // add a NES for all open goal facts, similar to open preconditions
-//                         mark_as_stubborn(pred.first->get_index());
-//                     }
-//                 }
-//             }
-//             return;
         }
     }
     
@@ -221,11 +223,23 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     assert(g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT);
     assert(test_goal(state));
     
+    int leaf_part_g = 0;
+    if (!is_fork_factoring){
+        leaf_part_g = CompliantPathGraph::search_space->get_node(state).get_leaf_part_g();
+    }
+    
     // for decoupled goal states, mark all frontier actions in all leaves 
     // that have a goal condition as stubborn
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (!g_goals_per_factor[factor].empty() && current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
-            mark_frontier_actions_as_stubborn(factor);
+        if (!g_goals_per_factor[factor].empty()){
+            if (is_fork_leaf[factor]){
+                if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
+                    // TODO implement specialized version for forks
+                    mark_frontier_actions_as_stubborn(factor);
+                }
+            } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
+                mark_frontier_actions_as_stubborn(factor);
+            }
         }
     }
 }
@@ -265,6 +279,10 @@ static PruningMethod* _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets decoupled",
         "TODO");
+    
+    parser.add_option<bool>("goal_ingoing_transitions",
+                            "TODO",
+                            "false");
 
     if (parser.dry_run()) {
         return 0;

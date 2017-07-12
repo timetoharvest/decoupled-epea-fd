@@ -18,6 +18,8 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     std::vector<bool> is_fork_leaf;
     std::vector<bool> is_ifork_leaf;
     
+    bool goal_ingoing_transitions;
+    
     mutable const CompliantPathGraph *current_cpg;
     
     void mark_frontier_actions_as_stubborn(LeafFactorID factor);
