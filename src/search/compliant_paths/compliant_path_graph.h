@@ -6,8 +6,7 @@
 #include "../globals.h"
 #include "../operator_cost.h"
 #include "../por/simple_stubborn_sets.h"
-#include "../pruning/pruning_options.h"
-#include "../pruning/simulation_relation.h"
+#include "pruning_options.h"
 
 #include <vector>
 
