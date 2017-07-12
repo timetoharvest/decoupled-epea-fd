@@ -10,9 +10,15 @@ class Options;
 namespace stubborn_sets_decoupled {
 class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
-    mutable const CompliantPathGraph *current_cpg;
+    // several special cases allowing easier handling/stronger pruning
+    bool is_fork_factoring;
+    bool is_ifork_factoring;
+    bool is_single_var_ifork_factoring;
     
-    bool ignore_leaf_interference;
+    std::vector<bool> is_fork_leaf;
+    std::vector<bool> is_ifork_leaf;
+    
+    mutable const CompliantPathGraph *current_cpg;
     
     void mark_frontier_actions_as_stubborn(LeafFactorID factor);
 

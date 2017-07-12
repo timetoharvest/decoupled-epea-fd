@@ -80,8 +80,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
-StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
-        ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")) {
+StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &) {
     // TODO implement safety belt in base class
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
@@ -90,6 +89,29 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     cout << "pruning method: stubborn sets decoupled" << endl;
     CompliantPathGraph::set_compute_leaf_backwards_graph();
     compute_interference_relation();
+    
+    if (g_factoring->get_profile() == FORK){
+        is_fork_factoring = true;
+    } else if (g_factoring->get_profile() == IFORK){
+        is_ifork_factoring = true;
+        is_single_var_ifork_factoring = true;
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (g_leaves[factor].size() > 1){
+                is_single_var_ifork_factoring = false;
+                break;
+            }
+        }
+    } else {
+        is_fork_leaf.resize(g_leaves.size(), false);
+        is_ifork_leaf.resize(g_leaves.size(), false);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (g_factoring->is_fork_leaf(factor)){
+                is_fork_leaf[factor] = true;
+            } else if (g_factoring->is_ifork_leaf(factor)){
+                is_ifork_leaf[factor] = true;
+            }
+        }
+    }
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
@@ -117,7 +139,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
     for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
-        if (ignore_leaf_interference && g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
+        if (g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
             // TODO possibly introduce this also for non-fork factorings
             // (and add a check for competing leaf preconditions)
             continue;
@@ -243,10 +265,6 @@ static PruningMethod* _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets decoupled",
         "TODO");
-    
-    parser.add_option<bool>("ignore_leaf_interference",
-                            "TODO",
-                            "true");
 
     if (parser.dry_run()) {
         return 0;
