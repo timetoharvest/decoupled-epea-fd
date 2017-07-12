@@ -25,7 +25,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     // state => add NES for this precondition. next, if the operator is not
     // applicable in a leaf, add NES for all preconditions that are open in
     // in any reached leaf state. finally, add NES for open center precondition
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (op.has_precondition_on(factor)){
             const vector<const Condition*> &preconds = op.get_preconditions(factor);
             
@@ -34,9 +34,9 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
             
             bool applicable = false;
             
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
-                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (current_cpg->has_leaf_state(id, factor)){
+                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
                     bool applicable_state = true;
                     for (size_t i = 0; i < preconds.size(); ++i){
                         if (leaf_state[preconds[i]->var] != preconds[i]->val){
@@ -69,7 +69,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
         }
     }
     
-    for (const Condition *precondition : op.get_preconditions(-1)) {
+    for (const Condition *precondition : op.get_preconditions(LeafFactorID::CENTER)) {
         int var = precondition->var;
         int value = precondition->val;
         if (state[var] != value){
@@ -83,7 +83,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
 StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
         ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")) {
     // TODO implement safety belt in base class
-    if (!g_use_decoupled_search){
+    if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
         exit_with(EXIT_INPUT_ERROR);
     }
@@ -92,14 +92,14 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     compute_interference_relation();
 }
 
-void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(int factor) {
-    for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-        if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
-            int curr_cost = current_cpg->get_cost_of_state(LeafStateID(id, factor));
+void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
+    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+        if (current_cpg->has_leaf_state(id, factor)){
+            int curr_cost = current_cpg->get_cost_of_state(id, factor);
             for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 int new_price = curr_cost;
                 new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
-                if (!current_cpg->has_leaf_state(LeafStateID(succ.second, factor)) || new_price < current_cpg->get_cost_of_state(LeafStateID(succ.second, factor))){
+                if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
                     mark_as_stubborn(succ.first->get_index());
                 }
             }
@@ -117,7 +117,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
     for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
-        if (ignore_leaf_interference && g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != -1){
+        if (ignore_leaf_interference && g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
             // TODO possibly introduce this also for non-fork factorings
             // (and add a check for competing leaf preconditions)
             continue;
@@ -136,7 +136,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
 
     // if goal in a factor not reached, mark all ingoing transition to all
     // goal states as stubborn
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && !current_cpg->goal_reachable(factor)){
             
             
@@ -146,10 +146,10 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             vector<bool> unsat(g_goals_per_factor[factor].size(), true);
             vector<bool> sat(g_goals_per_factor[factor].size(), false);
             
-            for (size_t id = 0; id < g_state_registry->size(factor); ++id){
-                if (current_cpg->has_leaf_state(LeafStateID(id, factor))){
-                    assert(!CompliantPathGraph::is_leaf_goal_state(LeafStateID(id, factor)));
-                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (current_cpg->has_leaf_state(id, factor)){
+                    assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+                    const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
                         if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
                             unsat[i] = false;
@@ -174,7 +174,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             
             
             
-//             for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+//             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
 //                 if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
 //                     assert(!current_cpg->has_leaf_state(id, factor));
 //                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
@@ -201,7 +201,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     
     // for decoupled goal states, mark all frontier actions in all leaves 
     // that have a goal condition as stubborn
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
             mark_frontier_actions_as_stubborn(factor);
         }
@@ -224,7 +224,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         // needed to capture improvements of the precondition's price
         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
             // TODO only add frontier, if precondition can actually be improved!
-            for (size_t factor = 0; factor < g_factors.size(); ++factor){
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 if (op.has_precondition_on(factor)){
                     mark_frontier_actions_as_stubborn(factor);
                 }

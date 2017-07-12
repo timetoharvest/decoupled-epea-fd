@@ -54,8 +54,6 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
-          leaf_state.h\
-          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
@@ -165,17 +163,19 @@ HEADERS += por/stubborn_sets.h \
 
 # TODO make decoupled search plugable
 HEADERS += factoring.h \
+           leaf_state.h\
+           leaf_state_id.h\
            ../preprocess/scc.h       
 
-HEADERS += pruning/cost_frontier.h \
-           pruning/simulation_relation.h \
-           pruning/pruning.h
+HEADERS += pruning/pruning_options.h \
+           pruning/simulation_relation.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
+           compliant_paths/effective_prices.h \
+           compliant_paths/frontier_prices.h \
            compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
-           compliant_paths/pruning_prices.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h
            

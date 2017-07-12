@@ -61,16 +61,16 @@ class Operator {
     
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
-    std::map<int, std::vector<const Condition*> > pre_by_factor;
-    std::map<int, std::vector<const Effect*> > eff_by_factor;
+    std::map<LeafFactorID, std::vector<const Condition*> > pre_by_factor;
+    std::map<LeafFactorID, std::vector<const Effect*> > eff_by_factor;
     const static std::vector<const Condition*> empty_pre;// HACK
     const static std::vector<const Effect*> empty_eff;// HACK
     
     std::string name;
     int cost;
 
-    // the following two are only needed for decoupled search
-    int affects_factor;
+    // the following is only needed for decoupled search
+    LeafFactorID affects_factor;
 
     mutable bool marked; // Used for short-term marking of preferred operators
     
@@ -107,13 +107,13 @@ public:
         return dead;
     }
 
-    const std::vector<const Condition*> &get_preconditions(int factor) const;
+    const std::vector<const Condition*> &get_preconditions(LeafFactorID factor) const;
     
-    const std::vector<const Effect*> &get_effects(int factor) const;
+    const std::vector<const Effect*> &get_effects(LeafFactorID factor) const;
     
     bool is_applicable(const State &state) const;
     
-    bool is_applicable(const LeafStateID &leaf_id) const;
+    bool is_applicable(LeafStateHash id, LeafFactorID factor) const;
     
     bool is_center_applicable(const State &state) const;
 
@@ -135,18 +135,18 @@ public:
         return op_index;
     }
     
-    void set_affected_factor(int factor);
+    void set_affected_factor(LeafFactorID factor);
     
-    int get_affected_factor() const {
+    LeafFactorID get_affected_factor() const {
         return affects_factor;
     }
     
-    bool has_precondition_on(int factor) const {
+    bool has_precondition_on(LeafFactorID factor) const {
         return pre_by_factor.find(factor) != pre_by_factor.end();
     }
     
     int get_number_leaf_pre_factors() const {
-        if (has_precondition_on(-1)){
+        if (has_precondition_on(LeafFactorID::CENTER)){
             return pre_by_factor.size() - 1;
         }
         return pre_by_factor.size();

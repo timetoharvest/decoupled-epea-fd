@@ -23,7 +23,7 @@ private:
     bool solution_found;
     mutable Plan plan;
     StateID cheapest_goal_state;
-    bool is_optimal_leaf_plan(const CompliantPathGraph &cpg);
+    bool is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg);
 protected:
     SearchSpace search_space;
     SearchProgress search_progress;

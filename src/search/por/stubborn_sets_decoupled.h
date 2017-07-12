@@ -4,16 +4,17 @@
 #include "stubborn_sets_simple.h"
 
 class CompliantPathGraph;
+class LeafFactorID;
 class Options;
 
-namespace stubborn_sets_decoupled {    
+namespace stubborn_sets_decoupled {
 class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
     mutable const CompliantPathGraph *current_cpg;
     
     bool ignore_leaf_interference;
     
-    void mark_frontier_actions_as_stubborn(int factor);
+    void mark_frontier_actions_as_stubborn(LeafFactorID factor);
 
 protected:
     virtual void compute_interference_relation() override;
