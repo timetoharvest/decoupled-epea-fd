@@ -6,7 +6,7 @@
 #include "heuristic.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "por/por_method.h"
+#include "pruning/por_method.h"
 #include "compliant_paths/pruning_options.h"
 #include "successor_generator.h"
 #include "sum_evaluator.h"

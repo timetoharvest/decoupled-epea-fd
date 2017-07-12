@@ -5,7 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator_cost.h"
-#include "../por/simple_stubborn_sets.h"
+#include "../pruning/simple_stubborn_sets.h"
 #include "pruning_options.h"
 
 #include <vector>
