@@ -15,7 +15,6 @@ namespace stubborn_sets_decoupled {
    Disjunctive action landmarks are computed trivially.*/
 
 
-// Return the first unsatified precondition, or (-1, -1) if there is none.
 static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     const Operator &op, const State &state, const CompliantPathGraph *current_cpg) {
 
@@ -74,7 +73,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
         int var = precondition->var;
         int value = precondition->val;
         if (state[var] != value){
-            res.push_back(pair<int, int>(var, value));
+            res.push_back(make_pair(var, value));
             return res;
         }
     }
@@ -114,7 +113,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         }
     }
     
-    compute_interference_relation(); // TODO: does this depend on the factoring?
+    compute_interference_relation();
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
@@ -142,11 +141,12 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
     for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
-        if (g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
-            // TODO possibly introduce this also for non-fork factorings
-            // (and add a check for competing leaf preconditions)
-            continue;
-        }
+//         if (g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
+//             // TODO possibly introduce this also for non-fork factorings
+//             // (and add a check for competing leaf preconditions)
+//             continue;
+        // TODO fix this
+//         }
         vector<int> &interfere_op1 = interference_relation[op1_no];
         for (int op2_no = 0; op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && interfere(op1_no, op2_no)) {

@@ -15,13 +15,6 @@ struct SortFactsByVariable {
     }
 };
 
-/* TODO: get_op_index belongs to a central place.
-   We currently have copies of it in different parts of the code. */
-static inline int get_op_index(const Operator *op) {
-    int op_index = op - &*g_operators.begin();
-    assert(op_index >= 0 && op_index < static_cast<int>(g_operators.size()));
-    return op_index;
-}
 
 // Relies on both fact sets being sorted by variable.
 bool contain_conflicting_fact(const vector<pair<int, int>> &facts1,
@@ -130,7 +123,7 @@ void StubbornSets::prune_operators(
     vector<const Operator *> remaining_ops;
     remaining_ops.reserve(ops.size());
     for (const Operator *op : ops) {
-        int op_no = get_op_index(op);
+        int op_no = op->get_index();
         if (stubborn[op_no])
             remaining_ops.push_back(op);
     }
