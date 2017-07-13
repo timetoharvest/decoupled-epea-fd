@@ -11,20 +11,20 @@ class StubbornSetsSimple : public stubborn_sets::StubbornSets {
 protected:
     /* interference_relation[op1_no] contains all operator indices
        of operators that interfere with op1. */
-    std::vector<std::vector<int>> interference_relation;
+    std::vector<std::vector<size_t>> interference_relation;
     
-    inline bool interfere(int op1_no, int op2_no) {
+    inline bool interfere(size_t op1_no, size_t op2_no) {
         return can_disable(op1_no, op2_no) ||
                can_conflict(op1_no, op2_no) ||
                can_disable(op2_no, op1_no);
     }
 
-    void add_interfering(int op_no);
+    void add_interfering(size_t op_no);
     void add_necessary_enabling_set(const std::pair<int, int> &fact);
     
     virtual void compute_interference_relation();
     virtual void initialize_stubborn_set(const State &state) override;
-    virtual void handle_stubborn_operator(const State &state, int op_no) override;
+    virtual void handle_stubborn_operator(const State &state, size_t op_no) override;
 public:
     StubbornSetsSimple();
     StubbornSetsSimple(const Options &opts);

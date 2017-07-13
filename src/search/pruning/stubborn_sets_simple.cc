@@ -44,7 +44,7 @@ StubbornSetsSimple::StubbornSetsSimple(const Options &) {
 }
 
 void StubbornSetsSimple::compute_interference_relation() {
-    int num_operators = g_operators.size();
+    size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
 
     /*
@@ -52,9 +52,9 @@ void StubbornSetsSimple::compute_interference_relation() {
        relation for operators (o1, o2) with (o1 < o2) and add a lookup
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
-    for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
-        vector<int> &interfere_op1 = interference_relation[op1_no];
-        for (int op2_no = 0; op2_no < num_operators; ++op2_no) {
+    for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
+        vector<size_t> &interfere_op1 = interference_relation[op1_no];
+        for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && interfere(op1_no, op2_no)) {
                 interfere_op1.push_back(op2_no);
             }
@@ -64,14 +64,14 @@ void StubbornSetsSimple::compute_interference_relation() {
 
 // Add all operators that achieve the fact (var, value) to stubborn set.
 void StubbornSetsSimple::add_necessary_enabling_set(const pair<int, int> &fact) {
-    for (int op_no : achievers[fact.first][fact.second]) {
+    for (size_t op_no : achievers[fact.first][fact.second]) {
         mark_as_stubborn(op_no);
     }
 }
 
 // Add all operators that interfere with op.
-void StubbornSetsSimple::add_interfering(int op_no) {
-    for (int interferer_no : interference_relation[op_no]) {
+void StubbornSetsSimple::add_interfering(size_t op_no) {
+    for (size_t interferer_no : interference_relation[op_no]) {
         mark_as_stubborn(interferer_no);
     }
 }
@@ -84,7 +84,7 @@ void StubbornSetsSimple::initialize_stubborn_set(const State &state) {
 }
 
 void StubbornSetsSimple::handle_stubborn_operator(const State &state,
-                                                  int op_no) {
+                                                  size_t op_no) {
     const Operator &op = g_operators[op_no];
     pair<int, int> unsatisfied_precondition = find_unsatisfied_precondition(op, state);
     if (unsatisfied_precondition.first == -1) {

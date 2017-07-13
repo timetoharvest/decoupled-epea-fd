@@ -132,7 +132,7 @@ void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID facto
 }
 
 void StubbornSetsDecoupled::compute_interference_relation() {
-    int num_operators = g_operators.size();
+    size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
 
     /*
@@ -140,15 +140,15 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        relation for operators (o1, o2) with (o1 < o2) and add a lookup
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
-    for (int op1_no = 0; op1_no < num_operators; ++op1_no) {
+    for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
 //         if (g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
 //             // TODO possibly introduce this also for non-fork factorings
 //             // (and add a check for competing leaf preconditions)
 //             continue;
         // TODO fix this
 //         }
-        vector<int> &interfere_op1 = interference_relation[op1_no];
-        for (int op2_no = 0; op2_no < num_operators; ++op2_no) {
+        vector<size_t> &interfere_op1 = interference_relation[op1_no];
+        for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && interfere(op1_no, op2_no)) {
                 interfere_op1.push_back(op2_no);
             }
@@ -244,7 +244,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
 }
 
 void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
-                                                     int op_no) {
+                                                     size_t op_no) {
     const Operator &op = g_operators[op_no];
     
     vector<pair<int, int>> unsatisfied_preconditions = find_unsatisfied_preconditions(op, state, current_cpg);

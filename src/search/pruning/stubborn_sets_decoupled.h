@@ -27,7 +27,7 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
 protected:
     virtual void compute_interference_relation() override;
     virtual void initialize_stubborn_set(const State &state) override;
-    virtual void handle_stubborn_operator(const State &state, int op_no) override;
+    virtual void handle_stubborn_operator(const State &state, size_t op_no) override;
 public:
     StubbornSetsDecoupled(const Options &opts);
     virtual ~StubbornSetsDecoupled() = default;

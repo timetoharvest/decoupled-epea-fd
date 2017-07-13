@@ -18,7 +18,7 @@ class StubbornSets : public PruningMethod {
       (i.e. more operators might need to be added to stubborn because
       of the operators in the queue).
     */
-    std::vector<int> stubborn_queue;
+    std::vector<size_t> stubborn_queue;
 
     void compute_sorted_operators();
     void compute_achievers();
@@ -29,16 +29,16 @@ protected:
 
     /* achievers[var][value] contains all operator indices of
        operators that achieve the fact (var, value). */
-    std::vector<std::vector<std::vector<int>>> achievers;
+    std::vector<std::vector<std::vector<size_t>>> achievers;
 
-    bool can_disable(int op1_no, int op2_no);
-    bool can_conflict(int op1_no, int op2_no);
+    bool can_disable(size_t op1_no, size_t op2_no);
+    bool can_conflict(size_t op1_no, size_t op2_no);
 
     // Returns true iff the operators was enqueued.
     // TODO: rename to enqueue_stubborn_operator?
-    bool mark_as_stubborn(int op_no);
+    bool mark_as_stubborn(size_t op_no);
     virtual void initialize_stubborn_set(const State &state) = 0;
-    virtual void handle_stubborn_operator(const State &state, int op_no) = 0;
+    virtual void handle_stubborn_operator(const State &state, size_t op_no) = 0;
 public:
     StubbornSets();
     virtual ~StubbornSets() = default;
