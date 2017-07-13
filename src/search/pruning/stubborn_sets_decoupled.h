@@ -19,10 +19,16 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     std::vector<bool> is_ifork_leaf;
     
     bool goal_ingoing_transitions;
+    bool special_case_optimizations;
+    bool interference_no_mutex_pre;
     
     mutable const CompliantPathGraph *current_cpg;
     
+    // a frontier action is an inapplicable leaf action that reduces 
+    // the price of a leaf state
     void mark_frontier_actions_as_stubborn(LeafFactorID factor);
+    
+    void mark_reached_enabling_set_as_stubborn(LeafFactorID factor);
 
 protected:
     virtual void compute_interference_relation() override;

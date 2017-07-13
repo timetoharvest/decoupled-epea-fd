@@ -80,8 +80,31 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
+static inline bool have_mutex_preconditions(const vector<pair<int, int>> &pre1, const vector<pair<int, int>> &pre2) {
+    size_t pre1_count = 0;
+    size_t pre2_count = 0;
+    while (pre1_count < pre1.size() && pre2_count < pre2.size()) {
+        if (pre1[pre1_count].first < pre2[pre2_count].first){
+            ++pre1_count;
+            continue;
+        }
+        if (pre1[pre1_count].first > pre2[pre2_count].first){
+            ++pre2_count;
+            continue;
+        }
+        if (pre1[pre1_count].second != pre2[pre2_count].second){
+            return true;
+        }
+        ++pre1_count;
+        ++pre2_count;
+    }
+    return false;
+}
+
 StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
-            goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")) {
+            goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")),
+            special_case_optimizations(opts.get<bool>("special_case_optimizations")),
+            interference_no_mutex_pre(opts.get<bool>("interference_no_mutex_pre")) {
     // TODO implement safety belt in base class
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
@@ -117,15 +140,31 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
+    // in optimal search, add frontier of an operator to
+    // stubborn set, for all leaves this op has preconditions on
+    // needed to capture improvements of the precondition's price
+    // TODO verify this
+    if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (current_cpg->has_leaf_state(id, factor)){
+                int curr_cost = current_cpg->get_cost_of_state(id, factor);
+                for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+                    int new_price = curr_cost;
+                    new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
+                    if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
+                        mark_as_stubborn(succ.first->get_index());
+                    }
+                }
+            }
+        }
+    }
+}
+
+void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor) {
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
-            int curr_cost = current_cpg->get_cost_of_state(id, factor);
             for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
-                int new_price = curr_cost;
-                new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
-                if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
-                    mark_as_stubborn(succ.first->get_index());
-                }
+                mark_as_stubborn(succ.first->get_index());
             }
         }
     }
@@ -147,9 +186,12 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 //             continue;
         // TODO fix this
 //         }
+        // TODO special case handling
         vector<size_t> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
-            if (op1_no != op2_no && interfere(op1_no, op2_no)) {
+            if (op1_no != op2_no && 
+                (!interference_no_mutex_pre || !have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])) && 
+                interfere(op1_no, op2_no)) {
                 interfere_op1.push_back(op2_no);
             }
         }
@@ -254,15 +296,11 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         => add all interfering operators */
         add_interfering(op_no);
         
-        // in optimal search, add frontier of an operator to
-        // stubborn set, for all leaves this op has preconditions on
-        // needed to capture improvements of the precondition's price
-        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-            // TODO only add frontier, if precondition can actually be improved!
-            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                if (op.has_precondition_on(factor)){
-                    mark_frontier_actions_as_stubborn(factor);
-                }
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (op.has_precondition_on(factor)){
+                mark_reached_enabling_set_as_stubborn(factor);
+//                     mark_frontier_actions_as_stubborn(factor);
+                // TODO special case handling
             }
         }
     } else {
@@ -282,6 +320,14 @@ static PruningMethod* _parse(OptionParser &parser) {
     parser.add_option<bool>("goal_ingoing_transitions",
                             "TODO",
                             "false");
+    
+    parser.add_option<bool>("special_case_optimizations",
+                            "TODO",
+                            "false");
+    
+    parser.add_option<bool>("interference_no_mutex_pre",
+                            "TODO",
+                            "true");
 
     if (parser.dry_run()) {
         return 0;
