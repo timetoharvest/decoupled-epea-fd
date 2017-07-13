@@ -53,7 +53,7 @@ protected:
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
-    // these are only computed when performing goal price propagation
+    // these are only computed if compute_leaf_backwards_graph is true
     static std::vector<std::vector<LeafStateHash> > leaf_goal_states;
     
     static std::vector<std::vector<std::vector<size_t> > > center_successors;

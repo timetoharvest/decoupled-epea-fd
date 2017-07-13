@@ -90,7 +90,6 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     CompliantPathGraph::set_compute_leaf_backwards_graph();
-    compute_interference_relation();
     
     if (g_factoring->get_profile() == FORK){
         is_fork_factoring = true;
@@ -114,6 +113,8 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
             }
         }
     }
+    
+    compute_interference_relation(); // TODO: does this depend on the factoring?
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
@@ -156,7 +157,6 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
-    // TODO double-check this code
     // TODO maybe it's better not to mark all ingoing transitions, but to
     // add a NES for all open goal facts, similar to open preconditions
     // on the other hand, including the ingoing transitions to goal states is fast!
@@ -168,12 +168,10 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             if (goal_ingoing_transitions){
                 // if goal in a factor not reached, mark all ingoing transition to all
                 // goal states as stubborn
-                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                    if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                        assert(!current_cpg->has_leaf_state(id, factor));
-                        for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
-                            mark_as_stubborn(pred.first->get_index());
-                        }
+                for (LeafStateHash id : CompliantPathGraph::leaf_goal_states[factor]){
+                    assert(!current_cpg->has_leaf_state(id, factor));
+                    for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
+                        mark_as_stubborn(pred.first->get_index());
                     }
                 }
             } else {
@@ -199,6 +197,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 for (size_t i = 0; i < sat.size(); ++i){
                     if (!sat[i]){
                         add_necessary_enabling_set(g_goals_per_factor[factor][i]);
+                        // can stop at first leaf fact that is not reached in any reached leaf state
                         return;
                     }
                 }
@@ -234,7 +233,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
         if (!g_goals_per_factor[factor].empty()){
             if (is_fork_leaf[factor]){
                 if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
-                    // TODO implement specialized version for forks
+                    // TODO implement specialized version for forks?
                     mark_frontier_actions_as_stubborn(factor);
                 }
             } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
