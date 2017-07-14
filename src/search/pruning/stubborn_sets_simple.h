@@ -19,7 +19,7 @@ protected:
                can_disable(op2_no, op1_no);
     }
 
-    void add_interfering(size_t op_no);
+    virtual void add_interfering(size_t op_no);
     void add_necessary_enabling_set(const std::pair<int, int> &fact);
     
     virtual void compute_interference_relation();

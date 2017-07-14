@@ -111,10 +111,14 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         exit_with(EXIT_INPUT_ERROR);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
-    CompliantPathGraph::set_compute_leaf_backwards_graph();
+    
+    if(goal_ingoing_transitions){
+        CompliantPathGraph::set_compute_leaf_backwards_graph();
+    }
     
     is_fork_factoring = false;
     is_ifork_factoring = false;
+    has_ifork_leaf = false;
     is_single_var_ifork_factoring = false;
     is_fork_leaf = vector<bool>(g_leaves.size(), false);
     is_ifork_leaf = vector<bool>(g_leaves.size(), false);
@@ -124,6 +128,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         is_fork_leaf.assign(g_leaves.size(), true);
     } else if (g_factoring->get_profile() == IFORK){
         is_ifork_factoring = true;
+        has_ifork_leaf = true;
         is_ifork_leaf.assign(g_leaves.size(), true);
         is_single_var_ifork_factoring = true;
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
@@ -137,6 +142,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
             if (g_factoring->is_fork_leaf(factor)){
                 is_fork_leaf[factor] = true;
             } else if (g_factoring->is_ifork_leaf(factor)){
+                has_ifork_leaf = true;
                 is_ifork_leaf[factor] = true;
             }
         }
@@ -186,13 +192,15 @@ void StubbornSetsDecoupled::compute_interference_relation() {
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
     for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
-//         if (g_factoring->get_profile() == FORK && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
-//             // TODO possibly introduce this also for non-fork factorings
-//             // (and add a check for competing leaf preconditions)
-//             continue;
-        // TODO fix this
-//         }
-        // TODO special case handling
+        if (special_case_optimizations){
+            if (is_fork_factoring && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
+                continue;
+            }
+            if (is_ifork_factoring){
+                
+            }
+            // TODO special case handling
+        }
         vector<size_t> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && 
@@ -204,10 +212,47 @@ void StubbornSetsDecoupled::compute_interference_relation() {
     }
 }
 
+void StubbornSetsDecoupled::add_interfering(size_t op_no) {
+    if (!special_case_optimizations || !has_ifork_leaf){
+        stubborn_sets_simple::StubbornSetsSimple::add_interfering(op_no);
+    } else {
+        // if interfering op has unreached precondition on inverted-fork leaf => skip
+        // non-applicable inverted-fork leaf actions can never become applicable after state
+        for (size_t interferer_no : interference_relation[op_no]) {
+            bool has_unreached_ifork_pre = false;
+            const Operator &op = g_operators[interferer_no];
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
+                    bool reached = false;
+                    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                        if (current_cpg->has_leaf_state(id, factor) && op.is_applicable(id, factor)){
+                            reached = true;
+                            break;
+                        }
+                    }
+                    if (!reached){
+                        has_unreached_ifork_pre = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!has_unreached_ifork_pre){
+                mark_as_stubborn(interferer_no);
+            }
+        }
+    }
+}
+
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     // TODO maybe it's better not to mark all ingoing transitions, but to
     // add a NES for all open goal facts, similar to open preconditions
     // on the other hand, including the ingoing transitions to goal states is fast!
+    
+    if (special_case_optimizations && is_ifork_factoring && test_goal(state)){
+        // in inverted-fork factorings, plans can only get more expensive behind goal states.
+        return;
+    }
     
     current_cpg = CPGStorage::storage->get_cpg(state);
 
@@ -279,13 +324,18 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     // that have a goal condition as stubborn
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
-            if (is_fork_leaf[factor]){
-                if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
-                    // TODO implement specialized version for forks?
+            assert(current_cpg->goal_reachable(factor) && current_cpg->get_goal_cost(factor) >= 0);
+            if (!special_case_optimizations){
+                mark_frontier_actions_as_stubborn(factor);
+            } else {
+                if (is_fork_leaf[factor]){
+                    if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
+                        // TODO can we do a specialized version for forks?
+                        mark_frontier_actions_as_stubborn(factor);
+                    }
+                } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
                     mark_frontier_actions_as_stubborn(factor);
                 }
-            } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
-                mark_frontier_actions_as_stubborn(factor);
             }
         }
     }
@@ -312,6 +362,14 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
     } else {
         /* unsatisfied precondition found
         => add a necessary enabling set for it */
+        if (special_case_optimizations && is_ifork_factoring){
+            // TODO more fine grained
+            // no need to include NES for leaf actions, those
+            // can never get applicable behind state
+            if (op.get_affected_factor() != CENTER){
+                return;
+            }
+        }
         for (auto &open_pre : unsatisfied_preconditions){
             add_necessary_enabling_set(open_pre);
         }
