@@ -115,8 +115,10 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     
     if (g_factoring->get_profile() == FORK){
         is_fork_factoring = true;
+        is_fork_leaf.resize(g_leaves.size(), true);
     } else if (g_factoring->get_profile() == IFORK){
         is_ifork_factoring = true;
+        is_ifork_leaf.resize(g_leaves.size(), true);
         is_single_var_ifork_factoring = true;
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (g_leaves[factor].size() > 1){

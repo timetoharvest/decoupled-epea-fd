@@ -11,8 +11,8 @@ namespace stubborn_sets_decoupled {
 class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
     // several special cases allowing easier handling/stronger pruning
-    bool is_fork_factoring;
-    bool is_ifork_factoring;
+    bool is_fork_factoring; // TODO yet unused
+    bool is_ifork_factoring; // TODO yet unused
     bool is_single_var_ifork_factoring;
     
     std::vector<bool> is_fork_leaf;
