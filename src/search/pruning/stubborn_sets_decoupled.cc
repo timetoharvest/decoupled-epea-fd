@@ -113,12 +113,18 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     cout << "pruning method: stubborn sets decoupled" << endl;
     CompliantPathGraph::set_compute_leaf_backwards_graph();
     
+    is_fork_factoring = false;
+    is_ifork_factoring = false;
+    is_single_var_ifork_factoring = false;
+    is_fork_leaf = vector<bool>(g_leaves.size(), false);
+    is_ifork_leaf = vector<bool>(g_leaves.size(), false);
+    
     if (g_factoring->get_profile() == FORK){
         is_fork_factoring = true;
-        is_fork_leaf.resize(g_leaves.size(), true);
+        is_fork_leaf.assign(g_leaves.size(), true);
     } else if (g_factoring->get_profile() == IFORK){
         is_ifork_factoring = true;
-        is_ifork_leaf.resize(g_leaves.size(), true);
+        is_ifork_leaf.assign(g_leaves.size(), true);
         is_single_var_ifork_factoring = true;
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (g_leaves[factor].size() > 1){
@@ -127,8 +133,6 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
             }
         }
     } else {
-        is_fork_leaf.resize(g_leaves.size(), false);
-        is_ifork_leaf.resize(g_leaves.size(), false);
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (g_factoring->is_fork_leaf(factor)){
                 is_fork_leaf[factor] = true;
