@@ -68,6 +68,7 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
             }
         }
     }
+    assert(res.empty());
     
     for (const Condition *precondition : op.get_preconditions(LeafFactorID::CENTER)) {
         int var = precondition->var;
@@ -173,6 +174,7 @@ void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID facto
 }
 
 void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor) {
+    // TODO additionally consider the required leaf precondition
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
@@ -329,7 +331,6 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             } else {
                 if (is_fork_leaf[factor]){
                     if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
-                        // TODO can we do a specialized version for forks?
                         mark_frontier_actions_as_stubborn(factor);
                     }
                 } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
@@ -361,16 +362,22 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
     } else {
         /* unsatisfied precondition found
         => add a necessary enabling set for it */
-        if (special_case_optimizations && is_ifork_factoring){
-            // TODO more fine grained
+        if (special_case_optimizations && has_ifork_leaf){
             // no need to include NES for ifork leaf actions, those
             // can never get applicable behind state
-            if (op.get_affected_factor() != LeafFactorID::CENTER){
+            if (is_ifork_factoring && op.get_affected_factor() != LeafFactorID::CENTER){
                 return;
             }
-        }
-        for (auto &open_pre : unsatisfied_preconditions){
-            add_necessary_enabling_set(open_pre);
+            for (auto &open_pre : unsatisfied_preconditions){
+                LeafFactorID pre_factor = g_belongs_to_factor[open_pre.first];
+                if (pre_factor == LeafFactorID::CENTER || !is_ifork_leaf[pre_factor]){
+                    add_necessary_enabling_set(open_pre);
+                }
+            }
+        } else {
+            for (auto &open_pre : unsatisfied_preconditions){
+                add_necessary_enabling_set(open_pre);
+            }
         }
     }
 }
