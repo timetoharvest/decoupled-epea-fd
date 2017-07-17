@@ -196,16 +196,15 @@ void StubbornSetsDecoupled::compute_interference_relation() {
             if (is_fork_factoring && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
                 continue;
             }
-            if (is_ifork_factoring){
-                
+            if (is_single_var_ifork_factoring){
+                // TODO special case handling
             }
-            // TODO special case handling
         }
         vector<size_t> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && 
-                (!interference_no_mutex_pre || !have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])) && 
-                interfere(op1_no, op2_no)) {
+                    (!interference_no_mutex_pre || !have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])) && 
+                    interfere(op1_no, op2_no)) {
                 interfere_op1.push_back(op2_no);
             }
         }
@@ -364,9 +363,9 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         => add a necessary enabling set for it */
         if (special_case_optimizations && is_ifork_factoring){
             // TODO more fine grained
-            // no need to include NES for leaf actions, those
+            // no need to include NES for ifork leaf actions, those
             // can never get applicable behind state
-            if (op.get_affected_factor() != CENTER){
+            if (op.get_affected_factor() != LeafFactorID::CENTER){
                 return;
             }
         }
