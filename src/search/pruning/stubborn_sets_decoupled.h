@@ -13,6 +13,7 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     // several special cases allowing easier handling/stronger pruning
     bool is_fork_factoring;
     bool is_ifork_factoring;
+    bool has_fork_leaf;
     bool has_ifork_leaf;
     bool is_single_var_ifork_factoring;
     
@@ -21,7 +22,7 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
     bool goal_ingoing_transitions;
     bool special_case_optimizations;
-    bool interference_no_mutex_pre;
+    bool mutex_pre_interference;
     
     mutable const CompliantPathGraph *current_cpg;
     

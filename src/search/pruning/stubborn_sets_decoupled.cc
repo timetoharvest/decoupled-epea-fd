@@ -102,10 +102,31 @@ static inline bool have_mutex_preconditions(const vector<pair<int, int>> &pre1, 
     return false;
 }
 
+static inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1, const vector<pair<int, int>> &pre2) {
+    size_t pre1_count = 0;
+    size_t pre2_count = 0;
+    while (pre1_count < pre1.size() && pre2_count < pre2.size()) {
+        if (pre1[pre1_count].first < pre2[pre2_count].first){
+            ++pre1_count;
+            continue;
+        }
+        if (pre1[pre1_count].first > pre2[pre2_count].first){
+            ++pre2_count;
+            continue;
+        }
+        if (g_belongs_to_factor[pre1[pre1_count].first] != LeafFactorID::CENTER && pre1[pre1_count].second != pre2[pre2_count].second){
+            return true;
+        }
+        ++pre1_count;
+        ++pre2_count;
+    }
+    return false;
+}
+
 StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
             goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")),
             special_case_optimizations(opts.get<bool>("special_case_optimizations")),
-            interference_no_mutex_pre(opts.get<bool>("interference_no_mutex_pre")) {
+            mutex_pre_interference(opts.get<bool>("mutex_pre_interference")) {
     // TODO implement safety belt in base class
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
@@ -119,6 +140,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     
     is_fork_factoring = false;
     is_ifork_factoring = false;
+    has_fork_leaf = false;
     has_ifork_leaf = false;
     is_single_var_ifork_factoring = false;
     is_fork_leaf = vector<bool>(g_leaves.size(), false);
@@ -126,6 +148,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     
     if (g_factoring->get_profile() == FORK){
         is_fork_factoring = true;
+        has_fork_leaf = true;
         is_fork_leaf.assign(g_leaves.size(), true);
     } else if (g_factoring->get_profile() == IFORK){
         is_ifork_factoring = true;
@@ -142,6 +165,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (g_factoring->is_fork_leaf(factor)){
                 is_fork_leaf[factor] = true;
+                has_fork_leaf = true;
             } else if (g_factoring->is_ifork_leaf(factor)){
                 has_ifork_leaf = true;
                 is_ifork_leaf[factor] = true;
@@ -153,20 +177,17 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 }
 
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
-    // in optimal search, add frontier of an operator to
-    // stubborn set, for all leaves this op has preconditions on
-    // needed to capture improvements of the precondition's price
-    // TODO verify this
-    if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (current_cpg->has_leaf_state(id, factor)){
-                int curr_cost = current_cpg->get_cost_of_state(id, factor);
-                for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
-                    int new_price = curr_cost;
-                    new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
-                    if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
-                        mark_as_stubborn(succ.first->get_index());
-                    }
+    // add frontier of a leaf to stubborn set
+    // needed to capture improvements of the prices of leaf states used for something (goal/precondition)
+    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+        if (current_cpg->has_leaf_state(id, factor)){
+            int curr_cost = current_cpg->get_cost_of_state(id, factor);
+            // TODO need to include successor center actions that change leaf state
+            for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+                int new_price = curr_cost;
+                new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
+                if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
+                    mark_as_stubborn(succ.first->get_index());
                 }
             }
         }
@@ -177,7 +198,8 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
     // TODO additionally consider the required leaf precondition
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
-            for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+            // TODO need to include successor center actions that change leaf state
+            for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 mark_as_stubborn(succ.first->get_index());
             }
         }
@@ -195,18 +217,30 @@ void StubbornSetsDecoupled::compute_interference_relation() {
     */
     for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
         if (special_case_optimizations){
-            if (is_fork_factoring && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
+            if ((is_fork_factoring || is_single_var_ifork_factoring) && 
+                    g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
                 continue;
-            }
-            if (is_single_var_ifork_factoring){
-                // TODO special case handling
             }
         }
         vector<size_t> &interfere_op1 = interference_relation[op1_no];
         for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
-            if (op1_no != op2_no && 
-                    (!interference_no_mutex_pre || !have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])) && 
-                    interfere(op1_no, op2_no)) {
+            if (op1_no == op2_no) {
+                continue;
+            }
+            if (special_case_optimizations && is_single_var_ifork_factoring){
+                if (g_operators[op2_no].get_affected_factor() != LeafFactorID::CENTER){
+                    continue;
+                }
+                if (!have_competing_leaf_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                    continue;
+                }
+                // TODO what about mutex center preconditions?
+            } else {
+                if (!mutex_pre_interference && have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                    continue;
+                }
+            }
+            if (interfere(op1_no, op2_no)){
                 interfere_op1.push_back(op2_no);
             }
         }
@@ -250,9 +284,17 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     // add a NES for all open goal facts, similar to open preconditions
     // on the other hand, including the ingoing transitions to goal states is fast!
     
-    if (special_case_optimizations && is_ifork_factoring && test_goal(state)){
-        // in inverted-fork factorings, plans can only get more expensive behind goal states.
-        return;
+    if (special_case_optimizations && has_ifork_leaf){
+        if (is_ifork_factoring && test_goal(state)){
+            // in inverted-fork factorings, plans can only get more expensive behind goal states.
+            return;
+        }
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            // in ifork leaves, if goal is not reached, it can never become reached again
+            if (!g_goals_per_factor[factor].empty() && is_ifork_leaf[factor] && !current_cpg->goal_reachable(factor)){
+                return;
+            }
+        }
     }
     
     current_cpg = CPGStorage::storage->get_cpg(state);
@@ -264,6 +306,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 // goal states as stubborn
                 for (LeafStateHash id : CompliantPathGraph::leaf_goal_states[factor]){
                     assert(!current_cpg->has_leaf_state(id, factor));
+                    // TODO need to include predecessor center actions
                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
                         mark_as_stubborn(pred.first->get_index());
                     }
@@ -354,9 +397,16 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (op.has_precondition_on(factor)){
-                mark_reached_enabling_set_as_stubborn(factor);
-//                     mark_frontier_actions_as_stubborn(factor);
-                // TODO special case handling
+                if (special_case_optimizations && (has_fork_leaf || is_single_var_ifork_factoring)){
+                    if (is_fork_leaf[factor]){
+                        // TODO have a variant that takes the leaf precondition
+                        mark_frontier_actions_as_stubborn(factor);
+                    } else if (!is_single_var_ifork_factoring) {
+                        mark_reached_enabling_set_as_stubborn(factor);
+                    }
+                } else {
+                    mark_reached_enabling_set_as_stubborn(factor);
+                }
             }
         }
     } else {
@@ -395,9 +445,9 @@ static PruningMethod* _parse(OptionParser &parser) {
                             "TODO",
                             "false");
     
-    parser.add_option<bool>("interference_no_mutex_pre",
+    parser.add_option<bool>("mutex_pre_interference",
                             "TODO",
-                            "true");
+                            "false");
 
     if (parser.dry_run()) {
         return 0;
