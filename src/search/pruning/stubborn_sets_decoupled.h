@@ -23,6 +23,7 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     bool goal_ingoing_transitions;
     bool special_case_optimizations;
     bool mutex_pre_interference;
+    bool check_ifork_applicable;
     
     // center actions generating a leaf state
     std::vector<std::vector<std::vector<size_t> > > center_predecessors;

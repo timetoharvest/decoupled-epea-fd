@@ -123,7 +123,8 @@ inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1
 StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
             goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")),
             special_case_optimizations(opts.get<bool>("special_case_optimizations")),
-            mutex_pre_interference(opts.get<bool>("mutex_pre_interference")) {
+            mutex_pre_interference(opts.get<bool>("mutex_pre_interference")),
+            check_ifork_applicable(opts.get<bool>("check_ifork_applicable")) {
     // TODO implement safety belt in base class
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
@@ -304,7 +305,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
-    if (!special_case_optimizations || !has_ifork_leaf){
+    if (!special_case_optimizations || !check_ifork_applicable || !has_ifork_leaf){
         return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
     } else {
         // if op has unreached precondition on inverted-fork leaf => skip
@@ -507,6 +508,10 @@ static PruningMethod* _parse(OptionParser &parser) {
     parser.add_option<bool>("mutex_pre_interference",
                             "TODO",
                             "false");
+    
+    parser.add_option<bool>("check_ifork_applicable",
+                            "TODO",
+                            "true");
 
     if (parser.dry_run()) {
         return 0;
