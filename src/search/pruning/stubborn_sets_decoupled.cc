@@ -288,14 +288,13 @@ void StubbornSetsDecoupled::compute_interference_relation() {
                 if (g_operators[op2_no].get_affected_factor() != LeafFactorID::CENTER){
                     continue;
                 }
-                if (!have_competing_leaf_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                if (have_competing_leaf_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                    interfere_op1.push_back(op2_no);
                     continue;
                 }
-                // TODO what about mutex center preconditions?
-            } else {
-                if (!mutex_pre_interference && contain_conflicting_fact(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
-                    continue;
-                }
+            }
+            if (!mutex_pre_interference && contain_conflicting_fact(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                continue;
             }
             if (interfere(op1_no, op2_no)){
                 interfere_op1.push_back(op2_no);
