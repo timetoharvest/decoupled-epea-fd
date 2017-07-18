@@ -316,7 +316,7 @@ bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
             if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
                 bool reached = false;
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                    if (current_cpg->has_leaf_state(id, factor) && op.is_applicable(id, factor)){
+                    if (current_cpg->has_leaf_state(id, factor) && satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), op.get_preconditions(factor))){
                         reached = true;
                         break;
                     }
