@@ -340,6 +340,8 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     // add a NES for all open goal facts, similar to open preconditions
     // on the other hand, including the ingoing transitions to goal states is fast!
     
+    current_cpg = CPGStorage::storage->get_cpg(state);
+    
     if (special_case_optimizations && has_ifork_leaf){
         if (is_ifork_factoring && test_goal(state)){
             // in inverted-fork factorings, plans can only get more expensive behind goal states.
@@ -352,8 +354,6 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             }
         }
     }
-    
-    current_cpg = CPGStorage::storage->get_cpg(state);
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty() && !current_cpg->goal_reachable(factor)){
