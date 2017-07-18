@@ -105,6 +105,10 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
+    
+    if (pruning_method){
+        pruning_method->initialize();
+    }
 }
 
 void EagerSearch::statistics() const {

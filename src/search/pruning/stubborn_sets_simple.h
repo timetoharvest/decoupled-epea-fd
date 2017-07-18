@@ -29,6 +29,8 @@ public:
     StubbornSetsSimple();
     StubbornSetsSimple(const Options &opts);
     virtual ~StubbornSetsSimple() = default;
+    
+    virtual void initialize() override {}
 };
 }
 

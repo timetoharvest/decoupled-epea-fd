@@ -17,8 +17,8 @@ struct SortFactsByVariable {
 
 
 // Relies on both fact sets being sorted by variable.
-bool contain_conflicting_fact(const vector<pair<int, int>> &facts1,
-                              const vector<pair<int, int>> &facts2) {
+bool StubbornSets::contain_conflicting_fact(const vector<pair<int, int>> &facts1,
+                                            const vector<pair<int, int>> &facts2) {
     auto facts1_it = facts1.begin();
     auto facts2_it = facts2.begin();
     while (facts1_it != facts1.end() && facts2_it != facts2.end()) {
@@ -27,8 +27,9 @@ bool contain_conflicting_fact(const vector<pair<int, int>> &facts1,
         } else if (facts1_it->first > facts2_it->first) {
             ++facts2_it;
         } else {
-            if (facts1_it->second != facts2_it->second)
+            if (facts1_it->second != facts2_it->second) {
                 return true;
+            }
             ++facts1_it;
             ++facts2_it;
         }

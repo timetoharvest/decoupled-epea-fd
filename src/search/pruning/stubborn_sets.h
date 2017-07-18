@@ -33,15 +33,19 @@ protected:
 
     bool can_disable(size_t op1_no, size_t op2_no);
     bool can_conflict(size_t op1_no, size_t op2_no);
+    bool contain_conflicting_fact(const std::vector<std::pair<int, int>> &facts1,
+                                  const std::vector<std::pair<int, int>> &facts2);
 
     // Returns true iff the operators was enqueued.
     // TODO: rename to enqueue_stubborn_operator?
-    bool mark_as_stubborn(size_t op_no);
+    virtual bool mark_as_stubborn(size_t op_no);
     virtual void initialize_stubborn_set(const State &state) = 0;
     virtual void handle_stubborn_operator(const State &state, size_t op_no) = 0;
 public:
     StubbornSets();
     virtual ~StubbornSets() = default;
+    
+    virtual void initialize() override = 0;
 
     /* TODO: move prune_operators, and also the statistics, to the
        base class to have only one method virtual, and to make the

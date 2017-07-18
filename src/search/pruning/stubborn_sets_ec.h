@@ -30,6 +30,8 @@ protected:
 public:
     StubbornSetsEC();
     virtual ~StubbornSetsEC() = default;
+    
+    virtual void initialize() override {}
 };
 }
 #endif

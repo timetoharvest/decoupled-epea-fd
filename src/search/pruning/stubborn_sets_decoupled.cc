@@ -15,7 +15,7 @@ namespace stubborn_sets_decoupled {
    Disjunctive action landmarks are computed trivially.*/
 
 
-static inline vector<pair<int, int>> find_unsatisfied_preconditions(
+inline vector<pair<int, int>> find_unsatisfied_preconditions(
     const Operator &op, const State &state, const CompliantPathGraph *current_cpg) {
 
     vector<pair<int, int>> res;
@@ -81,44 +81,41 @@ static inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
-static inline bool have_mutex_preconditions(const vector<pair<int, int>> &pre1, const vector<pair<int, int>> &pre2) {
-    size_t pre1_count = 0;
-    size_t pre2_count = 0;
-    while (pre1_count < pre1.size() && pre2_count < pre2.size()) {
-        if (pre1[pre1_count].first < pre2[pre2_count].first){
-            ++pre1_count;
-            continue;
+inline bool leaf_facts_agree(const LeafState &leaf_state, const vector<const Effect*> &leaf_effects) {
+    assert(!leaf_effects.empty());
+    for (auto eff : leaf_effects){
+        if (leaf_state[eff->var] != eff->val){
+            return false;
         }
-        if (pre1[pre1_count].first > pre2[pre2_count].first){
-            ++pre2_count;
-            continue;
-        }
-        if (pre1[pre1_count].second != pre2[pre2_count].second){
-            return true;
-        }
-        ++pre1_count;
-        ++pre2_count;
     }
-    return false;
+    return true;
 }
 
-static inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1, const vector<pair<int, int>> &pre2) {
+inline bool satisfies_leaf_pre(const LeafState &leaf_state, const vector<const Condition*> &leaf_pre) {
+    assert(!leaf_pre.empty());
+    for (auto pre : leaf_pre){
+        if (leaf_state[pre->var] != pre->val){
+            return false;
+        }
+    }
+    return true;
+}
+
+inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1, const vector<pair<int, int>> &pre2) {
     size_t pre1_count = 0;
     size_t pre2_count = 0;
     while (pre1_count < pre1.size() && pre2_count < pre2.size()) {
         if (pre1[pre1_count].first < pre2[pre2_count].first){
             ++pre1_count;
-            continue;
-        }
-        if (pre1[pre1_count].first > pre2[pre2_count].first){
+        } else if (pre1[pre1_count].first > pre2[pre2_count].first){
             ++pre2_count;
-            continue;
+        } else {
+            if (g_belongs_to_factor[pre1[pre1_count].first] != LeafFactorID::CENTER && pre1[pre1_count].second != pre2[pre2_count].second){
+                return true;
+            }
+            ++pre1_count;
+            ++pre2_count;
         }
-        if (g_belongs_to_factor[pre1[pre1_count].first] != LeafFactorID::CENTER && pre1[pre1_count].second != pre2[pre2_count].second){
-            return true;
-        }
-        ++pre1_count;
-        ++pre2_count;
     }
     return false;
 }
@@ -176,18 +173,74 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     compute_interference_relation();
 }
 
+void StubbornSetsDecoupled::initialize() {
+    // need to do this here, because we need the precomputed leaf state spaces
+    if(goal_ingoing_transitions && !is_fork_factoring){
+        center_predecessors.resize(g_leaves.size());
+        for (const Operator &op : g_operators){
+            if (op.get_affected_factor() != LeafFactorID::CENTER){
+                continue;
+            }
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                if (!is_fork_leaf[factor] && op.has_effect_on(factor)){
+                    size_t number_leaf_states = g_state_registry->size(factor);
+                    center_predecessors[factor].resize(number_leaf_states);
+                    for (LeafStateHash id(0); id < number_leaf_states; ++id){
+                        if (leaf_facts_agree(g_state_registry->lookup_leaf_state(id, factor), op.get_effects(factor))){
+                            center_predecessors[factor][id].push_back(op.get_index());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (!is_fork_factoring && !is_ifork_factoring){
+        center_successors.resize(g_leaves.size());
+        for (const Operator &op : g_operators){
+            if (op.get_affected_factor() != LeafFactorID::CENTER){
+                continue;
+            }
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                if (!is_fork_leaf[factor] && !is_fork_leaf[factor] && op.has_precondition_on(factor) && op.has_effect_on(factor)){
+                    size_t number_leaf_states = g_state_registry->size(factor);
+                    if (center_successors[factor].size() < number_leaf_states){
+                        center_successors[factor].resize(number_leaf_states);
+                    }
+                    for (LeafStateHash id(0); id < number_leaf_states; ++id){
+                        LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                        // center action is applicable in leaf state and changes it in its effects
+                        if (satisfies_leaf_pre(state, op.get_preconditions(factor)) && !leaf_facts_agree(state, op.get_effects(factor))){
+                            center_successors[factor][id].push_back(op.get_index());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
     // add frontier of a leaf to stubborn set
-    // needed to capture improvements of the prices of leaf states used for something (goal/precondition)
+    // needed to capture improvements of the prices of leaf states used for something (goal/fork-leaf precondition)
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             int curr_cost = current_cpg->get_cost_of_state(id, factor);
-            // TODO need to include successor center actions that change leaf state
             for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 int new_price = curr_cost;
                 new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
                 if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
                     mark_as_stubborn(succ.first->get_index());
+                }
+            }
+            if (!is_fork_factoring && !is_ifork_factoring && !center_successors[factor].empty()){
+                for (size_t succ : center_successors[factor][id]){
+                    // TODO include cost/reachability here, again
+//                     int new_price = curr_cost;
+//                     new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
+//                     if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
+                    mark_as_stubborn(succ);
+//                     }
                 }
             }
         }
@@ -198,9 +251,13 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
     // TODO additionally consider the required leaf precondition
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
-            // TODO need to include successor center actions that change leaf state
             for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 mark_as_stubborn(succ.first->get_index());
+            }
+            if (!is_fork_factoring && !is_ifork_factoring && !center_successors[factor].empty()){
+                for (size_t succ : center_successors[factor][id]){
+                    mark_as_stubborn(succ);
+                }
             }
         }
     }
@@ -236,7 +293,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
                 }
                 // TODO what about mutex center preconditions?
             } else {
-                if (!mutex_pre_interference && have_mutex_preconditions(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
+                if (!mutex_pre_interference && contain_conflicting_fact(sorted_op_preconditions[op1_no], sorted_op_preconditions[op2_no])){
                     continue;
                 }
             }
@@ -247,36 +304,35 @@ void StubbornSetsDecoupled::compute_interference_relation() {
     }
 }
 
-void StubbornSetsDecoupled::add_interfering(size_t op_no) {
+bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
     if (!special_case_optimizations || !has_ifork_leaf){
-        stubborn_sets_simple::StubbornSetsSimple::add_interfering(op_no);
+        return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
     } else {
-        // if interfering op has unreached precondition on inverted-fork leaf => skip
+        // if op has unreached precondition on inverted-fork leaf => skip
         // non-applicable inverted-fork leaf actions can never become applicable after state
-        for (size_t interferer_no : interference_relation[op_no]) {
-            bool has_unreached_ifork_pre = false;
-            const Operator &op = g_operators[interferer_no];
-            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
-                    bool reached = false;
-                    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                        if (current_cpg->has_leaf_state(id, factor) && op.is_applicable(id, factor)){
-                            reached = true;
-                            break;
-                        }
-                    }
-                    if (!reached){
-                        has_unreached_ifork_pre = true;
+        bool has_unreached_ifork_pre = false;
+        const Operator &op = g_operators[op_no];
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
+                bool reached = false;
+                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    if (current_cpg->has_leaf_state(id, factor) && op.is_applicable(id, factor)){
+                        reached = true;
                         break;
                     }
                 }
-            }
-            
-            if (!has_unreached_ifork_pre){
-                mark_as_stubborn(interferer_no);
+                if (!reached){
+                    has_unreached_ifork_pre = true;
+                    break;
+                }
             }
         }
+        
+        if (!has_unreached_ifork_pre){
+            return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
+        }
     }
+    return false;
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
@@ -306,9 +362,13 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 // goal states as stubborn
                 for (LeafStateHash id : CompliantPathGraph::leaf_goal_states[factor]){
                     assert(!current_cpg->has_leaf_state(id, factor));
-                    // TODO need to include predecessor center actions
                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
                         mark_as_stubborn(pred.first->get_index());
+                    }
+                    if (!is_fork_leaf[factor]){
+                        for (size_t op_no : center_predecessors[factor][id]){
+                            mark_as_stubborn(op_no);
+                        }
                     }
                 }
             } else {
