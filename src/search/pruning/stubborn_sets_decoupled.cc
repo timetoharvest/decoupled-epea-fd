@@ -152,7 +152,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         is_ifork_factoring = true;
         has_ifork_leaf = true;
         is_ifork_leaf.assign(g_leaves.size(), true);
-        is_single_var_ifork_factoring = true;
+        is_single_var_ifork_factoring = opts.get<bool>("use_single_var_ifork_optimization");
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (g_leaves[factor].size() > 1){
                 is_single_var_ifork_factoring = false;
@@ -510,6 +510,12 @@ static PruningMethod* _parse(OptionParser &parser) {
                             "false");
     
     parser.add_option<bool>("check_ifork_applicable",
+                            "TODO",
+                            "true");
+    
+    // even if this option is true, it will we overwritten by 
+    // special_case_optimizations=false
+    parser.add_option<bool>("use_single_var_ifork_optimization",
                             "TODO",
                             "true");
 
