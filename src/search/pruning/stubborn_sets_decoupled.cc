@@ -183,7 +183,7 @@ void StubbornSetsDecoupled::initialize() {
                 continue;
             }
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                if (!is_fork_leaf[factor] && op.has_effect_on(factor)){
+                if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && op.has_effect_on(factor)){
                     size_t number_leaf_states = g_state_registry->size(factor);
                     center_predecessors[factor].resize(number_leaf_states);
                     for (LeafStateHash id(0); id < number_leaf_states; ++id){
@@ -203,11 +203,9 @@ void StubbornSetsDecoupled::initialize() {
                 continue;
             }
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                if (!is_fork_leaf[factor] && !is_fork_leaf[factor] && op.has_precondition_on(factor) && op.has_effect_on(factor)){
+                if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && op.has_precondition_on(factor) && op.has_effect_on(factor)){
                     size_t number_leaf_states = g_state_registry->size(factor);
-                    if (center_successors[factor].size() < number_leaf_states){
-                        center_successors[factor].resize(number_leaf_states);
-                    }
+                    center_successors[factor].resize(number_leaf_states);
                     for (LeafStateHash id(0); id < number_leaf_states; ++id){
                         LeafState state = g_state_registry->lookup_leaf_state(id, factor);
                         // center action is applicable in leaf state and changes it in its effects
@@ -365,7 +363,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                     for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
                         mark_as_stubborn(pred.first->get_index());
                     }
-                    if (!is_fork_leaf[factor]){
+                    if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_predecessors[factor].empty()){
                         for (size_t op_no : center_predecessors[factor][id]){
                             mark_as_stubborn(op_no);
                         }
