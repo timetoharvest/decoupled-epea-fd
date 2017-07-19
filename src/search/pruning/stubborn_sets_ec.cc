@@ -114,7 +114,7 @@ void get_conflicting_vars(const vector<pair<int, int>> &facts1,
     }
 }
 
-StubbornSetsEC::StubbornSetsEC() {
+StubbornSetsEC::StubbornSetsEC(const Options &opts) : stubborn_sets::StubbornSets(opts) {
     compute_operator_preconditions();
     compute_conflicts_and_disabling();
     build_reachability_map();
@@ -340,12 +340,14 @@ static PruningMethod* _parse(OptionParser &parser) {
             "and Scheduling (ICAPS 2013)"
             "251-259"
             "AAAI Press 2013");
+    
+    stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {
         return 0;
     }
 
-    return new StubbornSetsEC();
+    return new StubbornSetsEC(parser.parse());
 }
 
 static Plugin<PruningMethod> _plugin("stubborn_sets_ec", _parse);

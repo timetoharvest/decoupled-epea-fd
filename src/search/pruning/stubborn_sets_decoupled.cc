@@ -121,11 +121,12 @@ inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1
 }
 
 StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
+            stubborn_sets_simple::StubbornSetsSimple(opts),
             goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")),
             special_case_optimizations(opts.get<bool>("special_case_optimizations")),
             mutex_pre_interference(opts.get<bool>("mutex_pre_interference")),
             check_ifork_applicable(opts.get<bool>("check_ifork_applicable")) {
-    // TODO implement safety belt in base class
+
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
         exit_with(EXIT_INPUT_ERROR);
@@ -268,7 +269,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
 }
 
 void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const vector<const Condition*> &leaf_pre) {
-    // TODO add option to switch off satisfies_leaf_pre check
+    // TODO add option to switch off satisfies_leaf_pre check => probably not necessary, the overhead should be negligible
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             if (satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), leaf_pre)){
@@ -539,6 +540,8 @@ static PruningMethod* _parse(OptionParser &parser) {
     parser.add_option<bool>("use_single_var_ifork_optimization",
                             "TODO",
                             "true");
+    
+    stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {
         return 0;

@@ -2,6 +2,7 @@
 
 #include "../globals.h"
 #include "../operator.h"
+#include "../option_parser.h"
 
 #include <algorithm>
 #include <cassert>
@@ -47,9 +48,12 @@ vector<pair<int, int>> get_sorted_fact_set(const vector<T> &facts) {
     return result;
 }
 
-StubbornSets::StubbornSets()
+StubbornSets::StubbornSets(const Options &opts)
     : num_unpruned_successors_generated(0),
-      num_pruned_successors_generated(0) {
+      num_pruned_successors_generated(0),
+      expanded_states(0),
+      disabled_pruning(false),
+      min_pruning_ratio(opts.get<float>("min_pruning_ratio")) {
     verify_no_axioms_no_conditional_effects();
     compute_sorted_operators();
     compute_achievers();
@@ -104,6 +108,14 @@ bool StubbornSets::mark_as_stubborn(size_t op_no) {
 
 void StubbornSets::prune_operators(
     const State &state, vector<const Operator *> &ops) {
+    if (disabled_pruning){
+        return;
+    } else if (expanded_states == 1000 && (1 - (float) num_pruned_successors_generated / (float) num_unpruned_successors_generated) < min_pruning_ratio){
+        disabled_pruning = true;
+        cout << "Disabling stubborn sets pruning, pruning ratio " << (1 - (float) num_pruned_successors_generated / (float) num_unpruned_successors_generated) << " < " << min_pruning_ratio << endl;
+        return;
+    }
+    ++expanded_states;
     num_unpruned_successors_generated += ops.size();
 
     // Clear stubborn set from previous call.
@@ -141,5 +153,12 @@ void StubbornSets::print_statistics() const {
          << num_unpruned_successors_generated << endl
          << "total successors after partial-order reduction: "
          << num_pruned_successors_generated << endl;
+}
+
+void StubbornSets::add_options_to_parser(OptionParser &parser) {
+    parser.add_option<float>(
+        "min_pruning_ratio",
+        "TODO", 
+        "0");
 }
 }

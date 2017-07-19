@@ -35,10 +35,7 @@ static inline pair<int, int> find_unsatisfied_precondition(
     return pair<int, int>(-1, -1);
 }
 
-StubbornSetsSimple::StubbornSetsSimple() {
-}
-
-StubbornSetsSimple::StubbornSetsSimple(const Options &) {
+StubbornSetsSimple::StubbornSetsSimple(const Options &opts) : stubborn_sets::StubbornSets(opts) {
     compute_interference_relation();
     cout << "pruning method: stubborn sets simple" << endl;
 }
@@ -122,6 +119,8 @@ static PruningMethod* _parse(OptionParser &parser) {
             " and Scheduling (ICAPS 2014)"
             "323-331"
             "AAAI Press, 2014");
+    
+    stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {
         return 0;

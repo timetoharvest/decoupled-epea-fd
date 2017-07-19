@@ -3,10 +3,16 @@
 
 #include "../pruning_method.h"
 
+class OptionParser;
+class Options;
+
 namespace stubborn_sets {
 class StubbornSets : public PruningMethod {
     long num_unpruned_successors_generated;
     long num_pruned_successors_generated;
+    int expanded_states;
+    bool disabled_pruning;
+    float min_pruning_ratio;
 
     /* stubborn[op_no] is true iff the operator with operator index
        op_no is contained in the stubborn set */
@@ -42,7 +48,7 @@ protected:
     virtual void initialize_stubborn_set(const State &state) = 0;
     virtual void handle_stubborn_operator(const State &state, size_t op_no) = 0;
 public:
-    StubbornSets();
+    StubbornSets(const Options &opts);
     virtual ~StubbornSets() = default;
     
     virtual void initialize() override = 0;
@@ -53,6 +59,8 @@ public:
     virtual void prune_operators(const State &state,
                                  std::vector<const Operator *> &ops) override;
     virtual void print_statistics() const override;
+    
+    static void add_options_to_parser(OptionParser &parser);
 };
 }
 

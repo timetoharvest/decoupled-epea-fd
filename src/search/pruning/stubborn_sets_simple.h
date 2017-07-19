@@ -26,7 +26,6 @@ protected:
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, size_t op_no) override;
 public:
-    StubbornSetsSimple();
     StubbornSetsSimple(const Options &opts);
     virtual ~StubbornSetsSimple() = default;
     
