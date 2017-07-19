@@ -219,9 +219,9 @@ void StubbornSetsDecoupled::initialize() {
     }
 }
 
-void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID factor) {
+void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID factor) {
     // add frontier of a leaf to stubborn set
-    // needed to capture improvements of the prices of leaf states used for something (goal/fork-leaf precondition)
+    // needed to capture improvements of the prices of leaf states used as a fork-leaf precondition
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             int curr_cost = current_cpg->get_cost_of_state(id, factor);
@@ -232,9 +232,30 @@ void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID facto
                     mark_as_stubborn(succ.first->get_index());
                 }
             }
-            if (!is_fork_factoring && !is_ifork_factoring && !center_successors[factor].empty()){
+        }
+    }
+}
+
+void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID factor) {
+    // TODO include check that the goal price can actually be improved from the leaf state
+    // i.e., the state is on a goal path whose cost is lower than the current goal cost
+    
+    // add goal frontier of a leaf to stubborn set
+    // needed to capture improvements of the prices of leaf states used to achieve the goal
+    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+        if (current_cpg->has_leaf_state(id, factor)){
+            int curr_cost = current_cpg->get_cost_of_state(id, factor);
+            for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+                int new_price = curr_cost;
+                new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
+                if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
+                    mark_as_stubborn(succ.first->get_index());
+                }
+            }
+            if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_successors[factor].empty()){
                 for (size_t succ : center_successors[factor][id]){
                     // TODO include cost/reachability here, again
+                    // need successor leaf state to do this
 //                     int new_price = curr_cost;
 //                     new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
 //                     if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
@@ -246,14 +267,17 @@ void StubbornSetsDecoupled::mark_frontier_actions_as_stubborn(LeafFactorID facto
     }
 }
 
-void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor) {
-    // TODO additionally consider the required leaf precondition
+void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const vector<const Condition*> &leaf_pre) {
+    // TODO add option to switch off satisfies_leaf_pre check
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
+            if (satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), leaf_pre)){
+                continue;
+            }
             for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
                 mark_as_stubborn(succ.first->get_index());
             }
-            if (!is_fork_factoring && !is_ifork_factoring && !center_successors[factor].empty()){
+            if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_successors[factor].empty()){
                 for (size_t succ : center_successors[factor][id]){
                     mark_as_stubborn(succ);
                 }
@@ -428,14 +452,14 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
         if (!g_goals_per_factor[factor].empty()){
             assert(current_cpg->goal_reachable(factor) && current_cpg->get_goal_cost(factor) >= 0);
             if (!special_case_optimizations){
-                mark_frontier_actions_as_stubborn(factor);
+                mark_goal_frontier_actions_as_stubborn(factor);
             } else {
                 if (is_fork_leaf[factor]){
                     if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
-                        mark_frontier_actions_as_stubborn(factor);
+                        mark_goal_frontier_actions_as_stubborn(factor);
                     }
                 } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
-                    mark_frontier_actions_as_stubborn(factor);
+                    mark_goal_frontier_actions_as_stubborn(factor);
                 }
             }
         }
@@ -457,13 +481,12 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
             if (op.has_precondition_on(factor)){
                 if (special_case_optimizations && (has_fork_leaf || is_single_var_ifork_factoring)){
                     if (is_fork_leaf[factor]){
-                        // TODO have a variant that takes the leaf precondition
-                        mark_frontier_actions_as_stubborn(factor);
+                        mark_fork_frontier_actions_as_stubborn(factor);
                     } else if (!is_single_var_ifork_factoring) {
-                        mark_reached_enabling_set_as_stubborn(factor);
+                        mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
                     }
                 } else {
-                    mark_reached_enabling_set_as_stubborn(factor);
+                    mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
                 }
             }
         }

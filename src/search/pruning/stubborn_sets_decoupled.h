@@ -3,6 +3,7 @@
 
 #include "stubborn_sets_simple.h"
 
+class Condition;
 class CompliantPathGraph;
 class LeafFactorID;
 class Options;
@@ -35,9 +36,13 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     
     // a frontier action is an inapplicable leaf action that reduces 
     // the price of a leaf state
-    void mark_frontier_actions_as_stubborn(LeafFactorID factor);
+    // only marks frontier actions that can leaf to improved goal price
+    void mark_goal_frontier_actions_as_stubborn(LeafFactorID factor);
     
-    void mark_reached_enabling_set_as_stubborn(LeafFactorID factor);
+    // marks all fronter actions
+    void mark_fork_frontier_actions_as_stubborn(LeafFactorID factor);
+    
+    void mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const std::vector<const Condition*> &leaf_pre);
 
 protected:
     virtual bool mark_as_stubborn(size_t op_no) override;
