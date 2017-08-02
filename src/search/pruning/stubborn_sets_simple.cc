@@ -36,8 +36,11 @@ static inline pair<int, int> find_unsatisfied_precondition(
 }
 
 StubbornSetsSimple::StubbornSetsSimple(const Options &opts) : stubborn_sets::StubbornSets(opts) {
-    compute_interference_relation();
     cout << "pruning method: stubborn sets simple" << endl;
+}
+
+void StubbornSetsSimple::initialize() {
+    compute_interference_relation();
 }
 
 void StubbornSetsSimple::compute_interference_relation() {

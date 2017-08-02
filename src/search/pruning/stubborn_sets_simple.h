@@ -29,7 +29,7 @@ public:
     StubbornSetsSimple(const Options &opts);
     virtual ~StubbornSetsSimple() = default;
     
-    virtual void initialize() override {}
+    virtual void initialize() override;
 };
 }
 
