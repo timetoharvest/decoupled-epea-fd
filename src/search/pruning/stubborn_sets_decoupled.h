@@ -6,6 +6,7 @@
 class Condition;
 class CompliantPathGraph;
 class LeafFactorID;
+class LeafStateHash;
 class Options;
 
 namespace stubborn_sets_decoupled {
@@ -26,10 +27,13 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     bool mutex_pre_interference;
     bool check_ifork_applicable;
     
+    // minimum cost to the goal from each fork leaf state
+    std::vector<std::vector<int> > min_cost_to_goal;
+    
     // center actions generating a leaf state
     std::vector<std::vector<std::vector<size_t> > > center_predecessors;
     // center actions enabled by a leaf state
-    std::vector<std::vector<std::vector<size_t> > > center_successors;
+    std::vector<std::vector<std::vector<std::pair<size_t, LeafStateHash> > > > center_successors;
     
     mutable const CompliantPathGraph *current_cpg;
     

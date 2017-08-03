@@ -197,6 +197,44 @@ void StubbornSetsDecoupled::initialize() {
         }
     }
     
+    if (has_fork_leaf){
+        min_cost_to_goal.resize(g_leaves.size());
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (is_fork_leaf[factor] && !g_goals_per_factor[factor].empty()){
+                min_cost_to_goal[factor].resize(g_state_registry->size(factor), numeric_limits<int>::max());
+
+                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
+                        min_cost_to_goal[factor][id] = 0;
+                    }
+                }
+                
+                bool change = true;
+                while (change){
+                    change = false;
+                    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                        int cost_before = min_cost_to_goal[factor][id];
+                        for (auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+                            if (min_cost_to_goal[factor][succ.second] < numeric_limits<int>::max()){
+                                min_cost_to_goal[factor][id] = min(min_cost_to_goal[factor][id], 
+                                                                   min_cost_to_goal[factor][succ.second] + 
+                                                                   get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type()));
+                            }
+                        }
+                        if (min_cost_to_goal[factor][id] < cost_before){
+                            change = true;
+                        }
+                    }
+                }
+                for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    if (min_cost_to_goal[factor][id] == numeric_limits<int>::max()){
+                        min_cost_to_goal[factor][id] = CompliantPathGraph::INF;
+                    }
+                }
+            }
+        }
+    }
+    
     if (!is_fork_factoring && !is_ifork_factoring){
         center_successors.resize(g_leaves.size());
         for (const Operator &op : g_operators){
@@ -211,7 +249,7 @@ void StubbornSetsDecoupled::initialize() {
                         LeafState state = g_state_registry->lookup_leaf_state(id, factor);
                         // center action is applicable in leaf state and changes it in its effects
                         if (satisfies_leaf_pre(state, op.get_preconditions(factor)) && !leaf_facts_agree(state, op.get_effects(factor))){
-                            center_successors[factor][id].push_back(op.get_index());
+                            center_successors[factor][id].push_back(make_pair(op.get_index(), g_state_registry->get_successor_leaf_state_hash(state, op)));
                         }
                     }
                 }
@@ -221,6 +259,12 @@ void StubbornSetsDecoupled::initialize() {
 }
 
 void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID factor) {
+    assert(is_fork_leaf[factor]);
+    if (g_goals_per_factor[factor].empty() || current_cpg->get_goal_cost(factor) == g_min_goal_cost[factor]){
+        // goal cannot become cheaper
+        return;
+    }
+    
     // add frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used as a fork-leaf precondition
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
@@ -230,7 +274,11 @@ void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID 
                 int new_price = curr_cost;
                 new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
                 if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
-                    mark_as_stubborn(succ.first->get_index());
+                    bool can_improve_goal_cost = min_cost_to_goal[factor][succ.second] != CompliantPathGraph::INF;
+                    can_improve_goal_cost = can_improve_goal_cost && new_price + min_cost_to_goal[factor][succ.second] < current_cpg->get_goal_cost(factor);
+                    if (!current_cpg->goal_reachable(factor) || can_improve_goal_cost){
+                        mark_as_stubborn(succ.first->get_index());
+                    }
                 }
             }
         }
@@ -240,6 +288,7 @@ void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID 
 void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID factor) {
     // TODO include check that the goal price can actually be improved from the leaf state
     // i.e., the state is on a goal path whose cost is lower than the current goal cost
+    // done for fork leaves, does it make sense for other leaves?
     
     // add goal frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used to achieve the goal
@@ -250,18 +299,20 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
                 int new_price = curr_cost;
                 new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
                 if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
-                    mark_as_stubborn(succ.first->get_index());
+                    bool can_improve_goal_cost = !is_fork_leaf[factor];
+                    can_improve_goal_cost = can_improve_goal_cost || !current_cpg->goal_reachable(factor);
+                    can_improve_goal_cost = can_improve_goal_cost || (min_cost_to_goal[factor][succ.second] != CompliantPathGraph::INF &&
+                                            new_price + min_cost_to_goal[factor][succ.second] < current_cpg->get_goal_cost(factor));
+                    if (can_improve_goal_cost){
+                        mark_as_stubborn(succ.first->get_index());
+                    }
                 }
             }
             if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_successors[factor].empty()){
-                for (size_t succ : center_successors[factor][id]){
-                    // TODO include cost/reachability here, again
-                    // need successor leaf state to do this
-//                     int new_price = curr_cost;
-//                     new_price += get_adjusted_action_cost(*succ.first, CompliantPathGraph::get_cost_type());
-//                     if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
-                    mark_as_stubborn(succ);
-//                     }
+                for (auto &succ : center_successors[factor][id]){
+                    if (!current_cpg->has_leaf_state(succ.second, factor) || curr_cost < current_cpg->get_cost_of_state(succ.second, factor)){
+                        mark_as_stubborn(succ.first);
+                    }
                 }
             }
         }
@@ -279,8 +330,8 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
                 mark_as_stubborn(succ.first->get_index());
             }
             if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_successors[factor].empty()){
-                for (size_t succ : center_successors[factor][id]){
-                    mark_as_stubborn(succ);
+                for (auto &succ : center_successors[factor][id]){
+                    mark_as_stubborn(succ.first);
                 }
             }
         }
@@ -480,11 +531,12 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (op.has_precondition_on(factor)){
-                if (special_case_optimizations && (has_fork_leaf || is_single_var_ifork_factoring)){
+                if (special_case_optimizations && (is_fork_leaf[factor] || is_single_var_ifork_factoring)){
+                    // if is_single_var_ifork_factoring, no need to include frontier actions
+                    // prices can never get cheaper
                     if (is_fork_leaf[factor]){
+                        // special case frontier for fork leaves
                         mark_fork_frontier_actions_as_stubborn(factor);
-                    } else if (!is_single_var_ifork_factoring) {
-                        mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
                     }
                 } else {
                     mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
