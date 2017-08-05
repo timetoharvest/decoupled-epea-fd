@@ -449,7 +449,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 // if there exists a leaf fact that is not achieved in any reached leaf state => add enablers
                 // otherwise, all leaf goal facts are reached in some state and we need to include the
                 // enablers of all leaf goal facts unsatisfied in any reached leaf state.
-                vector<bool> unsat(g_goals_per_factor[factor].size(), true);
+                vector<bool> unsat(g_goals_per_factor[factor].size(), false);
                 vector<bool> sat(g_goals_per_factor[factor].size(), false);
                 
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
@@ -458,7 +458,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                         const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
                         for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
                             if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
-                                unsat[i] = false;
+                                unsat[i] = true;
                             } else {
                                 sat[i] = true;
                             }
