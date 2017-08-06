@@ -29,7 +29,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
         if (op.has_precondition_on(factor)){
             const vector<const Condition*> &preconds = op.get_preconditions(factor);
             
-            vector<bool> unsat(preconds.size(), true);
+            vector<bool> unsat(preconds.size(), false);
             vector<bool> sat(preconds.size(), false);
             
             bool applicable = false;
@@ -40,7 +40,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
                     bool applicable_state = true;
                     for (size_t i = 0; i < preconds.size(); ++i){
                         if (leaf_state[preconds[i]->var] != preconds[i]->val){
-                            unsat[i] = false;
+                            unsat[i] = true;
                             applicable_state = false;
                         } else {
                             sat[i] = true;
