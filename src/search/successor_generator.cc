@@ -82,6 +82,10 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
         vector<const Operator*> center_ops;
         generate_applicable_ops(curr, center_ops, true);
         
+        // TODO: for IFORK leaves that are invertible, there is no need to actually check
+        // the leaf preconditions. collecting all actions enabled by the current
+        // center state is enough.
+        
         vector<int> counter(g_operators.size(), 0);
 
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(curr);
