@@ -481,7 +481,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                     }
                 }
             }
-            assert(!stubborn_queue.empty());
+            // assert(!stubborn_queue.empty()); TODO this check makes sense, but need make stubborn_queue protected
             return;
         }
     }
