@@ -130,9 +130,16 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
         exit_with(EXIT_INPUT_ERROR);
+    } else if (g_factoring->get_search_type() == SEARCH_TYPE::SAT){
+    	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
+    	exit_with(EXIT_INPUT_ERROR);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     
+    if (g_factoring->get_search_type() == SEARCH_TYPE::UNSAT){
+    	CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
+    }
+
     if(goal_ingoing_transitions){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
     }
@@ -197,7 +204,7 @@ void StubbornSetsDecoupled::initialize() {
         }
     }
     
-    if (has_fork_leaf){
+    if (has_fork_leaf && g_factoring->get_search_type() != SEARCH_TYPE::UNSAT){
         min_cost_to_goal.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (is_fork_leaf[factor] && !g_goals_per_factor[factor].empty()){
@@ -379,34 +386,30 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
-    if (!special_case_optimizations || !check_ifork_applicable || !has_ifork_leaf){
-        return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
-    } else {
+    if (special_case_optimizations && check_ifork_applicable && has_ifork_leaf){
+    	// TODO should be easy to cache ifork-leaf-applicability of actions for the
+    	// current decoupled state. not sure if it's worth it.
+
         // if op has unreached precondition on inverted-fork leaf => skip
         // non-applicable inverted-fork leaf actions can never become applicable after state
-        bool has_unreached_ifork_pre = false;
         const Operator &op = g_operators[op_no];
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
                 bool reached = false;
+                auto &pre = op.get_preconditions(factor);
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                    if (current_cpg->has_leaf_state(id, factor) && satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), op.get_preconditions(factor))){
+                    if (current_cpg->has_leaf_state(id, factor) && satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), pre)){
                         reached = true;
                         break;
                     }
                 }
                 if (!reached){
-                    has_unreached_ifork_pre = true;
-                    break;
+                    return false;
                 }
             }
         }
-        
-        if (!has_unreached_ifork_pre){
-            return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
-        }
     }
-    return false;
+    return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
@@ -478,6 +481,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                     }
                 }
             }
+            assert(!stubborn_queue.empty());
             return;
         }
     }
@@ -490,8 +494,14 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
         }
     }
     
-    assert(g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT);
+    assert(g_factoring->get_search_type() != SAT);
     assert(test_goal(state));
+
+    if (g_factoring->get_search_type() == UNSAT){
+    	// this is only relevant when exhausting the entire state space not stopping
+    	// at goal states. in this case, we prune all outgoing transitions of goal states.
+    	return;
+    }
     
     int leaf_part_g = 0;
     if (!is_fork_factoring){
@@ -534,7 +544,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
                 if (special_case_optimizations && (is_fork_leaf[factor] || is_single_var_ifork_factoring)){
                     // if is_single_var_ifork_factoring, no need to include frontier actions
                     // prices can never get cheaper
-                    if (is_fork_leaf[factor]){
+                    if (g_factoring->get_search_type() != SEARCH_TYPE::UNSAT && is_fork_leaf[factor]){
                         // special case frontier for fork leaves
                         mark_fork_frontier_actions_as_stubborn(factor);
                     }
