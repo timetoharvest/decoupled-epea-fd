@@ -538,18 +538,25 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         => operator is applicable
         => add all interfering operators */
         add_interfering(op_no);
-        
+
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (op.has_precondition_on(factor)){
-                if (special_case_optimizations && (is_fork_leaf[factor] || is_single_var_ifork_factoring)){
+            if (!special_case_optimizations || !is_fork_leaf[factor] || !is_single_var_ifork_factoring){
+                if (op.has_precondition_on(factor)){
+                    mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
+                }
+            } else {
+                if (op.has_precondition_on(factor) || is_single_var_ifork_factoring){
                     // if is_single_var_ifork_factoring, no need to include frontier actions
                     // prices can never get cheaper
                     if (is_fork_leaf[factor]){
                         // special case frontier for fork leaves
                         mark_fork_frontier_actions_as_stubborn(factor);
                     }
-                } else {
-                    mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
+                } else if (op.get_affected_factor() == factor && is_fork_leaf[factor] && g_leaves[factor].size() > 1){
+                    // if the action is a fork-leaf action and the leaf has more than one variable,
+                    // we need to get the frontier even if the action does not have a leaf precondition.
+                    // otherwise, we loose completeness (see complicated example in AIJ'17 paper notes).
+                    mark_fork_frontier_actions_as_stubborn(factor);
                 }
             }
         }
