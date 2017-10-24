@@ -204,7 +204,7 @@ void StubbornSetsDecoupled::initialize() {
         }
     }
     
-    if (has_fork_leaf && g_factoring->get_search_type() != SEARCH_TYPE::UNSAT){
+    if (has_fork_leaf){
         min_cost_to_goal.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (is_fork_leaf[factor] && !g_goals_per_factor[factor].empty()){
@@ -544,7 +544,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
                 if (special_case_optimizations && (is_fork_leaf[factor] || is_single_var_ifork_factoring)){
                     // if is_single_var_ifork_factoring, no need to include frontier actions
                     // prices can never get cheaper
-                    if (g_factoring->get_search_type() != SEARCH_TYPE::UNSAT && is_fork_leaf[factor]){
+                    if (is_fork_leaf[factor]){
                         // special case frontier for fork leaves
                         mark_fork_frontier_actions_as_stubborn(factor);
                     }
