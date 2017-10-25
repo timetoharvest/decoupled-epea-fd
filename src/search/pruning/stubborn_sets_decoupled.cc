@@ -540,7 +540,8 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
         add_interfering(op_no);
 
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (!special_case_optimizations || !is_fork_leaf[factor] || !is_single_var_ifork_factoring){
+            if (!special_case_optimizations || (!is_fork_leaf[factor] && !is_single_var_ifork_factoring)){
+                // if special case optimizations are deactivated, or none of the special cases applies..
                 if (op.has_precondition_on(factor)){
                     mark_reached_enabling_set_as_stubborn(factor, op.get_preconditions(factor));
                 }
