@@ -27,6 +27,9 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     bool mutex_pre_interference;
     bool check_ifork_applicable;
     
+    // has an op already been checked for ifork applicability in the current decoupled state
+    std::vector<bool> checked_op_ifork_applicable;
+
     // minimum cost to the goal from each fork leaf state
     std::vector<std::vector<int> > min_cost_to_goal;
     

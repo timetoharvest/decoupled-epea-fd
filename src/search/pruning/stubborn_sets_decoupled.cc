@@ -179,6 +179,10 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         }
     }
     
+    if (special_case_optimizations && check_ifork_applicable && has_ifork_leaf){
+        checked_op_ifork_applicable.resize(g_operators.size(), false);
+    }
+
     compute_interference_relation();
 }
 
@@ -386,12 +390,18 @@ void StubbornSetsDecoupled::compute_interference_relation() {
 }
 
 bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
-    if (special_case_optimizations && check_ifork_applicable && has_ifork_leaf){
-    	// TODO should be easy to cache ifork-leaf-applicability of actions for the
-    	// current decoupled state. not sure if it's worth it.
-
+    if (!special_case_optimizations || !check_ifork_applicable || !has_ifork_leaf){
+        return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
+    } else {
         // if op has unreached precondition on inverted-fork leaf => skip
         // non-applicable inverted-fork leaf actions can never become applicable after state
+        if (checked_op_ifork_applicable[op_no]){
+            // op has been check before for current decoupled state.
+            // if it is applicable, it has already been added, if not
+            // then we don't want to add it.
+            return false;
+        }
+        checked_op_ifork_applicable[op_no] = true;
         const Operator &op = g_operators[op_no];
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
@@ -408,8 +418,8 @@ bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
                 }
             }
         }
+        return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
     }
-    return stubborn_sets::StubbornSets::mark_as_stubborn(op_no);
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
@@ -429,6 +439,10 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             if (!g_goals_per_factor[factor].empty() && is_ifork_leaf[factor] && !current_cpg->goal_reachable(factor)){
                 return;
             }
+        }
+        if (check_ifork_applicable){
+            checked_op_ifork_applicable.clear();
+            checked_op_ifork_applicable.assign(g_operators.size(), false);
         }
     }
 
