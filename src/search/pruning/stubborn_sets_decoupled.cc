@@ -423,10 +423,6 @@ bool StubbornSetsDecoupled::mark_as_stubborn(size_t op_no) {
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
-    // TODO maybe it's better not to mark all ingoing transitions, but to
-    // add a NES for all open goal facts, similar to open preconditions
-    // on the other hand, including the ingoing transitions to goal states is fast!
-    
     current_cpg = CPGStorage::storage->get_cpg(state);
     
     if (special_case_optimizations && has_ifork_leaf){
