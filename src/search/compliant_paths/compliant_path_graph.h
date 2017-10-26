@@ -20,8 +20,9 @@ class StateID;
 
 class CompliantPathGraph {
     friend class POR::SimpleStubbornSets; // access to leaf_state_successors
-    friend class SimulationRelation; // access to leaf_state_pre/successors
-    friend class StateRegistry;
+    friend class PruningOptions; // access to leaf_state_pre/successors
+    friend class SimulationRelation; // access to leaf_goal_states
+    friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class SuccessorGeneratorSwitch; // access to center_successors
     
     /*
@@ -51,7 +52,7 @@ protected:
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
-    // these are only computed when performing goal price propagation
+    // these are only computed if compute_leaf_backwards_graph is true
     static std::vector<std::vector<LeafStateHash> > leaf_goal_states;
     
     static std::vector<std::vector<std::vector<size_t> > > center_successors;
@@ -82,6 +83,8 @@ protected:
     
 public:
     
+    static const int INF;
+    
     virtual ~CompliantPathGraph() = default;
     
     // TODO has_leaf_state and get_number_states are mainly used to iterate 
@@ -110,8 +113,6 @@ public:
                         const Operator &op);
     
 
-    static const int INF;
-    
     static void initialize();
     
     static const PruningOptions& get_pruning_options() {

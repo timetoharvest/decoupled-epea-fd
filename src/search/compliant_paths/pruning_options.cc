@@ -58,7 +58,7 @@ void PruningOptions::init() const {
     if (do_simulation || irrelevance != NO){
         assert(g_factoring->get_profile() == FORK);
 
-        SimulationRelation rel;
+        SimulationRelation rel(CompliantPathGraph::leaf_state_successors, CompliantPathGraph::leaf_state_predecessors);
         rel.init();
         rel.statistics();
         if (irrelevance != NO) {

@@ -10,6 +10,7 @@
 
 
 class Condition;
+class Operator;
 
 
 class SimulationRelation {
@@ -18,18 +19,19 @@ private:
     
     static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
     
+    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd;
+    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd;
     
-    //For each operator, list of operators that dominate it in the
-    //center
+    // For each operator, list of operators that dominate it in the center
     std::vector<boost::dynamic_bitset<> > op_dominated_by;
 
     std::vector<std::vector<boost::dynamic_bitset<> > > relation;
     
-    //Whether states are reachable after irrelevance pruning
+    // Whether states are reachable after irrelevance pruning
     std::vector<boost::dynamic_bitset<>> reachable;
 
-    bool precondition_dominance(const std::vector<const Condition*> & pre, 
-                                const std::vector<const Condition*> & pre2) const;
+    bool precondition_dominance(const std::vector<const Condition*> &pre,
+                                const std::vector<const Condition*> &pre2) const;
 
     void compute_label_dominance();
 
@@ -64,6 +66,9 @@ private:
     const std::string & get_name(LeafStateHash id, LeafFactorID factor) const;
 
 public:
+
+    SimulationRelation(std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
+                       std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_);
 
     void init();
 
