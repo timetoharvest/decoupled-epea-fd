@@ -13,33 +13,37 @@ using namespace std;
 vector<vector<vector<LeafStateHash> > > SimulationRelation::simulated_states;
 
 
-void SimulationRelation::init () {
+SimulationRelation::SimulationRelation(vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
+                                       vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_) :
+        transition_system_fwd(transition_system_fwd_),
+        transition_system_bwd(transition_system_bwd_){
+}
+
+void SimulationRelation::init() {
     cout  << "Initializing simulation relation" << endl;
     compute_label_dominance();
     relation.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-	compute_simulation(factor);
+        compute_simulation(factor);
     }
 }
 
 void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) {
     reachable.resize(g_leaves.size());
     
-    vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &leaf_state_successors = CompliantPathGraph::leaf_state_successors;
-    
     vector<vector<vector<pair<const Operator*, LeafStateHash> > > > tmp;
     if (only_remove_states){
-        tmp = leaf_state_successors;        
+        tmp = transition_system_fwd;        
     }
     
     boost::dynamic_bitset<> dead_ops(g_operators.size(), false);
     int num_transitions_before = 0, num_transitions_after = 0;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        for (LeafStateHash s(0); s  < leaf_state_successors[factor].size(); ++s){
-            auto  & trs_s = leaf_state_successors[factor][s];
-	    for(const auto &tr : trs_s) {
-		dead_ops[tr.first->get_index()] = true;
-	    }
+        for (LeafStateHash s(0); s  < transition_system_fwd[factor].size(); ++s){
+            auto  & trs_s = transition_system_fwd[factor][s];
+            for(const auto &tr : trs_s) {
+                dead_ops[tr.first->get_index()] = true;
+            }
             num_transitions_before += trs_s.size();
             trs_s.erase(std::remove_copy_if(begin(trs_s),
                                             end(trs_s), begin(trs_s),
@@ -62,7 +66,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
 
         // reachability analysis        
         // forward analysis
-        reachable[factor].resize(leaf_state_successors[factor].size(), false);
+        reachable[factor].resize(transition_system_fwd[factor].size(), false);
         
         vector<size_t> current(1, 0);
 
@@ -73,7 +77,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
                     continue;
                 }
                 reachable[factor][id] = true;
-                for (const auto &transition : leaf_state_successors[factor][id]){
+                for (const auto &transition : transition_system_fwd[factor][id]){
                     int t = transition.second;
                     if (!reachable[factor][t]) {
                         next.push_back(t);
@@ -122,46 +126,45 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
         
         
         if (only_remove_states){
-            leaf_state_successors[factor].swap(tmp[factor]);
+            transition_system_fwd[factor].swap(tmp[factor]);
         }
-        
+
         // remove irrelevant states 
         for (LeafStateHash id(0); id < reachable[factor].size(); ++id){
             if (!reachable[factor][id]){
-                vector<pair<const Operator*, LeafStateHash> >().swap(leaf_state_successors[factor][id]);
+                vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_fwd[factor][id]);
             }
         }
-        
-        // (re-)remove transitions entering removed states
-        for (LeafStateHash s(0); s  < leaf_state_successors[factor].size(); ++s){
-            auto &trs_s = leaf_state_successors[factor][s];
-            
-            trs_s.erase(remove_if(begin(trs_s), end(trs_s),
-                [&](pair<const Operator*, LeafStateHash> & tr){
-                    return !reachable[factor][tr.second];
-                }), end(trs_s));
 
-	    for(const auto &tr : trs_s) {
-		dead_ops[tr.first->get_index()] = false;
-	    }
-            
+        // (re-)remove transitions entering removed states
+        for (LeafStateHash s(0); s  < transition_system_fwd[factor].size(); ++s){
+            auto &trs_s = transition_system_fwd[factor][s];
+
+            trs_s.erase(remove_if(begin(trs_s), end(trs_s),
+                    [&](pair<const Operator*, LeafStateHash> & tr){
+                return !reachable[factor][tr.second];
+            }), end(trs_s));
+
+            for(const auto &tr : trs_s) {
+                dead_ops[tr.first->get_index()] = false;
+            }
+
             num_transitions_after += trs_s.size();
         }
     }
     
-    if (CompliantPathGraph::compute_leaf_backwards_graph) {
-        vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &leaf_state_predecessors = CompliantPathGraph::leaf_state_predecessors;
-	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-	    for (LeafStateHash s(0); s  < leaf_state_predecessors[factor].size(); ++s){
-		vector<pair<const Operator*, LeafStateHash> >().swap(leaf_state_predecessors[factor][s]);
-	    }
-	    
-	    for (LeafStateHash s(0); s  < leaf_state_successors[factor].size(); ++s){
-		for (const auto &tr : leaf_state_successors[factor][s]){
-		    leaf_state_predecessors[factor][tr.second].push_back(make_pair(tr.first, s));
-		}
-	    }
-	}
+    if (!transition_system_bwd.empty()) {
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            for (LeafStateHash s(0); s  < transition_system_bwd[factor].size(); ++s){
+                vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_bwd[factor][s]);
+            }
+
+            for (LeafStateHash s(0); s  < transition_system_fwd[factor].size(); ++s){
+                for (const auto &tr : transition_system_fwd[factor][s]){
+                    transition_system_bwd[factor][tr.second].push_back(make_pair(tr.first, s));
+                }
+            }
+        }
     }
 
     for (size_t op = 0; op < g_operators.size(); ++op) {
@@ -189,31 +192,32 @@ bool SimulationRelation::precondition_dominance(const vector<const Condition*> &
 void SimulationRelation::compute_label_dominance() {
     //cout  << "Label dominance" << endl;
     op_dominated_by.resize(g_operators.size());
-    for (auto & elem : op_dominated_by)
-	elem.resize(g_operators.size(), false);
+    for (auto & elem : op_dominated_by){
+        elem.resize(g_operators.size(), false);
+    }
 
     for (auto op = begin(g_operators); op != end(g_operators); ++op) {
-	LeafFactorID factor = op->get_affected_factor();
-	if (factor == LeafFactorID::CENTER) continue; //Skip center actions
-	int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
-	const auto & pre = op->get_preconditions(LeafFactorID::CENTER);
-	
-	for (auto op2 = op; ++op2 != end(g_operators); ) {
-	    if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
-	    int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
-	    const auto & pre2 = op2->get_preconditions(LeafFactorID::CENTER);
-	    
+        LeafFactorID factor = op->get_affected_factor();
+        if (factor == LeafFactorID::CENTER) continue; //Skip center actions
+        int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
+        const auto & pre = op->get_preconditions(LeafFactorID::CENTER);
 
-	    if(cost <= cost2 && precondition_dominance(pre, pre2)) {
-		//cout << op->get_name() << " is dominated by " << op2->get_name() << endl;
-		op_dominated_by[op2->get_index()][op->get_index()] = true;
-	    }
+        for (auto op2 = op; ++op2 != end(g_operators); ) {
+            if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
+            int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
+            const auto & pre2 = op2->get_preconditions(LeafFactorID::CENTER);
 
-	    if (cost2 <= cost && precondition_dominance(pre2, pre)) {
-		//cout << op2->get_name() << " is dominated by " << op->get_name() << endl;
-		op_dominated_by[op->get_index()][op2->get_index()] = true;
-	    }
-	}
+
+            if(cost <= cost2 && precondition_dominance(pre, pre2)) {
+                //cout << op->get_name() << " is dominated by " << op2->get_name() << endl;
+                op_dominated_by[op2->get_index()][op->get_index()] = true;
+            }
+
+            if (cost2 <= cost && precondition_dominance(pre2, pre)) {
+                //cout << op2->get_name() << " is dominated by " << op->get_name() << endl;
+                op_dominated_by[op->get_index()][op2->get_index()] = true;
+            }
+        }
     }
 }
 
@@ -225,24 +229,24 @@ void SimulationRelation::compute_simulation(LeafFactorID factor) {
     BucketQueue<LeafStateHash> open;
 	
     for (LeafStateHash s : CompliantPathGraph::leaf_goal_states[factor]) {
-	goal_distances[s] = 0;
-	open.push(0, s);
+        goal_distances[s] = 0;
+        open.push(0, s);
     }
 
     while (!open.empty()) {
-	pair<int, LeafStateHash> entry = open.pop();
-	LeafStateHash state = entry.second;
-	int value = entry.first;
-	//cout << "s: " << state << endl;
-	if (goal_distances [state] < value) continue;
-	for (const auto &transition :  CompliantPathGraph::leaf_state_predecessors[factor][state]) {
-	    LeafStateHash t = transition.second;
+        pair<int, LeafStateHash> entry = open.pop();
+        LeafStateHash state = entry.second;
+        int value = entry.first;
+        //cout << "s: " << state << endl;
+        if (goal_distances [state] < value) continue;
+        for (const auto &transition :  transition_system_bwd[factor][state]) {
+            LeafStateHash t = transition.second;
 
-	    if (value + 1 < goal_distances[t]) {
-		goal_distances[t] = value + 1;
-		open.push(value + 1, t);
-	    }
-	}
+            if (value + 1 < goal_distances[t]) {
+                goal_distances[t] = value + 1;
+                open.push(value + 1, t);
+            }
+        }
     }
 
     relation[factor].resize(num_states);
@@ -262,38 +266,38 @@ void SimulationRelation::compute_simulation(LeafFactorID factor) {
         changes = false;
         for (LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
             for (LeafStateHash t(0); t < g_state_registry->size(factor); ++t) { //for each pair of states t, s
-		if (s != t && simulates(factor, t, s)) {
+                if (s != t && simulates(factor, t, s)) {
                     //Check if really t simulates s
                     //for each transition s--l->s':
                     // a) with noop t >= s' and l dominated by noop?
                     // b) exist t--l'-->t', t' >= s' and l dominated by l'?
-		    for (const auto &trs : CompliantPathGraph::leaf_state_successors[factor][s]){
-			LeafStateHash trs_target = trs.second;
-			int trs_label = trs.first->get_index();
-			
-			if(simulates (factor, t, trs_target)
-                           /* && op_dominated_by_noop(trs_label)*/) {
-			    continue;
-			}
-			bool found = false;
-			for (const auto &trt  : CompliantPathGraph::leaf_state_successors[factor][t]) {
-			    LeafStateHash trt_target = trt.second;
-			    int trt_label = trt.first->get_index();
+                    for (const auto &trs : transition_system_fwd[factor][s]){
+                        LeafStateHash trs_target = trs.second;
+                        int trs_label = trs.first->get_index();
 
-			    if(op_dominated_by[trs_label][trt_label] &&
-			       simulates(factor, trt_target, trs_target)) {
-				found = true;
-				break;
-			    }
-			}
-			if(!found) {
-			    changes = true;
-			    remove(factor, t, s);
-			}
-		    }
-		}
-	    }
-	}
+                        if(simulates (factor, t, trs_target)
+                        /* && op_dominated_by_noop(trs_label)*/) {
+                            continue;
+                        }
+                        bool found = false;
+                        for (const auto &trt  : transition_system_fwd[factor][t]) {
+                            LeafStateHash trt_target = trt.second;
+                            int trt_label = trt.first->get_index();
+
+                            if(op_dominated_by[trs_label][trt_label] &&
+                                    simulates(factor, trt_target, trs_target)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(!found) {
+                            changes = true;
+                            remove(factor, t, s);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -401,7 +405,7 @@ void SimulationRelation::dump(LeafFactorID factor) const {
     for (LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
 	for (LeafStateHash t(0); t < g_state_registry->size(factor); ++t) { //for each pair of states t, s
 	    if (s != t && simulates(factor, t, s)) {
-		for (const auto &trs  : CompliantPathGraph::leaf_state_successors[factor][s]){
+		for (const auto &trs  : transition_system_fwd[factor][s]){
 		    LeafStateHash trs_target = trs.second;
 		    int trs_label = trs.first->get_index();
 		    
@@ -410,7 +414,7 @@ void SimulationRelation::dump(LeafFactorID factor) const {
 			    get_name(t, factor) << " noop " << endl;
 		        continue;
 		    }
-		    for (const auto &trt  : CompliantPathGraph::leaf_state_successors[factor][t]) {
+		    for (const auto &trt  : transition_system_fwd[factor][t]) {
 			LeafStateHash trt_target = trt.second;
 			int trt_label = trt.first->get_index();
 			

@@ -22,7 +22,8 @@ class StubbornSetsDecoupled;
 
 class CompliantPathGraph {
     friend class stubborn_sets_decoupled::StubbornSetsDecoupled; // access to leaf_state_pre/successors
-    friend class SimulationRelation; // access to leaf_state_pre/successors
+    friend class PruningOptions; // access to leaf_state_pre/successors
+    friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class SuccessorGeneratorSwitch; // access to center_successors
     
