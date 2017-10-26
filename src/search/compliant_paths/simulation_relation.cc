@@ -28,7 +28,7 @@ void SimulationRelation::init() {
     }
 }
 
-void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_states) {
+void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states) {
     reachable.resize(g_leaves.size());
     
     vector<vector<vector<pair<const Operator*, LeafStateHash> > > > tmp;
@@ -153,7 +153,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
         }
     }
     
-    if (!transition_system_bwd.empty()) {
+    if (prune_bwd_graph) {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             for (LeafStateHash s(0); s  < transition_system_bwd[factor].size(); ++s){
                 vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_bwd[factor][s]);
@@ -168,9 +168,9 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
     }
 
     for (size_t op = 0; op < g_operators.size(); ++op) {
-	if (dead_ops[op]){
-	    g_operators[op].set_dead();
-	}
+        if (dead_ops[op]){
+            g_operators[op].set_dead();
+        }
     }
     
     cout << "Irrelevance pruning: " << num_transitions_before << " => " << num_transitions_after  << endl;
@@ -179,12 +179,12 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool only_remove_state
 bool SimulationRelation::precondition_dominance(const vector<const Condition*> &pre, 
 						const vector<const Condition*> &pre2) const {
     for (const auto &p : pre){
-	if (find_if(begin(pre2), end(pre2), [p] (const Condition *p2){
-		    return *p2 == *p;
-		}
-		) == end(pre2)){
-	    return false;
-	}
+        if (find_if(begin(pre2), end(pre2), [p] (const Condition *p2){
+            return *p2 == *p;
+        }
+        ) == end(pre2)){
+            return false;
+        }
     }
     return true;
 }

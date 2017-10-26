@@ -76,7 +76,7 @@ public:
 
     void set_list_dominated_states() const;
 
-    void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
+    void perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states);
     
     
     static const std::vector<std::vector<std::vector<LeafStateHash> > >& get_simulation_relation() {

@@ -33,6 +33,8 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     // minimum cost to the goal from each fork leaf state
     std::vector<std::vector<int> > min_cost_to_goal;
     
+    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > reduced_leaf_state_spaces;
+
     // center actions generating a leaf state
     std::vector<std::vector<std::vector<size_t> > > center_predecessors;
     // center actions enabled by a leaf state
