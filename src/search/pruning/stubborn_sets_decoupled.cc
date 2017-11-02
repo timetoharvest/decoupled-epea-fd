@@ -215,9 +215,9 @@ void StubbornSetsDecoupled::initialize() {
         reduced_leaf_state_spaces = CompliantPathGraph::leaf_state_successors;
 
         SimulationRelation rel(reduced_leaf_state_spaces, CompliantPathGraph::leaf_state_predecessors);
-        rel.init();
+        rel.init(10);
         rel.statistics();
-        rel.perform_leaf_irrelevance_pruning(false, false);
+        rel.perform_leaf_irrelevance_pruning(false, false, false);
 
         min_cost_to_goal.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){

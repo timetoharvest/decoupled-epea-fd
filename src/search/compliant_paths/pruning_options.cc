@@ -62,7 +62,7 @@ void PruningOptions::init() const {
         rel.init();
         rel.statistics();
         if (irrelevance != NO) {
-            rel.perform_leaf_irrelevance_pruning(CompliantPathGraph::compute_leaf_backwards_graph, irrelevance == STATES);
+            rel.perform_leaf_irrelevance_pruning(CompliantPathGraph::compute_leaf_backwards_graph, irrelevance == STATES, true);
         }
 
         if (do_simulation) {

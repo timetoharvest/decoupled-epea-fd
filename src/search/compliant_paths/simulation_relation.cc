@@ -1,6 +1,8 @@
 #include "simulation_relation.h"
 
 #include "compliant_path_graph.h"
+#include "../countdown_timer.h"
+#include "../timer.h"
 #include "../operator.h"
 #include "../factoring.h"
 #include "../state_registry.h"
@@ -19,16 +21,27 @@ SimulationRelation::SimulationRelation(vector<vector<vector<pair<const Operator*
         transition_system_bwd(transition_system_bwd_){
 }
 
-void SimulationRelation::init() {
-    cout  << "Initializing simulation relation" << endl;
+void SimulationRelation::init(int timeout) {
+    CountdownTimer timer(timeout > 0 ? timeout : numeric_limits<double>::infinity());
+    cout  << "Initializing simulation relation. [t=" << g_timer() << "s]" << endl;
+
     compute_label_dominance();
+    if (timer.is_expired()){
+        return;
+    }
     relation.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        compute_simulation(factor);
+        if (g_factoring->is_fork_leaf(factor)){
+            cout  << "Computing simulation relation for leaf " << factor << " [t=" << g_timer() << "s]" << endl;
+            compute_simulation(factor, timer);
+            if (timer.is_expired()){
+                return;
+            }
+        }
     }
 }
 
-void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states) {
+void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states, bool mark_dead_ops) {
     reachable.resize(g_leaves.size());
     
     vector<vector<vector<pair<const Operator*, LeafStateHash> > > > tmp;
@@ -36,13 +49,22 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
         tmp = transition_system_fwd;        
     }
     
-    boost::dynamic_bitset<> dead_ops(g_operators.size(), false);
+    boost::dynamic_bitset<> dead_ops;
+    if (mark_dead_ops){
+        dead_ops.resize(g_operators.size(), false);
+    }
     int num_transitions_before = 0, num_transitions_after = 0;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (relation[factor].empty()){
+            // is a non-fork leaf or the computation timed out
+            continue;
+        }
         for (LeafStateHash s(0); s  < transition_system_fwd[factor].size(); ++s){
             auto  & trs_s = transition_system_fwd[factor][s];
-            for(const auto &tr : trs_s) {
-                dead_ops[tr.first->get_index()] = true;
+            if (mark_dead_ops){
+                for(const auto &tr : trs_s) {
+                    dead_ops[tr.first->get_index()] = true;
+                }
             }
             num_transitions_before += trs_s.size();
             trs_s.erase(std::remove_copy_if(begin(trs_s),
@@ -145,8 +167,10 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
                 return !reachable[factor][tr.second];
             }), end(trs_s));
 
-            for(const auto &tr : trs_s) {
-                dead_ops[tr.first->get_index()] = false;
+            if (mark_dead_ops){
+                for(const auto &tr : trs_s) {
+                    dead_ops[tr.first->get_index()] = false;
+                }
             }
 
             num_transitions_after += trs_s.size();
@@ -155,6 +179,10 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
     
     if (prune_bwd_graph) {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (relation[factor].empty()){
+                // is a non-fork leaf or the computation timed out
+                continue;
+            }
             for (LeafStateHash s(0); s  < transition_system_bwd[factor].size(); ++s){
                 vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_bwd[factor][s]);
             }
@@ -167,9 +195,11 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
         }
     }
 
-    for (size_t op = 0; op < g_operators.size(); ++op) {
-        if (dead_ops[op]){
-            g_operators[op].set_dead();
+    if (mark_dead_ops){
+        for (size_t op = 0; op < g_operators.size(); ++op) {
+            if (dead_ops[op]){
+                g_operators[op].set_dead();
+            }
         }
     }
     
@@ -198,12 +228,20 @@ void SimulationRelation::compute_label_dominance() {
 
     for (auto op = begin(g_operators); op != end(g_operators); ++op) {
         LeafFactorID factor = op->get_affected_factor();
-        if (factor == LeafFactorID::CENTER) continue; //Skip center actions
+        if (factor == LeafFactorID::CENTER || !g_factoring->is_fork_leaf(factor)) {
+            // skip center and non-fork leaf actions
+            continue;
+        }
+
         int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
         const auto & pre = op->get_preconditions(LeafFactorID::CENTER);
 
         for (auto op2 = op; ++op2 != end(g_operators); ) {
-            if(factor != op2->get_affected_factor()) continue; //Skip actions of other factors
+            if(factor != op2->get_affected_factor()) {
+                // Skip actions of other factors
+                continue;
+            }
+
             int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
             const auto & pre2 = op2->get_preconditions(LeafFactorID::CENTER);
 
@@ -221,9 +259,9 @@ void SimulationRelation::compute_label_dominance() {
     }
 }
 
-void SimulationRelation::compute_simulation(LeafFactorID factor) {
-    //cout  << "Compute simulation: " << factor << endl;
-    //Init goal respecting
+void SimulationRelation::compute_simulation(LeafFactorID factor, const CountdownTimer &timer) {
+//    cout  << "Compute simulation: " << factor << endl;
+    // Init goal respecting
     size_t num_states = g_state_registry->size(factor);
     vector<int> goal_distances(num_states, numeric_limits<int>::max()); 
     BucketQueue<LeafStateHash> open;
@@ -234,14 +272,22 @@ void SimulationRelation::compute_simulation(LeafFactorID factor) {
     }
 
     while (!open.empty()) {
+        cout << g_timer() << endl;
+        if (timer.is_expired()){
+            relation[factor].clear();
+            return;
+        }
         pair<int, LeafStateHash> entry = open.pop();
         LeafStateHash state = entry.second;
         int value = entry.first;
         //cout << "s: " << state << endl;
-        if (goal_distances [state] < value) continue;
+        if (goal_distances[state] < value) {
+            continue;
+        }
         for (const auto &transition :  transition_system_bwd[factor][state]) {
             LeafStateHash t = transition.second;
 
+            // TODO why +1? should be action cost!?
             if (value + 1 < goal_distances[t]) {
                 goal_distances[t] = value + 1;
                 open.push(value + 1, t);
@@ -251,6 +297,10 @@ void SimulationRelation::compute_simulation(LeafFactorID factor) {
 
     relation[factor].resize(num_states);
     for(LeafStateHash i(0); i < num_states; ++i){
+        if (timer.is_expired()){
+            relation[factor].clear();
+            return;
+        }
         relation[factor][i].resize(num_states, true);
         if(!CompliantPathGraph::is_leaf_goal_state(i, factor)){
             for (LeafStateHash j(0); j < num_states; ++j){
@@ -264,6 +314,10 @@ void SimulationRelation::compute_simulation(LeafFactorID factor) {
     bool changes = true;
     while (changes) {
         changes = false;
+        if (timer.is_expired()){
+            relation[factor].clear();
+            return;
+        }
         for (LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
             for (LeafStateHash t(0); t < g_state_registry->size(factor); ++t) { //for each pair of states t, s
                 if (s != t && simulates(factor, t, s)) {
@@ -360,31 +414,36 @@ void SimulationRelation::set_list_dominated_states() const {
     
     simulated_states.resize(g_leaves.size());
 
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){        
-	simulated_states[factor].resize(relation[factor].size());
-	for(LeafStateHash s(0); s < relation[factor].size(); ++s){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        simulated_states[factor].resize(relation[factor].size());
+        for(LeafStateHash s(0); s < relation[factor].size(); ++s){
             if(!reachable.empty() && !reachable[factor][s]) continue;
-	    for(LeafStateHash t(0); t < relation[factor].size(); ++t) {
+            for(LeafStateHash t(0); t < relation[factor].size(); ++t) {
                 if(!reachable.empty() && !reachable[factor][t]) continue;
-		if (s != t && simulates(factor, t, s)){
-		    simulated_states[factor][t].push_back(s);
-		}
-	    }
-	}
+                if (s != t && simulates(factor, t, s)){
+                    simulated_states[factor][t].push_back(s);
+                }
+            }
+        }
     }
 }
 
 void SimulationRelation::statistics() const {
-    cout << "Simulation Relation Finished. " << endl;
+    cout << "Simulation Relation Finished. [t=" << g_timer() << "s]" << endl;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){    
-	cout << "Factor " <<  factor << " has " <<
-	    num_equivalences(factor) << " equivalences and " << 
-	    num_simulations(factor, true) << " simulations " << endl;
-// 	dump(factor);
+        cout << "Factor " <<  factor << " has " <<
+                num_equivalences(factor) << " equivalences and " <<
+                num_simulations(factor, true) << " simulations " << endl;
+        // 	dump(factor);
     }    
 }
 
-void SimulationRelation::dump(LeafFactorID factor) const { 
+void SimulationRelation::dump(LeafFactorID factor) const {
+    if (relation[factor].empty()){
+        // is a non-fork leaf or the computation timed out
+        return;
+    }
+
     cout << "SIMREL:" << endl;
 
     for(LeafStateHash j(0); j < relation[factor].size(); ++j){
@@ -403,31 +462,31 @@ void SimulationRelation::dump(LeafFactorID factor) const {
 
     cout << "Reasons: " << endl;
     for (LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
-	for (LeafStateHash t(0); t < g_state_registry->size(factor); ++t) { //for each pair of states t, s
-	    if (s != t && simulates(factor, t, s)) {
-		for (const auto &trs  : transition_system_fwd[factor][s]){
-		    LeafStateHash trs_target = trs.second;
-		    int trs_label = trs.first->get_index();
-		    
-		    if(simulates(factor, t, trs_target)) {
-			cout << get_name(s, factor) << " -> " << get_name(trs_target, factor) << " is simulated by " << 
-			    get_name(t, factor) << " noop " << endl;
-		        continue;
-		    }
-		    for (const auto &trt  : transition_system_fwd[factor][t]) {
-			LeafStateHash trt_target = trt.second;
-			int trt_label = trt.first->get_index();
-			
-			if(op_dominated_by[trs_label][trt_label] &&
-			   simulates(factor, trt_target, trs_target)) {
-			    cout << get_name(s, factor) << " -> " << get_name(trs_target, factor) << " is simulated by " << 
-				get_name(t, factor) << " -> " << get_name(trt_target, factor) << endl;
-			    break;
-			}
-		    }
-		}
-	    }
-	}
+        for (LeafStateHash t(0); t < g_state_registry->size(factor); ++t) { //for each pair of states t, s
+            if (s != t && simulates(factor, t, s)) {
+                for (const auto &trs  : transition_system_fwd[factor][s]){
+                    LeafStateHash trs_target = trs.second;
+                    int trs_label = trs.first->get_index();
+
+                    if(simulates(factor, t, trs_target)) {
+                        cout << get_name(s, factor) << " -> " << get_name(trs_target, factor) << " is simulated by " <<
+                                get_name(t, factor) << " noop " << endl;
+                        continue;
+                    }
+                    for (const auto &trt  : transition_system_fwd[factor][t]) {
+                        LeafStateHash trt_target = trt.second;
+                        int trt_label = trt.first->get_index();
+
+                        if(op_dominated_by[trs_label][trt_label] &&
+                                simulates(factor, trt_target, trs_target)) {
+                            cout << get_name(s, factor) << " -> " << get_name(trs_target, factor) << " is simulated by " <<
+                                    get_name(t, factor) << " -> " << get_name(trt_target, factor) << endl;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
