@@ -287,7 +287,6 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const Countdown
         for (const auto &transition :  transition_system_bwd[factor][state]) {
             LeafStateHash t = transition.second;
 
-            // TODO why +1? should be action cost!?
             if (value + 1 < goal_distances[t]) {
                 goal_distances[t] = value + 1;
                 open.push(value + 1, t);
