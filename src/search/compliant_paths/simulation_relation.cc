@@ -54,7 +54,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
         dead_ops.resize(g_operators.size(), false);
     }
     int num_transitions_before = 0, num_transitions_after = 0;
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+    for (LeafFactorID factor(0); factor < relation.size(); ++factor){
         if (relation[factor].empty()){
             // is a non-fork leaf or the computation timed out
             continue;
@@ -178,7 +178,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
     }
     
     if (prune_bwd_graph) {
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafFactorID factor(0); factor < relation.size(); ++factor){
             if (relation[factor].empty()){
                 // is a non-fork leaf or the computation timed out
                 continue;
@@ -413,12 +413,16 @@ void SimulationRelation::set_list_dominated_states() const {
     
     simulated_states.resize(g_leaves.size());
 
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+    for (LeafFactorID factor(0); factor < relation.size(); ++factor){
         simulated_states[factor].resize(relation[factor].size());
         for(LeafStateHash s(0); s < relation[factor].size(); ++s){
-            if(!reachable.empty() && !reachable[factor][s]) continue;
+            if(!reachable.empty() && !reachable[factor][s]){
+                continue;
+            }
             for(LeafStateHash t(0); t < relation[factor].size(); ++t) {
-                if(!reachable.empty() && !reachable[factor][t]) continue;
+                if(!reachable.empty() && !reachable[factor][t]){
+                    continue;
+                }
                 if (s != t && simulates(factor, t, s)){
                     simulated_states[factor][t].push_back(s);
                 }
@@ -429,7 +433,10 @@ void SimulationRelation::set_list_dominated_states() const {
 
 void SimulationRelation::statistics() const {
     cout << "Simulation Relation Finished. [t=" << g_timer() << "s]" << endl;
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){    
+    if (relation.empty()){
+        cout << "No relation computed due to timeout." << endl;
+    }
+    for (LeafFactorID factor(0); factor < relation.size(); ++factor){
         cout << "Factor " <<  factor << " has " <<
                 num_equivalences(factor) << " equivalences and " <<
                 num_simulations(factor, true) << " simulations " << endl;
