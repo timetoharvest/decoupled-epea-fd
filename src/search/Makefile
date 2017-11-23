@@ -33,14 +33,6 @@ DOWNWARD_GUROBI_LIBDIR ?=
 ## On OS X, this is unsupported and will be silently disabled.
 DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 
-## Set CANONICAL to 0 or 1 to control whether additional buffer is used in state proxy
-## for symmetries.
-CANONICAL=0
-
-## Set DEBUGMODE to 0 or 1 to control whether additional output is produced.
-DEBUGMODE=0
-
-
 ## On a supported operating system, there should be no need to override
 ## the DOWNWARD_OS setting. If the provided code does not work even
 ## though your operating system is a supported one, please report this
@@ -52,15 +44,12 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
-          compliant_paths/compliant_path_graph.h \
           countdown_timer.h \
-          compliant_paths/cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
           equivalence_relation.h \
           exact_timer.h \
-          factoring.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
@@ -68,8 +57,6 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
-          leaf_state.h\
-          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
@@ -77,9 +64,8 @@ HEADERS = \
           option_parser_util.h \
           segmented_vector.h \
           per_state_information.h \
-          por/por_method.h \
+          pruning/por_method.h \
           pref_evaluator.h \
-          pruning/pruning.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -112,9 +98,6 @@ HEADERS = \
 ## As with all changes to the Makefile, you will have to force a
 ## rebuild after such a change. Deleting the executable and running
 ## "make" to relink is enough; no need to do a complete rebuild.
-
-## Needed for factoring the variables
-HEADERS += ../preprocess/scc.h
 
 HEADERS += additive_heuristic.h
 HEADERS += blind_search_heuristic.h
@@ -178,19 +161,26 @@ HEADERS += max_heuristic.h
 
 # TODO check how to decouple this from the POR interface, so we can comment
 # this out here
-HEADERS += por/expansion_core.h \
-           por/simple_stubborn_sets.h \
-           por/sss_expansion_core.h
+HEADERS += pruning/expansion_core.h \
+           pruning/simple_stubborn_sets.h \
+           pruning/sss_expansion_core.h
            
-HEADERS += pruning/cost_frontier.h \
-           pruning/simulation_relation.h \
-           pruning/prunable.h
+# TODO make decoupled search plugable
+HEADERS += factoring.h \
+           leaf_state.h\
+           leaf_state_id.h\
+           ../preprocess/scc.h
 
-HEADERS += compliant_paths/path_price_tag.h \
+HEADERS += compliant_paths/compliant_path_graph.h \
+           compliant_paths/cpg_storage.h \
+           compliant_paths/effective_prices.h \
+           compliant_paths/frontier_prices.h \
+           compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
-           compliant_paths/pruning_prices.h \
+           compliant_paths/pruning_options.h \
            compliant_paths/pruning_reachable.h \
-           compliant_paths/reachability_function.h
+           compliant_paths/reachability_function.h \
+           compliant_paths/simulation_relation.h
            
 HEADERS += symmetries/graph_creator.h \
            symmetries/permutation.h \
@@ -436,15 +426,6 @@ POSTLINKOPT_DEBUG += $(BLISS_LINKOPT) $(BLISS_LINKOPT_DEBUG)
 POSTLINKOPT_PROFILE += $(BLISS_LINKOPT)
 
 endif # BLISS code
-
-ifeq ($(CANONICAL), 1)
-CXXFLAGS += -DCANONICAL
-endif
-
-ifeq ($(DEBUGMODE), 1)
-CXXFLAGS += -DDEBUGMODE
-endif
-
 
 all: release debug profile
 

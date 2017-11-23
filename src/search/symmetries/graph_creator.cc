@@ -18,7 +18,7 @@ GraphCreator::GraphCreator(const Options &opts) :
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
     decoupled_symmetry_pruning = opts.get<bool>("decoupled_symmetry_pruning");
-    if (decoupled_symmetry_pruning && !g_use_decoupled_search){
+    if (decoupled_symmetry_pruning && !g_factoring){
         cout << "decoupled symmetry pruning can only be used if decoupled search is enabled" << endl;
         exit_with(EXIT_INPUT_ERROR);
     }
@@ -70,8 +70,6 @@ void GraphCreator::initialize() {
 #endif
 }
 
-
-
 GraphCreator::~GraphCreator() {
     // Freeing the group
     free_memory();
@@ -89,10 +87,10 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     int idx = 0;
     // add vertex for each varaible
     for (size_t i = 0; i < g_variable_domain.size(); i++){
-	if(g_use_decoupled_search && g_belongs_to_factor[i] == -1) {
-	    idx = g->add_vertex(CENTER_FACTOR_VERTEX);
+        if(g_use_decoupled_search && g_belongs_to_factor[i] == -1) {
+            idx = g->add_vertex(CENTER_FACTOR_VERTEX);
         } else {
-	    idx = g->add_vertex(PREDICATE_VERTEX);
+            idx = g->add_vertex(PREDICATE_VERTEX);
         }
     }
     // now add values vertices for each predicate
@@ -131,15 +129,15 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
         g->change_color(goal_idx, GOAL_VERTEX);
     }
 
-    if (g_use_decoupled_search) {
-	for (const auto &gpf : g_goals_per_factor){
-	    for (const auto &gp : gpf) {
-		int var = gp.first;
-		int val = gp.second;
-		int goal_idx = Permutation::findex.dom_sum_by_var[var] + val;
-		g->change_color(goal_idx, GOAL_VERTEX);
-	    }
-	}
+    if (g_factoring) {
+        for (const auto &gpf : g_goals_per_factor){
+            for (const auto &gp : gpf) {
+                int var = gp.first;
+                int val = gp.second;
+                int goal_idx = Permutation::findex.dom_sum_by_var[var] + val;
+                g->change_color(goal_idx, GOAL_VERTEX);
+            }
+        }
     }
     return g;
 }
@@ -162,7 +160,7 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator
         if (eff.conditions.size() == 0) {
             g->add_edge(op_idx, eff_idx);
         } else {
-	    cerr << "Error: conditional effects are not implemented in this version (look at metis code)" << endl;
+            cerr << "Error: conditional effects are not implemented in this version (look at metis code)" << endl;
 //            	cout << "Adding a node for conditional effect" << endl;
 /*            // Adding a node for each condition. An edge from op to node, an edge from node to eff,
             // for each cond, an edge from cond to node.
@@ -180,9 +178,8 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator
                 g->add_edge(c_idx, cond_op_idx); // Edge from condition to conditional effect
             }
 	    }*/
-	}
+        }
     }
-
 }
 /*
 bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const {
@@ -224,9 +221,9 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 
 unique_ptr<DecoupledPermutation> 
 GraphCreator::create_permutation_from_state_to_state(const State &state, 
-						     const CompliantPathGraph &cpg,
-						     const State &succ_state, 
-						     const CompliantPathGraph &succ_cpg) const {
+                                                     const CompliantPathGraph &cpg,
+                                                     const State &succ_state,
+                                                     const CompliantPathGraph &succ_cpg) const {
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
@@ -267,13 +264,7 @@ static GraphCreator *_parse(OptionParser &parser) {
     Options opts = parser.parse();
 
     if (!parser.dry_run()) {
-        cout << "Creating symmetry graph stabilizing goal only and using ";
-#ifdef CANONICAL
-        cout << "regular ";
-#else
-        cout << "orbit ";
-#endif
-        cout << "search" << endl;
+        cout << "Creating symmetry graph stabilizing goal only and using orbit search" << endl;
         return new GraphCreator(opts);
     } else {
         return 0;

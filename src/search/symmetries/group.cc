@@ -59,7 +59,7 @@ void Group::add_generator(Permutation gen) {
     }
 
     generators.push_back(gen);
-#ifdef DEBUGMODE
+#ifndef NDEBUG
     cout << "Added generator number " << get_num_generators();
 #endif
 

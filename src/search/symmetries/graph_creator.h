@@ -49,14 +49,14 @@ public:
     }
 
     std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center)  const {
-	assert(decoupled_group);
+        assert(decoupled_group);
         return decoupled_group->get_stabilized_permutations(center);
     }
 
     
     const std::vector<int> & get_canonical_decoupled_state(const State &center,
-							   CompliantPathGraph &leaves)  const {
-	assert(decoupled_group);
+							                               CompliantPathGraph &leaves) const {
+        assert(decoupled_group);
         return decoupled_group->get_canonical_decoupled_state(center, leaves, lex_ordering);
     }
     

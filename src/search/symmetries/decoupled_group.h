@@ -36,11 +36,10 @@ public:
     std::unique_ptr<DecoupledPermutation> compose_permutation(const DecoupledTrace &trace) const;
 
     const std::vector<int> & get_canonical_decoupled_state(const State &center, 
-                                                           CompliantPathGraph &leaves, 
+                                                           CompliantPathGraph &leaves,
                                                            const LexicographicOrdering &lex_ordering) const;
 
     std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center) const;
-
     
     void statistics () const;
     

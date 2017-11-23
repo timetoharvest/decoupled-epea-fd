@@ -8,6 +8,7 @@
 #include "factoring.h"
 #include "heuristic.h"
 #include "int_packer.h"
+#include "leaf_state_id.h"
 #include "operator.h"
 #include "rng.h"
 #include "state.h"
@@ -42,14 +43,14 @@ static vector<vector<set<pair<int, int> > > > g_inconsistent_facts;
 
 bool test_goal(const State &state) {
     for (size_t i = 0; i < g_goal.size(); ++i) {
-        assert(!g_use_decoupled_search || g_belongs_to_factor[g_goal[i].first] == -1);
+        assert(!g_factoring || g_belongs_to_factor[g_goal[i].first] == LeafFactorID::CENTER);
         if (state[g_goal[i].first] != g_goal[i].second){
             return false;
         }
     }
-    if (g_use_decoupled_search){
+    if (g_factoring){
         const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
-        for (size_t factor = 0; factor < g_factors.size(); ++factor) {
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
             if (!g_goals_per_factor[factor].empty() && !cpg->goal_reachable(factor)){
                 return false;
             }
@@ -235,14 +236,14 @@ void read_operators(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)
-        g_operators.push_back(Operator(in, false, i));
+        g_operators.push_back(Operator(in, false));
 }
 
 void read_axioms(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)
-        g_axioms.push_back(Operator(in, true, -1));
+        g_axioms.push_back(Operator(in, true));
 
     g_axiom_evaluator = new AxiomEvaluator;
 }
@@ -280,24 +281,23 @@ void read_everything(istream &in) {
     cout << "done! [t=" << g_timer << "]" << endl;
     
     
-    if (g_use_decoupled_search){
+    if (g_factoring){
         verify_no_axioms_no_conditional_effects();
         
         g_factoring->do_factoring_or_abstain();
     }
 
     assert(!g_variable_domain.empty());
-    if (g_use_decoupled_search){
-        
+    if (g_factoring){        
         vector<int> center_domains;
-        vector<vector<int> > leaf_domains(g_factors.size());
+        vector<vector<int> > leaf_domains(g_leaves.size());
         for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
-            int factor = g_belongs_to_factor[var];
-            if (factor == -1){
+            LeafFactorID factor = g_belongs_to_factor[var];
+            if (factor == LeafFactorID::CENTER){
                 center_domains.push_back(g_variable_domain[var]);
             } else {
                 if (leaf_domains[factor].empty()){
-                    leaf_domains[factor].resize(g_factors[factor].size(), -1);
+                    leaf_domains[factor].resize(g_leaves[factor].size(), -1);
                 }
                 leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
             }
@@ -307,8 +307,8 @@ void read_everything(istream &in) {
         
         cout << "packing state variables..." << flush;
         g_state_packer = new IntPacker(center_domains);
-        cout << "Variables: " << g_center_vars.size() << endl;
-        g_leaf_factor_packers = vector<IntPacker*>(g_factors.size(), 0);
+        cout << "Variables: " << g_center.size() << endl;
+        g_leaf_factor_packers = vector<IntPacker*>(g_leaves.size(), 0);
         for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
             g_leaf_factor_packers[i] = new IntPacker(leaf_domains[i]);
         }
@@ -322,11 +322,11 @@ void read_everything(istream &in) {
          << g_state_packer->get_num_bins() *
             g_state_packer->get_bin_size_in_bytes() << endl;
     
-    if (g_use_decoupled_search){
-	for (size_t i = 0; i < g_factors.size(); i++){
-	    cout << "Bytes per state of leaf factor " << i << ": "
-		<< g_leaf_factor_packers[i]->get_num_bins() *
-		    g_leaf_factor_packers[i]->get_bin_size_in_bytes() << endl;
+    if (g_factoring){
+	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+	    cout << "Bytes per state of leaf factor " << factor << ": "
+		<< g_leaf_factor_packers[factor]->get_num_bins() *
+		    g_leaf_factor_packers[factor]->get_bin_size_in_bytes() << endl;
 	}
     }
     
@@ -428,20 +428,19 @@ int g_max_action_cost = 0;
 // also take into account non-fork factorings and new pruning methods!
 size_t MAX_DUPLICATE_COUNTER = 100000;
 
-Factoring *g_factoring;
-bool g_use_decoupled_search;
-bool g_compute_leaf_backward_graph = false;
+unique_ptr<Factoring> g_factoring;
 
 int g_inc_g_by;
-
-vector<int> g_belongs_to_factor;
-vector<vector<int> > g_factors;
 
 vector<string> g_variable_name;
 vector<int> g_variable_domain;
 
-vector<int> g_center_vars;
-vector<int> g_new_index;
+vector<int> g_center;
+vector<vector<int> > g_leaves;
+vector<LeafFactorID> g_belongs_to_factor;
+vector<size_t> g_new_index;
+
+unique_ptr<GraphCreator> g_symmetry_graph;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
@@ -468,6 +467,3 @@ Timer g_timer;
 string g_plan_filename = "sas_plan";
 RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
 StateRegistry *g_state_registry = 0;
-
-// Globals for symmetries
-unique_ptr<GraphCreator> g_symmetry_graph;

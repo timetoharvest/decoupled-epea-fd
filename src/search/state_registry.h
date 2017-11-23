@@ -112,7 +112,7 @@ class StateRegistry {
         StateIDSemanticHash(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
             : state_data_pool(state_data_pool_) {
         }
-        size_t operator()(StateID id) const {
+        size_t operator()(const StateID &id) const {
             return ::hash_number_sequence(state_data_pool[id.value], g_state_packer->get_num_bins());
         }
     };
@@ -123,7 +123,7 @@ class StateRegistry {
             : state_data_pool(state_data_pool_) {
         }
 
-        size_t operator()(StateID lhs, StateID rhs) const {
+        size_t operator()(const StateID &lhs, const StateID &rhs) const {
             size_t size = g_state_packer->get_num_bins();
             const PackedStateBin *lhs_data = state_data_pool[lhs.value];
             const PackedStateBin *rhs_data = state_data_pool[rhs.value];
@@ -136,8 +136,8 @@ class StateRegistry {
         LeafStateIDSemanticHash(const std::vector<SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
             : data_pool(state_data_pool_) {
         }
-        size_t operator() (LeafStateID id) const {
-            return ::hash_number_sequence((*data_pool[id.factor])[id.hash()], g_leaf_factor_packers[id.factor]->get_num_bins());
+        size_t operator() (const LeafStateID &id) const {
+            return ::hash_number_sequence((*data_pool[id.factor])[id.value], g_leaf_factor_packers[id.factor]->get_num_bins());
         }
     };
 
@@ -147,7 +147,7 @@ class StateRegistry {
             : data_pool(state_data_pool_) {
         }
 
-        size_t operator() (LeafStateID lhs, LeafStateID rhs) const {
+        size_t operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
             assert(lhs.factor == rhs.factor);
             size_t size = g_leaf_factor_packers[lhs.factor]->get_num_bins();
             const PackedStateBin *lhs_data = (*data_pool[lhs.factor])[lhs.value];
@@ -166,8 +166,8 @@ class StateRegistry {
                                 StateIDSemanticEqual> StateIDSet;
                                 
     typedef __gnu_cxx::hash_set<LeafStateID,
-                            LeafStateIDSemanticHash,
-                            LeafStateIDSemanticEqual> LeafFactorIDSet;
+                                LeafStateIDSemanticHash,
+                                LeafStateIDSemanticEqual> LeafFactorIDSet;
                             
     typedef __gnu_cxx::hash_map<size_t, size_t> DupCounterTable;
                             
@@ -192,8 +192,8 @@ class StateRegistry {
     
     StateID insert_id_or_pop_state();
     
-    LeafStateID insert_id_or_pop_leaf_state(int factor);
-    
+    LeafStateHash insert_id_or_pop_leaf_state(LeafFactorID factor);
+
     void permute_initial_state();
     
 public:
@@ -210,7 +210,7 @@ public:
       Returns the redFact that was registered at the given ID. The ID must refer
       to a redFact in this registry. Do not mix IDs from from different registries.
     */
-    LeafState lookup_leaf_state(LeafStateID id) const;
+    LeafState lookup_leaf_state(LeafStateHash id, LeafFactorID factor) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not
@@ -239,16 +239,16 @@ public:
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
     */
-    State get_center_state(const State &center, int dup_counter);
-    
+    State get_center_state(const State &predecessor, int dup_counter);
+
     State get_center_successor(const State &center, const Operator &op);
-    
-    LeafState get_successor_leaf_state(const LeafState &predecessor, const Operator &op);
-    
+
     /**
      * NOTE: At least one leaf state in this factor has to exist
      */
-    LeafState get_leaf_state(const std::vector<int> &facts, int factor);
+    LeafState get_leaf_state(const std::vector<int> &facts, LeafFactorID factor);
+    
+    LeafStateHash get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op);
 
     /*
       Returns the number of states registered so far.
@@ -260,7 +260,7 @@ public:
     /*
      * Returns the number of states registered for the specified leaf factor
      */
-    size_t size(int factor) const {
+    size_t size(LeafFactorID factor) const {
 	return registered_leaf_states[factor].size();
     }
     

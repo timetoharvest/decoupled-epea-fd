@@ -65,7 +65,7 @@ void HSPMaxHeuristic::setup_exploration_queue() {
 
 void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (search_type == STD || g_belongs_to_factor[var] == -1){
+	if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
 	    Proposition *init_prop = &propositions[var][state[var]];
 	    enqueue_if_necessary(init_prop, 0);
 	}
@@ -104,9 +104,9 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
 
     if (search_type != STD){
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-	for (size_t factor = 0; factor < g_factors.size(); factor++){
+	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 	    int number_states = tag->get_number_states(factor);
-            size_t id = 0;
+            LeafStateHash id(0);
 	    while (number_states > 0){
 		if (tag->has_leaf_state(id, factor)){
                     --number_states;
@@ -114,9 +114,9 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
                     if (search_type == STAR){
                         base_cost = tag->get_cost_of_state(id, factor);
                     }
-                    const LeafState &f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                    for (size_t v = 0; v < g_factors[factor].size(); ++v) {
-                        int var = g_factors[factor][v];
+                    const LeafState &f = g_state_registry->lookup_leaf_state(id, factor);
+                    for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+                        int var = g_leaves[factor][v];
                         Proposition *effect = &propositions[var][f[var]];
                         enqueue_if_necessary(effect, base_cost);
                     }

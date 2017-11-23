@@ -48,10 +48,10 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &center, 
-								  CompliantPathGraph &leaves, 
-								  const LexicographicOrdering &lex_ordering) const {
+                                                                  CompliantPathGraph &leaves,
+                                                                  const LexicographicOrdering &lex_ordering) const {
 
-    for (int var : g_center_vars) {
+    for (int var : g_center) {
         tmp_state[var] = center[var];
     }
 
@@ -126,7 +126,7 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
 
     res.canonical_cpg = leaves.clone();
     res.canonical_center.resize(g_variable_domain.size(), -1);
-    for (int var : g_center_vars) {
+    for (int var : g_center) {
         res.canonical_center[var] = center[var];
     }
 

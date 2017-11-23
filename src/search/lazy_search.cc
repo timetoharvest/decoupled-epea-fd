@@ -3,10 +3,11 @@
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "heuristic.h"
+#include "plugin.h"
 #include "successor_generator.h"
 #include "sum_evaluator.h"
+#include "compliant_paths/pruning_options.h"
 #include "weighted_evaluator.h"
-#include "plugin.h"
 
 #include <algorithm>
 #include <limits>
@@ -24,8 +25,8 @@ LazySearch::LazySearch(const Options &opts)
       current_operator(NULL),
       current_g(0),
       current_real_g(0) {
-    if (g_use_decoupled_search && reopen_closed_nodes){
-        g_factoring->set_reopen_closed_nodes();
+    if (g_factoring && reopen_closed_nodes){
+        PruningOptions::set_reopen_closed_nodes();
     }
 }
 
@@ -154,7 +155,7 @@ SearchStatus LazySearch::step() {
     SearchNode node = search_space.get_node(current_state);
     bool reopen = reopen_closed_nodes && (current_g < node.get_g()) && !node.is_dead_end() && !node.is_new();
     
-    if (g_use_decoupled_search && g_factoring->ignore_current_search_state()){
+    if (g_factoring && PruningOptions::ignore_current_state()){
         reopen = false;
     }
 

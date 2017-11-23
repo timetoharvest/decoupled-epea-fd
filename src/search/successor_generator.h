@@ -7,11 +7,12 @@
 class CompliantPathGraph;
 class Operator;
 class State;
+struct LeafFactorID;
 class LeafState;
 
 class SuccessorGenerator {
 public:
-    virtual ~SuccessorGenerator() {}
+    virtual ~SuccessorGenerator() = default;
     
     virtual SuccessorGenerator *copy() const = 0;
     
@@ -32,7 +33,7 @@ public:
                                          
     // split up general SG into separate ones for each factor
     // returns the number of remaining operators in this SuccessorGenerator
-    virtual int split_ops_center_leaf(int factor) = 0;
+    virtual int split_ops_center_leaf(LeafFactorID factor) = 0;
     virtual void clear() = 0;
     
     void dump() {_dump("  "); }

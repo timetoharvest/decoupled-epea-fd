@@ -4,7 +4,7 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
-#include "por/por_method.h"
+#include "pruning/por_method.h"
 
 #include <algorithm>
 #include <iostream>
@@ -41,13 +41,14 @@ If NT shall be predefinable:
   should add an explanation to OptionParser::usage().
 */
 
+
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
 class GraphCreator;
 template<class Entry>
 class OpenList;
-class Pruning;
+class PruningOptions;
 class SearchEngine;
 class MergeStrategy;
 class ShrinkStrategy;
@@ -142,9 +143,9 @@ public:
 };
 
 template <>
-class TokenParser<Pruning *> {
+class TokenParser<PruningOptions *> {
 public:
-    static inline Pruning *parse(OptionParser &p);
+    static inline PruningOptions *parse(OptionParser &p);
 };
 
 template <>
@@ -463,8 +464,8 @@ Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
     return lookup_in_registry<Factoring>(p);
 }
 
-Pruning *TokenParser<Pruning *>::parse(OptionParser &p) {
-    return lookup_in_registry<Pruning>(p);
+PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {
+    return lookup_in_registry<PruningOptions>(p);
 }
 
 ParseTree TokenParser<ParseTree>::parse(OptionParser &p) {

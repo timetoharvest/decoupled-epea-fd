@@ -287,7 +287,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_random_dynamic(const St
 
 pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& state) {
     const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         // factor has a goal that is not reachable
         if (!g_goals_per_factor[factor].empty() && !tag->goal_reachable(factor)){
             int number_open_goals = g_goals_per_factor[factor].size();
@@ -296,11 +296,11 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
             vector<bool> is_unsatisfied_goal(number_open_goals, false); // true => is not fulfilled by some leaf state
         
             size_t number_states = tag->get_number_states(factor);
-            size_t id = 0;
+            LeafStateHash id(0);
             while (number_states > 0){
                 if (tag->has_leaf_state(id, factor)){
                     --number_states;
-                    LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                    LeafState s = g_state_registry->lookup_leaf_state(id, factor);
                     for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
                         int var = g_goals_per_factor[factor][i].first;
                         int val = g_goals_per_factor[factor][i].second;
@@ -352,7 +352,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_goal_decoupled(const State& 
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int goal_var = g_goal[i].first;
         int goal_value = g_goal[i].second;
-        if (g_belongs_to_factor[goal_var] == -1 && state[goal_var] != goal_value) {
+        if (g_belongs_to_factor[goal_var] == LeafFactorID::CENTER && state[goal_var] != goal_value) {
             return make_pair(goal_var, goal_value);
         }
     }
@@ -544,10 +544,10 @@ static inline pair<int, int> find_unsatisfied_precondition_forward(const Operato
 pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const Operator &op, 
                                                                            const State &state) {
     
-    if (op.get_affected_factor() != -1){
+    if (op.get_affected_factor() != LeafFactorID::CENTER){
         // in fork-factoring, an op can only have preconditions on one leaf + center
         
-        int factor = op.get_affected_factor();
+        LeafFactorID factor = op.get_affected_factor();
         
         const vector<const Condition*> &preconds = op.get_preconditions(factor);
         
@@ -560,11 +560,11 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
         size_t number_states = tag->get_number_states(factor);
-        size_t id = 0;
+        LeafStateHash id(0);
         while (number_states > 0){
             if (tag->has_leaf_state(id, factor)){
                 --number_states;
-                LeafState s = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
+                LeafState s = g_state_registry->lookup_leaf_state(id, factor);
                 bool applicable_state = true;
                 for (size_t i = 0; i < preconds.size(); ++i) {
                     int var = preconds[i]->var;
@@ -619,7 +619,7 @@ pair<int, int> SimpleStubbornSets::find_unsatisfied_precondition_decoupled(const
         }
     }
        
-    const vector<const Condition*> &preconds = op.get_preconditions(-1);
+    const vector<const Condition*> &preconds = op.get_preconditions(LeafFactorID::CENTER);
     for (size_t i = 0; i < preconds.size(); ++i) {
         int var = preconds[i]->var;
         int value = preconds[i]->val;
@@ -1102,8 +1102,8 @@ SimpleStubbornSets::SimpleStubbornSets(const Options& opts) :
     use_active_ops(opts.get<bool>("active_ops")),
     ignore_leaf_interference(opts.get<bool>("ignore_leaf_interference")),
     laarman_k(opts.get<int>("laarman_k")) {
-    if (g_use_decoupled_search || precond_choice == decoupled){
-        assert(g_use_decoupled_search);
+    if (g_factoring || precond_choice == decoupled){
+        assert(g_factoring);
         assert(precond_choice == decoupled);
         assert(g_factoring->get_profile() == FORK);
     }
@@ -1191,7 +1191,7 @@ void SimpleStubbornSets::compute_interference_relation() {
     size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
     for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
-        if (ignore_leaf_interference && g_operators[op1_no].get_affected_factor() != -1){
+        if (ignore_leaf_interference && g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
             // do not store interfering operators for leaf operators
             continue;
         }
@@ -1322,21 +1322,21 @@ void SimpleStubbornSets::mark_open_center_pre_of_decoupled_goal_frontier(const S
     // instantiate a disjunctive action landmark; thus, we need to collect *all* of them
     
     const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        vector<vector<pair<const Operator*, size_t> > > &leaf_successors = CompliantPathGraph::leaf_state_successors[factor];
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        vector<vector<pair<const Operator*, LeafStateHash> > > &leaf_successors = CompliantPathGraph::leaf_state_successors[factor];
         
         size_t number_states = tag->get_number_states(factor);
-        size_t id = 0;        
+        LeafStateHash id(0);        
         while (number_states > 0){
             if (tag->has_leaf_state(id, factor)){
                 --number_states;
                 for (size_t succ = 0; succ < leaf_successors[id].size(); ++succ){
                     const Operator *op = leaf_successors[id][succ].first;
-                    int successor_id = leaf_successors[id][succ].second;
-                    int new_price = tag->get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, g_factoring->get_cost_type());
+                    LeafStateHash successor_id = leaf_successors[id][succ].second;
+                    int new_price = tag->get_cost_of_state(id, factor) + get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
                     if (!tag->has_leaf_state(successor_id, factor) || new_price < tag->get_cost_of_state(successor_id, factor)){
                         // is frontier state
-                        const vector<const Condition*> &preconditions = op->get_preconditions(-1);
+                        const vector<const Condition*> &preconditions = op->get_preconditions(LeafFactorID::CENTER);
 #ifndef NDEBUG
                         bool found_open_pre = false;
 #endif
@@ -1495,7 +1495,7 @@ void SimpleStubbornSets::do_pruning(
         active_ops.assign(g_operators.size(), true);
     }
 
-    if (g_use_decoupled_search && test_goal(state)){
+    if (g_factoring && test_goal(state)){
         // get all open center preconditions of all leaf frontier states
         
         mark_open_center_pre_of_decoupled_goal_frontier(state);      
@@ -1522,7 +1522,7 @@ void SimpleStubbornSets::do_pruning(
         const Operator &op = g_operators[op_no];
         
 	pair<int, int> fact;
-        if (g_use_decoupled_search){
+        if (g_factoring){
             fact = find_unsatisfied_precondition_decoupled(op, state);
         } else {
             // HACK: also used for applicability test
@@ -1540,7 +1540,7 @@ void SimpleStubbornSets::do_pruning(
 
 	    // HACK: if precond_choice == 0, then we have the required
 	    // fact already computed in the applicability test above
-	    if (precond_choice != 0 && !g_use_decoupled_search) {
+	    if (precond_choice != 0 && !g_factoring) {
 		fact = find_unsatisfied_precondition(op, state);
 	    }
 	    add_nes_for_fact(fact);

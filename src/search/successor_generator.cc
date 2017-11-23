@@ -33,7 +33,7 @@ public:
                                          bool ignore_leaf_pre = false) const;
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
                                          vector<const Operator *> &ops, bool only_center_ops) const;
-    virtual int split_ops_center_leaf(int factor);
+    virtual int split_ops_center_leaf(LeafFactorID factor);
     virtual void clear();
     virtual void _dump(string indent);
 };
@@ -57,7 +57,7 @@ public:
                                          bool ignore_leaf_pre = false) const;
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
 					 vector<const Operator *> &ops, bool only_center_ops) const;
-    virtual int split_ops_center_leaf(int factor);
+    virtual int split_ops_center_leaf(LeafFactorID factor);
     virtual void clear();
     virtual void _dump(string indent);
 };
@@ -86,26 +86,30 @@ SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(const SuccessorGeneratorSwitc
 void SuccessorGeneratorSwitch::generate_applicable_ops(
     const State &curr, vector<const Operator *> &ops, bool ignore_leaf_pre) const {
     
-    if (g_use_decoupled_search && g_factoring->get_profile() != FORK && !ignore_leaf_pre){
+    if (g_factoring && g_factoring->get_profile() != FORK && !ignore_leaf_pre){
         vector<const Operator*> center_ops;
         generate_applicable_ops(curr, center_ops, true);
+        
+        // TODO: for IFORK leaves that are invertible, there is no need to actually check
+        // the leaf preconditions. collecting all actions enabled by the current
+        // center state is enough.
         
         vector<int> counter(g_operators.size(), 0);
 
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(curr);
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (!g_factoring->has_successors(factor)){
-                continue;       // is fork leaf
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (g_factoring->is_fork_leaf(factor)){
+                continue;
             }
 
             vector<bool> is_applicable_leaf(g_operators.size(), false);
             size_t number_states = tag->get_number_states(factor);
-            size_t id = 0;
+            LeafStateHash id(0);
             while (number_states > 0){
                 if (tag->has_leaf_state(id, factor)){
                     --number_states;
-                    for (size_t op = 0; op < CompliantPathGraph::center_successors[factor][id].size(); ++op){
-                        int index = CompliantPathGraph::center_successors[factor][id][op];
+                    assert(id < CompliantPathGraph::center_successors[factor].size());
+                    for (const size_t &index : CompliantPathGraph::center_successors[factor][id]){
                         if (!is_applicable_leaf[index]){
                             ++counter[index];
                             is_applicable_leaf[index] = true;
@@ -118,20 +122,20 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
 #ifndef NDEBUG
         vector<bool> added(g_operators.size(), false);
 #endif
-        for (size_t i = 0; i < center_ops.size(); ++i){
-            int op = center_ops[i]->get_index();
-            if (counter[op] == g_operators[op].get_number_pre_factors()){
+        for (const auto &op : center_ops){
+            int op_i = op->get_index();
+            if (counter[op_i] == g_operators[op_i].get_number_leaf_pre_factors()){
 #ifndef NDEBUG
-                assert(!added[op]);
-                added[op] = true;
+                assert(!added[op_i]);
+                added[op_i] = true;
 #endif
-                ops.push_back(&g_operators[op]);
+                ops.push_back(op);
             }
         }
         return;
     }
     immediate_ops->generate_applicable_ops(curr, ops, ignore_leaf_pre);
-    if (!g_use_decoupled_search || g_belongs_to_factor[switch_var] == -1){
+    if (!g_factoring || g_belongs_to_factor[switch_var] == LeafFactorID::CENTER){
         if (!generator_for_value.empty()){
             generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, ops, ignore_leaf_pre);
         }
@@ -154,14 +158,14 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(const State &curr,
         
         vector<int> counter(g_operators.size(), 0);
 
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            if (!g_factoring->has_successors(factor)){
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (g_factoring->is_fork_leaf(factor)){
                 continue;       // is fork leaf
             }
 
             vector<bool> is_applicable_leaf(g_operators.size(), false);
             size_t number_states = cpg.get_number_states(factor);
-            size_t id = 0;
+            LeafStateHash id(0);
             while (number_states > 0){
                 if (cpg.has_leaf_state(id, factor)){
                     --number_states;
@@ -181,7 +185,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(const State &curr,
 #endif
         for (size_t i = 0; i < center_ops.size(); ++i){
             int op = center_ops[i]->get_index();
-            if (counter[op] == g_operators[op].get_number_pre_factors()){
+            if (counter[op] == g_operators[op].get_number_leaf_pre_factors()){
 #ifndef NDEBUG
                 assert(!added[op]);
                 added[op] = true;
@@ -192,7 +196,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(const State &curr,
         return;
     }
     immediate_ops->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
-    if (!g_use_decoupled_search || g_belongs_to_factor[switch_var] == -1){
+    if (!g_factoring || g_belongs_to_factor[switch_var] == LeafFactorID::CENTER){
         if (!generator_for_value.empty()){
             generator_for_value[curr[switch_var]]->generate_applicable_ops(curr, cpg, ops, ignore_leaf_pre);
         }
@@ -205,16 +209,16 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(const State &curr,
 }
 
 void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
-                                                vector<const Operator*> &ops, bool only_center_ops)  const {
+                                                vector<const Operator*> &ops, bool only_center_ops) const {
     // ignores center preconditions
     immediate_ops->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
-    if (g_belongs_to_factor[switch_var] == leaf_state.get_id().get_factor()){
+    if (g_belongs_to_factor[switch_var] == (int) leaf_state.get_id().get_factor()){
         if (!generator_for_value.empty()){
             generator_for_value[leaf_state[switch_var]]->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
         }
 #ifndef NDEBUG
         else {
-            assert(!CompliantPathGraph::precompute_leaf_state_space(leaf_state.get_id().get_factor()) || g_symmetry_graph);
+            assert(!CompliantPathGraph::precompute_leaf_state_space(leaf_state.get_id().get_factor()));
         }
 #endif
     } else {
@@ -226,7 +230,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafS
     default_generator->generate_applicable_ops_ignore_others(leaf_state, ops, only_center_ops);
 }
 
-int SuccessorGeneratorSwitch::split_ops_center_leaf(int factor) {
+int SuccessorGeneratorSwitch::split_ops_center_leaf(LeafFactorID factor) {
     int imm_ops = immediate_ops->split_ops_center_leaf(factor);
     if (imm_ops == 0){
         immediate_ops->clear();
@@ -328,10 +332,10 @@ void SuccessorGeneratorGenerate::generate_applicable_ops(const State&,
 void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const LeafState &state,
                                                          vector<const Operator*> &ops, 
                                                          bool only_center_ops) const {
-    int factor = state.get_id().get_factor();
+    LeafFactorID factor = state.get_id().get_factor();
     for (size_t i = 0; i < operators.size(); ++i){
         if (only_center_ops){
-            if (operators[i]->get_affected_factor() == -1 &&
+            if (operators[i]->get_affected_factor() == LeafFactorID::CENTER &&
                 (operators[i]->has_precondition_on(factor)
                   || !operators[i]->get_effects(factor).empty())){
                 ops.push_back(operators[i]);
@@ -342,7 +346,7 @@ void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const Lea
     }
 }
 
-int SuccessorGeneratorGenerate::split_ops_center_leaf(int factor) {
+int SuccessorGeneratorGenerate::split_ops_center_leaf(LeafFactorID factor) {
     vector<const Operator*> new_ops;
     for (size_t i = 0; i < operators.size(); ++i){
 	if (operators[i]->get_affected_factor() == factor){
