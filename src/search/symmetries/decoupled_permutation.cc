@@ -11,86 +11,108 @@
 
 using namespace std;
 
-FactIndex LeavesPermutation::findex_leaves;
 
+DecoupledFactIndex LeavesPermutation::findex_leaves;
+
+void DecoupledFactIndex::init() {
+    length = 0;
+    for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        state_sum_by_factor.push_back(length);
+        length += g_state_registry->size(factor);
+        for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
+            factor_by_index.push_back(factor);
+        }
+    }
+}
+
+int DecoupledFactIndex::get_factor_by_index(int ind)  const {
+    return factor_by_index[ind];
+}
+
+pair<LeafStateHash, LeafFactorID> DecoupledFactIndex::get_leaf_state_by_index(int ind) const {
+    LeafFactorID factor = factor_by_index[ind];
+    LeafStateHash id(ind - state_sum_by_factor[factor]);
+    return make_pair(id, factor);
+}
+
+int DecoupledFactIndex::get_index_by_leaf_state(LeafStateHash id, LeafFactorID factor) const {
+    return state_sum_by_factor[factor] + id;
+}
 
 LeavesPermutation::LeavesPermutation(const Permutation &per) 
                              : permutation(new Permutation(per)) {
 
-    affected.assign(g_factors.size(), false);
+    affected.assign(g_leaves.size(), false);
    
     for (int v : per.vars_affected) {
-        int factor = g_belongs_to_factor[v];
-        if (factor >= 0 && !affected[factor]) {
+        LeafFactorID factor = g_belongs_to_factor[v];
+        if (factor != LeafFactorID::CENTER && !affected[factor]) {
             factors_affected.push_back(factor);
             affected[factor] = true;
         }
     }
 
-    from_factors.assign(g_factors.size(), -1);
+    from_factors.assign(g_leaves.size(), LeafFactorID::CENTER);
     for (size_t v = 0; v < per.from_vars.size(); ++v) {
         int from_v = per.from_vars[v];
-        int factor  = g_belongs_to_factor[v];
+        LeafFactorID factor  = g_belongs_to_factor[v];
 
-        if (factor == -1 || from_v == -1){
+        if (factor == LeafFactorID::CENTER || from_v == -1){
             continue;
         }
         
-        int from_factor  = g_belongs_to_factor[from_v];
+        LeafFactorID from_factor  = g_belongs_to_factor[from_v];
             
         assert(from_factor != -1);
-        assert(from_factors[factor] == -1 || from_factors[factor] == from_factor);
+        assert(from_factors[factor] == LeafFactorID::CENTER || from_factors[factor] == from_factor);
             
         from_factors[factor] = from_factor;
     }
 
-    value.resize(findex_leaves.length);
-    inverse_value.resize(findex_leaves.length);
+    value.resize(findex_leaves.size());
+    inverse_value.resize(findex_leaves.size());
  
-    for(size_t factor = 0; factor < g_factors.size(); ++factor){
-        for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
-            LeafState l = g_state_registry->lookup_leaf_state(LeafStateID(s, factor));
-            int symm_factor = -1;
+    for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
+            LeafState l = g_state_registry->lookup_leaf_state(s, factor);
+            LeafFactorID symm_factor = LeafFactorID::CENTER;
             vector<int> symm_leaf_state;
-            for(int v : g_factors[factor]) {
+            for(int v : g_leaves[factor]) {
                 auto mapped_to = per.get_new_var_val_by_old_var_val(v, l[v]);
                 int symm_var = mapped_to.first;
                 int symm_val = mapped_to.second;
-                assert(symm_factor == -1 || symm_factor ==  g_belongs_to_factor[symm_var]);
+                assert(symm_factor == LeafFactorID::CENTER || symm_factor == g_belongs_to_factor[symm_var]);
 
                 symm_factor =  g_belongs_to_factor[symm_var];
-                if(symm_leaf_state.size() != g_factors[symm_factor].size()) {
-                    symm_leaf_state.resize(g_factors[symm_factor].size());
+                if(symm_leaf_state.size() != g_leaves[symm_factor].size()) {
+                    symm_leaf_state.resize(g_leaves[symm_factor].size());
                 }
                 symm_leaf_state[g_new_index[symm_var]] = symm_val;
             }
 
-            int symm_id = CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
+            LeafStateHash symm_id = CompliantPathGraph::get_leaf_state_id(symm_leaf_state, symm_factor);
 
-            int index = findex_leaves.get_index_by_var_val_pair(factor, s);
-            int symm_index = findex_leaves.get_index_by_var_val_pair(symm_factor, symm_id);
+            int index = findex_leaves.get_index_by_leaf_state(s, factor);
+            int symm_index = findex_leaves.get_index_by_leaf_state(symm_id, symm_factor);
 
-            //set_value(index, symm_index);
             value[index] = symm_index;
             inverse_value[symm_index] = index;
         }
     }
 
     finalize();
-    //cout << "Factor permutation: "; for (int f : from_factors) cout << f << " "; cout << endl;
-    //cout << "Value permutation: "; for (int v : value) cout << v << " "; cout << endl;
 }
 
 LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1, 
                                       const LeavesPermutation &perm2)
                                  : permutation(new Permutation(*perm1.permutation, *perm2.permutation)) {
     
-    affected.resize(g_factors.size(), false);
-    value.resize(findex_leaves.length, -1);
-    from_factors.resize(g_factors.size(), -1);
-    inverse_value.resize(findex_leaves.length, -1);
+    affected.resize(g_leaves.size(), false);
+    value.resize(findex_leaves.size(), -1);
+    from_factors.resize(g_leaves.size(), LeafFactorID::CENTER);
+    inverse_value.resize(findex_leaves.size(), -1);
     
-    for (size_t i = 0; i < findex_leaves.length; i++) {
+    for (size_t i = 0; i < findex_leaves.size(); i++) {
         set_value(i, perm2.value[perm1.value[i]]);
     }
     finalize();
@@ -99,94 +121,122 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1,
 LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)
                                  : permutation(new Permutation(*perm.permutation, invert)){
     
-    affected.resize(g_factors.size(), false);
-    value.resize(findex_leaves.length, -1);
-    from_factors.resize(g_factors.size(), -1);
-    inverse_value.resize(findex_leaves.length, -1);
+    affected.resize(g_leaves.size(), false);
+    value.resize(findex_leaves.size(), -1);
+    from_factors.resize(g_leaves.size(), LeafFactorID::CENTER);
+    inverse_value.resize(findex_leaves.size(), -1);
 
     if(invert) {
-        for (size_t i = 0; i < findex_leaves.length; i++){
+        for (size_t i = 0; i < findex_leaves.size(); i++){
             set_value(perm.value[i], i);
         }
     } else {
-        for (size_t i = 0; i < findex_leaves.length; i++){
+        for (size_t i = 0; i < findex_leaves.size(); i++){
             set_value(i, perm.value[i]);
         }
     }
     finalize();
 }
 
-pair<int, int> LeavesPermutation::get_new_factor_state_by_old_factor_state(int factor, int state) const {
-    int old_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
+pair<LeafStateHash, LeafFactorID> LeavesPermutation::get_new_factor_state_by_old_factor_state(LeafStateHash id, LeafFactorID factor) const {
+    int old_ind = findex_leaves.get_index_by_leaf_state(id, factor);
     int new_ind = value[old_ind];
-    return findex_leaves.get_var_val_by_index(new_ind);
+    return findex_leaves.get_leaf_state_by_index(new_ind);
 }
 
-pair<int, int> LeavesPermutation::get_old_factor_state_by_new_factor_state(int factor, int state) const {
-    int new_ind = findex_leaves.get_index_by_var_val_pair(factor, state);
+pair<LeafStateHash, LeafFactorID> LeavesPermutation::get_old_factor_state_by_new_factor_state(LeafStateHash id, LeafFactorID factor) const {
+    int new_ind = findex_leaves.get_index_by_leaf_state(id, factor);
     int old_ind = inverse_value[new_ind];
-    return findex_leaves.get_var_val_by_index(old_ind);
+    return findex_leaves.get_leaf_state_by_index(old_ind);
 }
 
 cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
-    for(int to_factor : factors_affected) {
-        int from_factor = from_factors[to_factor];
-        if(factors_affected.size() == 2 && from_factor <= to_factor) continue; // This has been compared in the other directionor or is the same factor
-        // TODO the above if only works if the cycle involves <= 2 factors
+    for(LeafFactorID to_factor : factors_affected) {
+        LeafFactorID from_factor = from_factors[to_factor];
+        if(factors_affected.size() == 2 && from_factor <= to_factor) {
+            // This has been compared in the other directionor or is the same factor
+            // TODO the above if only works if the cycle involves <= 2 factors
+            continue;
+        }
 
-        if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)) return cmp_t::LESS;
-        if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)) return cmp_t::GREATER;
+        if(cpg.get_number_states(from_factor) > cpg.get_number_states(to_factor)){
+            return cmp_t::LESS;
+        }
+        if(cpg.get_number_states(from_factor) < cpg.get_number_states(to_factor)){
+            return cmp_t::GREATER;
+        }
     }
     return cmp_t::EQUAL;
 }
 
 cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
-    for (int to_factor : factors_affected){
-        int from_factor = from_factors[to_factor];
-        if (factors_affected.size() == 2 && from_factor <= to_factor) continue; // This has been compared in the other direction or is the same factor
-        // TODO the above if only works if the cycle involves <= 2 factors
+    for (LeafFactorID to_factor : factors_affected){
+        LeafFactorID from_factor = from_factors[to_factor];
+        if (factors_affected.size() == 2 && from_factor <= to_factor) {
+            // This has been compared in the other direction or is the same factor
+            // TODO the above if only works if the cycle involves <= 2 factors
+            continue;
+        }
 
         int cost_from = cpg.get_goal_cost(from_factor);
         int cost_to = cpg.get_goal_cost(to_factor);
 
-
         bool has_from = cost_from >= 0; 
         bool has_to = cost_to >= 0; 
 
-        if (has_from && !has_to) return cmp_t::LESS;
-        if (!has_from && has_to) return cmp_t::GREATER;
+        if (has_from && !has_to) {
+            return cmp_t::LESS;
+        }
+        if (!has_from && has_to) {
+            return cmp_t::GREATER;
+        }
 
-        if (cost_from < cost_to) return cmp_t::LESS;
-        if (cost_from > cost_to) return cmp_t::GREATER;
+        if (cost_from < cost_to) {
+            return cmp_t::LESS;
+        }
+        if (cost_from > cost_to) {
+            return cmp_t::GREATER;
+        }
     }
     return cmp_t::EQUAL;
 }
 
 cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
-    for (int to_factor : factors_affected){
-        int from_factor = from_factors[to_factor];
-        if(factors_affected.size() == 2 && from_factor < to_factor) continue; // This has been compared in the other direction
-        // TODO the above if only works if the cycle involves <= 2 factors
+    for (LeafFactorID to_factor : factors_affected){
+        LeafFactorID from_factor = from_factors[to_factor];
+        if(factors_affected.size() == 2 && from_factor < to_factor) {
+            // This has been compared in the other direction
+            // TODO the above if only works if the cycle involves <= 2 factors
+            continue;
+        }
 
         assert(g_state_registry->size(to_factor) == g_state_registry->size(from_factor));
 
-        for (size_t to_id = 0; to_id < g_state_registry->size(from_factor); ++to_id){
-            pair<int, int> from_pair = get_old_factor_state_by_new_factor_state(to_factor, to_id);
-            assert(from_pair.first == from_factor);
-            int from_id = from_pair.second;
+        for (LeafStateHash to_id(0); to_id < g_state_registry->size(from_factor); ++to_id){
+            pair<LeafStateHash, LeafFactorID> from_pair = get_old_factor_state_by_new_factor_state(to_id, to_factor);
+            assert(from_pair.second == from_factor);
+            LeafStateHash from_id = from_pair.first;
             
-            bool has_from = cpg.has_leaf_state (from_id, from_factor); 
+            bool has_from = cpg.has_leaf_state(from_id, from_factor);
             bool has_to = cpg.has_leaf_state (to_id, to_factor); 
 
-            if(has_from && !has_to) return cmp_t::LESS;
-            if(!has_from && has_to) return cmp_t::GREATER;
+            if(has_from && !has_to) {
+                return cmp_t::LESS;
+            }
+            if(!has_from && has_to) {
+                return cmp_t::GREATER;
+            }
                 
             if(has_from && has_to) {
                 int cost_from = cpg.get_cost_of_state(from_id, from_factor);
                 int cost_to = cpg.get_cost_of_state(to_id, to_factor);
 
-                if(cost_from < cost_to) return cmp_t::LESS;
-                if(cost_from > cost_to) return cmp_t::GREATER;
+                if(cost_from < cost_to) {
+                    return cmp_t::LESS;
+                }
+                if(cost_from > cost_to) {
+                    return cmp_t::GREATER;
+                }
             }
         }
     }
@@ -200,7 +250,7 @@ void LeavesPermutation::finalize() {
     vector<bool> marked;
     marked.assign(from_factors.size(), false);
     for (size_t i = 0; i < from_factors.size(); i++){
-        if (marked[i] || from_factors[i] == -1){
+        if (marked[i] || from_factors[i] == LeafFactorID::CENTER){
             continue;
         }
 
@@ -224,8 +274,8 @@ void LeavesPermutation::set_value(int ind, int val) {
     value[ind] = val;
     inverse_value[val] = ind;
 
-    int var = findex_leaves.get_var_by_index(ind);
-    int to_var = findex_leaves.get_var_by_index(val);
+    LeafFactorID var(findex_leaves.get_factor_by_index(ind));
+    LeafFactorID to_var(findex_leaves.get_factor_by_index(val));
 
     if (!affected[var]) {
         factors_affected.push_back(var);
@@ -251,7 +301,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
 
     for (const auto &eff : effects) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff.var, eff.val);
-        if (g_belongs_to_factor[new_var_val.first] != -1){
+        if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
             if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect &eff2) {
                         return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
                     }) == effects2.end() ) {
@@ -262,7 +312,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
 
     for (const auto &pre : preconditions) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
-        if (g_belongs_to_factor[new_var_val.first] != -1){
+        if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
             if(find_if(preconditions2.begin(), preconditions2.end(), [new_var_val] (const Condition &pre2) {
                         return pre2.var == new_var_val.first && pre2.val == new_var_val.second;
                     }) == preconditions2.end() ) {
@@ -279,10 +329,10 @@ void LeavesPermutation::print_cycle_notation() const {
     for (size_t i = g_variable_domain.size(); i < permutation->findex.length; ++i){
         if (find(done.begin(), done.end(), i) == done.end()){
             pair<int, int> varval = permutation->findex.get_var_val_by_index(i);
-	    if (g_belongs_to_factor[varval.first] == -1 || !affected[g_belongs_to_factor[varval.first]]){
+            if (g_belongs_to_factor[varval.first] == LeafFactorID::CENTER || !affected[g_belongs_to_factor[varval.first]]){
                 continue;
-	    }
-	    
+            }
+
             int current = i;
             if(permutation->get_value(i) == (int) i){
                 continue; //don't print cycles of size 1
@@ -303,14 +353,14 @@ void LeavesPermutation::print_cycle_notation() const {
     }
     cout << endl << "Variables:  ";
     for (const auto &var : permutation->vars_affected){
-        if (g_belongs_to_factor[var] != -1){
+        if (g_belongs_to_factor[var] != LeafFactorID::CENTER){
             cout << var << "  ";
         }
     }
     cout << endl << "Variables permuted:  ";
 
     for (const auto &var : permutation->vars_affected){
-        if (g_belongs_to_factor[var] != -1){
+        if (g_belongs_to_factor[var] != LeafFactorID::CENTER){
             cout << permutation->from_vars[var] << " -> " << var << "  ";
         }
     }
@@ -321,7 +371,7 @@ void LeavesPermutation::print_cycle_notation() const {
         cout << "( " ;
         bool is_center = false;
         for (const auto &var : cycle) {
-            if (g_belongs_to_factor[var] == -1){
+            if (g_belongs_to_factor[var] == LeafFactorID::CENTER){
                 is_center = true;
             }
             cout << var << " ";
@@ -337,7 +387,7 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
     vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
 				       [&](int x){ 
-					   if(g_belongs_to_factor[x] >= 0) {
+					   if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
 					       affected[x] = false;
 					       return true;
 					   }
@@ -345,7 +395,7 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
 			vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
-        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] >= 0) {
+        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
             from_vars[i] = -1;
         }
     }
@@ -359,9 +409,10 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
 
 bool CenterPermutation::is_valid() const {
     return std::all_of(from_vars.begin(), from_vars.end(), [] (int v) {
-		return v == -1 ||  g_belongs_to_factor[v] == -1;
+		return v == -1 ||  g_belongs_to_factor[v] == LeafFactorID::CENTER;
 	});
 }
+
 CenterPermutation::CenterPermutation(const CenterPermutation &p1, 
                                      const CenterPermutation &p2) : 
     Permutation(p1, p2) {
@@ -370,7 +421,7 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
     vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
 				       [&](int x){ 
-					   if(g_belongs_to_factor[x] >= 0) {
+					   if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
 					       affected[x] = false;
 					       return true;
 					   }
@@ -378,7 +429,7 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
 			vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
-        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] >= 0) {
+        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
             from_vars[i] = -1;
         }
     }
@@ -390,8 +441,8 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
     assert(p2.is_valid());
 
     if(!p1.is_valid()) {
-	int * i = nullptr;
-	*i = 0;
+        int * i = nullptr;
+        *i = 0;
     }
     assert(p1.is_valid());
 
@@ -399,23 +450,21 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
 }
 
 bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
-    const vector<const Effect*> &effects = op->get_effects(-1);
-    const vector<const Effect*> &effects2 = op2->get_effects(-1);
+    const vector<const Effect*> &effects = op->get_effects(LeafFactorID::CENTER);
+    const vector<const Effect*> &effects2 = op2->get_effects(LeafFactorID::CENTER);
     if (effects.size() != effects2.size()){
         return false;
     }
     for (auto eff : effects) {
-	auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
-	if(find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
-		    return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
-		}) == effects2.end() ) {
-	    return false;
-	}
+        auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
+        if (find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
+            return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+        }) == effects2.end() ) {
+            return false;
+        }
     }
-    
     return true;
 }
-
 
 DecoupledPermutation::DecoupledPermutation(const Permutation &p) { 
     if (p.number_leaves_affected() > 0){
@@ -436,7 +485,6 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
     if (per.leaves_permutation){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*per.leaves_permutation, false));
     }
-
     assert(has_valid_center_permutation());
 }
 
@@ -448,7 +496,6 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
     if (per.leaves_permutation) {
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(*per.leaves_permutation, invert));
     }
-
     assert(has_valid_center_permutation());
 }
 
@@ -491,7 +538,6 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
 	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
 	    leaves.apply_symmetry_permutation(*leaves_permutation));    
 }
-
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
                                                    CompliantPathGraph &leaves) const {
@@ -569,26 +615,27 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
 									  const vector<const Operator *> &ops) const {
 
     assert(!ops.empty());
-
     
     if (!center_permutation && !leaves_permutation){
         assert(find(ops.begin(), ops.end(), main_op) != ops.end());
         return main_op;
     }
     
+    OperatorCost cost_type = CompliantPathGraph::get_cost_type();
+
     for(const auto op : ops) {
-	if (op->get_cost() == main_op->get_cost()) {
-	    if (!center_permutation){
-                if(!are_equal(main_op->get_effects(-1), op->get_effects(-1))) {
+        if (get_adjusted_action_cost(*op, cost_type) == get_adjusted_action_cost(*main_op, cost_type)) {
+            if (!center_permutation){
+                if(!are_equal(main_op->get_effects(LeafFactorID::CENTER), op->get_effects(LeafFactorID::CENTER))) {
                     continue;
                 }
             } else if (!center_permutation->is_symmetric_op(main_op, op)){
                 continue;                
             }
 
-	    if (!leaves_permutation){
+            if (!leaves_permutation){
                 bool equal = true;
-                for (size_t factor = 0; factor < g_factors.size(); ++factor){
+                for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                     if(!are_equal(main_op->get_effects(factor), op->get_effects(factor))){
                         equal = false;
                         break;
@@ -602,13 +649,13 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
                 if (!equal) {
                     continue;
                 }
-	    } else if (!leaves_permutation->is_symmetric_op(main_op, op)){
+            } else if (!leaves_permutation->is_symmetric_op(main_op, op)){
                 continue;
-	    }
-	
-	    return op;
+            }
 
-	}
+            return op;
+
+        }
     }
 
     cerr << "Error: no symmetric operator found in  DecoupledPermutation::find_matching_min_cost_permuted_op"  << endl;    

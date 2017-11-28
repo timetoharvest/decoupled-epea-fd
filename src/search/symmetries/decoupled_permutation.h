@@ -1,31 +1,57 @@
 #ifndef SYMMETRIES_DECOUPLED_PERMUTATION_H
 #define SYMMETRIES_DECOUPLED_PERMUTATION_H
 
+#include "../leaf_state_id.h"
 #include "permutation.h"
 
 #include <memory>
 
+class CompliantPathGraph;
 class LexicographicOrdering;
 class Operator;
 class Prices;
+
+class DecoupledFactIndex {
+// Alvaro: Putting all the static data members in one class, so that it
+// is easier to have two separated instances for center and leaves.
+    size_t length;
+    std::vector<LeafFactorID> factor_by_index;
+    std::vector<int> state_sum_by_factor;
+
+public:
+
+    void init();
+
+    size_t size() const {
+        return length;
+    }
+
+    int get_factor_by_index(int ind) const;
+
+    std::pair<LeafStateHash, LeafFactorID> get_leaf_state_by_index(int ind) const;
+
+    int get_index_by_leaf_state(LeafStateHash id, LeafFactorID factor) const;
+};
 
 class LeavesPermutation {
     friend class DecoupledGroup;
     
 private:
-    static FactIndex findex_leaves;
-    
     std::unique_ptr<Permutation> permutation;
     
     std::vector<int> value;
     std::vector<int> inverse_value;
-    std::vector<int> factors_affected;
+    std::vector<LeafFactorID> factors_affected;
     std::vector<bool> affected;
 
-    std::vector<int> from_factors;
+    std::vector<LeafFactorID> from_factors;
 
     // Affected factors by cycles
     std::vector<std::vector<int> > affected_factors_cycles;
+
+
+    static DecoupledFactIndex findex_leaves;
+
 
     void finalize();
     void set_value(int ind, int val);
@@ -39,23 +65,23 @@ public:
     
     ~LeavesPermutation() = default;
 
-    const std::vector<int> & get_factors_affected() const {
+    const std::vector<LeafFactorID> & get_factors_affected() const {
         return factors_affected;
     }
 
-    bool is_affected(int factor) const {
+    bool is_affected(LeafFactorID factor) const {
         return affected[factor];
     }
 
-    int get_from_factor(int f) const {
+    LeafFactorID get_from_factor(LeafFactorID f) const {
         return from_factors[f];
     }
 
-    std::pair<int, int> get_new_factor_state_by_old_factor_state(int factor, 
-                                                                 int state) const;
+    std::pair<LeafStateHash, LeafFactorID> get_new_factor_state_by_old_factor_state(LeafStateHash state,
+                                                                                    LeafFactorID factor) const;
                                                                 
-    std::pair<int, int> get_old_factor_state_by_new_factor_state(int factor, 
-                                                                 int state) const;
+    std::pair<LeafStateHash, LeafFactorID> get_old_factor_state_by_new_factor_state(LeafStateHash state,
+                                                                                    LeafFactorID factor) const;
     cmp_t cmp_num_states(const CompliantPathGraph &cpg) const;
     
     cmp_t cmp_goal_cost(const CompliantPathGraph &cpg) const;
@@ -134,12 +160,11 @@ public:
         return *leaves_permutation;
     }
 
-    //For assertion purposes
+    // for assertion purposes
     bool has_valid_center_permutation() const {
-	return !center_permutation || center_permutation->is_valid();
+        return !center_permutation || center_permutation->is_valid();
     }
+
 };
-
-
 
 #endif

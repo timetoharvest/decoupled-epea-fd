@@ -1,10 +1,10 @@
 #include "graph_creator.h"
 
+#include "../compliant_paths/compliant_path_graph.h"
+#include "lexicographic_ordering.h"
 #include "../operator.h"
 #include "permutation.h"
-#include "lexicographic_ordering.h"
 #include "../timer.h"
-#include "../compliant_paths/compliant_path_graph.h"
 
 #include <vector>
 
@@ -17,17 +17,13 @@ GraphCreator::GraphCreator(const Options &opts) :
     initialized = false;
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
-    decoupled_symmetry_pruning = opts.get<bool>("decoupled_symmetry_pruning");
-    if (decoupled_symmetry_pruning && !g_factoring){
-        cout << "decoupled symmetry pruning can only be used if decoupled search is enabled" << endl;
-        exit_with(EXIT_INPUT_ERROR);
-    }
 }
 
 void GraphCreator::initialize() {
 #ifdef USE_BLISS
-    if (initialized)
+    if (initialized){
         return;
+    }
 
     initialized = true;
     cout << "Initializing symmetry " << endl;
@@ -60,7 +56,7 @@ void GraphCreator::initialize() {
     cout<<"Number of generators: "<< group->get_num_generators()<<endl;
     // group->dump_generators();
 
-    if(g_use_decoupled_search) {
+    if(g_factoring) {
 	decoupled_group = unique_ptr<DecoupledGroup>(new DecoupledGroup(*group));
     }
     cout << "Done initializing symmetries [t=" << g_timer << "]" << endl;
@@ -70,12 +66,7 @@ void GraphCreator::initialize() {
 #endif
 }
 
-GraphCreator::~GraphCreator() {
-    // Freeing the group
-    free_memory();
-}
-
-//#ifdef USE_BLISS
+#ifdef USE_BLISS
 bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     // Differ from create_bliss_graph() in (a) having one node per action (incoming arcs from pre, outgoing to eff),
     //                                 and (b) not having a node for goal, recoloring the respective values.
@@ -87,7 +78,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     int idx = 0;
     // add vertex for each varaible
     for (size_t i = 0; i < g_variable_domain.size(); i++){
-        if(g_use_decoupled_search && g_belongs_to_factor[i] == -1) {
+        if(g_factoring && g_belongs_to_factor[i] == LeafFactorID::CENTER) {
             idx = g->add_vertex(CENTER_FACTOR_VERTEX);
         } else {
             idx = g->add_vertex(PREDICATE_VERTEX);
@@ -102,9 +93,9 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     }
     
     //add vertices for factors
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (size_t factor = 0; factor < g_leaves.size(); ++factor){
         idx = g->add_vertex(LEAF_FACTOR_VERTEX);
-        for (size_t v : g_factors[factor]){
+        for (size_t v : g_leaves[factor]){
             g->add_edge(idx,v);
         }
     }
@@ -144,8 +135,8 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
 
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
-void GraphCreator::add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const {
-    int OP_COLOR = MAX_VALUE + op.get_cost(); // TODO this should probably take get_adjusted_action_cost instead
+void GraphCreator::add_operator_directed_graph(bliss::Digraph *g, const Operator &op) const {
+    int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
 
     int op_idx = g->add_vertex(OP_COLOR);
 
@@ -202,8 +193,7 @@ bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>
     return false;
 }
 */
-//#endif
-
+#endif
 
 Permutation GraphCreator::create_permutation_from_state_to_state(const State &from_state, 
 								 const State &to_state) {
@@ -227,9 +217,8 @@ GraphCreator::create_permutation_from_state_to_state(const State &state,
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
-    assert(curr_trace.canonical_center == new_trace.canonical_center);
-    //assert (curr_trace.cpg == new_trace.cpg);
     
+    assert(curr_trace.canonical_center == new_trace.canonical_center);
     assert(curr_trace.trace.empty());
 
     unique_ptr<DecoupledPermutation> p1(
@@ -238,7 +227,6 @@ GraphCreator::create_permutation_from_state_to_state(const State &state,
 
     return unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*p2, *p1));
 }
-
 
 void GraphCreator::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>("stop_after_false_generated",
@@ -250,12 +238,7 @@ void GraphCreator::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>("generators_bound",
                            "Stopping after the Bliss software reached the bound on the number of generators",
                            "0");
-    parser.add_option<bool>("decoupled_symmetry_pruning",
-                           "if this is set to true, dominance pruning in decoupled orbit search will try to"
-                           "optimize dominance by trying all possible leaf permutations",
-                           "false");
 }
-
 
 static GraphCreator *_parse(OptionParser &parser) {
     GraphCreator::add_options_to_parser(parser);

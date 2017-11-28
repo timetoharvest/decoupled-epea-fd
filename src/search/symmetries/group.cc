@@ -2,11 +2,10 @@
 
 #include "../globals.h"
 
-#include <iostream>
-#include <fstream>
 #include <algorithm>
 
 using namespace std;
+
 
 bool Group::safe_to_add_generators;
 int Group::num_identity_generators;
@@ -21,11 +20,6 @@ void Group::initialize() {
 
     safe_to_add_generators = true;
     num_identity_generators = 0;
-}
-
-void Group::free_memory() {
-    // Removing the permutations
-    generators.clear();
 }
 
 /**
@@ -60,7 +54,7 @@ void Group::add_generator(Permutation gen) {
 
     generators.push_back(gen);
 #ifndef NDEBUG
-    cout << "Added generator number " << get_num_generators();
+    cout << "Added generator number " << get_num_generators() << endl;
 #endif
 
 }
@@ -85,13 +79,13 @@ Permutation Group::compose_permutation(Trace &perm_index) const {
 
 const vector<int> &  Group::get_canonical_state(const State &state) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
-	tmp_state[i] = state[i];
+        tmp_state[i] = state[i];
     }
 
     bool changed = true;
     while (changed) {
         changed = false;
-        for (const auto & gen : generators) {
+        for (const auto &gen : generators) {
             if (gen.replace_if_less(tmp_state) == cmp_t::LESS) {
                 changed =  true;
             }
@@ -111,12 +105,13 @@ void Group::dump_generators() const {
     cout << "Extra group info:" << endl;
     cout << "Permutation length: " << Permutation::findex.length << endl;
     cout << "Permutation variables by values (" << g_variable_domain.size() << "): " << endl;
-    for (size_t i = g_variable_domain.size(); i < Permutation::findex.length; i++)
+    for (size_t i = g_variable_domain.size(); i < Permutation::findex.length; i++){
         cout << Permutation::findex.get_var_by_index(i) << "  " ;
+    }
     cout << endl;
 }
 
-void Group::get_trace(const State& state, Trace& full_trace) {
+void Group::get_trace(const State &state, Trace& full_trace) {
     int size = get_num_generators();
     if (size == 0)
         return;

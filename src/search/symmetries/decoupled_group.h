@@ -12,25 +12,27 @@ class LexicographicOrdering;
 class State;
 
 
-class DecoupledTrace {
-public: 
+struct DecoupledTrace {
     std::vector<const DecoupledPermutation *> trace;
-    std::vector<int> canonical_center; 
+    std::vector<int> canonical_center;
     std::unique_ptr<CompliantPathGraph> canonical_cpg;
 };
 
 class DecoupledGroup {
 
     std::vector<std::unique_ptr<DecoupledPermutation>> generators_center;
+
     std::vector<std::unique_ptr<DecoupledPermutation>> generators_only_leaves;
      
     mutable std::vector<int> tmp_state;
     
 public:
     DecoupledGroup(const Group &group);
+
     ~DecoupledGroup() = default;
 
-    DecoupledTrace get_trace(const State &center, const CompliantPathGraph &leaves, 
+    DecoupledTrace get_trace(const State &center,
+                             const CompliantPathGraph &leaves,
                              const LexicographicOrdering &lex_ordering) const;
 
     std::unique_ptr<DecoupledPermutation> compose_permutation(const DecoupledTrace &trace) const;

@@ -13,7 +13,7 @@
 //TODO: Add vertex for axioms.
 enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
               GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
-	      CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
+	          CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
 
 /**
  * This class will create a bliss graph which will be used to find the
@@ -23,24 +23,30 @@ enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
 class GraphCreator  {
     
     bool initialized;
+
     int time_bound;
+
     int generators_bound;
-    bool decoupled_symmetry_pruning;
     
     const LexicographicOrdering lex_ordering;
+
     unique_ptr<Group> group;
+
     unique_ptr<DecoupledGroup> decoupled_group;
 
-//#ifdef USE_BLISS
+#ifdef USE_BLISS
     bliss::Digraph* create_bliss_directed_graph() const;
+
     void add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const;
+
     /* bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const; */
-//#endif
+#endif
 
 public:
 
     GraphCreator(const Options &opts);
-    virtual ~GraphCreator();
+
+    ~GraphCreator() = default;
 
     void initialize();
 
@@ -60,7 +66,6 @@ public:
         return decoupled_group->get_canonical_decoupled_state(center, leaves, lex_ordering);
     }
     
-    
     Permutation create_permutation_from_state_to_state(const State &from_state, 
                                                        const State &to_state);
 
@@ -69,15 +74,8 @@ public:
                                                                 const State &succ_state, 
                                                                 const CompliantPathGraph &succ_cpg) const;
 
-    bool is_decoupled_symmetry_pruning() const {
-        return decoupled_symmetry_pruning;
-    }
-                                                                
+
     static void add_options_to_parser(OptionParser &parser);
-    
-    void free_memory() { // TODO what is this good for??
-        group->free_memory();
-    }
 
 };
 

@@ -16,9 +16,7 @@ using namespace std;
 
 FactIndex Permutation::findex;
 
-
 void Permutation::_allocate() {
-    borrowed_buffer = false;
     value.resize(findex.length);
     inverse_value.resize(findex.length);
     affected.assign(g_variable_domain.size(), false);
@@ -37,22 +35,6 @@ void Permutation::_inverse_value_from_permutation(const Permutation &perm) {
     for (size_t i = 0; i < findex.length; i++){
         set_value(perm.get_value(i), i);
     }
-}
-
-Permutation &Permutation::operator=(const Permutation &other) {
-    if (this != &other) {
-        if (borrowed_buffer) {
-            _allocate();
-        } else {
-            affected.assign(g_variable_domain.size(), false);
-            vars_affected.clear();
-            from_vars.assign(g_variable_domain.size(), -1);
-            affected_vars_cycles.clear();
-        }
-        _copy_value_from_permutation(other);
-    }
-    this->finalize();
-    return *this;
 }
 
 Permutation::Permutation(){
@@ -85,7 +67,7 @@ Permutation::Permutation(const Permutation &perm, bool invert){
 Permutation::Permutation(const Permutation &perm1, const Permutation &perm2){
     _allocate();
     for (size_t i = 0; i < findex.length; i++) {
-	set_value(i, perm2.get_value(perm1.get_value(i)));
+        set_value(i, perm2.get_value(perm1.get_value(i)));
     }
     finalize();
 }
@@ -121,15 +103,6 @@ bool Permutation::identity() const {
     return vars_affected.size() == 0;
 }
 
-bool Permutation::operator==(const Permutation &other) const {
-    for(size_t i = 0; i < findex.length; i++) {
-        if (get_value(i) != other.get_value(i)){
-            return false;
-        }
-    }
-    return true;
-}
-
 void Permutation::print_cycle_notation() const {
     vector<int> done;
     for (size_t i = g_variable_domain.size(); i < findex.length; i++){
@@ -140,9 +113,9 @@ void Permutation::print_cycle_notation() const {
             }
 
             pair<int, int> varval = findex.get_var_val_by_index(i);
-	    if(!affected[varval.first]) {
-		continue;
-	    }
+            if(!affected[varval.first]) {
+                continue;
+            }
             cout << "("<< g_fact_names[varval.first][(int) varval.second] << " ";
 
             while(get_value(current) != (int)i){
@@ -157,10 +130,14 @@ void Permutation::print_cycle_notation() const {
         }
     }
     cout << endl << "Variables:  ";
-    for(size_t i = 0; i < vars_affected.size(); i++) cout << vars_affected[i] << "  ";
+    for(size_t i = 0; i < vars_affected.size(); i++){
+        cout << vars_affected[i] << "  ";
+    }
     cout << endl << "Variables permuted:  ";
 
-    for(size_t i = 0; i < vars_affected.size(); i++) cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
+    for(size_t i = 0; i < vars_affected.size(); i++) {
+        cout << from_vars[vars_affected[i]] << " -> " << vars_affected[i] << "  ";
+    }
     cout << endl;
 
     cout << "Affected variables by cycles: " << endl;
@@ -276,25 +253,31 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
 }
 
 bool Permutation::stabilizes(const State &state)  const {
-    if (identity()) return true;
+    if (identity()) {
+        return true;
+    }
 
     // Going over the affected variables, comparing the resulted values with the state values.
     for(int i = vars_affected.size()-1; i>=0; i--) {
         int to_var =  vars_affected[i];
         int from_var = from_vars[to_var];
         pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, state[from_var]);
-        assert( to_pair.first == to_var);
+        assert(to_pair.first == to_var);
         short to_val = to_pair.second;
 
         // Check if the values are the same, then continue to the next aff. var.
-        if (to_val != state[to_var]) return false;
+        if (to_val != state[to_var]) {
+            return false;
+        }
     }
 
     return true;
 }
 
 void Permutation::permute(vector<int> &state) const {
-    if (identity()) return;
+    if (identity()) {
+        return;
+    }
     for(size_t i = 0; i < affected_vars_cycles.size(); i++) {
         if (affected_vars_cycles[i].size() == 1) {
             int var = affected_vars_cycles[i][0];
@@ -310,8 +293,8 @@ void Permutation::permute(vector<int> &state) const {
         int last_val = state[last_var];
 
         if(last_val == -1) { //Permuting a center
-            assert(g_use_decoupled_search);
-#ifndef NDEBUG	    
+            assert(g_factoring);
+#ifndef NDEBUG
             for (int j=affected_vars_cycles[i].size()-1; j>0; j--) {
                 assert(state[affected_vars_cycles[i][j-1]] == -1);
             }
@@ -349,7 +332,7 @@ void Permutation::permute_state(const State &from_state, vector<int> &to_state) 
 
 bool Permutation::affects_center() const {
     for(int v : vars_affected) {
-        if (g_belongs_to_factor[v] == -1) {
+        if (g_belongs_to_factor[v] == LeafFactorID::CENTER) {
             return true;
         }
     }
@@ -359,7 +342,7 @@ bool Permutation::affects_center() const {
 size_t Permutation::number_leaves_affected() const {
     set<int> leaves; 
     for(int v : vars_affected) {
-        if (g_belongs_to_factor[v] != -1) {
+        if (g_belongs_to_factor[v] != LeafFactorID::CENTER) {
             leaves.insert(g_belongs_to_factor[v]);
         }
     }
@@ -384,18 +367,6 @@ void FactIndex::init() {
     length = num_of_vertex;
 }
 
-void FactIndex::init_decoupled() {
-    length = 0;
-    initial_index = 0;
-    for(size_t factor = 0; factor < g_factors.size(); ++factor){
-        dom_sum_by_var.push_back(length);
-        length += g_state_registry->size(factor);
-        for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
-            var_by_val.push_back(factor);
-        }
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Changes added by Michael on 30.1.12
 int FactIndex::get_var_by_index(int ind)  const {
@@ -412,17 +383,14 @@ pair<int, int> FactIndex::get_var_val_by_index(int ind) const {
     int var =  var_by_val[ind - initial_index];
     int val = ind - dom_sum_by_var[var];
 
-//	assert(var >=0 && var<(int)g_variable_domain.size());
-//	assert(val >=0 && val<(int)g_variable_domain[var]);
+    assert(var >=0 && var<(int)g_variable_domain.size());
+    assert(val >=0 && val<(int)g_variable_domain[var]);
 
     return make_pair(var, val);
 }
 
 int FactIndex::get_index_by_var_val_pair(int var, int val) const {
-    assert (var >= 0 && var < (int)g_variable_domain.size()); 
-    assert (val >= 0 && (val < (int)g_variable_domain[var] || 
-			 (g_use_decoupled_search &&
-			  val < (int) g_state_registry->size(var) )));
-    
+    assert (var >= 0 && var < (int) g_variable_domain.size());
+    assert (val >= 0 && val < (int) g_variable_domain[var]);
     return dom_sum_by_var[var] + val;
 }

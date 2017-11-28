@@ -4,11 +4,9 @@
 #include "../state.h"
 
 #include <vector>
-#include <fstream>
 
 enum class cmp_t {LESS, EQUAL, GREATER};
 
-class CompliantPathGraph;
 
 class FactIndex {
 // Alvaro: Putting all the static data members in one class, so that it
@@ -20,7 +18,6 @@ public:
     std::vector<int> dom_sum_by_var;
 
     void init();
-    void init_decoupled();
 
     int get_var_by_index(int val) const;
     std::pair<int, int> get_var_val_by_index(int ind) const;
@@ -33,6 +30,7 @@ class Permutation {
     friend class GraphCreator;
     
     static FactIndex findex;
+
     static void init_fact_index();
     
 protected:
@@ -41,9 +39,7 @@ protected:
     std::vector<int> inverse_value;
     std::vector<int> vars_affected;
     std::vector<bool> affected;
-    
-    bool borrowed_buffer;// TODO apparently, this is never used?!
-    
+
     // Need to keep the connection between affected vars, ie which var goes into which.
     std::vector<int> from_vars;
 
@@ -63,11 +59,8 @@ public:
     Permutation(const unsigned int*);
     Permutation(const Permutation &perm, bool invert = false);
     Permutation(const Permutation &perm1, const Permutation& perm2);
-    virtual ~Permutation() = default;
-
-    Permutation& operator=(const Permutation &perm); // TODO do we really need this?
+    ~Permutation() = default;
     
-    bool operator==(const Permutation&) const; // TODO do we really need this?
 
     bool identity() const;
     

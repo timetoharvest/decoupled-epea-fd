@@ -20,7 +20,7 @@ public:
 		       const CompliantPathGraph &p) const;
 
     bool optimize_leaves() const {
-	return apply_goal_cost || apply_num_states || apply_prices;
+        return apply_goal_cost || apply_num_states || apply_prices;
     }
 
     void print_ordering(const CompliantPathGraph &p) const;

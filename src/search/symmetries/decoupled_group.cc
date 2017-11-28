@@ -5,25 +5,26 @@
 #include "group.h"
 #include "../state_registry.h"
 
+using namespace std;
 
 DecoupledGroup::DecoupledGroup(const Group &group) {
     // Ensure that all symmetry leaf states exists
-    for(size_t factor = 0; factor < g_factors.size(); ++factor){
-        for(size_t s = 0; s < g_state_registry->size(factor); ++s) {
+    for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
             for(const Permutation &per : group.generators) {
-                LeafState l = g_state_registry->lookup_leaf_state(LeafStateID(s, factor));
-                int symm_factor = -1;
+                LeafState l = g_state_registry->lookup_leaf_state(s, factor);
+                LeafFactorID symm_factor = LeafFactorID::CENTER;
                 vector<int> symm_leaf_state;
 
-                for(int v : g_factors[factor]) {
+                for(int v : g_leaves[factor]) {
                     auto mapped_to = per.get_new_var_val_by_old_var_val(v, l[v]);
                     int symm_var = mapped_to.first;
                     int symm_val = mapped_to.second;
-                    assert(symm_factor == -1 || symm_factor ==  g_belongs_to_factor[symm_var]);
+                    assert(symm_factor == LeafFactorID::CENTER || symm_factor ==  g_belongs_to_factor[symm_var]);
 
                     symm_factor =  g_belongs_to_factor[symm_var];
                     if(symm_leaf_state.empty()) {
-                        symm_leaf_state.resize(g_factors[symm_factor].size());
+                        symm_leaf_state.resize(g_leaves[symm_factor].size());
                     }
                     symm_leaf_state[g_new_index[symm_var]] = symm_val;
                 }
@@ -32,7 +33,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
         }
     }
 
-    LeavesPermutation::findex_leaves.init_decoupled();
+    LeavesPermutation::findex_leaves.init();
 
     for(const Permutation &per : group.generators){
         unique_ptr<DecoupledPermutation> gen(new DecoupledPermutation (per));
@@ -54,11 +55,6 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
     for (int var : g_center) {
         tmp_state[var] = center[var];
     }
-
-    // cout << endl << endl<< "start" << endl;
-    // for (size_t i = 0; i < g_center_vars.size(); ++i) cout << g_fact_names[g_center_vars[i]][center[g_center_vars[i]]] << "       ";
-    // cout << endl;
-    // leaves.dump();
 
     // Center state optimization
     bool changed = true;
