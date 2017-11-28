@@ -6,29 +6,28 @@
 
 #include <fstream>
 
-using namespace std;
 
 /**
  * At the moment this class implements the binary heuristic (0 for goal, 1 for non-goal)
  */
 class MaxHeuristic : public Heuristic {
 protected:
-    vector<Heuristic *> heuristics;
-    vector<int> winner;
-    vector<int> only_winner;
-    vector<int> hvalue;
+    std::vector<Heuristic *> heuristics;
+    std::vector<int> winner;
+    std::vector<int> only_winner;
+    std::vector<int> hvalue;
     virtual void initialize();
     virtual int compute_heuristic(const State &state);
     int num_evals;
 
     bool dump_arff;
-    ofstream arff_out;
+    std::ofstream arff_out;
     int max_diff;
 public:
     MaxHeuristic(const Options &options, bool arff = false);
     virtual ~MaxHeuristic();
 
-    inline vector<int> &get_winners() {
+    inline std::vector<int> &get_winners() {
         return winner;
     }
 

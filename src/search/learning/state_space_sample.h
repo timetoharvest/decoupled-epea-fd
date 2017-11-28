@@ -7,24 +7,23 @@
 #include <vector>
 #include "../exact_timer.h"
 
-using namespace std;
 
 enum state_space_sample_t {Probe = 0, ProbAStar = 1, PDB = 2};
-typedef map<State, vector<int> > sample_t;
+typedef std::map<State, std::vector<int> > sample_t;
 
 class StateSpaceSample {
 protected:
     // parameters
     bool uniform_sampling;
-    vector<Heuristic *> heuristics;
+    std::vector<Heuristic *> heuristics;
 
     // gathered data
     ExactTimer computation_timer;
     sample_t samp;
     double branching_factor;
-    vector<double> computation_time;
+    std::vector<double> computation_time;
 
-    int choose_operator(vector<int> &h_s);
+    int choose_operator(std::vector<int> &h_s);
 public:
     StateSpaceSample();
     virtual ~StateSpaceSample();

@@ -11,7 +11,6 @@
 #include <map>
 #include <cassert>
 #include <algorithm>
-using namespace std;
 
 class Operator;
 class State;
@@ -94,30 +93,30 @@ class SimpleStubbornSets : public PORMethodWithStatistics {
 
     void compute_active_operators(const State &state);
 
-    pair<int, int> find_unsatisfied_goal(const State& state);
-    pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
+    std::pair<int, int> find_unsatisfied_goal(const State& state);
+    std::pair<int, int> find_unsatisfied_precondition(const Operator &op, const State &state);
     void mark_open_center_pre_of_decoupled_goal_frontier(const State &state);
     
-    pair<int, int> find_unsatisfied_goal_small_static(const State &state);
-    pair<int, int> find_unsatisfied_goal_small_dynamic(const State &state);
-    pair<int, int> find_unsatisfied_goal_most_hitting(const State &state);
-    pair<int, int> find_unsatisfied_goal_global_variable_ordering(const State& state);
-    pair<int, int> find_unsatisfied_goal_random_dynamic(const State &state);
-    pair<int, int> find_unsatisfied_goal_decoupled(const State &state);
+    std::pair<int, int> find_unsatisfied_goal_small_static(const State &state);
+    std::pair<int, int> find_unsatisfied_goal_small_dynamic(const State &state);
+    std::pair<int, int> find_unsatisfied_goal_most_hitting(const State &state);
+    std::pair<int, int> find_unsatisfied_goal_global_variable_ordering(const State& state);
+    std::pair<int, int> find_unsatisfied_goal_random_dynamic(const State &state);
+    std::pair<int, int> find_unsatisfied_goal_decoupled(const State &state);
 	
-    pair<int, int> find_unsatisfied_precondition_dynamic(const Operator &op, const State &state);
-    pair<int, int> find_unsatisfied_precondition_small_static(const Operator &op, const State &state);
-    pair<int, int> find_unsatisfied_precondition_small_dynamic(const State &state, 
+    std::pair<int, int> find_unsatisfied_precondition_dynamic(const Operator &op, const State &state);
+    std::pair<int, int> find_unsatisfied_precondition_small_static(const Operator &op, const State &state);
+    std::pair<int, int> find_unsatisfied_precondition_small_dynamic(const State &state,
 							      const std::vector<std::pair<int, int> >& precondition_facts);
-    pair<int, int> find_unsatisfied_precondition_laarman(const State &state, 
+    std::pair<int, int> find_unsatisfied_precondition_laarman(const State &state,
 							 const std::vector<std::pair<int, int> >& precondition_facts);
-    pair<int, int> find_unsatisfied_precondition_most_hitting(const State &state,
-							      const vector<pair<int, int> >& precondition_facts);
-    pair<int, int> find_unsatisfied_precondition_forward_small(const Operator &op, const State &state);
-    pair<int, int> find_unsatisfied_precondition_global_variable_ordering(const Operator& op, const State& state);
-    pair<int, int> find_unsatisfied_precondition_random_dynamic(const State &state, 
+    std::pair<int, int> find_unsatisfied_precondition_most_hitting(const State &state,
+							      const std::vector<std::pair<int, int> >& precondition_facts);
+    std::pair<int, int> find_unsatisfied_precondition_forward_small(const Operator &op, const State &state);
+    std::pair<int, int> find_unsatisfied_precondition_global_variable_ordering(const Operator& op, const State& state);
+    std::pair<int, int> find_unsatisfied_precondition_random_dynamic(const State &state,
                                                                 const std::vector<std::pair<int, int> >& precondition_facts);
-    pair<int, int> find_unsatisfied_precondition_decoupled(const Operator &op, const State &state);
+    std::pair<int, int> find_unsatisfied_precondition_decoupled(const Operator &op, const State &state);
     
     void compute_static_precondition_orderings();
     void compute_static_goal_ordering();

@@ -15,11 +15,9 @@
 #include <map>
 #include <vector>
 
-using namespace std;
-
 class Options;
 
-typedef pair<StateID, pair<int, const Operator * > > OpenListEntryEHC;
+typedef std::pair<StateID, std::pair<int, const Operator * > > OpenListEntryEHC;
 
 enum PreferredUsage {
     PRUNE_BY_PREFERRED, RANK_PREFERRED_FIRST,
@@ -33,7 +31,7 @@ protected:
 
     Heuristic *heuristic;
     bool preferred_contains_eval;
-    vector<Heuristic *> preferred_heuristics;
+    std::vector<Heuristic *> preferred_heuristics;
     bool use_preferred;
     PreferredUsage preferred_usage;
 
@@ -42,14 +40,14 @@ protected:
     int current_g;
 
     // statistics
-    map<int, pair<int, int> > d_counts;
+    std::map<int, std::pair<int, int> > d_counts;
     int num_ehc_phases;
     int last_expanded;
 
     virtual void initialize();
     virtual SearchStatus step();
     SearchStatus ehc();
-    void get_successors(const State &state, vector<const Operator *> &ops);
+    void get_successors(const State &state, std::vector<const Operator *> &ops);
     void evaluate(const State &parent, const Operator *op, const State &state);
 public:
     EnforcedHillClimbingSearch(const Options &opts);

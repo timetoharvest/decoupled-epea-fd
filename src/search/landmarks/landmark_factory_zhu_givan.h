@@ -6,7 +6,6 @@
 #include "landmark_types.h"
 #include "../globals.h"
 
-using namespace __gnu_cxx;
 
 class LandmarkFactoryZhuGivan : public LandmarkFactory {
 private:
