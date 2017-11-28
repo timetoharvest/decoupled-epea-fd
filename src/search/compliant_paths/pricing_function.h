@@ -13,10 +13,6 @@ class Prices : public CompliantPathGraph {
     
     static PriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-
-    static CompliantPathGraph& get_real_init_state_prices();
-    
         
     Prices(const Prices *tag);
 
@@ -25,6 +21,11 @@ class Prices : public CompliantPathGraph {
     // of a search node
     void reduce_cost_by(LeafFactorID factor, int cost);
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
+
 protected:  
 
     std::vector<std::vector<int> > prices;

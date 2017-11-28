@@ -12,16 +12,16 @@ class Reachable : public CompliantPathGraph {
 
     static ReachableStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-
-    static CompliantPathGraph& get_real_init_state_reachable();
-    
     
     Reachable(const Reachable *tag);
     
-    
     void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
+
 protected:
     
     std::vector<boost::dynamic_bitset<> > reachable;

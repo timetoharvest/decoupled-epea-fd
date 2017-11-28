@@ -8,9 +8,11 @@
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../utilities.h"
 
 #include <limits>
+#include <numeric>
 
 
 using namespace std;
@@ -262,6 +264,12 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
     return NONE;
 }
 
+bool FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+    bool replaced = EffectivePrices::apply_symmetry_permutation(per);
+    frontier.clear();
+    return replaced;
+}
+
 void FrontierPrices::store_new_graph(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
@@ -281,12 +289,25 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_init_state_cpg() {
     return prices;
 }
 
+unique_ptr<CompliantPathGraph> FrontierPrices::get_real_init_state_cpg() {
+    unique_ptr<FrontierPrices> prices(new FrontierPrices(0));
+
+    prices->frontier.resize(g_leaves.size());
+
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        prices->add_state(LeafStateHash(0), factor, 0);
+        prices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
+        prices->frontier[factor][0] = true;
+    }
+    prices->update(g_state_registry->get_center_state(g_initial_state_data));
+
+    return prices;
+}
+
 void FrontierPrices::goal_price_propagation() {
     assert(g_factoring->get_profile() == FORK);
      
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-        
-//      cout << "Propagate: " << factor << endl;
         
         vector<bool> closed(g_state_registry->size(factor), false);
         
@@ -296,13 +317,13 @@ void FrontierPrices::goal_price_propagation() {
         }
         frontier[factor].reset();
 
-        //Alvaro: Given the size of leaf factors I think a bucketqueue
-        //should work better but requires some implementation
-        //effort. Probably worth it to reduce overhead
-        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue? 
+        // Alvaro: Given the size of leaf factors I think a bucketqueue
+        // should work better but requires some implementation
+        // effort. Probably worth it to reduce overhead
+        // Alvaro: Use a heap_queue?
+        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
-            //cout << s << " is goal " << endl; 
             open.push(goal_cost[factor], s);
         }
 
@@ -316,8 +337,6 @@ void FrontierPrices::goal_price_propagation() {
             
             int value = entry.first;
 
-//          cout << "Propagating s " << g_fact_names[g_leaves[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(state, factor))[g_leaves[factor][0]]] << " with value " << value << endl; 
-            
             closed[state] = true;
             
             if (value != INF) {
@@ -449,3 +468,66 @@ unique_ptr<CompliantPathGraph> FrontierPrices::clone() const {
     return unique_ptr<CompliantPathGraph> (new FrontierPrices(this));
 }
 
+unique_ptr<CompliantPathGraph> FrontierPrices::get_permuted_cpg(const LeavesPermutation &per) const {
+    FrontierPrices *res = new FrontierPrices(nullptr);
+    for (LeafFactorID to_factor(0); to_factor < g_leaves.size(); ++to_factor){
+        if(!per.is_affected(to_factor)) {
+            res->goal_cost[to_factor] = goal_cost[to_factor];
+            res->number_states[to_factor] = number_states[to_factor];
+            res->prices[to_factor] = prices[to_factor];
+            if (!effective_prices.empty()){
+                res->number_effective_states[to_factor] = number_effective_states[to_factor];
+                res->effective_prices[to_factor] = effective_prices[to_factor];
+            }
+            if (!frontier.empty()){
+                if (res->frontier.empty()){
+                    res->frontier.resize(g_leaves.size());
+                }
+                res->frontier[to_factor] = frontier[to_factor];
+            }
+        } else {
+            LeafFactorID from_factor = per.get_from_factor(to_factor);
+
+            assert(find(per.get_factors_affected().begin(),
+                    per.get_factors_affected().end(), to_factor)
+                    != per.get_factors_affected().end());
+
+            assert(find(per.get_factors_affected().begin(),
+                    per.get_factors_affected().end(), from_factor)
+                    != per.get_factors_affected().end());
+
+            size_t num_states = number_states[from_factor];
+            size_t num_eff_states = effective_prices.empty() ? 1 : number_effective_states[to_factor];
+            for (LeafStateHash id(0); num_states > 0 && num_eff_states > 0; ++id){
+                pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+                assert(to_pair.second ==  to_factor);
+                LeafStateHash to_val = to_pair.first;
+
+                if (!effective_prices.empty()){
+                    if (!has_effective_leaf_state(id, from_factor)){
+                        continue;
+                    }
+                    assert(num_eff_states > 0);
+                    --num_eff_states;
+
+                    res->add_effective_state(to_val, to_factor, get_effective_cost_of_state(id, from_factor));
+                }
+
+                if (!has_leaf_state(id, from_factor)){
+                    continue;
+                }
+                assert(num_states > 0);
+                --num_states;
+
+                res->add_state(to_val, to_factor, get_cost_of_state(id, from_factor));
+            }
+        }
+    }
+
+    assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
+    assert(effective_prices.empty() ||
+            accumulate(res->number_effective_states.begin(), res->number_effective_states.end(), 0) == accumulate(number_effective_states.begin(), number_effective_states.end(), 0));
+    assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
+
+    return unique_ptr<CompliantPathGraph>(res);
+}

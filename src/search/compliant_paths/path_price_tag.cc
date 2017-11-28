@@ -49,15 +49,15 @@ PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
 
 // TODO: really needed?
 PathPriceTag::PathPriceTag(const CompliantPathGraph &cpg) {
-    number_states = vector<size_t>(g_factors.size(), 0);
-    prices = vector<vector<int> >(g_factors.size());
-    goal_cost = vector<int>(g_factors.size(), INF);
-    paths = vector<vector<PathPriceTagInfo> >(g_factors.size());
+    number_states = vector<size_t>(g_leaves.size(), 0);
+    prices = vector<vector<int> >(g_leaves.size());
+    goal_cost = vector<int>(g_leaves.size(), INF);
+    paths = vector<vector<PathPriceTagInfo> >(g_leaves.size());
     
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
-        for (size_t id = 0; id < g_state_registry->size(factor); ++id){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (cpg.has_leaf_state(id, factor)){
-                add_state(LeafStateID(id, factor), cpg.get_cost_of_state(id, factor), 0, LeafStateID::no_state);
+                add_state(id, factor, cpg.get_cost_of_state(id, factor), 0, LeafStateHash::MAX);
             }
         }
     }
@@ -271,9 +271,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 }
 
 bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
-    // cout << " APPLY SYMMETRY TO: " << endl;
-    // dump();
-    //Copy prices and reinitialize affected factors
+    // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);//g_factors.size());
     vector<unsigned int> old_number_states (number_states);
     vector<int> old_goal_cost (goal_cost);
@@ -287,10 +285,8 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
         paths[factor] = vector<PathPriceTagInfo>();
     }
     
-    for(int to_factor : per.get_factors_affected()) {
-        int from_factor = per.get_from_factor(to_factor);
-
-        // cout << " from: " << from_factor << " to " << to_factor << endl;
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
 
         assert(find(per.get_factors_affected().begin(), 
                          per.get_factors_affected().end(), to_factor)
@@ -301,7 +297,7 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
                != per.get_factors_affected().end());
 
         size_t num_states = old_number_states[from_factor]; 
-        for  (size_t id = 0; num_states > 0; ++ id){
+        for  (LeafStateHash id(0); num_states > 0; ++id){
             assert (id < leaf_state_id_map[from_factor].size());
             if (leaf_state_id_map[from_factor][id] == -1) {
                 continue; 
@@ -312,44 +308,22 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
                 old_prices[from_factor][leaf_state] == INF)  continue;
 
             num_states--;
-            pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-            assert(to_pair.first == to_factor);
-            int to_val = to_pair.second;
+            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(to_pair.second == to_factor);
+            LeafStateHash to_val = to_pair.first;
 
-             // cout << "Set from_val: " << id << " from_factor " << from_factor
-             //          <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
-            
-             // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
-             // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
-
-             // state_print_from.dump_pddl(); 
-             // cout <<  " -> "; 
-             // state_print_to.dump_pddl(); 
-
-            add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state], old_paths[from_factor][leaf_state].best_supporter, old_paths[from_factor][leaf_state].predecessor);
+            add_state(to_val, to_factor, old_prices[from_factor][leaf_state], old_paths[from_factor][leaf_state].best_supporter, old_paths[from_factor][leaf_state].predecessor);
         }
     }
 
-
-    // cout << " NUMBER STATES: " << if_less << endl;
-    // for (int i : old_number_states) cout << i << " "; cout << endl;
-    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
-
-    // cout << " GOAL COST" << endl;
-    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
-    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
     assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
     assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 
-
-
-    //cout << " APPLIED SYMMETRY: " << endl;
-    //dump();
-
-    return true; // We do not need to check whether the prices changed
-                 // because the return value is only relevant if
-                 // if_less is true and in that case we checked this in
-                 // per.produce_less(prices)
+    // We do not need to check whether the prices changed
+    // because the return value is only relevant if
+    // if_less is true and in that case we checked this in
+    // per.produce_less(prices)
+    return true;
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
@@ -357,10 +331,10 @@ unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermutation &per) const {
-    PathPriceTag * res = new PathPriceTag(nullptr);
+    PathPriceTag *res = new PathPriceTag(nullptr);
 
-    for(int to_factor : per.get_factors_affected()) {
-        int from_factor = per.get_from_factor(to_factor);
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
 
         assert(find(per.get_factors_affected().begin(), 
                          per.get_factors_affected().end(), to_factor)
@@ -371,7 +345,7 @@ unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermut
                != per.get_factors_affected().end());
 
         size_t num_states = number_states[from_factor]; 
-        for  (size_t id = 0; num_states > 0; ++ id){
+        for  (LeafStateHash id(0); num_states > 0; ++id){
             assert (id < leaf_state_id_map[from_factor].size());
             if (leaf_state_id_map[from_factor][id] == -1) {
                 continue; 
@@ -379,37 +353,21 @@ unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermut
 
             size_t leaf_state = leaf_state_id_map[from_factor][id];
             if (leaf_state >= prices[from_factor].size() ||
-                prices[from_factor][leaf_state] == INF)  continue;
+                prices[from_factor][leaf_state] == INF) {
+                continue;
+            }
 
             num_states--;
-            pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-            assert(to_pair.first == to_factor);
-            int to_val = to_pair.second;
+            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(to_pair.second == to_factor);
+            LeafStateHash to_val = to_pair.first;
 
-             // cout << "Set from_val: " << id << " from_factor " << from_factor
-             //          <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
-            
-             // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
-             // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
-
-             // state_print_from.dump_pddl(); 
-             // cout <<  " -> "; 
-             // state_print_to.dump_pddl(); 
-
-            res->add_state(LeafStateID(to_val, to_factor), prices[from_factor][leaf_state], paths[from_factor][leaf_state].best_supporter, paths[from_factor][leaf_state].predecessor);
+            res->add_state(to_val, to_factor, prices[from_factor][leaf_state], paths[from_factor][leaf_state].best_supporter, paths[from_factor][leaf_state].predecessor);
         }
     }
 
-
-    // cout << " NUMBER STATES: " << if_less << endl;
-    // for (int i : old_number_states) cout << i << " "; cout << endl;
-    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
-
-    // cout << " GOAL COST" << endl;
-    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
-    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
     assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
     assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
 
-    return unique_ptr<CompliantPathGraph> (res);
+    return unique_ptr<CompliantPathGraph>(res);
 }

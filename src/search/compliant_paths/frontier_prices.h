@@ -13,23 +13,28 @@ class FrontierPrices : public EffectivePrices {
     
     static FrontierPriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-    
-    
+
     FrontierPrices(const FrontierPrices *tag);
     
     
     void compute_cost_frontier();
+
     void compute_cost_frontier(LeafFactorID factor);
     
     void goal_price_propagation();
 
     void propagate_dominance_prices();
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
+
 protected:  
     
     std::vector<boost::dynamic_bitset<> > frontier;
     
+
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
                                                                                 const Operator *op) const override;
                                                                                 
@@ -43,9 +48,14 @@ public:
     
     FrontierPrices(){};
     
-    virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual bool apply_symmetry_permutation(const LeavesPermutation &per) override;
+
+    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;
+
+    virtual void dump() const override;
 
     
     static void register_cpg_storage(FrontierPriceStorage *storage);

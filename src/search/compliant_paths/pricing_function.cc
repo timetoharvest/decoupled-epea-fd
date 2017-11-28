@@ -430,21 +430,18 @@ unique_ptr<CompliantPathGraph> Prices::get_init_state_cpg() {
     }
 }
 
-CompliantPathGraph& Prices::get_real_init_state_prices() {
-    if (do_pruning()){
-        return PruningPrices::get_init_state_prices();
+unique_ptr<CompliantPathGraph> Prices::get_real_init_state_cpg() {
+    if (pruning->do_advanced_pruning()){
+        return EffectivePrices::get_real_init_state_cpg();
     } else {
-	const auto &  initial_center = g_state_registry->get_center_state(g_initial_state_data);
-	
-        Prices prices(0);
+        unique_ptr<Prices> prices(new Prices(0));
             
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            prices.add_state(LeafStateID(0, factor), 0);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            prices->add_state(LeafStateHash(0), factor, 0);
         }
-            
-        prices.update_price_tags(initial_center, 0, initial_center);
+        prices->update(g_state_registry->get_center_state(g_initial_state_data));
         
-        return tmp_price;
+        return prices;
     }
 }
 
@@ -471,86 +468,61 @@ void Prices::dump() const {
 }
 
 bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
-    // cout << " APPLY SYMMETRY TO: " << endl;
-    // dump();
-    //Copy prices and reinitialize affected factors
-    vector<vector<int> > old_prices(prices);//g_factors.size());
+    // Copy prices and reinitialize affected factors
+    vector<vector<int> > old_prices(prices);
     vector<unsigned int> old_number_states(number_states);
     
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
 #endif
 
-    for (int factor : per.get_factors_affected()) {
-	//old_prices[factor] = move(prices [factor]);
-	number_states[factor] = 0;
-	prices[factor] = vector<int>();
-	goal_cost[factor] = INF;
+    for (LeafFactorID factor : per.get_factors_affected()) {
+        number_states[factor] = 0;
+        prices[factor] = vector<int>();
+        goal_cost[factor] = INF;
     }
-    
-    for(int to_factor : per.get_factors_affected()) {
-	int from_factor = per.get_from_factor(to_factor);
 
-	// cout << " from: " << from_factor << " to " << to_factor << endl;
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
 
-	assert(find(per.get_factors_affected().begin(), 
-			 per.get_factors_affected().end(), to_factor)
-	       != per.get_factors_affected().end());
+        assert(find(per.get_factors_affected().begin(),
+                per.get_factors_affected().end(), to_factor)
+                != per.get_factors_affected().end());
 
-	assert(find(per.get_factors_affected().begin(), 
-			 per.get_factors_affected().end(), from_factor)
-	       != per.get_factors_affected().end());
+        assert(find(per.get_factors_affected().begin(),
+                per.get_factors_affected().end(), from_factor)
+                != per.get_factors_affected().end());
 
         size_t num_states = old_number_states[from_factor]; 
-	for  (size_t id = 0; num_states > 0; ++ id){
-	    assert (id < leaf_state_id_map[from_factor].size());
-	    if (leaf_state_id_map[from_factor][id] == -1) {
-		continue; 
-	    }
+        for  (LeafStateHash id(0); num_states > 0; ++ id){
+            assert (id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1) {
+                continue;
+            }
 
-	    size_t leaf_state = leaf_state_id_map[from_factor][id];
-	    if (leaf_state >= old_prices[from_factor].size() ||
-		old_prices[from_factor][leaf_state] == INF)  continue;
+            size_t leaf_state = leaf_state_id_map[from_factor][id];
+            if (leaf_state >= old_prices[from_factor].size() ||
+                    old_prices[from_factor][leaf_state] == INF) {
+                continue;
+            }
 
-	    num_states--;
-	    pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-	    assert(to_pair.first == to_factor);
-	    int to_val = to_pair.second;
+            num_states--;
+            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(to_pair.second == to_factor);
+            LeafStateHash to_val = to_pair.first;
 
-	     // cout << "Set from_val: " << id << " from_factor " << from_factor
-	     // 	 <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << old_prices[from_factor][leaf_state] << endl;
-	    
-	     // LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
-	     // LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
-
-	     // state_print_from.dump_pddl(); 
-	     // cout <<  " -> "; 
-	     // state_print_to.dump_pddl(); 
-
-	    add_state(LeafStateID(to_val, to_factor), old_prices[from_factor][leaf_state]);
-	}
+            add_state(to_val, to_factor, old_prices[from_factor][leaf_state]);
+        }
     }
 
-
-    // cout << " NUMBER STATES: " << if_less << endl;
-    // for (int i : old_number_states) cout << i << " "; cout << endl;
-    // for (int i : number_states) cout << i << " ";  cout << endl << endl;
-
-    // cout << " GOAL COST" << endl;
-    // for (int i : old_goal_cost) cout << i << " "; cout << endl;
-    // for (int i : goal_cost) cout << i << " ";  cout << endl << endl
     assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
     assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 
-
-
-    //cout << " APPLIED SYMMETRY: " << endl;
-    //dump();
-
-    return true; //We do not need to check whether the prices changed
-		 //because the return value is only relevant if
-		 //if_less is true and in that case we checked this in
-		 //per.produce_less(prices)
+    // We do not need to check whether the prices changed
+    // because the return value is only relevant if
+    // if_less is true and in that case we checked this in
+    // per.produce_less(prices)
+    return true;
 }
 
 unique_ptr<CompliantPathGraph> Prices::clone() const {
@@ -559,60 +531,38 @@ unique_ptr<CompliantPathGraph> Prices::clone() const {
 
 unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
     Prices *res = new Prices(nullptr);
-    for (size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor){
-	if(!per.is_affected(to_factor)) {
+    for (LeafFactorID to_factor(0); to_factor < g_leaves.size(); ++to_factor){
+        if(!per.is_affected(to_factor)) {
             res->goal_cost[to_factor] = goal_cost[to_factor];
             res->number_states[to_factor] = number_states[to_factor];
             res->prices[to_factor] = prices[to_factor];
-	} else {
-	    int from_factor = per.get_from_factor(to_factor);
+        } else {
+            LeafFactorID from_factor = per.get_from_factor(to_factor);
 
-	    assert(find(per.get_factors_affected().begin(), 
-			per.get_factors_affected().end(), to_factor)
-		   != per.get_factors_affected().end());
+            assert(find(per.get_factors_affected().begin(),
+                    per.get_factors_affected().end(), to_factor)
+                    != per.get_factors_affected().end());
 
-	    assert(find(per.get_factors_affected().begin(), 
-			per.get_factors_affected().end(), from_factor)
-		   != per.get_factors_affected().end());
+            assert(find(per.get_factors_affected().begin(),
+                    per.get_factors_affected().end(), from_factor)
+                    != per.get_factors_affected().end());
 
-	    size_t num_states = number_states[from_factor]; 
-	    for  (size_t id = 0; num_states > 0; ++id){
-		if (!has_leaf_state(id, from_factor)){
+            size_t num_states = number_states[from_factor];
+            for  (LeafStateHash id(0); num_states > 0; ++id){
+                if (!has_leaf_state(id, from_factor)){
                     continue;
                 }
 
-		--num_states;
-		pair<int, int> to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-		assert(to_pair.first == (int) to_factor);
-		int to_val = to_pair.second;
+                --num_states;
+                pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+                assert(to_pair.second == to_factor);
+                LeafStateHash to_val = to_pair.first;
 
-		// cout << "Set from_val: " << id << " from_factor " << from_factor
-		//      <<  "  to_val: " << to_val << " of "<<  to_factor << ": " << prices[from_factor][leaf_state] << endl;
-            
-		// LeafState state_print_from = g_state_registry->lookup_leaf_state(LeafStateID(id, from_factor));
-		// LeafState state_print_to = g_state_registry->lookup_leaf_state(LeafStateID(to_val, to_factor));
-
-		//   state_print_from.dump_pddl(); 
-		//   cout <<  " -> "; 
-		//   state_print_to.dump_pddl(); 
-
-		res->add_state(LeafStateID(to_val, to_factor), get_cost_of_state(id, from_factor));
-	    }
-	}
+                res->add_state(to_val, to_factor, get_cost_of_state(id, from_factor));
+            }
+        }
     }
 
-
-    // cout << " NUMBER STATES: " << endl;
-    // for (int i : number_states) cout << i << " "; 
-    // cout << endl;
-    // for (int i : res->number_states) cout << i << " ";  
-    // cout << endl << endl;
-
-    // cout << " GOAL COST" << endl;
-    // for (int i : goal_cost) cout << i << " "; 
-    // cout << endl;
-    // for (int i : res->goal_cost) cout << i << " ";  
-    // cout << endl << endl;
     assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
     assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
 

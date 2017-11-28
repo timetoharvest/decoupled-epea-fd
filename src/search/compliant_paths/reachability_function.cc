@@ -547,20 +547,18 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
     }
 }
 
-CompliantPathGraph& Reachable::get_real_init_state_reachable() {
-    if (do_pruning()){
-        return PruningReachable::get_real_init_state_reachable();        
+unique_ptr<CompliantPathGraph> Reachable::get_real_init_state_cpg() {
+    if (pruning->do_advanced_pruning()){
+        return PruningReachable::get_real_init_state_cpg();
     } else {
-	const auto &  initial_center = g_state_registry->get_center_state(g_initial_state_data);
-        Reachable reach(0);
-            
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
-            reach.add_state(LeafStateID(0, factor));
+        unique_ptr<Reachable> reach(new Reachable(0));
+
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            reach->add_state(LeafStateHash(0), factor);
         }
-            
-        reach.update_price_tags(initial_center, 0, initial_center);
-        
-        return tmp_reach;
+        reach->update(g_state_registry->get_center_state(g_initial_state_data));
+
+        return reach;
     }
 }
 
@@ -584,25 +582,24 @@ unique_ptr<CompliantPathGraph> Reachable::clone() const {
 }
 
 unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutation &per) const {
-    
     Reachable *res = new Reachable(nullptr);
 
-    for(size_t to_factor = 0; to_factor < g_factors.size(); ++to_factor) {
+    for(LeafFactorID to_factor(0); to_factor < g_leaves.size(); ++to_factor) {
         if (!per.is_affected(to_factor)){
             res->reachable[to_factor] = reachable[to_factor];
             res->goal_reached[to_factor] = goal_reached[to_factor];
         } else {
-            auto from_factor = per.get_from_factor(to_factor);
+            LeafFactorID from_factor = per.get_from_factor(to_factor);
 
             auto num_states = get_number_states(from_factor);
-            for  (size_t id = 0; num_states > 0; ++id){
+            for  (LeafStateHash id(0); num_states > 0; ++id){
                 if (has_leaf_state(id, from_factor)){
                     --num_states;
-                    auto to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-                    assert(to_pair.first == (int) to_factor);
-                    auto to_val = to_pair.second;
+                    pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+                    assert(to_pair.second == to_factor);
+                    LeafStateHash to_val = to_pair.first;
 
-                    res->add_state(LeafStateID(to_val, to_factor));
+                    res->add_state(to_val, to_factor);
                 }
             }
         }
@@ -610,7 +607,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutati
 
 #ifndef NDEBUG
     size_t old = 0, now = 0;
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         old += reachable[factor].count();
         now += res->reachable[factor].count();
     }
@@ -622,43 +619,42 @@ unique_ptr<CompliantPathGraph> Reachable::get_permuted_cpg(const LeavesPermutati
 }
 
 bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
-
     vector<boost::dynamic_bitset<> > old_reachable(reachable);
     boost::dynamic_bitset<> old_goal_reached(goal_reached);
 
-    for (auto factor : per.get_factors_affected()) {
-	reachable[factor].reset();
-	goal_reached[factor] = false;
+    for (LeafFactorID factor : per.get_factors_affected()) {
+        reachable[factor].reset();
+        goal_reached[factor] = false;
     }
     
-    for(auto to_factor : per.get_factors_affected()) {
-	auto from_factor = per.get_from_factor(to_factor);
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
 
-        auto num_states = old_reachable[from_factor].count();
-	for  (size_t id = 0; num_states > 0; ++id){
-	    assert(id < leaf_state_id_map[from_factor].size());
-	    if (leaf_state_id_map[from_factor][id] == -1) {
-		continue; 
-	    }
-
-	    size_t leaf_state = leaf_state_id_map[from_factor][id];
-	    if (leaf_state >= old_reachable[from_factor].size() ||
-		!old_reachable[from_factor][leaf_state]){
+        size_t num_states = old_reachable[from_factor].count();
+        for  (LeafStateHash id(0); num_states > 0; ++id){
+            assert(id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1) {
                 continue;
             }
 
-	    --num_states;
-	    auto to_pair = per.get_new_factor_state_by_old_factor_state(from_factor, id);
-	    assert(to_pair.first == to_factor);
-	    auto to_val = to_pair.second;
+            size_t leaf_state = leaf_state_id_map[from_factor][id];
+            if (leaf_state >= old_reachable[from_factor].size() ||
+                    !old_reachable[from_factor][leaf_state]){
+                continue;
+            }
 
-	    add_state(LeafStateID(to_val, to_factor));
-	}
+            --num_states;
+            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(to_pair.second == to_factor);
+            LeafStateHash to_val = to_pair.first;
+
+            add_state(to_val, to_factor);
+        }
     }
 
 #ifndef NDEBUG
     size_t old = 0, now = 0;
-    for (size_t factor = 0; factor < g_factors.size(); ++factor){
+    for (size_t factor = 0; factor < g_leaves.size(); ++factor){
         old += old_reachable[factor].count();
         now += reachable[factor].count();
     }
@@ -666,10 +662,11 @@ bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
     assert(goal_reached.count() == old_goal_reached.count());
 #endif
 
-    return true; //We do not need to check whether the prices changed
-                    //because the return value is only relevant if
-                    //if_less is true and in that case we checked this in
-                    //per.produce_less(prices)
+    //We do not need to check whether the prices changed
+    //because the return value is only relevant if
+    //if_less is true and in that case we checked this in
+    //per.produce_less(prices)
+    return true;
 }
 
     

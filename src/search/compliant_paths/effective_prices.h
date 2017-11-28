@@ -13,10 +13,6 @@ class EffectivePrices : public Prices {
     
     static EffectivePriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-
-    static CompliantPathGraph& get_real_init_state_prices();
-    
 
     EffectivePrices(const EffectivePrices *tag);
     
@@ -25,12 +21,18 @@ class EffectivePrices : public Prices {
 
     void propagate_dominance_prices();
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_prices();
+
 protected:
     
     std::vector<std::vector<int> > effective_prices;
     
     std::vector<size_t> number_effective_states;
     
+
     bool add_effective_state(LeafStateHash id, LeafFactorID factor, int cost);    
         
     bool has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const;
@@ -52,6 +54,7 @@ public:
     
     EffectivePrices(){};
     
+
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
@@ -64,7 +67,5 @@ public:
     static void register_cpg_storage(EffectivePriceStorage *storage);
     
 };
-
-
 
 #endif

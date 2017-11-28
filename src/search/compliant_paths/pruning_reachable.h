@@ -11,15 +11,17 @@ class PruningReachable : public Reachable {
     friend class Reachable; // to get init state cpg
     
     static PruningReachableStorage *cpg_storage;
-    
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();   
 
-    static CompliantPathGraph& get_real_init_state_reachable();   
     
     void compute_frontier();
     
     PruningReachable(const PruningReachable *tag);
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
+
 protected:
     
     std::vector<boost::dynamic_bitset<> > frontier;    
@@ -48,7 +50,5 @@ public:
     static void register_cpg_storage(PruningReachableStorage *storage);
  
 };
-
-
 
 #endif
