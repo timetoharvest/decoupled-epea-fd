@@ -211,7 +211,7 @@ void SearchSpace::trace_path(const State &goal_state,
         const SearchNodeInfo &info = search_node_infos[current_state];
         const Operator *op = info.creating_operator;
         
-        if (g_factoring){
+        if (g_factoring || g_symmetry_graph){
             states.push_back(current_state.get_id());
             if (g_factoring && g_symmetry_graph){
                 cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
@@ -235,7 +235,7 @@ void SearchSpace::trace_path(const State &goal_state,
             } else {
                 if (g_factoring){
                     new_state = g_state_registry->get_center_state(g_initial_state_data);                    
-                    new_cpg = CompliantPathGraph::get_real_init_state_cpg().clone();
+                    new_cpg = CompliantPathGraph::get_real_init_state_cpg();
                 } else {
                     new_state = g_state_registry->get_state(g_initial_state_data);
                 }
@@ -284,7 +284,7 @@ void SearchSpace::trace_path(const State &goal_state,
     }
     
     reverse(path.begin(), path.end());
-}    
+}
 
 void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<StateID> &states) const {
 #ifdef DEBUG_PLAN_EXTRACTION
@@ -370,7 +370,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     // go through center path and fill in leaf actions
     for (size_t step = 0; step < price_tags.size(); step++){
 
-        const Operator *op = 0;
+        const Operator *op = nullptr;
         if (step < path.size()){
             op = path[step];
         }
@@ -539,8 +539,9 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
     }
 }
 
-void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, vector<StateID> &states, 
-				       vector<PathPriceTag> &cpgs, 
+void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path,
+                                       vector<StateID> &states,
+                                       vector<PathPriceTag> &cpgs,
                                        vector<unique_ptr<DecoupledPermutation> > &permutations) const {
                                            
     unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back()));
@@ -555,8 +556,14 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
     }
 
 #ifndef NDEBUG
+    // make sure that the back-permutation results in the original initial state
+    // and that the back-permuted goal state is still a goal state
     for (size_t var: g_center) {
-        assert(g_state_registry->lookup_state(states.back()) [var] == g_initial_state_data[var]);
+        assert(g_state_registry->lookup_state(states.back())[var] == g_initial_state_data[var]);
+    }
+    for (const auto &goal : g_goal){
+        assert(g_belongs_to_factor[goal.first] == LeafFactorID::CENTER);
+        assert(g_state_registry->lookup_state(states[0])[goal.first] == goal.second);
     }
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
@@ -564,31 +571,19 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path, v
         for (size_t var : g_leaves[factor]) {
             tmp_initial_state.push_back(g_initial_state_data[var]);
         }
-        assert(cpgs.back().has_leaf_state(g_state_registry->
-                get_leaf_state(tmp_initial_state,
-                        factor).get_id().hash(),
-                        factor));
-        assert(cpgs[0].get_goal_cost(factor) != CompliantPathGraph::INF);
+        assert(cpgs.back().has_leaf_state(g_state_registry->get_leaf_state(tmp_initial_state, factor).get_id().hash(), factor));
+        assert(g_goals_per_factor[factor].empty() || cpgs[0].get_goal_cost(factor) != CompliantPathGraph::INF);
     }
 #endif
 
     for (size_t i = states.size() - 1; i > 0; --i) {
-        // verify that applying permuted_path[i-1] is states[i] results in states[i-1]      
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), cpgs[i], applicable_ops);
 
         permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
+        // verify that applying permuted_path[i-1] is states[i] results in states[i-1]
         assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
-
-#ifndef NDEBUG
-        auto copy = new PathPriceTag(&(cpgs[i]));
-        copy->update_price_tags (g_state_registry->lookup_state(states[i-1]));
-        for (size_t factor = 0; factor < g_factors.size(); ++factor) {
-            assert(!((cpgs[i-1].get_goal_cost(factor) == CompliantPathGraph::INF) ^
-                    (copy->get_goal_cost(factor) == CompliantPathGraph::INF)));
-        }
-#endif	
     }
 }
 
