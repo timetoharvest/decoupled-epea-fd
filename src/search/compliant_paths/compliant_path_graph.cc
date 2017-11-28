@@ -138,7 +138,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 #endif
 
         // get other state
-        const State s = g_state_registry->get_center_state(base_state, dup);
+        const State s = g_state_registry->get_decoupled_state(base_state, dup);
         
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
@@ -261,7 +261,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 void CompliantPathGraph::build_leaf_state_spaces() {
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-    cout << "+++++++++++++++ STARTING RPG for calculation of minimal goal cost" << endl;
+    cout << "building leaf state spaces" << endl;
 #endif
       
     leaf_state_id_map.resize(g_leaves.size(), vector<int>(1, -1));
@@ -461,7 +461,6 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
     }
     
-    
     g_min_goal_cost = vector<int>(g_leaves.size(), numeric_limits<int>::max());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!precompute_leaf_state_spaces[factor]){
@@ -493,7 +492,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     g_leaf_successor_generators.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (!precompute_leaf_state_spaces[factor]){
+        if (!precompute_leaf_state_spaces[factor] || g_symmetry_graph){
+            // when doing orbit search, we need to keep the leaf successor
+            // generators to get the actions applicable in symmetric leaf states that
+            // are not reachable from the initial state
             g_leaf_successor_generators[factor] = g_successor_generator->copy();
             g_leaf_successor_generators[factor]->split_ops_center_leaf(factor);
         }
@@ -506,7 +508,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     }
     
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-    cout << "leaving calculate_min_goal_cost function" << endl;
+    cout << "building leaf state spaces done" << endl;
 #endif
 }
 
@@ -515,6 +517,14 @@ unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
         return Reachable::get_init_state_cpg();
     } else {
         return Prices::get_init_state_cpg();
+    }
+}
+
+unique_ptr<CompliantPathGraph> CompliantPathGraph::get_real_init_state_cpg() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        return Reachable::get_real_init_state_cpg();
+    } else {
+        return Prices::get_real_init_state_cpg();
     }
 }
 
@@ -538,24 +548,23 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, LeafFactorID factor) {
+LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_leaf_state, LeafFactorID factor) {
     assert(new_leaf_state.size() == g_leaves[factor].size());
 
     size_t num_leaf_states_before = g_state_registry->size(factor);
     
-    const LeafState &state = g_state_registry->get_leaf_state(new_leaf_state, factor);
-    
-    if ((leaf_state_successors[factor].size() <= state.get_id().hash() ||
-        leaf_state_successors[factor][state.get_id().hash()].empty()) && // TODO that's a bit of a hack.. could also be a dead-end leaf state!
-        precompute_leaf_state_spaces[factor]){
-        
+    LeafStateHash id = g_state_registry->get_leaf_state_hash(new_leaf_state, factor);
+
+    if (num_leaf_states_before <= id){
+        // TODO check if this can actually happen
+
         Prices goal_price_tag(0);
     
-        if (leaf_state_id_map[factor].size() <= state.get_id().hash()){
-            leaf_state_id_map[factor].resize(state.get_id().hash() + 1, -1);
+        if (leaf_state_id_map[factor].size() <= id){
+            leaf_state_id_map[factor].resize(id + 1, -1);
         }
         
-        goal_price_tag.add_state(state.get_id().hash(), factor, 0);
+        goal_price_tag.add_state(id, factor, 0);
         
         vector<int> best_prices;
         
@@ -618,7 +627,7 @@ int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, Lea
                 }
 
                 if (first_time_seen){
-                    g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                    g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
                 } else {
                     size_t old_size = applicable_ops.size();
                     applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size());
@@ -626,7 +635,6 @@ int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, Lea
                         applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
                     }
                 }
-                
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                 cout << "       generated " << applicable_ops.size() << " applicable operators" << endl;
@@ -638,7 +646,7 @@ int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, Lea
 
                 // apply all applicable_ops to predecessor and store the outcome          
                 for (const Operator *op : applicable_ops){
-                    if (!op->get_effects(factor).empty()){                        
+                    if (!op->get_effects(factor).empty()){
                         bool is_center_op = op->get_affected_factor() == LeafFactorID::CENTER;
                         
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
@@ -664,9 +672,9 @@ int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, Lea
                         
                         // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
                         // that here, i.e. e.g. the goal states of fork leaves dont need successors
-                        // is that actually true? what about finding a globally cheaper goal state behind a goal?
-                        // the last comment doesn't make too much sense..
                         
+                        // TODO eliminate self-loops in the leaf state space. this should be the case if lid == id
+
                         if (!is_center_op && first_time_seen){
                             leaf_state_successors[factor][id].push_back(make_pair(op, id));
                             if (compute_leaf_backwards_graph) {
@@ -683,63 +691,63 @@ int CompliantPathGraph::get_leaf_state_id(const vector<int> &new_leaf_state, Lea
         }
     }
     
-    return state.get_id().hash();
+    return id;
 }
 
 void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 
-bool CompliantPathGraph::operator <(const CompliantPathGraph &other) const {
-   
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-            if (!g_goals_per_factor[factor].empty()){
-                bool gr = goal_reachable(factor);
-                bool ogr = other.goal_reachable(factor);
+bool CompliantPathGraph::operator<(const CompliantPathGraph &other) const {
 
-                if (gr && !ogr) {
-                    return false;
-                } else if (!gr && ogr) {
-                    return true;
-                }
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
+        if (!g_goals_per_factor[factor].empty()){
+            bool gr = goal_reachable(factor);
+            bool ogr = other.goal_reachable(factor);
+
+            if (gr && !ogr) {
+                return false;
+            } else if (!gr && ogr) {
+                return true;
+            }
+        }
+
+        size_t ns = get_number_states(factor);
+        size_t ons = other.get_number_states(factor);
+
+        if (ns > ons) {
+            return false;
+        } else if (ns < ons) {
+            return true;
+        }
+    }
+
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+
+            bool idr = has_leaf_state(id, factor);
+            bool oidr = other.has_leaf_state(id, factor);
+
+            if(!idr && !oidr) {
+                continue;
             }
 
-	    size_t ns = get_number_states(factor);
-	    size_t ons = other.get_number_states(factor);
-
-	    if (ns > ons) {
-	        return false;
-	    } else if (ns < ons) {
-	        return true;
-	    }
-	}
-
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-
-                bool idr = has_leaf_state(id, factor);
-                bool oidr = other.has_leaf_state(id, factor);
-
-                if(!idr && !oidr) {
-                    continue;
-                }
-
-                if (idr && !oidr) {
-                    return false;
-                } else if (!idr && oidr) {
-                    return true;
-                }
-
-                size_t cs = get_cost_of_state(id, factor);
-                size_t ocs = other.get_cost_of_state(id, factor);
-
-                if (cs < ocs) {
-                    return false;
-                } else if (cs > ocs) {
-                    return true;
-                }
+            if (idr && !oidr) {
+                return false;
+            } else if (!idr && oidr) {
+                return true;
             }
-	}
+
+            size_t cs = get_cost_of_state(id, factor);
+            size_t ocs = other.get_cost_of_state(id, factor);
+
+            if (cs < ocs) {
+                return false;
+            } else if (cs > ocs) {
+                return true;
+            }
+        }
+    }
 
 	return false;
 }

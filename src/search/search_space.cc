@@ -568,7 +568,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path,
         for (size_t var : g_leaves[factor]) {
             tmp_initial_state.push_back(g_initial_state_data[var]);
         }
-        assert(cpgs.back().has_leaf_state(g_state_registry->get_leaf_state(tmp_initial_state, factor).get_id().hash(), factor));
+        assert(cpgs.back().has_leaf_state(g_state_registry->get_leaf_state_hash(tmp_initial_state, factor), factor));
         assert(g_goals_per_factor[factor].empty() || cpgs[0].get_goal_cost(factor) != CompliantPathGraph::INF);
     }
 #endif

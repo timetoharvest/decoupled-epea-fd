@@ -468,7 +468,7 @@ State StateRegistry::get_center_state(const vector<int> &facts) {
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_state(const State &base_state, int dup_counter) {
+State StateRegistry::get_decoupled_state(const State &base_state, int dup_counter) {
     assert(dup_counter >= 0);
     assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
     
@@ -517,7 +517,7 @@ LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &pred
     return insert_id_or_pop_leaf_state(factor);
 }
 
-LeafState StateRegistry::get_leaf_state(const vector<int> &facts, LeafFactorID factor) {
+LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafFactorID factor) {
     assert(g_leaves[factor].size() == facts.size());
     
     leaf_state_data_pool[factor]->push_back((*leaf_state_data_pool[factor])[0]);
@@ -530,10 +530,8 @@ LeafState StateRegistry::get_leaf_state(const vector<int> &facts, LeafFactorID f
     
     // not supported (yet)
     // g_axiom_evaluator->evaluate(buffer);
-    
-    LeafStateHash id = insert_id_or_pop_leaf_state(factor);
 
-    return lookup_leaf_state(id, factor);
+    return insert_id_or_pop_leaf_state(factor);
 }
 
 size_t StateRegistry::get_max_number_duplicates() const {

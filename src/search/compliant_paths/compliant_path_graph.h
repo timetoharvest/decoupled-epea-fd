@@ -35,8 +35,7 @@ class CompliantPathGraph {
     
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
-    // TODO: is this really needed?
-    static CompliantPathGraph& get_real_init_state_cpg();
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
     
 protected:
     
@@ -154,8 +153,7 @@ public:
     
     static void store_is_leaf_goal_state(const LeafState &state);
 
-    // TODO: really needed?
-    static int get_leaf_state_id(const std::vector<int> &new_leaf_state, LeafFactorID factor);
+    static LeafStateHash get_leaf_state_hash(const std::vector<int> &new_leaf_state, LeafFactorID factor);
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;

@@ -239,14 +239,14 @@ public:
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
     */
-    State get_center_state(const State &predecessor, int dup_counter);
+    State get_decoupled_state(const State &predecessor, int dup_counter);
 
     State get_center_successor(const State &center, const Operator &op);
 
     /**
      * NOTE: At least one leaf state in this factor has to exist
      */
-    LeafState get_leaf_state(const std::vector<int> &facts, LeafFactorID factor);
+    LeafStateHash get_leaf_state_hash(const std::vector<int> &facts, LeafFactorID factor);
     
     LeafStateHash get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op);
 
