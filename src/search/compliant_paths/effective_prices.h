@@ -24,7 +24,7 @@ class EffectivePrices : public Prices {
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
-    static std::unique_ptr<CompliantPathGraph> get_real_init_state_prices();
+    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
 
 protected:
     

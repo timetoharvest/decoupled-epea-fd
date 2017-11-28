@@ -231,7 +231,7 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
     return prices;
 }
 
-unique_ptr<CompliantPathGraph> EffectivePrices::get_real_init_state_prices() {
+unique_ptr<CompliantPathGraph> EffectivePrices::get_real_init_state_cpg() {
     if (pruning->use_frontier()){
         return FrontierPrices::get_real_init_state_cpg();
     }
