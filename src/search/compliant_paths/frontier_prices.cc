@@ -47,7 +47,8 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
         
     const FrontierPrices &tag = cpg_storage->frontier_prices[predecessor];
     if (tag.frontier.empty()){
-        assert(predecessor.get_id().hash() == 0);
+        assert(predecessor.get_id().hash() == 0 || g_symmetry_graph);
+        // in orbit search, the frontier is cleared after applying a permutation
         tmp_p_price->compute_cost_frontier();
     } else {
         tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_leaves.size(), boost::dynamic_bitset<>());
