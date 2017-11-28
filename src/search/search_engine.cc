@@ -32,7 +32,7 @@ SearchEngine::SearchEngine(const Options &opts)
         CompliantPathGraph::set_cost_type(cost_type);
     }
     if (opts.contains("symmetry")) {
-        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator *>("symmetry"));
+        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator*>("symmetry"));
         if (g_factoring){
             CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
         }
@@ -202,4 +202,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 }
