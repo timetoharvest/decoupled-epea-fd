@@ -241,19 +241,17 @@ void SearchSpace::trace_path(const State &goal_state,
                 }
             }
             
-            Permutation p;
-            unique_ptr<DecoupledPermutation> dp;
             if (g_factoring){
+                unique_ptr<DecoupledPermutation> dp;
                 const CompliantPathGraph *current_cpg = CPGStorage::storage->get_cpg(current_state);
                 if (!is_equal(current_state, *current_cpg, new_state, *new_cpg)){
                     dp = g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, *new_cpg);
-                }
-                if (dp){
                     decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*dp)));
                 } else {
                     decoupled_permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation()));
                 }
             } else {
+                Permutation p;
                 if (new_state.get_id() != current_state.get_id()){
                     p = g_symmetry_graph->create_permutation_from_state_to_state(current_state, new_state);
                 }
@@ -398,7 +396,6 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
             while (change && marked_leaf_states[factor] != numeric_limits<size_t>::max()){
                 change = false;
 
-
                 const PathPriceTagInfo &fact = price_tags[step]->get_path_info_for_fact(marked_leaf_states[factor], factor);
                 if (fact.is_new){
                     if (fact.best_supporter != 0){
@@ -527,6 +524,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
                 }
             }
         }
+#ifndef NDEBUG
         if (!found) {
             cout << "No operator is found!!!" << endl
                  << "Cannot reach the state:" << endl;
@@ -535,6 +533,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
             g_state_registry->lookup_state(states[i]).dump_pddl();
             exit_with(EXIT_CRITICAL_ERROR);
         }
+#endif
         path[i-1] = applicable_ops[min_cost_op];
     }
 }
