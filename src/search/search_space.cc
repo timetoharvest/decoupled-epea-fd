@@ -509,15 +509,13 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
     for (size_t i = states.size() - 1; i > 0; --i) {
         vector<const Operator *> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), applicable_ops);
-        bool found = false;
-        int min_cost_op = 0;
+        int min_cost_op = -1;
         int min_cost = numeric_limits<int>::max();
 
         for (size_t o = 0; o < applicable_ops.size(); ++o) {
             const Operator *op = applicable_ops[o];
             State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), *op, false);
             if (succ_state.get_id() == states[i-1]) {
-                found = true;
                 if (op->get_cost() < min_cost) {
                     min_cost = op->get_cost();
                     min_cost_op = o;
@@ -525,7 +523,7 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &path, vector<Sta
             }
         }
 #ifndef NDEBUG
-        if (!found) {
+        if (min_cost_op == -1) {
             cout << "No operator is found!!!" << endl
                  << "Cannot reach the state:" << endl;
             g_state_registry->lookup_state(states[i-1]).dump_pddl();
