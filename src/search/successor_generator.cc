@@ -218,7 +218,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops_ignore_others(const LeafS
         }
 #ifndef NDEBUG
         else {
-            assert(!CompliantPathGraph::precompute_leaf_state_space(leaf_state.get_id().get_factor()));
+            assert(!CompliantPathGraph::precompute_leaf_state_space(leaf_state.get_id().get_factor()) || g_symmetry_graph);
         }
 #endif
     } else {

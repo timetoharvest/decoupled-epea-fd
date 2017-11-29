@@ -133,13 +133,20 @@ void Prices::update(const State &base_state) {
             // and copy everything from that state
             if (get_number_states(factor) == 1){
                 LeafStateHash leaf_id(0);
+#ifndef NDEBUG
+                bool found = false;
+#endif
                 for (;;){
                     // TODO there should be a better way to find the state
                     if (has_leaf_state(leaf_id, factor)){
+#ifndef NDEBUG
+                        found = true;
+#endif
                         break;
                     }
                     ++leaf_id;
                 }
+                assert(found);
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){
                     const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
                     
@@ -470,7 +477,7 @@ void Prices::dump() const {
 bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);
-    vector<unsigned int> old_number_states(number_states);
+    vector<size_t> old_number_states(number_states);
     
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
