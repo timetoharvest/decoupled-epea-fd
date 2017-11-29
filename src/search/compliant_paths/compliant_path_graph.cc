@@ -58,13 +58,18 @@ bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID facto
 
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
-            LeafStateHash leaf_id = leaf_tags_to_cache[i].hash();
-            LeafFactorID factor = leaf_tags_to_cache[i].get_factor();
-            if (leaf_price_cache[factor].size() <= leaf_id){
-                leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
+        if (!g_symmetry_graph){
+            // TODO caching currently breaks when using orbit search, fix this!
+            // the reason is that leaf_tags_to_cache contains the unpermuted leaf states
+            // when reading from the cache, those leaf states are possibly not reached, any more
+            for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
+                LeafStateHash leaf_id = leaf_tags_to_cache[i].hash();
+                LeafFactorID factor = leaf_tags_to_cache[i].get_factor();
+                if (leaf_price_cache[factor].size() <= leaf_id){
+                    leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
+                }
+                leaf_price_cache[factor][leaf_id] = state.get_id();
             }
-            leaf_price_cache[factor][leaf_id] = state.get_id();
         }
         vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
