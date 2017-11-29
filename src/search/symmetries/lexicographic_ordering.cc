@@ -15,7 +15,7 @@ LexicographicOrdering::LexicographicOrdering(const Options &opts) :
 }
 
 bool LexicographicOrdering::produces_less(const LeavesPermutation &per, 
-        const CompliantPathGraph &p) const {
+					  const CompliantPathGraph &p) const {
     if(apply_goal_cost) {
         cmp_t cmp = per.cmp_goal_cost(p);
         if(cmp == cmp_t::LESS) {

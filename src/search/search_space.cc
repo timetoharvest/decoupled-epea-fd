@@ -162,7 +162,9 @@ SearchSpace::SearchSpace(OperatorCost cost_type_)
     }
 }
 
-bool SearchSpace::is_equal(const State &s1, const CompliantPathGraph &cpg1, const State &s2, const CompliantPathGraph &cpg2) const {
+inline bool is_equal(const State &s1, const CompliantPathGraph &cpg1, 
+                     const State &s2, const CompliantPathGraph &cpg2) {
+
     for (int var : g_center){
         if (s1[var] !=  s2[var]){
             return false;

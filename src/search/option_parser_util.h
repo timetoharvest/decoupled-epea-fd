@@ -234,7 +234,7 @@ struct TypeNamer<LandmarkGraph *> {
 template <>
 struct TypeNamer<GraphCreator *> {
     static std::string name() {
-        return "symmetry graph";
+        return "GraphCreator";
     }
 };
 

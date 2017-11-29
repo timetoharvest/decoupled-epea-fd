@@ -188,7 +188,15 @@ unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
     return unique_ptr<CompliantPathGraph>(new PruningReachable(this));
 }
 
-std::unique_ptr<CompliantPathGraph> PruningReachable::get_permuted_cpg(const LeavesPermutation &) const {    cerr << "PruningReachable::get_permuted_cpg not implemented" << endl;
+unique_ptr<CompliantPathGraph> PruningReachable::get_permuted_cpg(const LeavesPermutation &) const {
+    // TODO implement this
+    cerr << "PruningReachable::get_permuted_cpg not implemented" << endl;
+    exit_with(EXIT_CRITICAL_ERROR);
+}
+
+bool PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
+    // TODO implement this
+    cerr << "PruningReachable::apply_symmetry_permutation not implemented" << endl;
     exit_with(EXIT_CRITICAL_ERROR);
 }
     

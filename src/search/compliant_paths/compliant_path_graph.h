@@ -125,8 +125,6 @@ public:
                         int curr_number_duplicates,
                         const State &predecessor,
                         const Operator &op);
-
-    bool operator<(const CompliantPathGraph &cpg2) const;
     
 
     static void initialize();

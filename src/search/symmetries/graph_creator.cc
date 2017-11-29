@@ -172,8 +172,9 @@ void GraphCreator::add_operator_directed_graph(bliss::Digraph *g, const Operator
         }
     }
 }
-/*
-bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const {
+#endif
+
+/*bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const {
     // Checking whether the effect is a delete effect that can be overwritten by an add effect
     assert(ind < prepost.size());
     int var = prepost[ind].var;
@@ -191,9 +192,7 @@ bool GraphCreator::effect_can_be_overwritten(int ind, const std::vector<PrePost>
         return true;
     }
     return false;
-}
-*/
-#endif
+}*/
 
 Permutation GraphCreator::create_permutation_from_state_to_state(const State &from_state, 
 								 const State &to_state) {
@@ -247,7 +246,7 @@ static GraphCreator *_parse(OptionParser &parser) {
     Options opts = parser.parse();
 
     if (!parser.dry_run()) {
-        cout << "Creating symmetry graph stabilizing goal only and using orbit search" << endl;
+        cout << "Creating symmetry graph stabilizing goal only and using orbit search." << endl;
         return new GraphCreator(opts);
     } else {
         return 0;

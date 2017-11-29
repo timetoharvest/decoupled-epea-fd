@@ -409,9 +409,6 @@ LandmarkGraph *TokenParser<LandmarkGraph *>::parse(OptionParser &p) {
 }
 
 GraphCreator *TokenParser<GraphCreator *>::parse(OptionParser &p) {
-    // HACK
-    if (p.get_parse_tree()->begin()->value == "0")
-        return 0;
     bool predefined;
     GraphCreator *result = lookup_in_predefinitions<GraphCreator>(p, predefined);
     if (predefined)

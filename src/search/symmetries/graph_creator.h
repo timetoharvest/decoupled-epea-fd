@@ -13,7 +13,7 @@
 //TODO: Add vertex for axioms.
 enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
               GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
-	          CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
+	      CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
 
 /**
  * This class will create a bliss graph which will be used to find the
@@ -38,9 +38,9 @@ class GraphCreator  {
     bliss::Digraph* create_bliss_directed_graph() const;
 
     void add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const;
-
-    /* bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const; */
 #endif
+
+    // bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const;
 
 public:
 

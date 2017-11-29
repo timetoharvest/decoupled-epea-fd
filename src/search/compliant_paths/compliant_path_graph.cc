@@ -59,9 +59,8 @@ bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID facto
 void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
     if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
         for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
-            // TODO why are these still size_t?
-            size_t leaf_id = leaf_tags_to_cache[i].hash();
-            size_t factor = leaf_tags_to_cache[i].get_factor();
+            LeafStateHash leaf_id = leaf_tags_to_cache[i].hash();
+            LeafFactorID factor = leaf_tags_to_cache[i].get_factor();
             if (leaf_price_cache[factor].size() <= leaf_id){
                 leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
@@ -698,56 +697,3 @@ void CompliantPathGraph::discard_new_graph() const {
     discard_leaf_price_cache();
 }
 
-bool CompliantPathGraph::operator<(const CompliantPathGraph &other) const {
-
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-        if (!g_goals_per_factor[factor].empty()){
-            bool gr = goal_reachable(factor);
-            bool ogr = other.goal_reachable(factor);
-
-            if (gr && !ogr) {
-                return false;
-            } else if (!gr && ogr) {
-                return true;
-            }
-        }
-
-        size_t ns = get_number_states(factor);
-        size_t ons = other.get_number_states(factor);
-
-        if (ns > ons) {
-            return false;
-        } else if (ns < ons) {
-            return true;
-        }
-    }
-
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-
-            bool idr = has_leaf_state(id, factor);
-            bool oidr = other.has_leaf_state(id, factor);
-
-            if(!idr && !oidr) {
-                continue;
-            }
-
-            if (idr && !oidr) {
-                return false;
-            } else if (!idr && oidr) {
-                return true;
-            }
-
-            size_t cs = get_cost_of_state(id, factor);
-            size_t ocs = other.get_cost_of_state(id, factor);
-
-            if (cs < ocs) {
-                return false;
-            } else if (cs > ocs) {
-                return true;
-            }
-        }
-    }
-
-	return false;
-}

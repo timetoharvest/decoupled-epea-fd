@@ -9,7 +9,6 @@
 #include <vector>
 
 
-class CompliantPathGraph;
 class Operator;
 class PathPriceTag;
 
@@ -60,11 +59,12 @@ class SearchSpace {
 
     OperatorCost cost_type;
     
-    bool is_equal(const State &s1, const CompliantPathGraph &cpg1, const State &s2, const CompliantPathGraph &cpg2) const;
+    void trace_decoupled_path(std::vector<const Operator*> &path, 
+                              std::vector<StateID> &states) const;
     
-    void trace_decoupled_path(std::vector<const Operator*> &path, std::vector<StateID> &states) const;
-    
-    void trace_symmetric_path(std::vector<const Operator*> &path, std::vector<StateID> &states, std::vector<Permutation> &permutations) const;
+    void trace_symmetric_path(std::vector<const Operator*> &path, 
+                              std::vector<StateID> &states, 
+                              std::vector<Permutation> &permutations) const;
     
     void trace_symmetric_path(std::vector<const Operator*> &path,
                               std::vector<StateID> &states, 

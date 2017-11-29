@@ -535,9 +535,9 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
         }
     }
     
-    return (leaves_permutation && 
-	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
-	    leaves.apply_symmetry_permutation(*leaves_permutation));    
+    return leaves_permutation &&
+	   lex_ordering.produces_less(*leaves_permutation, leaves) && 
+	   leaves.apply_symmetry_permutation(*leaves_permutation);
 }
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
@@ -655,7 +655,6 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
             }
 
             return op;
-
         }
     }
 

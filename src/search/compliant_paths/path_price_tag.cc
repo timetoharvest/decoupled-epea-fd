@@ -47,7 +47,6 @@ PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
     }
 }
 
-// TODO: really needed?
 PathPriceTag::PathPriceTag(const CompliantPathGraph &cpg) {
     number_states = vector<size_t>(g_leaves.size(), 0);
     prices = vector<vector<int> >(g_leaves.size());
@@ -272,13 +271,12 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 
 bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
-    vector<vector<int> > old_prices(prices);//g_factors.size());
+    vector<vector<int> > old_prices(prices);
     vector<unsigned int> old_number_states (number_states);
     vector<int> old_goal_cost (goal_cost);
     vector<vector<PathPriceTagInfo> > old_paths(paths);
 
     for (int factor : per.get_factors_affected()) {
-        //old_prices[factor] = move(prices [factor]);
         number_states[factor] = 0;
         prices[factor] = vector<int>();
         goal_cost[factor] = INF;
@@ -305,7 +303,9 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
 
             size_t leaf_state = leaf_state_id_map[from_factor][id];
             if (leaf_state >= old_prices[from_factor].size() ||
-                old_prices[from_factor][leaf_state] == INF)  continue;
+                old_prices[from_factor][leaf_state] == INF){
+                continue;
+            }
 
             num_states--;
             pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
@@ -371,3 +371,4 @@ unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermut
 
     return unique_ptr<CompliantPathGraph>(res);
 }
+

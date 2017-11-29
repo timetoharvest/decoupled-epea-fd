@@ -532,3 +532,4 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_permuted_cpg(const LeavesPerm
 
     return unique_ptr<CompliantPathGraph>(res);
 }
+

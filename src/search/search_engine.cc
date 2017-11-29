@@ -155,7 +155,8 @@ bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathG
             }
         } 
 #ifndef NDEBUG
-        // g-adjustment should ensure that there always exists a leaf state with cost 0 in non-fork leaves        // for fork leaves, it is trivially true
+        // g-adjustment should ensure that there always exists a leaf state with cost 0 in non-fork leaves
+        // for fork leaves, it is trivially true
         else {
             int min_compliant_path_cost = numeric_limits<int>::max();
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){

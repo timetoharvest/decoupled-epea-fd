@@ -68,7 +68,7 @@ LeafStateHash StateRegistry::insert_id_or_pop_leaf_state(LeafFactorID factor) {
       state data pool.
     */
     LeafStateID id(LeafStateHash(leaf_state_data_pool[factor]->size() - 1), factor);
-    assert(id.value != LeafStateHash::MAX);
+    assert(id.value < LeafStateHash::MAX);
     pair<LeafFactorIDSet::iterator, bool> result = registered_leaf_states[factor].insert(id);
     if (!result.second) {
         // is known leaf state

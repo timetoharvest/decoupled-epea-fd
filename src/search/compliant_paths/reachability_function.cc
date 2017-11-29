@@ -669,4 +669,3 @@ bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
     return true;
 }
 
-    
