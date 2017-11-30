@@ -17,6 +17,7 @@ GraphCreator::GraphCreator(const Options &opts) :
     initialized = false;
     time_bound = opts.get<int>("time_bound");
     generators_bound =  opts.get<int>("generators_bound");
+    verify_no_axioms_no_conditional_effects(); // TODO implement support
 }
 
 void GraphCreator::initialize() {
