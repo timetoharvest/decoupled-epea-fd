@@ -53,10 +53,6 @@ void Group::add_generator(Permutation gen) {
     }
 
     generators.push_back(gen);
-#ifndef NDEBUG
-    cout << "Added generator number " << get_num_generators() << endl;
-#endif
-
 }
 
 int Group::get_num_generators() const {
