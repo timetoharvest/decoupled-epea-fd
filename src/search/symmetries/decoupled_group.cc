@@ -11,26 +11,41 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
     // Ensure that all symmetry leaf states exists
     // need to do this here because the final number of leaf states is
     // needed to initialize findex_leaves
-    for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
-            for(const Permutation &per : group.generators) {
-                LeafState l = g_state_registry->lookup_leaf_state(s, factor);
-                LeafFactorID symm_factor = LeafFactorID::CENTER;
-                vector<int> symm_leaf_state;
+    bool change = true;
+    vector<bool> has_new_states(g_leaves.size(), true);
+    while (change){
+        change = false;
+        for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (!has_new_states[factor]){
+                continue;
+            }
+            has_new_states[factor] = false;
+            for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
+                for(const Permutation &per : group.generators) {
+                    LeafState l = g_state_registry->lookup_leaf_state(s, factor);
+                    LeafFactorID symm_factor = LeafFactorID::CENTER;
+                    vector<int> symm_leaf_state;
 
-                for(int v : g_leaves[factor]) {
-                    auto mapped_to = per.get_new_var_val_by_old_var_val(v, l[v]);
-                    int symm_var = mapped_to.first;
-                    int symm_val = mapped_to.second;
-                    assert(symm_factor == LeafFactorID::CENTER || symm_factor ==  g_belongs_to_factor[symm_var]);
+                    for(int v : g_leaves[factor]) {
+                        auto mapped_to = per.get_new_var_val_by_old_var_val(v, l[v]);
+                        int symm_var = mapped_to.first;
+                        int symm_val = mapped_to.second;
+                        assert(symm_factor == LeafFactorID::CENTER || symm_factor ==  g_belongs_to_factor[symm_var]);
+                        assert(g_belongs_to_factor[symm_var] != LeafFactorID::CENTER);
 
-                    symm_factor =  g_belongs_to_factor[symm_var];
-                    if(symm_leaf_state.empty()) {
-                        symm_leaf_state.resize(g_leaves[symm_factor].size());
+                        symm_factor =  g_belongs_to_factor[symm_var];
+                        if(symm_leaf_state.empty()) {
+                            symm_leaf_state.resize(g_leaves[symm_factor].size());
+                        }
+                        symm_leaf_state[g_new_index[symm_var]] = symm_val;
                     }
-                    symm_leaf_state[g_new_index[symm_var]] = symm_val;
+                    size_t size_before = g_state_registry->size(symm_factor);
+                    CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
+                    if (size_before != g_state_registry->size(symm_factor) && !has_new_states[symm_factor]){
+                        has_new_states[symm_factor] = true;
+                        change = true;
+                    }
                 }
-                CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
             }
         }
     }
