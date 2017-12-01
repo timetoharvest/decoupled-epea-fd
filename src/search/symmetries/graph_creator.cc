@@ -31,7 +31,7 @@ void GraphCreator::initialize() {
     group->initialize();
 
     unique_ptr<bliss::AbstractGraph> graph(create_bliss_directed_graph());
-    ((bliss::Digraph*)graph.get())->set_splitting_heuristic(bliss::Digraph::shs_flm);
+    ((bliss::Digraph*) graph.get())->set_splitting_heuristic(bliss::Digraph::shs_flm);
 
     // Added in version 0.5. Needs to be removed in version 0.72
 #ifdef USE_BLISS05
@@ -50,17 +50,16 @@ void GraphCreator::initialize() {
 
     bliss::Stats stats1;
     cout << "Using Bliss to find group generators" << endl;
-    graph->canonical_form(stats1,&(Group::add_permutation),group.get());
+    graph->canonical_form(stats1, &(Group::add_permutation), group.get());
     cout << "Got " << group->get_num_generators() << " group generators, time step: [t=" << g_timer << "]" << endl;
 
     group->default_direct_product();
-    cout<<"Number of generators: "<< group->get_num_generators()<<endl;
-    // group->dump_generators();
+    cout << "Number of generators: " << group->get_num_generators() << endl;
 
     if(g_factoring) {
-	decoupled_group = unique_ptr<DecoupledGroup>(new DecoupledGroup(*group));
+        decoupled_group = unique_ptr<DecoupledGroup>(new DecoupledGroup(*group));
     }
-    cout << "Done initializing symmetries [t=" << g_timer << "]" << endl;
+    cout << "done initializing symmetries [t=" << g_timer << "]" << endl;
 #else
     cerr << "You must build the planner with the USE_BLISS symbol defined" << endl;
     exit_with(EXIT_CRITICAL_ERROR);
@@ -96,7 +95,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     //add vertices for factors
     for (size_t factor = 0; factor < g_leaves.size(); ++factor){
         idx = g->add_vertex(LEAF_FACTOR_VERTEX);
-        for (size_t v : g_leaves[factor]){
+        for (int v : g_leaves[factor]){
             g->add_edge(idx,v);
         }
     }
@@ -122,6 +121,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     }
 
     if (g_factoring) {
+        // for decoupled search, g_goal (above) contains only center goals
         for (const auto &gpf : g_goals_per_factor){
             for (const auto &gp : gpf) {
                 int var = gp.first;
