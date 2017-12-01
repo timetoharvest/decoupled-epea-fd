@@ -403,10 +403,14 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 }
 
 void Factoring::print_factoring() const {
-#ifdef DEBUG_FACTORING
+#ifndef NDEBUG
     cout << "final factoring:" << endl;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        cout << "leaf factor " << factor << endl;
+        cout << "leaf " << factor << ": ";
+        for (int var : g_leaves[factor]){
+            cout << var << ", ";
+        }
+        cout << endl;
         for (size_t var_i = 0; var_i < g_leaves[factor].size(); ++var_i){
             cout << "   " << g_fact_names[g_leaves[factor][var_i]][0] << endl;
         }
@@ -472,7 +476,7 @@ void Factoring::do_factoring_or_abstain() {
         exit_error("No factoring found!", EXIT_UNSOLVED_INCOMPLETE);
     }
     
-    apply_factoring(best_factoring);    
+    apply_factoring(best_factoring);
     
     print_factoring();
 }
