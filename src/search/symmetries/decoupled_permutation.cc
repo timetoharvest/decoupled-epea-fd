@@ -72,7 +72,6 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
     value.resize(findex_leaves.size());
     inverse_value.resize(findex_leaves.size());
 
-    // Ensure that all symmetric leaf states exists
     for(LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
             LeafState l = g_state_registry->lookup_leaf_state(s, factor);
@@ -83,6 +82,7 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
                 int symm_var = mapped_to.first;
                 int symm_val = mapped_to.second;
                 assert(symm_factor == LeafFactorID::CENTER || symm_factor == g_belongs_to_factor[symm_var]);
+                assert(g_belongs_to_factor[symm_var] != LeafFactorID::CENTER);
 
                 symm_factor =  g_belongs_to_factor[symm_var];
                 if(symm_leaf_state.size() != g_leaves[symm_factor].size()) {
@@ -90,8 +90,13 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
                 }
                 symm_leaf_state[g_new_index[symm_var]] = symm_val;
             }
+#ifndef NDEBUG
+            size_t size_before = g_state_registry->size(symm_factor);
+#endif
 
             LeafStateHash symm_id = CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
+
+            assert(size_before == g_state_registry->size(symm_factor));
 
             int index = findex_leaves.get_index_by_leaf_state(s, factor);
             int symm_index = findex_leaves.get_index_by_leaf_state(symm_id, symm_factor);
