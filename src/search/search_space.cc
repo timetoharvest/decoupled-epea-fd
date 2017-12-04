@@ -368,7 +368,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
     vector<const Operator*> decoupled_plan;
 
     // go through center path and fill in leaf actions
-    for (size_t step = 0; step < price_tags.size(); step++){
+    for (size_t step = 0; step < price_tags.size(); ++step){
 
         const Operator *op = nullptr;
         if (step < path.size()){
