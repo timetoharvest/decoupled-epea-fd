@@ -157,10 +157,10 @@ const State &StateRegistry::get_initial_state() {
 void StateRegistry::permute_initial_state() {
     // TODO refactor this... what about having a decoupled state registry?
     if (g_factoring){
-        assert(new_center.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
-
         CompliantPathGraph *cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
         const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
+
+        assert(new_center.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
 
         bool changed = false;
         for (int var : g_center){
