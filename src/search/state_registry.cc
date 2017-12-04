@@ -128,7 +128,6 @@ const State &StateRegistry::get_initial_state() {
         cached_initial_state = new State(lookup_state(id));
         
         if (g_factoring){
-            
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 leaf_state_data_pool[factor]->push_back(leaf_buffers[factor]);
                 // buffer is copied by push_back
@@ -158,9 +157,11 @@ const State &StateRegistry::get_initial_state() {
 void StateRegistry::permute_initial_state() {
     // TODO refactor this... what about having a decoupled state registry?
     if (g_factoring){
+        assert(new_center.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
+
         CompliantPathGraph *cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
         const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
-        
+
         bool changed = false;
         for (int var : g_center){
             if ((*cached_initial_state)[var] != new_center[var]){

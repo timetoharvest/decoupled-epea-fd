@@ -123,7 +123,7 @@ class StateRegistry {
             : state_data_pool(state_data_pool_) {
         }
 
-        size_t operator()(const StateID &lhs, const StateID &rhs) const {
+        bool operator()(const StateID &lhs, const StateID &rhs) const {
             size_t size = g_state_packer->get_num_bins();
             const PackedStateBin *lhs_data = state_data_pool[lhs.value];
             const PackedStateBin *rhs_data = state_data_pool[rhs.value];
@@ -147,7 +147,7 @@ class StateRegistry {
             : data_pool(state_data_pool_) {
         }
 
-        size_t operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
+        bool operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
             assert(lhs.factor == rhs.factor);
             size_t size = g_leaf_factor_packers[lhs.factor]->get_num_bins();
             const PackedStateBin *lhs_data = (*data_pool[lhs.factor])[lhs.value];
