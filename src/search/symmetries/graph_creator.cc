@@ -92,9 +92,9 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
        }
     }
     
-    //add vertices for factors
-    for (size_t factor = 0; factor < g_leaves.size(); ++factor){
-        idx = g->add_vertex(LEAF_FACTOR_VERTEX);
+    // add vertices for factors
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        idx = g->add_vertex(LEAF_FACTOR_VERTEX + factor);
         for (int v : g_leaves[factor]){
             g->add_edge(idx,v);
         }
@@ -137,7 +137,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
 void GraphCreator::add_operator_directed_graph(bliss::Digraph *g, const Operator &op) const {
-    int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
+    int OP_COLOR = MAX_VALUE + g_leaves.size() + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
 
     int op_idx = g->add_vertex(OP_COLOR);
 
