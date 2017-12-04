@@ -562,12 +562,11 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
         // for single-variable leaves, *all* leaf states should be
         // generated in build_leaf_state_spaces
         assert(g_leaves[factor].size() != 1);
+        assert(leaf_state_id_map[factor].size() <= new_state_id);
 
         Prices goal_price_tag(0);
-    
-        if (leaf_state_id_map[factor].size() <= new_state_id){
-            leaf_state_id_map[factor].resize(new_state_id + 1, -1);
-        }
+
+        leaf_state_id_map[factor].resize(new_state_id + 1, -1);
         
         goal_price_tag.add_state(new_state_id, factor, 0);
         
@@ -591,15 +590,27 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
                     }
                 }
                 
-                const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
+                LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
                 
                 if (id >= best_prices.size()){
                     best_prices.resize(id + 1, numeric_limits<int>::max());
                 }
+
                 bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
+                if (id < center_successors[factor].size() && !center_successors[factor][id].empty()){
+                    first_time_seen = false;
+                }
+                if (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty()){
+                    first_time_seen = false;
+                }
+                if (compute_leaf_backwards_graph){
+                    if (id < leaf_state_predecessors[factor].size() && !leaf_state_predecessors[factor][id].empty()){
+                        first_time_seen = false;
+                    }
+                }
+
                 best_prices[id] = cost;
-                
-                
+
                 vector<const Operator*> applicable_ops;
                 
                 if (!g_factoring->is_fork_leaf(factor)){
