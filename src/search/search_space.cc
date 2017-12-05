@@ -171,8 +171,16 @@ inline bool is_equal(const State &s1, const CompliantPathGraph &cpg1,
         }
     }
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (!g_goals_per_factor[factor].empty() && cpg1.get_goal_cost(factor) != cpg2.get_goal_cost(factor)){
-            return false;
+        if (!g_goals_per_factor[factor].empty()){
+            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                bool goal_reachable_1 = cpg1.get_goal_cost(factor) != CompliantPathGraph::INF;
+                bool goal_reachable_2 = cpg2.get_goal_cost(factor) != CompliantPathGraph::INF;
+                if (goal_reachable_1 ^ goal_reachable_2){
+                    return false;
+                }
+            } else if (cpg1.get_goal_cost(factor) != cpg2.get_goal_cost(factor)){
+                return false;
+            }
         }
         if (cpg1.get_number_states(factor) != cpg2.get_number_states(factor)){
             return false;
@@ -352,7 +360,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
                 }
                 ++id;
             }
-            assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+            assert(marked_leaf_states[factor] != LeafStateHash::MAX);
 
 #ifdef DEBUG_PLAN_EXTRACTION
             cout << "marked goal fact: " << marked_leaf_states[factor] << " for cost " << min_cost << endl;
@@ -395,7 +403,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 
             bool change = true;
-            while (change && marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+            while (change && marked_leaf_states[factor] != LeafStateHash::MAX){
                 change = false;
 
                 const PathPriceTagInfo &fact = price_tags[step]->get_path_info_for_fact(marked_leaf_states[factor], factor);
@@ -431,7 +439,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
             if (op != nullptr && !op->get_effects(factor).empty()){
                 // apply leaf effects to predecessor decoupled state
 
-                if (marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+                if (marked_leaf_states[factor] != LeafStateHash::MAX){
                     LeafStateHash state_hash = marked_leaf_states[factor];
                     LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
 
@@ -451,9 +459,9 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
                 // collect and mark leaf precondition of center op
 
                 if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){
-                    assert(marked_leaf_states[factor] == numeric_limits<size_t>::max() || op->is_applicable(marked_leaf_states[factor], factor));
+                    assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
 
-                    if (marked_leaf_states[factor] == numeric_limits<size_t>::max()){
+                    if (marked_leaf_states[factor] == LeafStateHash::MAX){
                         int best_price = numeric_limits<int>::max();
 
                         size_t number_states = price_tags[step + 1]->get_number_states(factor);
@@ -472,7 +480,7 @@ void SearchSpace::trace_decoupled_path(vector<const Operator*> &path, vector<Sta
                             ++id;
                         }
 
-                        assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+                        assert(marked_leaf_states[factor] != LeafStateHash::MAX);
                     }
                 }
             }
@@ -581,8 +589,14 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path,
 
         permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(permuted_path[i-1], applicable_ops);
 
+#ifndef NDEBUG
         // verify that applying permuted_path[i-1] is states[i] results in states[i-1]
-        assert(is_equal(g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]), cpgs[i], g_state_registry->lookup_state(states[i-1]), cpgs[i]));
+        PathPriceTag new_cpg(0);
+        new_cpg.apply_center_op_to_leaves(cpgs[i], *permuted_path[i-1]);
+        State center_successor = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), *permuted_path[i-1]);
+        new_cpg.update_price_tags(center_successor);
+        assert(is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], center_successor, new_cpg));
+#endif
     }
 }
 
