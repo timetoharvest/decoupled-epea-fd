@@ -94,9 +94,9 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
     
     // add vertices for factors
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        idx = g->add_vertex(LEAF_FACTOR_VERTEX + factor);
+        idx = g->add_vertex(LEAF_FACTOR_VERTEX);
         for (int v : g_leaves[factor]){
-            g->add_edge(idx,v);
+            g->add_edge(idx, v);
         }
     }
 
@@ -137,7 +137,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
 void GraphCreator::add_operator_directed_graph(bliss::Digraph *g, const Operator &op) const {
-    int OP_COLOR = MAX_VALUE + g_leaves.size() + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
+    int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
 
     int op_idx = g->add_vertex(OP_COLOR);
 
@@ -221,8 +221,7 @@ GraphCreator::create_permutation_from_state_to_state(const State &state,
     assert(curr_trace.canonical_center == new_trace.canonical_center);
     assert(curr_trace.trace.empty());
 
-    unique_ptr<DecoupledPermutation> p1(
-	new DecoupledPermutation(*decoupled_group->compose_permutation(new_trace), true));
+    unique_ptr<DecoupledPermutation> p1(new DecoupledPermutation(*decoupled_group->compose_permutation(new_trace), true));
     unique_ptr<DecoupledPermutation> p2(decoupled_group->compose_permutation(curr_trace));
 
     return unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*p2, *p1));
