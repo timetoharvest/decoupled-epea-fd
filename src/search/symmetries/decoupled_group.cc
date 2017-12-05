@@ -21,8 +21,8 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
             }
             has_new_states[factor] = false;
             for(LeafStateHash s(0); s < g_state_registry->size(factor); ++s) {
+                LeafState l = g_state_registry->lookup_leaf_state(s, factor);
                 for(const Permutation &per : group.generators) {
-                    LeafState l = g_state_registry->lookup_leaf_state(s, factor);
                     LeafFactorID symm_factor = LeafFactorID::CENTER;
                     vector<int> symm_leaf_state;
 
@@ -34,13 +34,16 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
                         assert(g_belongs_to_factor[symm_var] != LeafFactorID::CENTER);
 
                         symm_factor =  g_belongs_to_factor[symm_var];
+                        assert(g_leaves[factor].size() == g_leaves[symm_factor].size());
                         if(symm_leaf_state.empty()) {
                             symm_leaf_state.resize(g_leaves[symm_factor].size());
                         }
                         symm_leaf_state[g_new_index[symm_var]] = symm_val;
                     }
                     size_t size_before = g_state_registry->size(symm_factor);
+
                     CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
+
                     if (size_before != g_state_registry->size(symm_factor) && !has_new_states[symm_factor]){
                         has_new_states[symm_factor] = true;
                         change = true;
