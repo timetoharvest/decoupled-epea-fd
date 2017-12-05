@@ -508,8 +508,7 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
             }
 
             size_t leaf_state = leaf_state_id_map[from_factor][id];
-            if (leaf_state >= old_prices[from_factor].size() ||
-                    old_prices[from_factor][leaf_state] == INF) {
+            if (leaf_state >= old_prices[from_factor].size() || old_prices[from_factor][leaf_state] == INF) {
                 continue;
             }
 
@@ -522,8 +521,8 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
         }
     }
 
-    assert (accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
-    assert (accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+    assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 
     // We do not need to check whether the prices changed
     // because the return value is only relevant if
@@ -534,45 +533,5 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
 
 unique_ptr<CompliantPathGraph> Prices::clone() const {
     return unique_ptr<CompliantPathGraph>(new Prices(this));
-}
-
-unique_ptr<CompliantPathGraph> Prices::get_permuted_cpg(const LeavesPermutation &per) const {
-    Prices *res = new Prices(nullptr);
-    for (LeafFactorID to_factor(0); to_factor < g_leaves.size(); ++to_factor){
-        if(!per.is_affected(to_factor)) {
-            res->goal_cost[to_factor] = goal_cost[to_factor];
-            res->number_states[to_factor] = number_states[to_factor];
-            res->prices[to_factor] = prices[to_factor];
-        } else {
-            LeafFactorID from_factor = per.get_from_factor(to_factor);
-
-            assert(find(per.get_factors_affected().begin(),
-                    per.get_factors_affected().end(), to_factor)
-                    != per.get_factors_affected().end());
-
-            assert(find(per.get_factors_affected().begin(),
-                    per.get_factors_affected().end(), from_factor)
-                    != per.get_factors_affected().end());
-
-            size_t num_states = number_states[from_factor];
-            for  (LeafStateHash id(0); num_states > 0; ++id){
-                if (!has_leaf_state(id, from_factor)){
-                    continue;
-                }
-
-                --num_states;
-                pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-                assert(to_pair.second == to_factor);
-                LeafStateHash to_val = to_pair.first;
-
-                res->add_state(to_val, to_factor, get_cost_of_state(id, from_factor));
-            }
-        }
-    }
-
-    assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
-    assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
-
-    return unique_ptr<CompliantPathGraph>(res);
 }
 

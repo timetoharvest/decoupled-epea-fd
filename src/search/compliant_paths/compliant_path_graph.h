@@ -113,8 +113,6 @@ public:
     virtual void dump() const = 0;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
-    
-    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const = 0;
 
     // TODO: get rid of this, only used for statistics printout in StateRegistry
     virtual bool is_empty() const = 0;

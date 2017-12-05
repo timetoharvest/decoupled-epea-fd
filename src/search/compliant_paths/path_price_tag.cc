@@ -243,7 +243,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         }
 
         // check which leaf states satisfy center precondition and apply effects
-        int number_states = old_tag.get_number_states(factor);
+        size_t number_states = old_tag.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
@@ -251,7 +251,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 
                 if (!has_pre_on_factor || op.is_applicable(id, factor)){
                     if (num_effects == 0){
-                        add_state(id, factor, old_tag.get_cost_of_state(id, factor), 0, id);
+                        add_state(id, factor, old_tag.get_cost_of_state(id, factor), nullptr, id);
                         paths[factor][leaf_state_id_map[factor][id]].reset_supporter();
                     } else {
                         LeafState state = g_state_registry->lookup_leaf_state(id, factor);
@@ -262,7 +262,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                         
                         assert(size_before == g_state_registry->size(factor));
             
-                        add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), 0, id);
+                        add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), nullptr, id);
                         paths[factor][leaf_state_id_map[factor][succ_id]].reset_supporter();
                     }
                 }
@@ -275,8 +275,8 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);
-    vector<size_t> old_number_states (number_states);
-    vector<int> old_goal_cost (goal_cost);
+    vector<size_t> old_number_states(number_states);
+    vector<int> old_goal_cost(goal_cost); // only for debugging
     vector<vector<PathPriceTagInfo> > old_paths(paths);
 
     for (LeafFactorID factor : per.get_factors_affected()) {
@@ -299,23 +299,23 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
 
         size_t num_states = old_number_states[from_factor]; 
         for  (LeafStateHash id(0); num_states > 0; ++id){
-            assert (id < leaf_state_id_map[from_factor].size());
-            if (leaf_state_id_map[from_factor][id] == -1) {
-                continue; 
+            assert(id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1){
+                continue;
             }
 
-            size_t leaf_state = leaf_state_id_map[from_factor][id];
-            if (leaf_state >= old_prices[from_factor].size() ||
-                old_prices[from_factor][leaf_state] == INF){
+            size_t from_state_index = leaf_state_id_map[from_factor][id];
+            if (from_state_index >= old_prices[from_factor].size() || old_prices[from_factor][from_state_index] == INF){
                 continue;
             }
 
             num_states--;
             pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
             assert(to_pair.second == to_factor);
-            LeafStateHash to_val = to_pair.first;
+            LeafStateHash to_state = to_pair.first;
 
-            add_state(to_val, to_factor, old_prices[from_factor][leaf_state], old_paths[from_factor][leaf_state].best_supporter, old_paths[from_factor][leaf_state].predecessor);
+            // best_supporter and predecessor need to be permuted too. this is not required for plan reconstruction, though.
+            add_state(to_state, to_factor, old_prices[from_factor][from_state_index], nullptr, LeafStateHash::MAX);
         }
     }
 
@@ -332,46 +332,3 @@ bool PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
     return unique_ptr<CompliantPathGraph>(new PathPriceTag(this));
 }
-
-unique_ptr<CompliantPathGraph> PathPriceTag::get_permuted_cpg(const LeavesPermutation &per) const {
-    PathPriceTag *res = new PathPriceTag(nullptr);
-
-    for(LeafFactorID to_factor : per.get_factors_affected()) {
-        LeafFactorID from_factor = per.get_from_factor(to_factor);
-
-        assert(find(per.get_factors_affected().begin(), 
-                         per.get_factors_affected().end(), to_factor)
-               != per.get_factors_affected().end());
-
-        assert(find(per.get_factors_affected().begin(), 
-                         per.get_factors_affected().end(), from_factor)
-               != per.get_factors_affected().end());
-
-        size_t num_states = number_states[from_factor]; 
-        for  (LeafStateHash id(0); num_states > 0; ++id){
-            assert (id < leaf_state_id_map[from_factor].size());
-            if (leaf_state_id_map[from_factor][id] == -1) {
-                continue; 
-            }
-
-            size_t leaf_state = leaf_state_id_map[from_factor][id];
-            if (leaf_state >= prices[from_factor].size() ||
-                prices[from_factor][leaf_state] == INF) {
-                continue;
-            }
-
-            num_states--;
-            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-            assert(to_pair.second == to_factor);
-            LeafStateHash to_val = to_pair.first;
-
-            res->add_state(to_val, to_factor, prices[from_factor][leaf_state], paths[from_factor][leaf_state].best_supporter, paths[from_factor][leaf_state].predecessor);
-        }
-    }
-
-    assert(accumulate(res->number_states.begin(), res->number_states.end(), 0) == accumulate(number_states.begin(), number_states.end(), 0));
-    assert(accumulate(res->goal_cost.begin(), res->goal_cost.end(), 0) == accumulate(goal_cost.begin(), goal_cost.end(), 0));
-
-    return unique_ptr<CompliantPathGraph>(res);
-}
-

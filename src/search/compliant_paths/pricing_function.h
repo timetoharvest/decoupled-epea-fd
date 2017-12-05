@@ -71,8 +71,6 @@ public:
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
-    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;
-
     virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
 

@@ -53,8 +53,6 @@ public:
 
     virtual bool apply_symmetry_permutation(const LeavesPermutation &per) override;
 
-    virtual std::unique_ptr<CompliantPathGraph> get_permuted_cpg(const LeavesPermutation &permutation) const override;
-
     virtual void dump() const override;
 
     
