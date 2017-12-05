@@ -85,6 +85,7 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
                 assert(g_belongs_to_factor[symm_var] != LeafFactorID::CENTER);
 
                 symm_factor =  g_belongs_to_factor[symm_var];
+                assert(g_leaves[factor].size() == g_leaves[symm_factor].size());
                 if(symm_leaf_state.size() != g_leaves[symm_factor].size()) {
                     symm_leaf_state.resize(g_leaves[symm_factor].size());
                 }
@@ -296,6 +297,10 @@ void LeavesPermutation::set_value(int ind, int val) {
 }
 
 bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
+    // we have to check in both directions below because otherwise, although
+    // the sizes of pre/effs are equal, those can be distributed differently
+    // over center and leaves, and since we skip center conditions/effects, we
+    // might miss some of them.
     const auto &effects = op->get_effects();
     const auto &effects2 = op2->get_effects();
     const auto &preconditions = op->get_preconditions();
@@ -316,6 +321,17 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
         }
     }
 
+    for (const auto &eff : effects2) {
+            auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff.var, eff.val);
+            if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
+                if(find_if(effects.begin(), effects.end(), [new_var_val] (const Effect &eff2) {
+                            return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
+                        }) == effects.end() ) {
+                    return false;
+                }
+            }
+        }
+
     for (const auto &pre : preconditions) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
         if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
@@ -327,6 +343,17 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
         }
     }
     
+    for (const auto &pre : preconditions2) {
+        auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
+        if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
+            if(find_if(preconditions.begin(), preconditions.end(), [new_var_val] (const Condition &pre2) {
+                return pre2.var == new_var_val.first && pre2.val == new_var_val.second;
+            }) == preconditions.end() ) {
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -621,7 +648,7 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
 									  const vector<const Operator *> &ops) const {
 
     assert(!ops.empty());
-    
+
     if (!center_permutation && !leaves_permutation){
         assert(find(ops.begin(), ops.end(), main_op) != ops.end());
         return main_op;
