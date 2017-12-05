@@ -44,6 +44,18 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
     }
 }
 
+vector<set<int>> Factoring::var_to_affecting_op;
+
+void Factoring::init_var_to_ops_map() {
+    if (var_to_affecting_op.empty()) {
+        var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());
+        for (size_t op = 0; op < g_operators.size(); ++op) {
+            for (const Effect &eff : g_operators[op].get_effects()) {
+                var_to_affecting_op[eff.var].insert(op);
+            }
+        }
+    }
+}
 
 Factoring::Factoring(const Options &opts) :
             search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
@@ -78,15 +90,17 @@ Factoring::Factoring(const Options &opts) :
 
 class CenterFactoring : public Factoring {
     
+protected:
+    
+    FactoredVars get_factoring() override;
+    
 public:
     
     CenterFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = CENTER;
+        profile = STAR;
         cout << "using random 2-factor factoring profile" << endl;
-    };
-  
-    virtual FactoredVars get_factoring();
+    }
     
 };
 
@@ -104,6 +118,8 @@ protected:
     
     FactoredVars get_fork_maximize_mobility(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
     
+    FactoredVars get_factoring() override;
+    
 public:
     
     ForkFactoring(const Options &opts, PROFILE profile = FORK)
@@ -118,15 +134,17 @@ public:
             Factoring::profile = FORK;
             cout << "using fork factoring profile" << endl;
         }
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
     
     static void add_options_to_parser(OptionParser &parser);
     
 };
 
 class XShapeFactoring : public ForkFactoring {
+
+protected:
+    
+    FactoredVars get_factoring() override;
     
 public:
     
@@ -134,27 +152,31 @@ public:
             : ForkFactoring(opts, X_SHAPE) {
         profile = X_SHAPE;
         cout << "using X-shape factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
     
 };
 
 class IncidentArcsFactoring : public Factoring {
+
+protected:
+
+    FactoredVars get_factoring() override;
   
 public:
     
     IncidentArcsFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = INC_ARCS;
+        profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class SokobanFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -162,13 +184,15 @@ public:
             : Factoring(opts) {
         profile = SOKOBAN;
         cout << "using sokoban factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class OpenstacksFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -176,15 +200,17 @@ public:
             : Factoring(opts) {
         profile = OPENSTACKS;
         cout << "using openstacks factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
-  
+    }
+
 };
 
 class TPPConstrainedFactoring : public Factoring {
     
     bool inverted;
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -192,13 +218,15 @@ public:
             : Factoring(opts), inverted(opts.get<bool>("inverted")) {
         profile = OPENSTACKS;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class DocTransferFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -206,13 +234,15 @@ public:
             : Factoring(opts) {
         profile = DOC_TRANSFER;
         cout << "using doc transfer factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 class PegsolFactoring : public Factoring {
+            
+protected:
+    
+    FactoredVars get_factoring() override;
   
 public:
     
@@ -220,18 +250,18 @@ public:
             : Factoring(opts) {
         profile = PEGSOL;
         cout << "using pegsol factoring profile" << endl;
-    };
-    
-    virtual FactoredVars get_factoring();
+    }
   
 };
 
 
 
-void Factoring::apply_factoring(FactoredVars factoring) {
+void Factoring::apply_factoring(const FactoredVars &factoring) {
     g_belongs_to_factor = vector<LeafFactorID>(g_variable_domain.size(), LeafFactorID::CENTER);
     g_new_index = vector<size_t>(g_variable_domain.size());
     g_leaves.resize(factoring.size());
+    fork_leaf.resize(factoring.size(), false);
+    ifork_leaf.resize(factoring.size(), false);
     
     InteractionGraph interaction_graph(factoring.size());
     
@@ -342,15 +372,15 @@ void Factoring::apply_factoring(FactoredVars factoring) {
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (interaction_graph.get_successors(factor).empty()){
-            fork_leaf.push_back(true);
+            fork_leaf[factor] = true;
         } else {
-            fork_leaf.push_back(false);
+            fork_leaf[factor] = false;
             assert(!is_fork_factoring);
         }
         if (interaction_graph.get_predecessors(factor).empty()){
-            ifork_leaf.push_back(true);
+            ifork_leaf[factor] = true;
         } else {
-            ifork_leaf.push_back(false);
+            ifork_leaf[factor] = false;
             assert(!is_ifork_factoring);
         }
     }
@@ -371,7 +401,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
     CompliantPathGraph::initialize();
     
     // setup g_goals_per_factor
-    // TODO check if each factor contains a goal! what to do if not??
+    // TODO check if each fork leaf contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
     g_goals_per_factor = vector<vector<pair<int, int> > >(g_leaves.size());
     vector<int> indeces_to_remove;
@@ -400,6 +430,22 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         cout << "no center goals" << endl;
     }
 #endif
+
+    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
+    
+    if (search_type == SAT || search_type == UNSAT){
+        for (size_t i = 0; i < g_leaves.size(); ++i){
+            uint64_t f_size = 1;
+            for (size_t j = 0; j < g_leaves[i].size(); ++j){
+                f_size *= g_variable_domain[g_leaves[i][j]];
+                if (f_size > max_precompute_state_space_size){
+                    precompute_leaf_state_space[i] = false;
+                    break;
+                }
+            }
+        }
+    }
+    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
 }
 
 void Factoring::print_factoring() const {
@@ -425,8 +471,6 @@ void Factoring::print_factoring() const {
         cout << g_leaves[i].size() << " variables in leaf factor " << i << endl;
     }
     
-    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
-    
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
@@ -434,25 +478,14 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_leaves[factor].size(); ++j){
             f_size *= g_variable_domain[g_leaves[factor][j]];
-            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
-                precompute_leaf_state_space[factor] = false;
-            }
         }
         avg_size += f_size;
         min_size = min(min_size, f_size);
         max_size = max(max_size, f_size);
     }
-    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
-    
-    uint64_t avg = 0;
-    if (g_leaves.size() > 0){
-        avg = avg_size / g_leaves.size();
-    } else {
-        min_size = 0;
-    }
     
     cout << "min leaf factor size: " << min_size << endl;
-    cout << "average leaf factor size: " << avg << endl;
+    cout << "average leaf factor size: " << (avg_size / g_leaves.size()) << endl;
     cout << "max leaf factor size: " << max_size << endl;
 }
 
@@ -472,7 +505,7 @@ void Factoring::do_factoring_or_abstain() {
     
     cout << "factoring time " << t << endl;
     
-    if (best_factoring.empty()){
+    if (best_factoring.size() < min_number_leaves){
         exit_error("No factoring found!", EXIT_UNSOLVED_INCOMPLETE);
     }
     
@@ -481,7 +514,7 @@ void Factoring::do_factoring_or_abstain() {
     print_factoring();
 }
 
-vector<set<int> > XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
+Factoring::FactoredVars XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
     
     FactoredVars best_factoring;
     if (maximize_mobility){
@@ -568,9 +601,9 @@ vector<set<int> > XShapeFactoring::get_factoring() {    ////////////////////////
     return best_factoring;
 }
 
-vector<set<int> > CenterFactoring::get_factoring() { //////////////////////////////  CENTER
+Factoring::FactoredVars CenterFactoring::get_factoring() { //////////////////////////////  CENTER
     // TODO implement factoring
-    FactoredVars best_factoring = vector<set<int> >(1);
+    FactoredVars best_factoring(1);
 
     srand(time(NULL));
     
@@ -581,7 +614,7 @@ vector<set<int> > CenterFactoring::get_factoring() { ///////////////////////////
             best_factoring[0].insert(var);
 	    current_size *= g_variable_domain[var];
         }
-        if (current_size > max_leaf_size){
+        if (max_leaf_size != 0 && current_size > max_leaf_size){
             best_factoring[0].erase(var);
 	    break;
 	}
@@ -646,7 +679,7 @@ vector<set<int> > CenterFactoring::get_factoring() { ///////////////////////////
     return best_factoring;
 }
 
-vector<set<int> > ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
+Factoring::FactoredVars ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
     
     FactoredVars factoring;
     if (maximize_mobility){
@@ -662,12 +695,15 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
     return factoring;
 }
 
-vector<set<int> > IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
+Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
+
+    init_var_to_ops_map();
     
     // TODO factoring has some bugs in several tasks,
     // e.g. scanalyzer-08-strips, p22-25; rover p16/19
     // takes ages to find solution e.g. in zenotravel pfile6 when not
     // using lmcut
+    // is this still true?
     
     // all variables sorted descendingly by number of incident arcs
     vector<vector<int> > variables;
@@ -682,8 +718,8 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
     }
     
     FactoredVars best_factoring;
-    int best_number_leaves = 0;
-    
+    size_t best_number_leaves = 0;
+
     vector<bool> discarded_leaves;
     
     set<int> leaf_vars;
@@ -692,31 +728,35 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
     }
     
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
-        for (size_t cand = 0; cand < variables[arcs].size(); cand++){
-            //center.push_back(variables[arcs][cand]);
-            
-            leaf_vars.erase(variables[arcs][cand]);            
-            
+        for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
+
+            leaf_vars.erase(variables[arcs][cand]);
+
             FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
-            
-            vector<bool> discard_leaf = get_frozen_leaves(factoring);
-            
-            int number_leaves = factoring.size();
-            for (size_t i = 0; i < factoring.size(); ++i){
-                if (discard_leaf[i]){
-                    number_leaves--;
-                    continue;
-                }
+
+            for (int i = factoring.size() - 1; i >= 0; --i){
                 uint64_t size = 1;
-                for (set<int>::iterator it = factoring[i].begin(); it != factoring[i].end(); ++it){
-                    size *= g_variable_domain[*it];
+                for (int var : factoring[i]){
+                    size *= g_variable_domain[var];
                     if (max_leaf_size != 0 && size > max_leaf_size){
                         break;
                     }
                 }
                 if (max_leaf_size != 0 && size > max_leaf_size){
+                    factoring.erase(factoring.begin() + i);
+                }
+            }
+
+            size_t number_leaves = factoring.size();
+            if (number_leaves < best_number_leaves){
+                // no need to perform the expensive frozen leaf check if it cannot
+                // possibly result in more leaves
+                continue;
+            }
+            vector<bool> discard_leaf = get_frozen_leaves(factoring);
+            for (bool discard : discard_leaf){
+                if (discard){
                     --number_leaves;
-                    discard_leaf[i] = true;
                 }
             }
             
@@ -727,19 +767,11 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
             }
         }
     }
-    
-    bool change = true;         // put frozen leaves back to center
-    int ind = best_factoring.size();
-    while (change){
-        change = false;
-        for (int i = ind - 1; i >= 0; --i){
-            if (discarded_leaves[i]){
-                best_factoring.erase(best_factoring.begin() + i);
-                
-                change = true;
-                ind = i;
-                break;
-            }
+
+    // put frozen leaves back to center
+    for (int i = best_factoring.size() - 1; i >= 0; --i){
+        if (discarded_leaves[i]){
+            best_factoring.erase(best_factoring.begin() + i);
         }
     }
     
@@ -753,7 +785,7 @@ vector<set<int> > IncidentArcsFactoring::get_factoring() {  ////////////////////
         cout << "leaf factor " << l << ":" << endl;
         for (set<int>::iterator it = best_factoring[l].begin(); it != best_factoring[l].end(); ++it){
             cout << "   " << g_fact_names[*it][0] << endl;
-        }        
+        }
     }
     cout << endl;
 #endif
@@ -787,7 +819,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
         
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
-            if (current_size <= max_leaf_size){
+            if (max_leaf_size == 0 || current_size <= max_leaf_size){
                 current_size *= g_variable_domain[var];
             }
 
@@ -904,7 +936,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                 uint64_t new_size = it->first;
                 for (set<int>::const_iterator scc_it = best_factoring[successor].begin(); scc_it != best_factoring[successor].end(); ++scc_it){
                     new_size *= g_variable_domain[*scc_it];
-                    if (new_size > max_leaf_size){
+                    if (max_leaf_size != 0 && new_size > max_leaf_size){
                         can_add = false;
                         break;
                     }
@@ -992,7 +1024,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             vars_to_sccs[var] = i;
-            if (current_size <= max_leaf_size){
+            if (max_leaf_size == 0 || current_size <= max_leaf_size){
                 current_size *= g_variable_domain[var];
             }
 
@@ -1304,89 +1336,131 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
     return real_sccs;
 }
 
-Factoring::FactoredVars Factoring::get_connected_components(vector<int> variables) const {
+Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
     FactoredVars components;
     
     vector<bool> vars(g_variable_domain.size(), false);
-    for (size_t i = 0; i < variables.size(); i++){
-        vars[variables[i]] = true;
+    for (int var : variables){
+        vars[var] = true;
     }
     
-    vector<bool> seen_vars(g_variable_domain.size(), false);
     vector<int> var_comp_map(g_variable_domain.size(), -1);
     
-    size_t number_seen_vars = 0;
+    vector<bool> handled_var(g_variable_domain.size(), false);    
+    size_t number_handled_vars = 0;    
+    vector<int> open_vars;
+    vector<bool> is_open_var(g_variable_domain.size(), false);
     
-    set<int> open_vars;
-    
-    while(number_seen_vars < variables.size()){
-	if (open_vars.empty()){
-	    for (size_t i = 0; i < variables.size(); i++){
-                int var = variables[i];
-	    	if (!seen_vars[var]){
-		    open_vars.insert(var);
-		    var_comp_map[var] = components.size();
-		    components.push_back(set<int>());
-		    components[var_comp_map[var]].insert(var);
-		    break;
-		}
-	    }
-	    continue;
-	}
-	
-	int curr = *open_vars.begin();
-	open_vars.erase(open_vars.begin());
-	
-	if (seen_vars[curr]){
-	    continue;
-	}
-	
-	seen_vars[curr] = true;
-	number_seen_vars++;
-	
-	for (size_t pre = 0; pre < g_causal_graph->get_predecessors(curr).size(); pre++){
-	    int var = g_causal_graph->get_predecessors(curr)[pre];
-	    if (vars[var]){
-		open_vars.insert(var);
-		var_comp_map[var] = var_comp_map[curr];
-		components[var_comp_map[var]].insert(var);
-	    }
-	}
-	for (size_t succ = 0; succ < g_causal_graph->get_successors(curr).size(); succ++){
-	    int var = g_causal_graph->get_successors(curr)[succ];
-	    if (vars[var]){
-                open_vars.insert(var);
+    while(number_handled_vars < variables.size()){
+        if (open_vars.empty()){
+            for (int var : variables){
+                if (!handled_var[var]){
+                    open_vars.push_back(var);
+                    is_open_var[var] = true;
+                    var_comp_map[var] = components.size();
+                    components.push_back(set<int>());
+                    components[var_comp_map[var]].insert(var);
+                    break;
+                }
+            }
+        }
+        
+        int curr = open_vars.back();
+        open_vars.pop_back();
+        is_open_var[curr] = false;
+        
+        if (handled_var[curr]){
+            continue;
+        }
+        
+        handled_var[curr] = true;
+        ++number_handled_vars;
+        
+        for (int var : g_causal_graph->get_predecessors(curr)){
+            if (vars[var] && !handled_var[var] && !is_open_var[var]){
+                open_vars.push_back(var);
+                is_open_var[var] = true;
                 var_comp_map[var] = var_comp_map[curr];
                 components[var_comp_map[var]].insert(var);
             }
-	}
+        }
+        for (int var : g_causal_graph->get_successors(curr)){
+            if (vars[var] && !handled_var[var] && !is_open_var[var]){
+                open_vars.push_back(var);
+                is_open_var[var] = true;
+                var_comp_map[var] = var_comp_map[curr];
+                components[var_comp_map[var]].insert(var);
+            }
+        }
     }
     
     return components;
 }
 
-vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
+vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const {
     vector<bool> is_frozen_factor(components.size(), true);
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
+    size_t num_frozen = components.size();
+    vector<bool> operator_seen(g_operators.size(), false);
     
-    for (size_t i = 0; i < components.size(); i++){
-        for (set<int>::iterator it = components[i].begin(); it != components[i].end(); ++it){
-            belongs_to_factor[*it] = i;
+    for (size_t i = 0; i < components.size(); ++i){
+        for (int var : components[i]){
+            belongs_to_factor[var] = i;
         }
     }
-    
-    for (size_t i = 0; i < g_operators.size(); i++){
-        const Operator *op = &g_operators[i];
-        int affects_factor = -1;
-        for (size_t post = 0; post < op->get_effects().size(); post++){
-            const Effect &prepost = op->get_effects()[post];
-            affects_factor = belongs_to_factor[prepost.var];
-            if (affects_factor == -1){
+
+    for (size_t f = 0; f < components.size(); ++f) {
+        for (int v : components[f]){
+            for (int op : Factoring::var_to_affecting_op[v]) {
+                if (!operator_seen[op]) {
+                    // if an operator has been handled by another leaf factor, it has to be a center action
+                    operator_seen[op] = true;
+
+                    bool center = false;
+                    int eff_factor = -1;
+                    for (const Effect &eff : g_operators[op].get_effects()) {
+                        if (belongs_to_factor[eff.var] == -1){
+                            center = true;
+                            break;
+                        } else if (eff_factor == -1){
+                            eff_factor = belongs_to_factor[eff.var];
+                        }  else if (eff_factor != belongs_to_factor[eff.var]){
+                            center = true;
+                            break;
+                        }
+                    }
+                    if (center) {
+                        continue;
+                    }
+                    int pre_factor = -1;
+                    bool single_pre_factor = true;
+                    for (const Condition &pre : g_operators[op].get_preconditions()) {
+                        if (belongs_to_factor[pre.var] != -1){
+                            if (pre_factor == -1){
+                                pre_factor = belongs_to_factor[pre.var];
+                            } else if (pre_factor != belongs_to_factor[pre.var]) {
+                                single_pre_factor = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (single_pre_factor && (pre_factor == -1 || pre_factor == eff_factor)) {
+                        // op has preconditions and effects on (at most) a single leaf factor
+                        if (is_frozen_factor[f]) {
+                            --num_frozen;
+                            is_frozen_factor[f] = false;
+                            if (num_frozen == 0) {
+                                return is_frozen_factor;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            if (!is_frozen_factor[f]) {
                 break;
             }
-        }
-        if (affects_factor != -1){
-            is_frozen_factor[affects_factor] = false;
         }
     }
 
@@ -1399,7 +1473,7 @@ vector<bool> Factoring::get_frozen_leaves(FactoredVars components) const {
 
 Factoring::FactoredVars SokobanFactoring::get_factoring() {
     
-    FactoredVars best_factoring = vector<set<int> >(1);
+    FactoredVars best_factoring(1);
     
     cout << "factoring sokoban" << endl;
     
@@ -1445,11 +1519,11 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
 	uint64_t current_size = 1;
 	for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
 	    current_size *= g_variable_domain[*it];
-	    if (current_size > max_leaf_size){
+	    if (max_leaf_size != 0 && current_size > max_leaf_size){
 		break;
 	    }
 	}
-	if (current_size <= max_leaf_size){
+	if (max_leaf_size == 0 || current_size <= max_leaf_size){
 	    best_factoring.push_back(sccs[i]);
 	}
     }
@@ -1498,11 +1572,11 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
         uint64_t current_size = 1;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             current_size *= g_variable_domain[*it];
-            if (current_size > max_leaf_size){
+            if (max_leaf_size != 0 && current_size > max_leaf_size){
                 break;
             }
         }
-        if (current_size <= max_leaf_size){
+        if (max_leaf_size == 0 || current_size <= max_leaf_size){
             best_factoring.push_back(sccs[i]);
         }
     }
@@ -1591,7 +1665,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "10000");
 }
 
-void ForkFactoring::add_options_to_parser(OptionParser& parser) {
+void ForkFactoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
     parser.add_option<bool>(
         "maximize_mobility",

@@ -21,17 +21,16 @@ enum PROFILE {
     FORK,
     I_FORK,
     X_SHAPE,
-    CENTER,
+    STAR,
     SOKOBAN,    // domain dependant factoring
     OPENSTACKS, // domain dependant factoring
     TPP_CONSTRAINED, // domain dependant factoring
     INV_TPP_CONSTRAINED, // domain dependant factoring
     DOC_TRANSFER, // domain dependant factoring
-    PEGSOL, // domain dependant factoring
-    INC_ARCS
+    PEGSOL // domain dependant factoring
 };
 
-enum SEARCH_TYPE {
+enum SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
@@ -97,22 +96,29 @@ protected:
     std::vector<bool> fork_leaf;
     
     std::vector<bool> ifork_leaf;
+
+
+    static std::vector<std::set<int>> var_to_affecting_op;
+
     
     virtual FactoredVars get_factoring() = 0;
     
     FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
     
-    FactoredVars get_connected_components(std::vector<int> variables) const;
+    FactoredVars get_connected_components(const std::vector<int> &variables) const;
     
-    std::vector<bool> get_frozen_leaves(FactoredVars components) const;
+    std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
-    void apply_factoring(FactoredVars factoring);
+    void apply_factoring(const FactoredVars &factoring);
     
     void print_factoring() const;
     
     void exit_error(std::string message, ExitCode exit_code) const;
     
     Factoring(const Options &ops);
+
+
+    static void init_var_to_ops_map();
     
 public:
     
