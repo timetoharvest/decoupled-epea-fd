@@ -29,7 +29,7 @@ public:
                                          vector<const Operator *> &ops, bool ignore_leaf_pre) const;
     virtual void generate_applicable_ops(const State &curr,
                                          const CompliantPathGraph &cpg,
-                                          std::vector<const Operator *> &ops,
+                                         std::vector<const Operator *> &ops,
                                          bool ignore_leaf_pre = false) const;
     virtual void generate_applicable_ops_ignore_others(const LeafState &leaf_state, 
                                          vector<const Operator *> &ops, bool only_center_ops) const;
