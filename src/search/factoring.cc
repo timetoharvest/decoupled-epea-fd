@@ -472,7 +472,7 @@ void Factoring::print_factoring() const {
     }
     
     uint64_t min_size = numeric_limits<uint64_t>::max();
-    double avg_size = 0;
+    uint64_t avg_size = 0;
     uint64_t max_size = 0;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         uint64_t f_size = 1;
