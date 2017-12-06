@@ -108,7 +108,7 @@ void Permutation::print_cycle_notation() const {
     for (size_t i = g_variable_domain.size(); i < findex.length; i++){
         if (find(done.begin(), done.end(), i) == done.end()){
             int current = i;
-            if(get_value(i) == (int)i){
+            if(get_value(i) == (int) i){
                 continue; //don't print cycles of size 1
             }
 
@@ -118,7 +118,7 @@ void Permutation::print_cycle_notation() const {
             }
             cout << "("<< g_fact_names[varval.first][(int) varval.second] << " ";
 
-            while(get_value(current) != (int)i){
+            while(get_value(current) != (int) i){
                 done.push_back(current);
                 current = get_value(current);
 
@@ -126,10 +126,10 @@ void Permutation::print_cycle_notation() const {
                 cout <<  g_fact_names[currvarval.first][(int) currvarval.second] << " ";
             }
             done.push_back(current);
-            cout << ") ";
+            cout << ") " << endl;
         }
     }
-    cout << endl << "Variables:  ";
+    cout << "Variables:  ";
     for(size_t i = 0; i < vars_affected.size(); i++){
         cout << vars_affected[i] << "  ";
     }
@@ -141,9 +141,9 @@ void Permutation::print_cycle_notation() const {
     cout << endl;
 
     cout << "Affected variables by cycles: " << endl;
-    for (size_t i=0; i < affected_vars_cycles.size(); i++) {
+    for (size_t i=0; i < affected_vars_cycles.size(); ++i) {
         cout << "( " ;
-        for (size_t j=0; j < affected_vars_cycles[i].size(); j++) {
+        for (size_t j=0; j < affected_vars_cycles[i].size(); ++j) {
             cout << affected_vars_cycles[i][j] << " ";
         }
         cout << ")  ";
@@ -152,13 +152,13 @@ void Permutation::print_cycle_notation() const {
 }
 
 void Permutation::dump() const {
-    for(size_t i = 0; i < findex.length; i++){
-        if (get_value(i) != (int)i){
+    for(size_t i = 0; i < findex.length; ++i){
+        if (get_value(i) != (int) i){
             cout << setw(4) << i;
         }
     }
     cout << endl;
-    for(size_t i = 0; i < findex.length; i++){
+    for(size_t i = 0; i < findex.length; ++i){
         if (get_value(i) != (int)i){
             cout << setw(4) << get_value(i);
         }
@@ -173,7 +173,7 @@ void Permutation::set_value(int ind, int val) {
 }
 
 void Permutation::set_affected(int ind, int val) {
-    if (ind < (int)(g_variable_domain.size()) || ind == val){
+    if (ind < (int) (g_variable_domain.size()) || ind == val){
         return;
     }
 

@@ -25,7 +25,7 @@ void DecoupledFactIndex::init() {
     }
 }
 
-int DecoupledFactIndex::get_factor_by_index(int ind)  const {
+int DecoupledFactIndex::get_factor_by_index(int ind) const {
     return factor_by_index[ind];
 }
 
@@ -110,8 +110,8 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
     finalize();
 }
 
-LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1, 
-                                      const LeavesPermutation &perm2)
+LeavesPermutation::LeavesPermutation(const LeavesPermutation &perm1,
+                                     const LeavesPermutation &perm2)
                                  : permutation(new Permutation(*perm1.permutation, *perm2.permutation)) {
     
     affected.resize(g_leaves.size(), false);
@@ -125,7 +125,7 @@ LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm1,
     finalize();
 }
 
-LeavesPermutation::LeavesPermutation (const LeavesPermutation &perm, bool invert)
+LeavesPermutation::LeavesPermutation(const LeavesPermutation &perm, bool invert)
                                  : permutation(new Permutation(*perm.permutation, invert)){
     
     affected.resize(g_leaves.size(), false);
@@ -157,7 +157,7 @@ pair<LeafStateHash, LeafFactorID> LeavesPermutation::get_old_factor_state_by_new
     return findex_leaves.get_leaf_state_by_index(old_ind);
 }
 
-cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_num_states(const CompliantPathGraph &cpg) const {
     for(LeafFactorID to_factor : factors_affected) {
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor <= to_factor) {
@@ -176,7 +176,7 @@ cmp_t LeavesPermutation::cmp_num_states (const CompliantPathGraph &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_goal_cost(const CompliantPathGraph &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if (factors_affected.size() == 2 && from_factor <= to_factor) {
@@ -208,7 +208,7 @@ cmp_t LeavesPermutation::cmp_goal_cost (const CompliantPathGraph &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_prices (const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_prices(const CompliantPathGraph &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor < to_factor) {
@@ -371,7 +371,7 @@ void LeavesPermutation::print_cycle_notation() const {
                 continue; //don't print cycles of size 1
             }
 
-            cout << "  (" << g_fact_names[varval.first][varval.second]  << " ";
+            cout << "(" << g_fact_names[varval.first][varval.second]  << " ";
 
             while(permutation->get_value(current) != (int) i){
                 done.push_back(current);
@@ -384,7 +384,7 @@ void LeavesPermutation::print_cycle_notation() const {
             cout << ") " << endl;
         }
     }
-    cout << endl << "Variables:  ";
+    cout << "Variables:  ";
     for (const auto &var : permutation->vars_affected){
         if (g_belongs_to_factor[var] != LeafFactorID::CENTER){
             cout << var << "  ";
@@ -416,7 +416,7 @@ void LeavesPermutation::print_cycle_notation() const {
 
 CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
     Permutation(per, invert) {
-    //Remove leaf vars from vars_affected
+    // remove leaf vars from vars_affected
     vars_affected.erase(remove_if(vars_affected.begin(), 
 				       vars_affected.end(),
 				       [&](int x){ 
@@ -428,7 +428,7 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
 			vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
-        if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
+        if (from_vars[i] != -1 && g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
             from_vars[i] = -1;
         }
     }
@@ -705,6 +705,7 @@ void DecoupledPermutation::print_cycle_notation() const {
     if (center_permutation){
         center_permutation->print_cycle_notation();
     }
+    cout << endl;
     if (leaves_permutation){
         leaves_permutation->print_cycle_notation();
     }
