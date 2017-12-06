@@ -322,15 +322,15 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
     }
 
     for (const auto &eff : effects2) {
-            auto new_var_val = permutation->get_new_var_val_by_old_var_val(eff.var, eff.val);
-            if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
-                if(find_if(effects.begin(), effects.end(), [new_var_val] (const Effect &eff2) {
-                            return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
-                        }) == effects.end() ) {
-                    return false;
-                }
+        auto old_var_val = permutation->get_old_var_val_by_new_var_val(eff.var, eff.val);
+        if (g_belongs_to_factor[old_var_val.first] != LeafFactorID::CENTER){
+            if(find_if(effects.begin(), effects.end(), [old_var_val] (const Effect &eff1) {
+                return eff1.var == old_var_val.first && eff1.val == old_var_val.second;
+            }) == effects.end() ) {
+                return false;
             }
         }
+    }
 
     for (const auto &pre : preconditions) {
         auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
@@ -344,10 +344,10 @@ bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2)
     }
     
     for (const auto &pre : preconditions2) {
-        auto new_var_val = permutation->get_new_var_val_by_old_var_val(pre.var, pre.val);
-        if (g_belongs_to_factor[new_var_val.first] != LeafFactorID::CENTER){
-            if(find_if(preconditions.begin(), preconditions.end(), [new_var_val] (const Condition &pre2) {
-                return pre2.var == new_var_val.first && pre2.val == new_var_val.second;
+        auto old_var_val = permutation->get_old_var_val_by_new_var_val(pre.var, pre.val);
+        if (g_belongs_to_factor[old_var_val.first] != LeafFactorID::CENTER){
+            if(find_if(preconditions.begin(), preconditions.end(), [old_var_val] (const Condition &pre1) {
+                return pre1.var == old_var_val.first && pre1.val == old_var_val.second;
             }) == preconditions.end() ) {
                 return false;
             }
