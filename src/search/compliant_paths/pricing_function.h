@@ -24,8 +24,6 @@ class Prices : public CompliantPathGraph {
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
-    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
-
 protected:  
 
     std::vector<std::vector<int> > prices;

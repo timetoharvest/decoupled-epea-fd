@@ -523,14 +523,6 @@ unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
     }
 }
 
-unique_ptr<CompliantPathGraph> CompliantPathGraph::get_real_init_state_cpg() {
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        return Reachable::get_real_init_state_cpg();
-    } else {
-        return Prices::get_real_init_state_cpg();
-    }
-}
-
 void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     LeafFactorID factor = state.get_id().get_factor();
     if (!g_goals_per_factor[factor].empty()){

@@ -34,8 +34,6 @@ class CompliantPathGraph {
     static void build_leaf_state_spaces();
     
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-
-    static std::unique_ptr<CompliantPathGraph> get_real_init_state_cpg();
     
 protected:
     

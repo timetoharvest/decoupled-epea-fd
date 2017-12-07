@@ -541,23 +541,8 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
         }
-        reach->update(g_initial_state());
-        
-        return reach;
-    }
-}
-
-unique_ptr<CompliantPathGraph> Reachable::get_real_init_state_cpg() {
-    if (pruning->do_advanced_pruning()){
-        return PruningReachable::get_real_init_state_cpg();
-    } else {
-        unique_ptr<Reachable> reach(new Reachable(0));
-
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            reach->add_state(LeafStateHash(0), factor);
-        }
         reach->update(g_state_registry->get_center_state(g_initial_state_data));
-
+        
         return reach;
     }
 }

@@ -245,7 +245,7 @@ void SearchSpace::trace_path(const State &goal_state,
             } else {
                 if (g_factoring){
                     new_state = g_state_registry->get_center_state(g_initial_state_data);
-                    new_cpg = CompliantPathGraph::get_real_init_state_cpg();
+                    new_cpg = CompliantPathGraph::get_init_state_cpg();
                 } else {
                     new_state = g_state_registry->get_state(g_initial_state_data);
                 }

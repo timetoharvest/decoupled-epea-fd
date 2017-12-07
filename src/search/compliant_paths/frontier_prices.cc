@@ -285,23 +285,8 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_init_state_cpg() {
         prices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
         prices->frontier[factor][0] = true;
     }
-    prices->update(g_initial_state());
-    
-    return prices;
-}
-
-unique_ptr<CompliantPathGraph> FrontierPrices::get_real_init_state_cpg() {
-    unique_ptr<FrontierPrices> prices(new FrontierPrices(0));
-
-    prices->frontier.resize(g_leaves.size());
-
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        prices->add_state(LeafStateHash(0), factor, 0);
-        prices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
-        prices->frontier[factor][0] = true;
-    }
     prices->update(g_state_registry->get_center_state(g_initial_state_data));
-
+    
     return prices;
 }
 

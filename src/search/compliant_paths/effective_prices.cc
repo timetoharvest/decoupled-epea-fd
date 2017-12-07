@@ -226,22 +226,6 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         prices->add_state(LeafStateHash(0), factor, 0);
     }
-    prices->update(g_initial_state());
-    
-    return prices;
-}
-
-unique_ptr<CompliantPathGraph> EffectivePrices::get_real_init_state_cpg() {
-    if (pruning->use_frontier()){
-        return FrontierPrices::get_real_init_state_cpg();
-    }
-
-    unique_ptr<EffectivePrices> prices(new EffectivePrices(0));
-        
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        prices->add_state(LeafStateHash(0), factor, 0);
-    }
-        
     prices->update(g_state_registry->get_center_state(g_initial_state_data));
     
     return prices;

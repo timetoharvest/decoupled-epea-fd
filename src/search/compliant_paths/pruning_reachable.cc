@@ -146,19 +146,8 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_cpg() {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         reach->add_state(LeafStateHash(0), factor);
     }
-    reach->update(g_initial_state());
-
-    return reach;
-}
-
-unique_ptr<CompliantPathGraph> PruningReachable::get_real_init_state_cpg() {
-    unique_ptr<PruningReachable> reach(new PruningReachable(0));
-        
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        reach->add_state(LeafStateHash(0), factor);
-    }
     reach->update(g_state_registry->get_center_state(g_initial_state_data));
-    
+
     return reach;
 }
 
