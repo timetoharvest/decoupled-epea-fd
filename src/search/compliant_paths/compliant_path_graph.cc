@@ -647,6 +647,16 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
                 if (id >= leaf_state_successors[factor].size()) {
                     leaf_state_successors[factor].resize(id + 1);
                 }
+                if (compute_leaf_backwards_graph) {
+                    // in case this state does not have a predecessor, e.g.,
+                    // being a permutation of the initial leaf state, not
+                    // increasing the size results in segfaults when doing
+                    // goal price propagation, because this accesses the
+                    // predecessors of all leaf states
+                    if (id >= leaf_state_predecessors[factor].size()) {
+                        leaf_state_predecessors[factor].resize(id + 1);
+                    }
+                }
 
                 // apply all applicable_ops to predecessor and store the outcome          
                 for (const Operator *op : applicable_ops){
