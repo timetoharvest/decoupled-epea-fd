@@ -47,13 +47,12 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
         
     const FrontierPrices &tag = cpg_storage->frontier_prices[predecessor];
     if (tag.frontier.empty()){
-        assert(predecessor.get_id().hash() == 0 || g_symmetry_graph);
-        // in orbit search, the frontier is cleared after applying a permutation
+        assert(predecessor.get_id().hash() == 0);
         tmp_p_price->compute_cost_frontier();
     } else {
         tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_leaves.size(), boost::dynamic_bitset<>());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (tag.frontier[factor].size() != 0){
+            if (tag.frontier[factor].size() == g_state_registry->size(factor)){
                 tmp_p_price->frontier[factor] = tag.frontier[factor];
             } else {
                 tmp_p_price->compute_cost_frontier(factor);
@@ -207,9 +206,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                if (dominates && other_cpg->frontier[factor][id]){
-                    assert(other_cpg->has_leaf_state(id, factor));
-                    
+                if (dominates && other_cpg->has_leaf_state(id, factor) && other_cpg->frontier[factor][id]){                    
                     if (has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_cost_of_state(id, factor);
                         int new_cost = get_effective_cost_of_state(id, factor);
@@ -223,9 +220,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
                         dominates = false;
                     }
                 }
-                if (dominated && frontier[factor][id]){
-                    assert(has_leaf_state(id, factor));
-                    
+                if (dominated && has_leaf_state(id, factor) && frontier[factor][id]){                    
                     if (other_cpg->has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_effective_cost_of_state(id, factor);
                         int new_cost = get_cost_of_state(id, factor);
@@ -268,6 +263,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 bool FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
     bool replaced = EffectivePrices::apply_symmetry_permutation(per);
     frontier.clear();
+    compute_cost_frontier();
     return replaced;
 }
 
@@ -329,7 +325,7 @@ void FrontierPrices::goal_price_propagation() {
                 add_effective_state(state, factor, value);
             }
 
-            for (const auto transition : leaf_state_predecessors[factor][state]) {
+            for (const auto &transition : leaf_state_predecessors[factor][state]) {
                 LeafStateHash t = transition.second;
                 
                 if (closed[t]) {
