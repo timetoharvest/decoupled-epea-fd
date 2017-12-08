@@ -21,6 +21,8 @@ protected:
 
 public:
     
+    virtual ~CPGStorage() = default;
+
     static CPGStorage *storage;
     
     static void initialize();
