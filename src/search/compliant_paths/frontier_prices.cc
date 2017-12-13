@@ -169,7 +169,7 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed) {
+DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) {
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -177,8 +177,8 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
     compute_cost_frontier();
     other_cpg->compute_cost_frontier();
         
-    bool dominated = needed != DOMINATES;
-    bool dominates = needed != DOMINATED;
+    bool dominated = needed != DOMINANCE::DOMINATES;
+    bool dominates = needed != DOMINANCE::DOMINATED;
     
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
     
@@ -237,7 +237,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
             }
 
             if (!dominated && !dominates){
-                return NONE;
+                return DOMINANCE::NONE;
             }
         }
     }
@@ -245,19 +245,19 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif          
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif          
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif          
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 bool FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {

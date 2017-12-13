@@ -26,7 +26,7 @@ PruningOptions::PruningOptions(const Options &opts)
         cout << "using basic pruning method" << endl;
     }                                            
                                             
-    if (goal_price_propagation || do_simulation || irrelevance != NO){
+    if (goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
         
         if (goal_price_propagation){
@@ -37,31 +37,38 @@ PruningOptions::PruningOptions(const Options &opts)
             cout << "using simulation within leaf factors" << endl;
         }
 
-        if (irrelevance != NO){
+        if (irrelevance != IRRELEVANCE::NO){
             cout << "performing irrelevance analysis in leaf factors" << endl;
         }
     }    
 }
 
-void PruningOptions::init() const {
-    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        if (goal_price_propagation){
-            cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
-            exit_with(EXIT_INPUT_ERROR);
-        }        
-        if (do_simulation){
-            cout << "simulation is not (yet) supported for satisficing search" << endl;
+void PruningOptions::verify_options() const {
+    if (g_factoring->get_profile() != FORK){
+        if (frontier_pruning || goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
+            cerr << "Advanced pruning methods are only supported for fork factorings!" << endl;
             exit_with(EXIT_INPUT_ERROR);
         }
     }
-    assert(!frontier_pruning || g_factoring->get_profile() == FORK);
-    if (do_simulation || irrelevance != NO){
-        assert(g_factoring->get_profile() == FORK);
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        if (goal_price_propagation || do_simulation){
+            cerr << "Goal price propagation and simulation are not (yet) supported for satisficing search!" << endl;
+            exit_with(EXIT_INPUT_ERROR);
+        }
+    }
+    if (g_symmetry_graph && irrelevance != IRRELEVANCE::NO){
+        cout << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
+        exit_with(EXIT_INPUT_ERROR);
+    }
+}
 
+void PruningOptions::initialize() const {
+    verify_options();
+    if (do_simulation || irrelevance != IRRELEVANCE::NO){
         SimulationRelation rel(CompliantPathGraph::leaf_state_successors, CompliantPathGraph::leaf_state_predecessors);
         rel.init();
         rel.statistics();
-        if (irrelevance != NO) {
+        if (irrelevance != IRRELEVANCE::NO) {
             rel.perform_leaf_irrelevance_pruning(irrelevance == STATES);
         }
 

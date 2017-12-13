@@ -74,7 +74,7 @@ protected:
     
     virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINATION check_dominance(const State &other, DOMINATION needed = NONE) = 0;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
     virtual void store_new_graph(const State &state) const = 0;
 

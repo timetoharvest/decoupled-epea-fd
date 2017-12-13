@@ -223,7 +223,7 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINATION Prices::check_dominance(const State &other, DOMINATION needed) {
+DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed) {
     const Prices *other_cpg = &cpg_storage->prices[other];
     
     bool sizes_equal = true;
@@ -242,11 +242,11 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed) {
     }
     
     if (new_is_smaller && new_is_larger){
-        return NONE;
-    } else if (new_is_smaller && needed == DOMINATES){
-        return NONE;
-    } else if (new_is_larger && needed == DOMINATED){
-        return NONE;
+        return DOMINANCE::NONE;
+    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+        return DOMINANCE::NONE;
+    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+        return DOMINANCE::NONE;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -281,11 +281,11 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed) {
                 dominates = false;
             }
             if (!dominated && !dominates){
-                return NONE;
-            } else if (!dominated && needed == DOMINATED){
-                return NONE;
-            } else if (!dominates && needed == DOMINATES){
-                return NONE;
+                return DOMINANCE::NONE;
+            } else if (!dominated && needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
+            } else if (!dominates && needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
             } else if (number_new_states == 0 && number_old_states > 0){
                 dominates = false;
                 break;
@@ -300,19 +300,19 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed) {
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op) {

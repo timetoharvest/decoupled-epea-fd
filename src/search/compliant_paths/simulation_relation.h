@@ -17,8 +17,6 @@ class SimulationRelation {
     
 private:
     
-    static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
-    
     std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd;
     std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd;
     
@@ -29,6 +27,10 @@ private:
     
     // Whether states are reachable after irrelevance pruning
     std::vector<boost::dynamic_bitset<>> reachable;
+
+
+    static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
+
 
     bool precondition_dominance(const std::vector<const Condition*> &pre,
                                 const std::vector<const Condition*> &pre2) const;

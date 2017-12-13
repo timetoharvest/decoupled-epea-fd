@@ -156,10 +156,10 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINATION res = check_dominance(s); 
+            DOMINANCE res = check_dominance(s);
             
-            if (res != NONE){
-                if (res == DOMINATES) {
+            if (res != DOMINANCE::NONE){
+                if (res == DOMINANCE::DOMINATES) {
                     // set dominated nodes to closed
                     SearchNode node = search_space->get_node(s);
                     if (node.is_open()){
@@ -181,16 +181,16 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINATION res = check_dominance(s);
+                DOMINANCE res = check_dominance(s);
             
-                if (res == EQUAL || res == DOMINATED){
+                if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
                     if (g_value + g_inc_g_by < old_g){
                         // otherwise, that existing state would be reopened
                         PruningOptions::set_ignore_current_state();
                     }
                     return dup;
-                } else if (res == DOMINATES){
+                } else if (res == DOMINANCE::DOMINATES){
                     // set dominated nodes to closed
                     SearchNode node = search_space->get_node(s);
                     if (node.is_open()){
@@ -213,9 +213,9 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // => if the new one does not dominate the old state, need
                     // to make it a new state, no duplicate
                     
-                    DOMINATION res = check_dominance(s, DOMINATES);
+                    DOMINANCE res = check_dominance(s, DOMINANCE::DOMINATES);
                     
-                    if (res == EQUAL){
+                    if (res == DOMINANCE::EQUAL){
 #ifdef DEBUG_PRUNING
                         cout << "new state is equal to old one" << endl;
 #endif
@@ -242,9 +242,9 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // be marked as duplicate if it is subsumed.
                     // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = check_dominance(s, DOMINATED);
+                    DOMINANCE res = check_dominance(s, DOMINANCE::DOMINATED);
                     
-                    if (res == EQUAL || res == DOMINATED){
+                    if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
                         // new state is dominated by existing one
 #ifdef DEBUG_PRUNING
                         cout << "new state is equal to/dominated by old one" << endl;
@@ -436,11 +436,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     }
     
-#ifdef DEBUG_PRECOMPUTE_GOAL_COST
-    cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
-#endif
-    
-    pruning->init();
+    pruning->initialize();
    
     size_t min_leaf_factor_size = numeric_limits<size_t>::max();
     double avg_leaf_factor_size = 0;
