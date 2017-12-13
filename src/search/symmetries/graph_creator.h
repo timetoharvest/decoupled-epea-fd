@@ -74,6 +74,10 @@ public:
                                                                 const State &succ_state, 
                                                                 const CompliantPathGraph &succ_cpg) const;
 
+    bool has_generators() const {
+        return group->get_num_generators() > 0;
+    }
+
 
     static void add_options_to_parser(OptionParser &parser);
 

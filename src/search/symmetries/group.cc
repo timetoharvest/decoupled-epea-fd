@@ -40,7 +40,7 @@ void Group::add_permutation(void* param, unsigned int, const unsigned int * full
         num_identity_generators++;
         if (num_identity_generators > stop_after_false_generated) {
             cout << endl << "Problems with generating symmetry group! Too many false generators." << endl;
-            cout<<"Number of generators: 0"<<endl;
+            cout << "Number of generators: 0" << endl;
             exit_with(EXIT_CRITICAL_ERROR);
         }
     }
@@ -109,11 +109,13 @@ void Group::dump_generators() const {
 
 void Group::get_trace(const State &state, Trace& full_trace) {
     int size = get_num_generators();
-    if (size == 0)
+    if (size == 0){
         return;
+    }
 
-    for(size_t i = 0; i < g_variable_domain.size(); ++i)
+    for(size_t i = 0; i < g_variable_domain.size(); ++i){
         tmp_state[i] = state[i];
+    }
 
     bool changed = true;
     while (changed) {

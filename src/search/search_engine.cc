@@ -64,7 +64,11 @@ void SearchEngine::search() {
     if(g_symmetry_graph){
         g_state_registry->get_initial_state();
         g_symmetry_graph->initialize();
-        g_state_registry->permute_initial_state();
+        if (!g_symmetry_graph->has_generators()){
+            g_symmetry_graph.reset();
+        } else {
+            g_state_registry->permute_initial_state();
+        }
     }
     
     initialize();
