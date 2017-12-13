@@ -597,7 +597,9 @@ void SearchSpace::trace_symmetric_path(vector<const Operator*> &permuted_path,
         new_cpg.update_price_tags(center_successor);
         // this check can fail in optimal planning, because the g-value adaption is done
         // in cpgs[i-1], but not in new_cpg
-        assert(is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], center_successor, new_cpg));
+        assert(is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], center_successor, new_cpg) ||
+                g_factoring->get_search_type() == SDA ||
+                g_factoring->get_search_type() == ASDA);
 #endif
     }
 }
