@@ -107,10 +107,10 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                                         const State &predecessor,
                                         const Operator &op) {
     
-    int g_value = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type);
+    int new_g = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type) + g_inc_g_by;
     
 #ifdef DEBUG_PRUNING
-    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
+    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << new_g << endl;
     dump();
 #endif
     
@@ -180,7 +180,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
                 if (res == EQUAL || res == DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
-                    if (g_value + g_inc_g_by < old_g){
+                    if (new_g < old_g){
                         // otherwise, that existing state would be reopened
                         PruningOptions::set_ignore_current_state();
                     }
@@ -198,52 +198,53 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                 // pruning for optimal search
                 
                 int old_g = search_space->get_node(s).get_g();
-            
-                if (g_value + g_inc_g_by < old_g){
-#ifdef DEBUG_PRUNING
-                    cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
-#endif
-                    // new state has a lower g-value and may only replace an
-                    // existing state if it dominates the existing one (nodes are closed instead of replaced)
-                    // => if the new one does not dominate the old state, need
-                    // to make it a new state, no duplicate
-                    
-                    DOMINATION res = check_dominance(s, DOMINATES);
-                    
-                    if (res == EQUAL){
-#ifdef DEBUG_PRUNING
-                        cout << "new state is equal to old one" << endl;
-#endif
-                        return dup;
-                    } else if (res == DOMINATES){
-#ifdef DEBUG_PRUNING
-                        cout << "new state dominates old one" << endl;
-#endif
-                        if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
-                            // must not close a dominated state that is on path to this state
-                            // it might have been reopened, so its successors may get lower g
+
+                if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
+
+                    if (new_g > old_g){
+
+                        DOMINATION res = check_dominance(s, DOMINATION::DOMINATED, old_g - new_g);
+
+                        if (res == DOMINATION::DOMINATED || res == DOMINATION::EQUAL){
+                            // current state is dominated by or equal to a previously generated state
+                            return dup;
+                        }
+
+                    } else if (new_g < old_g) {
+
+                        DOMINATION res = check_dominance(s, DOMINATION::DOMINATES, old_g - new_g);
+
+                        if (res == DOMINATION::DOMINATES || res == DOMINATION::EQUAL){
+                            // close dominated states if they are not parent of current state
                             SearchNode node = search_space->get_node(s);
                             if (node.is_open()){
                                 node.close();
                             }
                         }
-                    }
-                    
-                } else {
-#ifdef DEBUG_PRUNING
-                    cout << "old g is lower: " << (g_value + g_inc_g_by) << " > " << old_g << endl;
-#endif
-                    // new state has a higher/equal g-value than the existing one and can
-                    // be marked as duplicate if it is subsumed.
-                    // if it is not subsumed, it must be considered a new state
 
-                    DOMINATION res = check_dominance(s, DOMINATED);
-                    
-                    if (res == EQUAL || res == DOMINATED){
-                        // new state is dominated by existing one
-#ifdef DEBUG_PRUNING
-                        cout << "new state is equal to/dominated by old one" << endl;
-#endif
+                    } else {
+
+                        DOMINATION res = check_dominance(s, DOMINATION::NONE, 0);
+
+                        if (res == DOMINATION::DOMINATES){
+                            // close dominated states if they are not parent of current state
+                            SearchNode node = search_space->get_node(s);
+                            if (node.is_open()){
+                                node.close();
+                            }
+                        } else if (res == DOMINATION::DOMINATED || res == DOMINATION::EQUAL){
+                            // current state is dominated by or equal to a previously generated state
+                            return dup;
+                        }
+                    }
+
+                } else {
+                    // current state is successor of the state compared to, so can only be
+                    // pruned if it is dominated by/equal to its predecessor
+
+                    DOMINATION res = check_dominance(s, DOMINATION::DOMINATED, old_g - new_g);
+
+                    if (res == DOMINATION::DOMINATED || res == DOMINATION::EQUAL){
                         return dup;
                     }
                 }

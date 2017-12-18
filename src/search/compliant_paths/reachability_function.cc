@@ -271,7 +271,8 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed) {
+DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed, int) {
+    // ignore g-values in satisficing planning
     const Reachable *other_cpg = &cpg_storage->reachable[other];
     
     bool sizes_equal = true;

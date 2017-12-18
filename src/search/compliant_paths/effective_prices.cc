@@ -86,7 +86,7 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION needed) {
+DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION needed, int) { // TODO implement g-values
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
     
     bool sizes_equal = true;

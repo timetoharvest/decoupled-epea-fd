@@ -167,7 +167,7 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed) {
+DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed, int) { // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -200,7 +200,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
                 assert(get_goal_cost(factor) == other_cpg->get_goal_cost(factor));
             }
 #endif
-	}
+        }
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
