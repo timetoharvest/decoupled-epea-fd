@@ -347,7 +347,7 @@ DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed, int
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
-    // compare prices / reachability
+    // compare reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;

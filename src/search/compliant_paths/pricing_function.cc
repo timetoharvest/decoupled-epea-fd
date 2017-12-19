@@ -261,10 +261,10 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
         new_is_smaller = true;
         new_is_larger = true;
         sizes_equal = false;
-    } else if (sum_needed_to_dominate > g_advantage){
+    } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
         new_is_smaller = true;
         sizes_equal = false;
-    } else if (sum_needed_to_be_dominated < g_advantage){
+    } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
         new_is_larger = true;
         sizes_equal = false;
     }
@@ -296,6 +296,10 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
                 --number_new_states;
                 if (other_cpg->has_leaf_state(id, factor)){
                     --number_old_states;
+                    if (number_old_states == 0 && number_new_states > 0){
+                        dominated = false;
+                        break;
+                    }
                     int old_cost = other_cpg->get_cost_of_state(id, factor);
                     int new_cost = get_cost_of_state(id, factor);
                     assert(old_cost != CompliantPathGraph::INF);
@@ -303,28 +307,35 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
                     
                     if (old_cost > new_cost){
                         max_needed_to_be_dominated = max(max_needed_to_be_dominated, old_cost - new_cost);
+                        if (max_needed_to_dominate != 0){
+                            return DOMINATION::NONE;
+                        }
                     } else if (old_cost < new_cost){
                         max_needed_to_dominate = max(max_needed_to_dominate, new_cost - old_cost);
+                        if (max_needed_to_be_dominated != 0){
+                            return DOMINATION::NONE;
+                        }
                     }
                 } else {
                     dominated = false;
-                }                
+                    if (!dominates || needed == DOMINATION::DOMINATED){
+                        return DOMINATION::NONE;
+                    }
+                }
+                if (number_new_states == 0 && number_old_states > 0){
+                    dominates = false;
+                    break;
+                }
             } else if (other_cpg->has_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
-            }
-            if (!dominated && !dominates){
-                return DOMINATION::NONE;
-            } else if (!dominated && needed == DOMINATION::DOMINATED){
-                return DOMINATION::NONE;
-            } else if (!dominates && needed == DOMINATION::DOMINATES){
-                return DOMINATION::NONE;
-            } else if (number_new_states == 0 && number_old_states > 0){
-                dominates = false;
-                break;
-            } else if (number_old_states == 0 && number_new_states > 0){
-                dominated = false;
-                break;
+                if (!dominated || needed == DOMINATION::DOMINATES){
+                    return DOMINATION::NONE;
+                }
+                if (number_old_states == 0 && number_new_states > 0){
+                    dominated = false;
+                    break;
+                }
             }
             ++id;
         }
@@ -333,12 +344,12 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
         if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
             // TODO can we do more in this case?
             return DOMINATION::NONE;
-        } else if (sum_needed_to_dominate > g_advantage){
+        } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
             dominates = false;
             if (needed == DOMINATION::DOMINATES){
                 return DOMINATION::NONE;
             }
-        } else if (sum_needed_to_be_dominated < g_advantage){
+        } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
             dominated = false;
             if (needed == DOMINATION::DOMINATED){
                 return DOMINATION::NONE;

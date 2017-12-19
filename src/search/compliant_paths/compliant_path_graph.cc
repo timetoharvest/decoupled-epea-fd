@@ -214,7 +214,10 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
                         DOMINATION res = check_dominance(s, DOMINATION::DOMINATES, old_g - new_g);
 
-                        if (res == DOMINATION::DOMINATES || res == DOMINATION::EQUAL){
+                        if (res == DOMINATION::EQUAL){
+                            // state will replace old state in search
+                            return dup;
+                        } else if (res == DOMINATION::DOMINATES){
                             // close dominated states if they are not parent of current state
                             SearchNode node = search_space->get_node(s);
                             if (node.is_open()){
@@ -226,15 +229,15 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
                         DOMINATION res = check_dominance(s, DOMINATION::NONE, 0);
 
-                        if (res == DOMINATION::DOMINATES){
+                        if (res == DOMINATION::DOMINATED || res == DOMINATION::EQUAL){
+                            // current state is dominated by or equal to a previously generated state
+                            return dup;
+                        } else if (res == DOMINATION::DOMINATES){
                             // close dominated states if they are not parent of current state
                             SearchNode node = search_space->get_node(s);
                             if (node.is_open()){
                                 node.close();
                             }
-                        } else if (res == DOMINATION::DOMINATED || res == DOMINATION::EQUAL){
-                            // current state is dominated by or equal to a previously generated state
-                            return dup;
                         }
                     }
 
