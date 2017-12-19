@@ -512,7 +512,7 @@ int Reachable::get_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
 }
 
 size_t Reachable::get_number_states(LeafFactorID factor) const {
-    return reachable[factor].count();
+    return reachable[factor].count(); // TODO probably better to keep an int for this
 }
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
