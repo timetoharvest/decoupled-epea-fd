@@ -1,13 +1,13 @@
 #include "eager_search.h"
 
+#include "compliant_paths/pruning_options.h"
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "pruning/por_method.h"
-#include "compliant_paths/pruning_options.h"
+#include "pruning_method.h"
 #include "successor_generator.h"
 #include "sum_evaluator.h"
 
@@ -29,10 +29,8 @@ EagerSearch::EagerSearch(
     } else {
         f_evaluator = 0;
     }
-    if (opts.contains("partial_order_reduction")){
-        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
-    } else {
-        partial_order_reduction_method = 0;
+    if (opts.contains("pruning")){
+        pruning_method = unique_ptr<PruningMethod>(opts.get<PruningMethod*>("pruning"));
     }
     if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
@@ -107,21 +105,17 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_options();
+    
+    if (pruning_method){
+        pruning_method->initialize();
     }
-}
-
-EagerSearch::~EagerSearch() {
-    // TODO also delete other members?
-    delete partial_order_reduction_method;
 }
 
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_statistics();
+    if (pruning_method){
+        pruning_method->print_statistics();
     }
 }
 
@@ -152,9 +146,9 @@ SearchStatus EagerSearch::step() {
     
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
-    // even when pruned by the POR method.
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->prune_operators(s, applicable_ops);
+    // even when pruned by the pruning method.
+    if (pruning_method){
+        pruning_method->prune_operators(s, applicable_ops);
     }
 
     // This evaluates the expanded state (again) to get preferred ops
@@ -504,9 +498,10 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
-    parser.add_option<POR::PORMethod*>("partial_order_reduction", 
-                                       "partial order reduction method",
-                                       "none");
+    parser.add_option<PruningMethod*>("pruning", 
+                                      "pruning method",
+                                      "",
+                                      OptionFlags(false));
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 

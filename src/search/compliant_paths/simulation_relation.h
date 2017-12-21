@@ -10,6 +10,7 @@
 
 
 class Condition;
+class CountdownTimer;
 class Operator;
 
 
@@ -17,6 +18,8 @@ class SimulationRelation {
     
 private:
     
+    // TODO for now, we hard-coded that the simulation relation is only computed for fork-leaves
+
     static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
     
     std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd;
@@ -35,7 +38,7 @@ private:
 
     void compute_label_dominance();
 
-    void compute_simulation (LeafFactorID factor);
+    void compute_simulation (LeafFactorID factor, const CountdownTimer &timer);
 
     inline bool simulates(LeafFactorID factor, LeafStateHash s, LeafStateHash t) const {
         return relation[factor][s][t];
@@ -70,13 +73,13 @@ public:
     SimulationRelation(std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
                        std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_);
 
-    void init();
+    void init(int timeout = -1);
 
     void statistics() const;
 
     void set_list_dominated_states() const;
 
-    void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
+    void perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states, bool mark_dead_ops);
     
     
     static const std::vector<std::vector<std::vector<LeafStateHash> > >& get_simulation_relation() {

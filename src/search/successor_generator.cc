@@ -115,11 +115,10 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
         vector<bool> added(g_operators.size(), false);
 #endif
         for (const auto &op : center_ops){
-            int op_i = op->get_index();
-            if (counter[op_i] == g_operators[op_i].get_number_leaf_pre_factors()){
+            if (counter[op->get_index()] == op->get_number_leaf_pre_factors()){
 #ifndef NDEBUG
-                assert(!added[op_i]);
-                added[op_i] = true;
+                assert(!added[op->get_index()]);
+                added[op->get_index()] = true;
 #endif
                 ops.push_back(op);
             }

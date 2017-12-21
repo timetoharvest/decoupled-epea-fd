@@ -5,7 +5,6 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator_cost.h"
-#include "../pruning/simple_stubborn_sets.h"
 #include "pruning_options.h"
 
 #include <vector>
@@ -17,9 +16,12 @@ class SearchSpace;
 class State;
 class StateID;
 
+namespace stubborn_sets_decoupled {
+class StubbornSetsDecoupled;
+}
 
 class CompliantPathGraph {
-    friend class POR::SimpleStubbornSets; // access to leaf_state_successors
+    friend class stubborn_sets_decoupled::StubbornSetsDecoupled; // access to leaf_state_pre/successors
     friend class PruningOptions; // access to leaf_state_pre/successors
     friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg

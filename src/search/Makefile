@@ -47,6 +47,7 @@ HEADERS = \
           enforced_hill_climbing_search.h \
           equivalence_relation.h \
           exact_timer.h \
+          factoring.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
@@ -61,8 +62,8 @@ HEADERS = \
           option_parser_util.h \
           segmented_vector.h \
           per_state_information.h \
-          pruning/por_method.h \
           pref_evaluator.h \
+          pruning_method.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -156,15 +157,13 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
-# TODO check how to decouple this from the POR interface, so we can comment
-# this out here
-HEADERS += pruning/expansion_core.h \
-           pruning/simple_stubborn_sets.h \
-           pruning/sss_expansion_core.h
-           
+HEADERS += pruning/stubborn_sets.h \
+           pruning/stubborn_sets_decoupled.h \
+           pruning/stubborn_sets_simple.h \
+           pruning/stubborn_sets_ec.h
+
 # TODO make decoupled search plugable
-HEADERS += factoring.h \
-           leaf_state.h\
+HEADERS += leaf_state.h\
            leaf_state_id.h\
            ../preprocess/scc.h
 

@@ -19,16 +19,16 @@
 
 enum PROFILE {
     FORK,
-    I_FORK,
-    X_SHAPE,
+    IFORK,
+    XSHAPE,
     CENTER,
-    SOKOBAN,    // domain dependant factoring
-    OPENSTACKS, // domain dependant factoring
-    TPP_CONSTRAINED, // domain dependant factoring
-    INV_TPP_CONSTRAINED, // domain dependant factoring
-    DOC_TRANSFER, // domain dependant factoring
-    PEGSOL, // domain dependant factoring
-    INC_ARCS
+    SOKOBAN,    // domain dependent factoring
+    OPENSTACKS, // domain dependent factoring
+    TPP_CONSTRAINED, // domain dependent factoring
+    INV_TPP_CONSTRAINED, // domain dependent factoring
+    DOC_TRANSFER, // domain dependent factoring
+    PEGSOL, // domain dependent factoring
+    INCARCS
 };
 
 enum SEARCH_TYPE {

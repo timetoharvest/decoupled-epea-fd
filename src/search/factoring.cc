@@ -111,8 +111,8 @@ public:
               maximize_mobility(opts.get<bool>("maximize_mobility")),
               extend_leaves(opts.get<bool>("extend_leaves")),
               average_mobility(opts.get<bool>("average_mobility")) {
-        if (profile == I_FORK){
-            Factoring::profile = I_FORK;
+        if (profile == IFORK){
+            Factoring::profile = IFORK;
             cout << "using inverted-fork factoring profile" << endl;
         } else if (profile == FORK){
             Factoring::profile = FORK;
@@ -131,8 +131,8 @@ class XShapeFactoring : public ForkFactoring {
 public:
     
     XShapeFactoring(const Options &opts)
-            : ForkFactoring(opts, X_SHAPE) {
-        profile = X_SHAPE;
+            : ForkFactoring(opts, XSHAPE) {
+        profile = XSHAPE;
         cout << "using X-shape factoring profile" << endl;
     };
     
@@ -146,7 +146,7 @@ public:
     
     IncidentArcsFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = INC_ARCS;
+        profile = INCARCS;
         cout << "using incident-arcs factoring profile" << endl;
     };
     
@@ -318,7 +318,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         if (!is_center_op){
             LeafFactorID factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
-            num_ops_per_factor[factor]++;
+            ++num_ops_per_factor[factor];
 #endif
             if (pre_factors.find(LeafFactorID::CENTER) != pre_factors.end()){
                 // leaf action has center precondition
@@ -358,7 +358,7 @@ void Factoring::apply_factoring(FactoredVars factoring) {
         profile = FORK;
         cout << "factoring type set to fork, no non-fork leaf factors" << endl;
     } else if (is_ifork_factoring){
-        profile = I_FORK;
+        profile = IFORK;
         cout << "factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
     }
     
@@ -646,9 +646,9 @@ vector<set<int> > ForkFactoring::get_factoring() { /////////////////////////////
     
     FactoredVars factoring;
     if (maximize_mobility){
-        factoring = get_fork_maximize_mobility(profile == I_FORK);
+        factoring = get_fork_maximize_mobility(profile == IFORK);
     } else {
-        factoring = get_fork_maximize_leaves(profile == I_FORK);
+        factoring = get_fork_maximize_leaves(profile == IFORK);
     }
 
     if (factoring.size() < min_number_leaves){
@@ -1628,7 +1628,7 @@ static Factoring *_parse_ifork(OptionParser &parser) {
 
     ForkFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new ForkFactoring(opts, I_FORK);
+        factoring = new ForkFactoring(opts, IFORK);
     }
 
     return factoring;
