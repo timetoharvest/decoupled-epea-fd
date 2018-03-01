@@ -1,7 +1,6 @@
 #ifndef SEARCH_ENGINE_H
 #define SEARCH_ENGINE_H
 
-#include "operator.h"
 #include "operator_cost.h"
 #include "search_space.h"
 #include "search_progress.h"
@@ -10,6 +9,7 @@
 
 class CompliantPathGraph;
 class Heuristic;
+class Operator;
 class OptionParser;
 class Options;
 
@@ -17,7 +17,7 @@ enum SearchStatus {IN_PROGRESS, TIMEOUT, FAILED, SOLVED};
 
 class SearchEngine {
 public:
-    typedef std::vector<const Operator *> Plan;
+    typedef std::vector<OperatorID> Plan;
 private:
     SearchStatus status;
     bool solution_found;
@@ -37,6 +37,7 @@ protected:
 
     void set_plan(const Plan &plan);
     bool check_goal_and_set_plan(const State &state);
+    int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:
     SearchEngine(const Options &opts);

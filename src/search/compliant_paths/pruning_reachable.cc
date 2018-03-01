@@ -6,7 +6,6 @@
 #include "pruning_options.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
-#include "../utilities.h"
 
 #include <limits>
 

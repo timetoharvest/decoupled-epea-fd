@@ -2,6 +2,7 @@
 
 #include "../globals.h"
 #include "../operator.h"
+#include "../operator_id.h"
 #include "../option_parser.h"
 
 #include <algorithm>
@@ -60,13 +61,13 @@ StubbornSets::StubbornSets(const Options &opts)
 }
 
 // Relies on op_preconds and op_effects being sorted by variable.
-bool StubbornSets::can_disable(size_t op1_no, size_t op2_no) {
+bool StubbornSets::can_disable(OperatorID op1_no, OperatorID op2_no) {
     return contain_conflicting_fact(sorted_op_effects[op1_no],
                                     sorted_op_preconditions[op2_no]);
 }
 
 // Relies on op_effect being sorted by variable.
-bool StubbornSets::can_conflict(size_t op1_no, size_t op2_no) {
+bool StubbornSets::can_conflict(OperatorID op1_no, OperatorID op2_no) {
     return contain_conflicting_fact(sorted_op_effects[op1_no],
                                     sorted_op_effects[op2_no]);
 }
@@ -86,18 +87,18 @@ void StubbornSets::compute_sorted_operators() {
 void StubbornSets::compute_achievers() {
     achievers.reserve(g_variable_domain.size());
     for (int domain_size : g_variable_domain) {
-        achievers.push_back(vector<vector<size_t>>(domain_size));
+        achievers.push_back(vector<vector<OperatorID>>(domain_size));
     }
 
     for (size_t op_no = 0; op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         for (const Effect &effect : op.get_effects()) {
-            achievers[effect.var][effect.val].push_back(op_no);
+            achievers[effect.var][effect.val].push_back(OperatorID(op_no));
         }
     }
 }
 
-bool StubbornSets::mark_as_stubborn(size_t op_no) {
+bool StubbornSets::mark_as_stubborn(OperatorID op_no) {
     if (!stubborn[op_no]) {
         stubborn[op_no] = true;
         stubborn_queue.push_back(op_no);
@@ -107,7 +108,7 @@ bool StubbornSets::mark_as_stubborn(size_t op_no) {
 }
 
 void StubbornSets::prune_operators(
-    const State &state, vector<const Operator *> &ops) {
+    const State &state, vector<OperatorID> &ops) {
     if (disabled_pruning){
         return;
     } else if (expanded_states == 1000 && (1 - (float) num_pruned_successors_generated / (float) num_unpruned_successors_generated) < min_pruning_ratio){
@@ -127,18 +128,17 @@ void StubbornSets::prune_operators(
     /* Iteratively insert operators to stubborn according to the
        definition of strong stubborn sets until a fixpoint is reached. */
     while (!stubborn_queue.empty()) {
-        size_t op_no = stubborn_queue.back();
+        OperatorID op_no = stubborn_queue.back();
         stubborn_queue.pop_back();
         handle_stubborn_operator(state, op_no);
     }
 
     // Now check which applicable operators are in the stubborn set.
-    vector<const Operator *> remaining_ops;
+    vector<OperatorID> remaining_ops;
     remaining_ops.reserve(ops.size());
-    for (const Operator *op : ops) {
-        size_t op_no = op->get_index();
-        if (stubborn[op_no])
-            remaining_ops.push_back(op);
+    for (OperatorID op_id : ops) {
+        if (stubborn[op_id])
+            remaining_ops.push_back(op_id);
     }
     if (remaining_ops.size() != ops.size()) {
         ops.swap(remaining_ops);

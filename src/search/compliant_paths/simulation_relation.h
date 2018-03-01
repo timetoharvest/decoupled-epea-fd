@@ -10,8 +10,10 @@
 
 
 class Condition;
+namespace utils {
 class CountdownTimer;
-class Operator;
+}
+class OperatorID;
 
 
 class SimulationRelation {
@@ -22,8 +24,8 @@ private:
 
     static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
     
-    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd;
-    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd;
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_fwd;
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_bwd;
     
     // For each operator, list of operators that dominate it in the center
     std::vector<boost::dynamic_bitset<> > op_dominated_by;
@@ -38,7 +40,7 @@ private:
 
     void compute_label_dominance();
 
-    void compute_simulation (LeafFactorID factor, const CountdownTimer &timer);
+    void compute_simulation (LeafFactorID factor, const utils::CountdownTimer &timer);
 
     inline bool simulates(LeafFactorID factor, LeafStateHash s, LeafStateHash t) const {
         return relation[factor][s][t];
@@ -70,8 +72,8 @@ private:
 
 public:
 
-    SimulationRelation(std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
-                       std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_);
+    SimulationRelation(std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_fwd_,
+                       std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_bwd_);
 
     void init(int timeout = -1);
 

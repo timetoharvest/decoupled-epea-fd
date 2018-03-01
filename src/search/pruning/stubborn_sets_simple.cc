@@ -25,8 +25,8 @@ static inline pair<int, int> find_unsatisfied_goal(const State &state) {
 
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 static inline pair<int, int> find_unsatisfied_precondition(
-    const Operator &op, const State &state) {
-    for (const Condition &precondition : op.get_preconditions()) {
+    OperatorID op_no, const State &state) {
+    for (const Condition &precondition : g_operators[op_no].get_preconditions()) {
         int var = precondition.var;
         int value = precondition.val;
         if (state[var] != value)
@@ -52,9 +52,9 @@ void StubbornSetsSimple::compute_interference_relation() {
        relation for operators (o1, o2) with (o1 < o2) and add a lookup
        method that looks up (i, j) if i < j and (j, i) otherwise.
     */
-    for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
-        vector<size_t> &interfere_op1 = interference_relation[op1_no];
-        for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
+    for (OperatorID op1_no(0); op1_no < num_operators; ++op1_no) {
+        vector<OperatorID> &interfere_op1 = interference_relation[op1_no];
+        for (OperatorID op2_no(0); op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no && interfere(op1_no, op2_no)) {
                 interfere_op1.push_back(op2_no);
             }
@@ -64,14 +64,14 @@ void StubbornSetsSimple::compute_interference_relation() {
 
 // Add all operators that achieve the fact (var, value) to stubborn set.
 void StubbornSetsSimple::add_necessary_enabling_set(const pair<int, int> &fact) {
-    for (size_t op_no : achievers[fact.first][fact.second]) {
+    for (OperatorID op_no : achievers[fact.first][fact.second]) {
         mark_as_stubborn(op_no);
     }
 }
 
 // Add all operators that interfere with op.
-void StubbornSetsSimple::add_interfering(size_t op_no) {
-    for (size_t interferer_no : interference_relation[op_no]) {
+void StubbornSetsSimple::add_interfering(OperatorID op_no) {
+    for (OperatorID interferer_no : interference_relation[op_no]) {
         mark_as_stubborn(interferer_no);
     }
 }
@@ -84,9 +84,8 @@ void StubbornSetsSimple::initialize_stubborn_set(const State &state) {
 }
 
 void StubbornSetsSimple::handle_stubborn_operator(const State &state,
-                                                  size_t op_no) {
-    const Operator &op = g_operators[op_no];
-    pair<int, int> unsatisfied_precondition = find_unsatisfied_precondition(op, state);
+                                                  OperatorID op_no) {
+    pair<int, int> unsatisfied_precondition = find_unsatisfied_precondition(op_no, state);
     if (unsatisfied_precondition.first == -1) {
         /* no unsatisfied precondition found
            => operator is applicable

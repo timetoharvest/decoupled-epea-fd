@@ -33,12 +33,12 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     // minimum cost to the goal from each fork leaf state
     std::vector<std::vector<int> > min_cost_to_goal;
     
-    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > reduced_leaf_state_spaces;
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > reduced_leaf_state_spaces;
 
     // center actions generating a leaf state
-    std::vector<std::vector<std::vector<size_t> > > center_predecessors;
+    std::vector<std::vector<std::vector<OperatorID> > > center_predecessors;
     // center actions enabled by a leaf state
-    std::vector<std::vector<std::vector<std::pair<size_t, LeafStateHash> > > > center_successors;
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > center_successors;
     
     mutable const CompliantPathGraph *current_cpg;
     
@@ -54,10 +54,10 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     void mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const std::vector<const Condition*> &leaf_pre);
 
 protected:
-    virtual bool mark_as_stubborn(size_t op_no) override;
+    virtual bool mark_as_stubborn(OperatorID op_no) override;
     virtual void compute_interference_relation() override;
     virtual void initialize_stubborn_set(const State &state) override;
-    virtual void handle_stubborn_operator(const State &state, size_t op_no) override;
+    virtual void handle_stubborn_operator(const State &state, OperatorID op_no) override;
 public:
     StubbornSetsDecoupled(const Options &opts);
     virtual ~StubbornSetsDecoupled() = default;

@@ -1,14 +1,16 @@
 #include "cg_cache.h"
 
-#include "causal_graph.h"
+#include "task_utils/causal_graph.h"
 #include "state.h"
 #include "globals.h"
-#include "utilities.h"
+#include "utils/math.h"
+#include "utils/system.h"
 
 #include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <vector>
+
 using namespace std;
 
 const int CGCache::NOT_COMPUTED;
@@ -17,12 +19,12 @@ CGCache::CGCache() {
     cout << "Initializing heuristic cache... " << flush;
 
     int var_count = g_variable_domain.size();
-    const CausalGraph *cg = g_causal_graph;
+    const causal_graph::CausalGraph &cg = causal_graph::get_causal_graph();
 
     // Compute inverted causal graph.
     depends_on.resize(var_count);
     for (int var = 0; var < var_count; ++var) {
-        const vector<int> &succ = cg->get_pre_to_eff(var);
+        const vector<int> &succ = cg.get_pre_to_eff(var);
         for (size_t i = 0; i < succ.size(); ++i) {
             // Ignore arcs that are not part of the reduced CG:
             // These are ignored by the CG heuristic.
@@ -81,7 +83,7 @@ int CGCache::compute_required_cache_size(
     const int MAX_CACHE_SIZE = 1000000;
 
     int var_domain = g_variable_domain[var];
-    if (!is_product_within_limit(var_domain, var_domain - 1, MAX_CACHE_SIZE))
+    if (!utils::is_product_within_limit(var_domain, var_domain - 1, MAX_CACHE_SIZE))
         return -1;
 
     int required_size = var_domain * (var_domain - 1);
@@ -100,7 +102,7 @@ int CGCache::compute_required_cache_size(
         if (cache[depend_var].empty())
             return -1;
 
-        if (!is_product_within_limit(required_size, depend_var_domain,
+        if (!utils::is_product_within_limit(required_size, depend_var_domain,
                                      MAX_CACHE_SIZE))
             return -1;
 
@@ -124,6 +126,6 @@ int CGCache::get_index(int var, const State &state,
     if (to_val > from_val)
         --to_val;
     index += to_val * multiplier;
-    assert(in_bounds(index, cache[var]));
+    assert(utils::in_bounds(index, cache[var]));
     return index;
 }

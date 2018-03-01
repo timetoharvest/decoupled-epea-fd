@@ -6,11 +6,12 @@
 #include "globals.h"
 #include "operator.h"
 #include "state.h"
-#include "utilities.h"
+#include "utils/system.h"
 
 #include <cstdlib>
 #include <iostream>
 #include <vector>
+
 using namespace std;
 
 class SuccessorGeneratorSwitch : public SuccessorGenerator {

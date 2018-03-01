@@ -1,18 +1,18 @@
 #ifndef STATE_REGISTRY_H
 #define STATE_REGISTRY_H
 
+#include "algorithms/segmented_vector.h"
+#include "algorithms/int_packer.h"
 #include "globals.h"
-#include "int_packer.h"
 #include "leaf_state.h"
 #include "leaf_state_id.h"
-#include "segmented_vector.h"
 #include "state.h"
 #include "state_id.h"
-#include "utilities.h"
+#include "utils/hash.h"
 
 #include <set>
-#include <ext/hash_set>
-#include <ext/hash_map>
+#include <unordered_set>
+#include <unordered_map>
 
 /*
   Overview of classes relevant to storing and working with registered states.
@@ -29,7 +29,7 @@
   StateID
     StateIDs identify states within a state registry.
     If the registry is known, the ID is sufficient to look up the state, which
-    is why ids are intended for long term storage (e.g. in open lists).
+    is why IDs are intended for long term storage (e.g. in open lists).
     Internally, a StateID is just an integer, so it is cheap to store and copy.
 
   PackedStateBin (currently the same as unsigned int)
@@ -102,53 +102,80 @@
 class PerStateInformationBase;
 
 class StateRegistry {
-    
+
     struct StateIDSemanticHash {
-        const SegmentedArrayVector<PackedStateBin> &state_data_pool;
-        StateIDSemanticHash(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
-            : state_data_pool(state_data_pool_) {
+        const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
+        int state_size;
+        StateIDSemanticHash(
+            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+            int state_size)
+            : state_data_pool(state_data_pool),
+              state_size(state_size) {
         }
-        size_t operator()(const StateID &id) const {
-            return ::hash_number_sequence(state_data_pool[id.value], g_state_packer->get_num_bins());
+
+        size_t operator()(StateID id) const {
+            const PackedStateBin *data = state_data_pool[id.value];
+            utils::HashState hash_state;
+            for (int i = 0; i < state_size; ++i) {
+                hash_state.feed(data[i]);
+            }
+            return hash_state.get_hash64();
         }
     };
 
     struct StateIDSemanticEqual {
-        const SegmentedArrayVector<PackedStateBin> &state_data_pool;
-        StateIDSemanticEqual(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
-            : state_data_pool(state_data_pool_) {
+        const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
+        int state_size;
+        StateIDSemanticEqual(
+            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+            int state_size)
+            : state_data_pool(state_data_pool),
+              state_size(state_size) {
         }
 
-        size_t operator()(const StateID &lhs, const StateID &rhs) const {
-            size_t size = g_state_packer->get_num_bins();
+        bool operator()(StateID lhs, StateID rhs) const {
             const PackedStateBin *lhs_data = state_data_pool[lhs.value];
             const PackedStateBin *rhs_data = state_data_pool[rhs.value];
-            return std::equal(lhs_data, lhs_data + size, rhs_data);
+            return std::equal(lhs_data, lhs_data + state_size, rhs_data);
         }
     };
     
     struct LeafStateIDSemanticHash {
-        const std::vector<SegmentedArrayVector<PackedStateBin>* > &data_pool;
-        LeafStateIDSemanticHash(const std::vector<SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+        const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        std::vector<int> state_sizes;
+        LeafStateIDSemanticHash(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
             : data_pool(state_data_pool_) {
+            state_sizes.resize(g_leaves.size());
+            for (size_t i = 0; i < g_leaves.size(); ++i){
+                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            }
         }
         size_t operator() (const LeafStateID &id) const {
-            return ::hash_number_sequence((*data_pool[id.factor])[id.value], g_leaf_factor_packers[id.factor]->get_num_bins());
+            const PackedStateBin *data = (*data_pool[id.factor])[id.value];
+            utils::HashState hash_state;
+            for (int i = 0; i < state_sizes[id.factor]; ++i) {
+                hash_state.feed(data[i]);
+            }
+            return hash_state.get_hash64();
         }
     };
 
     struct LeafStateIDSemanticEqual {
-        const std::vector<SegmentedArrayVector<PackedStateBin>* > &data_pool;
-        LeafStateIDSemanticEqual(const std::vector<SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+        const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        std::vector<int> state_sizes;
+        LeafStateIDSemanticEqual(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
             : data_pool(state_data_pool_) {
+            state_sizes.resize(g_leaves.size());
+            for (size_t i = 0; i < g_leaves.size(); ++i){
+                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            }
         }
 
-        size_t operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
+        bool operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
             assert(lhs.factor == rhs.factor);
-            size_t size = g_leaf_factor_packers[lhs.factor]->get_num_bins();
             const PackedStateBin *lhs_data = (*data_pool[lhs.factor])[lhs.value];
             const PackedStateBin *rhs_data = (*data_pool[rhs.factor])[rhs.value];
-            return std::equal(lhs_data, lhs_data + size, rhs_data);
+            return std::equal(lhs_data, lhs_data + state_sizes[lhs.factor], rhs_data);
         }
     };
 
@@ -157,24 +184,23 @@ class StateRegistry {
       this registry and find their IDs. States are compared/hashed semantically,
       i.e. the actual state data is compared, not the memory location.
     */
-    typedef __gnu_cxx::hash_set<StateID,
-                                StateIDSemanticHash,
-                                StateIDSemanticEqual> StateIDSet;
-                                
-    typedef __gnu_cxx::hash_set<LeafStateID,
-                                LeafStateIDSemanticHash,
-                                LeafStateIDSemanticEqual> LeafFactorIDSet;
+
+    using StateIDSet = std::unordered_set<StateID, StateIDSemanticHash, StateIDSemanticEqual>;
+
+    using LeafStateIDSet = std::unordered_set<LeafStateID,
+                                              LeafStateIDSemanticHash,
+                                              LeafStateIDSemanticEqual>;
                             
-    typedef __gnu_cxx::hash_map<size_t, size_t> DupCounterTable;
+    typedef std::unordered_map<size_t, size_t> DupCounterTable;
                             
 
-    SegmentedArrayVector<PackedStateBin> state_data_pool;
+    segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
     
-    std::vector<SegmentedArrayVector<PackedStateBin>* > leaf_state_data_pool;
+    std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > leaf_state_data_pool;
 
     StateIDSet registered_states;
     
-    std::vector<LeafFactorIDSet> registered_leaf_states;
+    std::vector<LeafStateIDSet> registered_leaf_states;
     
     State *cached_initial_state;
     

@@ -1,12 +1,12 @@
 #include "simulation_relation.h"
 
-#include "compliant_path_graph.h"
-#include "../countdown_timer.h"
-#include "../timer.h"
+#include "../algorithms/priority_queues.h"
+#include "compliant_path_graph.h" // TODO get rid of this
 #include "../operator.h"
-#include "../factoring.h"
-#include "../state_registry.h"
-#include "../priority_queue.h"
+#include "../operator_id.h"
+#include "../state_registry.h" // TODO get rid of this
+#include "../utils/countdown_timer.h"
+#include "../utils/timer.h"
 
 
 using namespace std;
@@ -15,15 +15,15 @@ using namespace std;
 vector<vector<vector<LeafStateHash> > > SimulationRelation::simulated_states;
 
 
-SimulationRelation::SimulationRelation(vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
-                                       vector<vector<vector<pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_) :
+SimulationRelation::SimulationRelation(vector<vector<vector<pair<OperatorID, LeafStateHash> > > > &transition_system_fwd_,
+                                       vector<vector<vector<pair<OperatorID, LeafStateHash> > > > &transition_system_bwd_) :
         transition_system_fwd(transition_system_fwd_),
         transition_system_bwd(transition_system_bwd_){
 }
 
 void SimulationRelation::init(int timeout) {
-    CountdownTimer timer(timeout > 0 ? timeout : numeric_limits<double>::infinity());
-    cout  << "Initializing simulation relation. [t=" << g_timer() << "s]" << endl;
+    utils::CountdownTimer timer(timeout > 0 ? timeout : numeric_limits<double>::infinity());
+    cout  << "Initializing simulation relation. [t=" << utils::g_timer() << "s]" << endl;
 
     compute_label_dominance();
     if (timer.is_expired()){
@@ -32,7 +32,7 @@ void SimulationRelation::init(int timeout) {
     relation.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (g_factoring->is_fork_leaf(factor)){
-            cout  << "Computing simulation relation for leaf " << factor << " [t=" << g_timer() << "s]" << endl;
+            cout  << "Computing simulation relation for leaf " << factor << " [t=" << utils::g_timer() << "s]" << endl;
             compute_simulation(factor, timer);
             if (timer.is_expired()){
                 return;
@@ -44,7 +44,7 @@ void SimulationRelation::init(int timeout) {
 void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states, bool mark_dead_ops) {
     reachable.resize(g_leaves.size());
     
-    vector<vector<vector<pair<const Operator*, LeafStateHash> > > > tmp;
+    vector<vector<vector<pair<OperatorID, LeafStateHash> > > > tmp;
     if (only_remove_states){
         tmp = transition_system_fwd;
     }
@@ -63,24 +63,24 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
             auto  & trs_s = transition_system_fwd[factor][s];
             if (mark_dead_ops){
                 for(const auto &tr : trs_s) {
-                    dead_ops[tr.first->get_index()] = true;
+                    dead_ops[tr.first] = true;
                 }
             }
             num_transitions_before += trs_s.size();
             trs_s.erase(std::remove_copy_if(begin(trs_s),
                                             end(trs_s), begin(trs_s),
-                                            [&](pair<const Operator*, LeafStateHash> & tr){
+                                            [&](pair<OperatorID, LeafStateHash> & tr){
                                                 if (simulates(factor, s, tr.second)) return true;
                                                 return std::find_if(begin(trs_s),
                                                                     end(trs_s),
-                                                                    [&](pair<const Operator*, LeafStateHash> & tr2){
+                                                                    [&](pair<OperatorID, LeafStateHash> & tr2){
                                                                         return simulates(factor, tr2.second, tr.second) && 
-                                                                            op_dominated_by[tr.first->get_index()] [tr2.first->get_index()]
+                                                                            op_dominated_by[tr.first] [tr2.first]
                                                                             && (!(simulates(factor, tr.second, tr2.second) && 
-                                                                                  op_dominated_by[tr2.first->get_index()] [tr.first->get_index()])
+                                                                                  op_dominated_by[tr2.first] [tr.first])
                                                                                 || tr.second < tr2.second || 
                                                                                 (tr.second == tr2.second &&
-                                                                                 tr.first->get_index() < tr2.first->get_index()));
+                                                                                 tr.first < tr2.first));
                                                                     }) != end(trs_s);
                                             }),
                         end(trs_s));
@@ -154,7 +154,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
         // remove irrelevant states 
         for (LeafStateHash id(0); id < reachable[factor].size(); ++id){
             if (!reachable[factor][id]){
-                vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_fwd[factor][id]);
+                vector<pair<OperatorID, LeafStateHash> >().swap(transition_system_fwd[factor][id]);
             }
         }
 
@@ -163,13 +163,13 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
             auto &trs_s = transition_system_fwd[factor][s];
 
             trs_s.erase(remove_if(begin(trs_s), end(trs_s),
-                    [&](pair<const Operator*, LeafStateHash> & tr){
+                    [&](pair<OperatorID, LeafStateHash> & tr){
                 return !reachable[factor][tr.second];
             }), end(trs_s));
 
             if (mark_dead_ops){
                 for(const auto &tr : trs_s) {
-                    dead_ops[tr.first->get_index()] = false;
+                    dead_ops[tr.first] = false;
                 }
             }
 
@@ -184,7 +184,7 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
                 continue;
             }
             for (LeafStateHash s(0); s  < transition_system_bwd[factor].size(); ++s){
-                vector<pair<const Operator*, LeafStateHash> >().swap(transition_system_bwd[factor][s]);
+                vector<pair<OperatorID, LeafStateHash> >().swap(transition_system_bwd[factor][s]);
             }
 
             for (LeafStateHash s(0); s  < transition_system_fwd[factor].size(); ++s){
@@ -248,23 +248,23 @@ void SimulationRelation::compute_label_dominance() {
 
             if(cost <= cost2 && precondition_dominance(pre, pre2)) {
                 //cout << op->get_name() << " is dominated by " << op2->get_name() << endl;
-                op_dominated_by[op2->get_index()][op->get_index()] = true;
+                op_dominated_by[op2->get_id()][op->get_id()] = true;
             }
 
             if (cost2 <= cost && precondition_dominance(pre2, pre)) {
                 //cout << op2->get_name() << " is dominated by " << op->get_name() << endl;
-                op_dominated_by[op->get_index()][op2->get_index()] = true;
+                op_dominated_by[op->get_id()][op2->get_id()] = true;
             }
         }
     }
 }
 
-void SimulationRelation::compute_simulation(LeafFactorID factor, const CountdownTimer &timer) {
+void SimulationRelation::compute_simulation(LeafFactorID factor, const utils::CountdownTimer &timer) {
     // cout  << "Compute simulation: " << factor << endl;
     // Init goal respecting
     size_t num_states = g_state_registry->size(factor);
     vector<int> goal_distances(num_states, numeric_limits<int>::max()); 
-    BucketQueue<LeafStateHash> open;
+    priority_queues::BucketQueue<LeafStateHash> open;
 	
     for (LeafStateHash s : CompliantPathGraph::leaf_goal_states[factor]) {
         goal_distances[s] = 0;
@@ -272,7 +272,7 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const Countdown
     }
 
     while (!open.empty()) {
-        cout << g_timer() << endl;
+        cout << utils::g_timer() << endl;
         if (timer.is_expired()){
             relation[factor].clear();
             return;
@@ -326,7 +326,7 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const Countdown
                     // b) exist t--l'-->t', t' >= s' and l dominated by l'?
                     for (const auto &trs : transition_system_fwd[factor][s]){
                         LeafStateHash trs_target = trs.second;
-                        int trs_label = trs.first->get_index();
+                        OperatorID trs_label = trs.first;
 
                         if(simulates (factor, t, trs_target)
                         /* && op_dominated_by_noop(trs_label)*/) {
@@ -335,7 +335,7 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const Countdown
                         bool found = false;
                         for (const auto &trt  : transition_system_fwd[factor][t]) {
                             LeafStateHash trt_target = trt.second;
-                            int trt_label = trt.first->get_index();
+                            OperatorID trt_label = trt.first;
 
                             if(op_dominated_by[trs_label][trt_label] &&
                                     simulates(factor, trt_target, trs_target)) {
@@ -432,7 +432,7 @@ void SimulationRelation::set_list_dominated_states() const {
 }
 
 void SimulationRelation::statistics() const {
-    cout << "Simulation Relation Finished. [t=" << g_timer() << "s]" << endl;
+    cout << "Simulation Relation Finished. [t=" << utils::g_timer() << "s]" << endl;
     if (relation.empty()){
         cout << "No relation computed due to timeout." << endl;
     }
@@ -472,7 +472,7 @@ void SimulationRelation::dump(LeafFactorID factor) const {
             if (s != t && simulates(factor, t, s)) {
                 for (const auto &trs  : transition_system_fwd[factor][s]){
                     LeafStateHash trs_target = trs.second;
-                    int trs_label = trs.first->get_index();
+                    OperatorID trs_label = trs.first;
 
                     if(simulates(factor, t, trs_target)) {
                         cout << get_name(s, factor) << " -> " << get_name(trs_target, factor) << " is simulated by " <<
@@ -481,7 +481,7 @@ void SimulationRelation::dump(LeafFactorID factor) const {
                     }
                     for (const auto &trt  : transition_system_fwd[factor][t]) {
                         LeafStateHash trt_target = trt.second;
-                        int trt_label = trt.first->get_index();
+                        OperatorID trt_label = trt.first;
 
                         if(op_dominated_by[trs_label][trt_label] &&
                                 simulates(factor, trt_target, trs_target)) {

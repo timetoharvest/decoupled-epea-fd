@@ -12,7 +12,7 @@
 #include "../state_id.h"
 #include "../state_registry.h"
 #include "../successor_generator.h"
-#include "../timer.h"
+#include "../utils/timer.h"
 
 
 using namespace std;
@@ -39,11 +39,11 @@ vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
 
 vector<vector<LeafStateHash> > CompliantPathGraph::leaf_goal_states;
     
-vector<vector<vector<size_t> > > CompliantPathGraph::center_successors;
+vector<vector<vector<OperatorID> > > CompliantPathGraph::center_successors;
     
-vector<vector<vector<pair<const Operator*, LeafStateHash> > > > CompliantPathGraph::leaf_state_successors;
+vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_successors;
 
-vector<vector<vector<pair<const Operator*, LeafStateHash> > > > CompliantPathGraph::leaf_state_predecessors;
+vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_predecessors;
     
 vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
     
@@ -330,21 +330,21 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 best_prices[id] = cost;
                 
                 
-                vector<const Operator*> applicable_ops;
+                vector<OperatorID> applicable_ops;
                 
                 if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
                     if (first_time_seen){
-                        vector<const Operator*> center_ops;
-                        g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
+                        vector<OperatorID> center_ops;
+                        g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true); // TODO fix this
                         
                         // store center ops whose preconditions are satisfied by predecessor
                         if (id >= center_successors[factor].size()){
                             center_successors[factor].resize(id+1);
                         }
                         center_successors[factor][id].reserve(center_ops.size());
-                        for (size_t op = 0; op < center_ops.size(); ++op){
-                            if (center_ops[op]->has_precondition_on(factor)){
-                                center_successors[factor][id].push_back(center_ops[op]->get_index());
+                        for (OperatorID op_id : center_ops){
+                            if (g_operators[op_id].has_precondition_on(factor)){
+                                center_successors[factor][id].push_back(op_id);
                             }
                         }
                         center_successors[factor][id].swap(center_successors[factor][id]);
@@ -354,18 +354,18 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         }
                     } else if (!g_factoring->is_ifork_leaf(factor)){
                         // no need to apply center ops if none of them changes this leaf factor
-                        applicable_ops.resize(center_successors[factor][id].size());
+                        applicable_ops.resize(center_successors[factor][id].size(), OperatorID::no_operator);
                         for (size_t o = 0; o < center_successors[factor][id].size(); ++o){
-                            applicable_ops[o] = &g_operators[center_successors[factor][id][o]];
+                            applicable_ops[o] = center_successors[factor][id][o];
                         }
                     }
                 }
 
                 if (first_time_seen){
-                    g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                    g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops); // TODO fix this
                 } else {
                     size_t old_size = applicable_ops.size();
-                    applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size());
+                    applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
                     }
@@ -381,15 +381,16 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 }
 
                 // apply all applicable_ops to predecessor and store the outcome          
-                for (const Operator *op : applicable_ops){
-                    if (!op->get_effects(factor).empty()){
-                        bool is_center_op = op->get_affected_factor() == LeafFactorID::CENTER;
+                for (OperatorID op_id : applicable_ops){
+                    const Operator &op = g_operators[op_id];
+                    if (!op.get_effects(factor).empty()){
+                        bool is_center_op = op.get_affected_factor() == LeafFactorID::CENTER;
                         
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
                         predecessor.dump_pddl();
 #endif
-                        LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, *op);                        
+                        LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
@@ -397,7 +398,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #endif
                         int op_cost = 0;
                         if (!is_center_op){
-                            op_cost = get_adjusted_action_cost(*op, cost_type);
+                            op_cost = get_adjusted_action_cost(op, cost_type);
                         }
                         
                         if (lid >= leaf_state_id_map[factor].size()){
@@ -420,9 +421,9 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         }
                         
                         if (!is_center_op && first_time_seen){
-                            leaf_state_successors[factor][id].push_back(make_pair(op, lid));
+                            leaf_state_successors[factor][id].push_back(make_pair(op_id, lid));
                             if (compute_leaf_backwards_graph){
-                                leaf_state_predecessors[factor][lid].push_back(make_pair(op, id));
+                                leaf_state_predecessors[factor][lid].push_back(make_pair(op_id, id));
                             }
                         }
                     }
@@ -481,8 +482,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
                     cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
                 }
-                cout << "Total time: " << g_timer << endl;
-                exit_with(EXIT_UNSOLVABLE);
+                cout << "Total time: " << utils::g_timer << endl;
+                exit_with(utils::ExitCode::UNSOLVABLE);
             }
             g_min_goal_cost[factor] = 0;
         } else {
@@ -498,11 +499,11 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     g_leaf_successor_generators.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!precompute_leaf_state_spaces[factor]){
-            g_leaf_successor_generators[factor] = g_successor_generator->copy();
-            g_leaf_successor_generators[factor]->split_ops_center_leaf(factor);
+            g_leaf_successor_generators[factor] = g_successor_generator->copy(); // TODO fix this
+            g_leaf_successor_generators[factor]->split_ops_center_leaf(factor); // TODO fix this
         }
     }
-    g_successor_generator->split_ops_center_leaf(LeafFactorID::CENTER);
+    g_successor_generator->split_ops_center_leaf(LeafFactorID::CENTER); // TODO fix this
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         leaf_state_id_map[factor] = vector<int>(g_state_registry->size(factor), -1);

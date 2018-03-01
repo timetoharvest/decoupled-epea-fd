@@ -4,7 +4,7 @@
 #include "g_evaluator.h"
 #include "heuristic.h"
 #include "plugin.h"
-#include "successor_generator.h"
+#include "task_utils/successor_generator.h"
 #include "sum_evaluator.h"
 #include "compliant_paths/pruning_options.h"
 #include "weighted_evaluator.h"
@@ -22,7 +22,7 @@ LazySearch::LazySearch(const Options &opts)
       preferred_successors_first(opts.get<bool>("preferred_successors_first")),
       current_state(g_initial_state()),
       current_predecessor_id(StateID::no_state),
-      current_operator(NULL),
+      current_operator(OperatorID::no_operator),
       current_g(0),
       current_real_g(0) {
     if (g_factoring && reopen_closed_nodes){
@@ -62,10 +62,10 @@ void LazySearch::initialize() {
     assert(!heuristics.empty());
 }
 
-void LazySearch::get_successor_operators(vector<const Operator *> &ops) {
+void LazySearch::get_successor_operators(vector<OperatorID> &ops) {
     assert(ops.empty());
-    vector<const Operator *> all_operators;
-    vector<const Operator *> preferred_operators;
+    vector<OperatorID> all_operators;
+    vector<OperatorID> preferred_operators;
 
     g_successor_generator->generate_applicable_ops(
         current_state, all_operators);
@@ -86,38 +86,38 @@ void LazySearch::get_successor_operators(vector<const Operator *> &ops) {
 
     if (preferred_successors_first) {
         for (size_t i = 0; i < preferred_operators.size(); ++i) {
-            if (!preferred_operators[i]->is_marked()) {
+            if (!g_operators[preferred_operators[i]].is_marked()) {
                 ops.push_back(preferred_operators[i]);
-                preferred_operators[i]->mark();
+                g_operators[preferred_operators[i]].mark();
             }
         }
 
-        for (size_t i = 0; i < all_operators.size(); ++i)
-            if (!all_operators[i]->is_marked())
-                ops.push_back(all_operators[i]);
+        for (OperatorID id : all_operators)
+            if (!g_operators[id].is_marked())
+                ops.push_back(id);
     } else {
-        for (size_t i = 0; i < preferred_operators.size(); ++i)
-            if (!preferred_operators[i]->is_marked())
-                preferred_operators[i]->mark();
+        for (OperatorID id : preferred_operators)
+            if (!g_operators[id].is_marked())
+                g_operators[preferred_operators[id]].mark();
         ops.swap(all_operators);
     }
 }
 
 void LazySearch::generate_successors() {
-    vector<const Operator *> operators;
+    vector<OperatorID> operators;
     get_successor_operators(operators);
     search_progress.inc_generated(operators.size());
 
-    for (size_t i = 0; i < operators.size(); ++i) {
-        int new_g = current_g + get_adjusted_cost(*operators[i]);
-        int new_real_g = current_real_g + operators[i]->get_cost();
-        bool is_preferred = operators[i]->is_marked();
+    for (OperatorID id : operators) {
+        int new_g = current_g + get_adjusted_cost(id);
+        int new_real_g = current_real_g + g_operators[id].get_cost();
+        bool is_preferred = g_operators[id].is_marked();
         if (is_preferred)
-            operators[i]->unmark();
+            g_operators[id].unmark();
         if (new_real_g < bound) {
             open_list->evaluate(new_g, is_preferred);
             open_list->insert(
-                make_pair(current_state.get_id(), operators[i]));
+                make_pair(current_state.get_id(), id));
         }
     }
 }
@@ -134,11 +134,11 @@ SearchStatus LazySearch::fetch_next_state() {
     current_operator = next.second;
     State current_predecessor = g_state_registry->lookup_state(current_predecessor_id);
     assert(current_operator->is_applicable(current_predecessor));
-    current_state = g_state_registry->get_successor_state(current_predecessor, *current_operator);
+    current_state = g_state_registry->get_successor_state(current_predecessor, g_operators[current_operator]);
 
     SearchNode pred_node = search_space.get_node(current_predecessor);
-    current_g = pred_node.get_g() + get_adjusted_cost(*current_operator);
-    current_real_g = pred_node.get_real_g() + current_operator->get_cost();
+    current_g = pred_node.get_g() + get_adjusted_cost(current_operator);
+    current_real_g = pred_node.get_real_g() + g_operators[current_operator].get_cost();
 
     return IN_PROGRESS;
 }
@@ -169,8 +169,8 @@ SearchStatus LazySearch::step() {
         SearchNode parent_node = search_space.get_node(parent_state);
 
         for (size_t i = 0; i < heuristics.size(); ++i) {
-            if (current_operator != NULL) {
-                heuristics[i]->reach_state(parent_state, *current_operator, current_state);
+            if (current_operator != OperatorID::no_operator) {
+                heuristics[i]->reach_state(parent_state, current_operator, current_state);
             }
             heuristics[i]->evaluate(current_state);
         }

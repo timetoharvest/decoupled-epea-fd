@@ -52,9 +52,9 @@ void RelaxationHeuristic::initialize() {
 
     // Build unary operators for operators and axioms.
     for (size_t i = 0; i < g_operators.size(); ++i)
-        build_unary_operators(g_operators[i], i);
+        build_unary_operators(g_operators[i], OperatorID(i));
     for (size_t i = 0; i < g_axioms.size(); ++i)
-        build_unary_operators(g_axioms[i], -1);
+        build_unary_operators(g_axioms[i], OperatorID::no_operator);
 
     // Simplify unary operators.
     simplify();
@@ -72,7 +72,7 @@ void RelaxationHeuristic::reference_ops() {
     }
 }
 
-void RelaxationHeuristic::build_unary_operators(const Operator &op, int op_no) {
+void RelaxationHeuristic::build_unary_operators(const Operator &op, OperatorID op_id) {
     int base_cost = get_adjusted_cost(op);
     if (g_factoring &&
         search_type == CENTER &&
@@ -97,7 +97,7 @@ void RelaxationHeuristic::build_unary_operators(const Operator &op, int op_no) {
             assert(eff_cond[j].val >= 0 && eff_cond[j].val < g_variable_domain[eff_cond[j].var]);
             precondition.push_back(&propositions[eff_cond[j].var][eff_cond[j].val]);
         }
-        unary_operators.push_back(UnaryOperator(precondition, effect, op_no, base_cost));
+        unary_operators.push_back(UnaryOperator(precondition, effect, op_id, base_cost));
         precondition.erase(precondition.end() - eff_cond.size(), precondition.end());
     }
 }
