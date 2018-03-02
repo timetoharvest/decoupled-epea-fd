@@ -112,10 +112,10 @@ void DomainTransitionGraph::read_data(istream &in) {
             }
             Operator *the_operator;
             if (is_axiom) {
-                assert(in_bounds(operator_index, g_axioms));
+                assert(utils::in_bounds(operator_index, g_axioms));
                 the_operator = &g_axioms[operator_index];
             } else {
-                assert(in_bounds(operator_index, g_operators));
+                assert(utils::in_bounds(operator_index, g_operators));
                 the_operator = &g_operators[operator_index];
             }
 
@@ -183,7 +183,7 @@ void DomainTransitionGraph::dump() const {
 
 void DomainTransitionGraph::get_successors(int value, vector<int> &result) const {
     assert(result.empty());
-    assert(in_bounds(value, nodes));
+    assert(utils::in_bounds(value, nodes));
     const vector<ValueTransition> &transitions = nodes[value].transitions;
     result.reserve(transitions.size());
     for (size_t i = 0; i < transitions.size(); ++i)
