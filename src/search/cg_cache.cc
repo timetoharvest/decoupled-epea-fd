@@ -3,6 +3,7 @@
 #include "task_utils/causal_graph.h"
 #include "state.h"
 #include "globals.h"
+#include "utils/collections.h"
 #include "utils/math.h"
 #include "utils/system.h"
 

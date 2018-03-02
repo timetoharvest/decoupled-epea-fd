@@ -319,6 +319,12 @@ void read_everything(istream &in) {
     int peak_memory_before = utils::get_peak_memory_in_kb();
     utils::Timer successor_generator_timer;
     g_successor_generator = new successor_generator::SuccessorGenerator();
+    if (g_factoring){
+        g_leaf_successor_generators.reserve(g_leaves.size());
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            g_leaf_successor_generators.push_back(new successor_generator::SuccessorGenerator(factor));
+        }
+    }
     successor_generator_timer.stop();
     cout << "done! [t=" << utils::g_timer << "]" << endl;
     int peak_memory_after = utils::get_peak_memory_in_kb();

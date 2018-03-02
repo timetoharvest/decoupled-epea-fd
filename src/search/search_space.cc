@@ -313,7 +313,7 @@ void SearchSpace::trace_path(const State &goal_state,
                             marked_leaf_states[factor] = fact.predecessor;
                             decoupled_plan.push_back(fact.best_supporter);
 
-                            assert(fact.best_supporter->get_affected_factor() == (int) factor);
+                            assert(g_operators[fact.best_supporter].get_affected_factor() == (int) factor);
                         } else if (fact.predecessor != LeafStateHash::MAX){
                             // this leaf state has been copied from one decoupled state to its successor
                             // the state can have been modified by the center op

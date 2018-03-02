@@ -19,7 +19,7 @@ struct Condition {
     int val;
     explicit Condition(std::istream &in);
     Condition(int v, int p) : var(v), val(p) {
-        assert(in_bounds(var, g_variable_name));
+        assert(utils::in_bounds(var, g_variable_name));
         assert(val >= 0 && val < g_variable_domain[var]);
     }
 

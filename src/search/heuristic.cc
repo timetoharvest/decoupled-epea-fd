@@ -65,7 +65,7 @@ void Heuristic::evaluate(const State &state) {
 #ifndef NDEBUG
     if (heuristic != DEAD_END) {
         for (size_t i = 0; i < preferred_operators.size(); ++i)
-            assert(preferred_operators[i]->is_applicable(state));
+            assert(g_operators[preferred_operators[i]].is_applicable(state));
     }
 #endif
     evaluator_value = heuristic;

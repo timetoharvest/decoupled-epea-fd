@@ -133,7 +133,7 @@ SearchStatus LazySearch::fetch_next_state() {
     current_predecessor_id = next.first;
     current_operator = next.second;
     State current_predecessor = g_state_registry->lookup_state(current_predecessor_id);
-    assert(current_operator->is_applicable(current_predecessor));
+    assert(g_operators[current_operator].is_applicable(current_predecessor));
     current_state = g_state_registry->get_successor_state(current_predecessor, g_operators[current_operator]);
 
     SearchNode pred_node = search_space.get_node(current_predecessor);
