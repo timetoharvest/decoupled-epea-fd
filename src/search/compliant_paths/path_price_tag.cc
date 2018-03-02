@@ -4,7 +4,7 @@
 #include "../operator.h"
 #include "../operator_cost.h"
 #include "../state_registry.h"
-#include "../successor_generator.h"
+#include "../task_utils/successor_generator.h"
 
 #include <limits>
 #include <iostream>
@@ -142,13 +142,13 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                         const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
                         
                         vector<OperatorID> applicable_ops;
-                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops); // TODO fix this
+                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_outside_pre(predecessor, applicable_ops);
 
                         // apply all applicable_ops to predecessor and store the outcome          
                         for (OperatorID op_id : applicable_ops){
                             const Operator &op = g_operators[op_id];
                             const vector<const Effect*> &effects = op.get_effects(factor);
-                            assert(op->get_affected_factor() != LeafFactorID::CENTER);
+                            assert(op.get_affected_factor() != LeafFactorID::CENTER);
                             
                             if (!effects.empty() && op.is_center_applicable(base_state)){
                                 LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);

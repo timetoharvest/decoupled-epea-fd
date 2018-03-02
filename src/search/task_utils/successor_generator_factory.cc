@@ -279,11 +279,15 @@ static vector<FactPair> build_sorted_precondition(const Operator &op) {
     return precond;
 }
 
-GeneratorPtr SuccessorGeneratorFactory::create() {
-    operator_infos.reserve(g_operators.size());
+GeneratorPtr SuccessorGeneratorFactory::create(LeafFactorID factor) {
+    if (!g_factoring){
+        operator_infos.reserve(g_operators.size());
+    }
     for (const Operator &op : g_operators) {
-        operator_infos.emplace_back(
-            OperatorID(op.get_id()), build_sorted_precondition(op));
+        if (!g_factoring || factor == op.get_affected_factor()){
+            operator_infos.emplace_back(
+                    OperatorID(op.get_id()), build_sorted_precondition(op));
+        }
     }
     /* Use stable_sort rather than sort for reproducibility.
        This amounts to breaking ties by operator ID. */

@@ -1,6 +1,7 @@
 #ifndef TASK_UTILS_SUCCESSOR_GENERATOR_INTERNALS_H
 #define TASK_UTILS_SUCCESSOR_GENERATOR_INTERNALS_H
 
+#include "../leaf_state.h"
 #include "../operator_id.h"
 
 #include <memory>
@@ -14,6 +15,8 @@ class GeneratorBase {
 public:
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const = 0;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const = 0;
 };
 
 class GeneratorForkBinary : public GeneratorBase {
@@ -25,6 +28,8 @@ public:
         std::unique_ptr<GeneratorBase> generator2);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+                const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorForkMulti : public GeneratorBase {
@@ -33,6 +38,8 @@ public:
     GeneratorForkMulti(std::vector<std::unique_ptr<GeneratorBase>> children);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorSwitchVector : public GeneratorBase {
@@ -44,6 +51,8 @@ public:
         std::vector<std::unique_ptr<GeneratorBase>> &&generator_for_value);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorSwitchHash : public GeneratorBase {
@@ -55,6 +64,8 @@ public:
         std::unordered_map<int, std::unique_ptr<GeneratorBase>> &&generator_for_value);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorSwitchSingle : public GeneratorBase {
@@ -67,6 +78,8 @@ public:
         std::unique_ptr<GeneratorBase> generator_for_value);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorLeafVector : public GeneratorBase {
@@ -75,6 +88,8 @@ public:
     GeneratorLeafVector(std::vector<OperatorID> &&applicable_operators);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 
 class GeneratorLeafSingle : public GeneratorBase {
@@ -83,6 +98,8 @@ public:
     GeneratorLeafSingle(OperatorID applicable_operator);
     virtual void generate_applicable_ops(
         const State &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void generate_applicable_ops_ignore_outside_pre(
+            const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
 };
 }
 

@@ -11,7 +11,7 @@
 #include "../state.h"
 #include "../state_id.h"
 #include "../state_registry.h"
-#include "../successor_generator.h"
+#include "../task_utils/successor_generator.h"
 #include "../utils/timer.h"
 
 
@@ -335,7 +335,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
                     if (first_time_seen){
                         vector<OperatorID> center_ops;
-                        g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true); // TODO fix this
+                        g_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
                         
                         // store center ops whose preconditions are satisfied by predecessor
                         if (id >= center_successors[factor].size()){
@@ -362,7 +362,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 }
 
                 if (first_time_seen){
-                    g_successor_generator->generate_applicable_ops_ignore_others(predecessor, applicable_ops); // TODO fix this
+                    g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_outside_pre(predecessor, applicable_ops);
                 } else {
                     size_t old_size = applicable_ops.size();
                     applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
@@ -496,14 +496,11 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         }
     }
     
-    g_leaf_successor_generators.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (!precompute_leaf_state_spaces[factor]){
-            g_leaf_successor_generators[factor] = g_successor_generator->copy(); // TODO fix this
-            g_leaf_successor_generators[factor]->split_ops_center_leaf(factor); // TODO fix this
+        if (precompute_leaf_state_spaces[factor]){
+            delete g_leaf_successor_generators[factor];
         }
     }
-    g_successor_generator->split_ops_center_leaf(LeafFactorID::CENTER); // TODO fix this
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         leaf_state_id_map[factor] = vector<int>(g_state_registry->size(factor), -1);

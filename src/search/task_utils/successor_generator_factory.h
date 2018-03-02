@@ -5,6 +5,8 @@
 #include <vector>
 
 
+class LeafFactorID;
+
 namespace successor_generator {
 class GeneratorBase;
 
@@ -28,7 +30,7 @@ public:
     explicit SuccessorGeneratorFactory();
     // Destructor cannot be implicit because OperatorInfo is forward-declared.
     ~SuccessorGeneratorFactory();
-    GeneratorPtr create();
+    GeneratorPtr create(LeafFactorID factor);
 };
 }
 
