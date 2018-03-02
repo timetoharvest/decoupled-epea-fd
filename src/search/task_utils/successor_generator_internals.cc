@@ -122,10 +122,19 @@ GeneratorSwitchVector::GeneratorSwitchVector(
 
 void GeneratorSwitchVector::generate_applicable_ops(
     const State &state, vector<OperatorID> &applicable_ops) const {
-    int val = state[switch_var_id];
-    const unique_ptr<GeneratorBase> &generator_for_val = generator_for_value[val];
-    if (generator_for_val) {
-        generator_for_val->generate_applicable_ops(state, applicable_ops);
+    if (!g_factoring || g_belongs_to_factor[switch_var_id] == LeafFactorID::CENTER){
+        int val = state[switch_var_id];
+        const unique_ptr<GeneratorBase> &generator_for_val = generator_for_value[val];
+        if (generator_for_val) {
+            generator_for_val->generate_applicable_ops(state, applicable_ops);
+        }
+    } else {
+        for (int val = 0; val < g_variable_domain[switch_var_id]; ++val){
+            const unique_ptr<GeneratorBase> &generator_for_val = generator_for_value[val];
+            if (generator_for_val) {
+                generator_for_val->generate_applicable_ops(state, applicable_ops);
+            }
+        }
     }
 }
 
@@ -156,11 +165,18 @@ GeneratorSwitchHash::GeneratorSwitchHash(
 
 void GeneratorSwitchHash::generate_applicable_ops(
     const State &state, vector<OperatorID> &applicable_ops) const {
-    int val = state[switch_var_id];
-    const auto &child = generator_for_value.find(val);
-    if (child != generator_for_value.end()) {
-        const unique_ptr<GeneratorBase> &generator_for_val = child->second;
-        generator_for_val->generate_applicable_ops(state, applicable_ops);
+    if (!g_factoring || g_belongs_to_factor[switch_var_id] == LeafFactorID::CENTER){
+        int val = state[switch_var_id];
+        const auto &child = generator_for_value.find(val);
+        if (child != generator_for_value.end()) {
+            const unique_ptr<GeneratorBase> &generator_for_val = child->second;
+            generator_for_val->generate_applicable_ops(state, applicable_ops);
+        }
+    } else {
+        for (const auto &child : generator_for_value){
+            const unique_ptr<GeneratorBase> &generator_for_val = child.second;
+            generator_for_val->generate_applicable_ops(state, applicable_ops);
+        }
     }
 }
 
@@ -190,7 +206,8 @@ GeneratorSwitchSingle::GeneratorSwitchSingle(
 
 void GeneratorSwitchSingle::generate_applicable_ops(
     const State &state, vector<OperatorID> &applicable_ops) const {
-    if (value == state[switch_var_id]) {
+    if ((g_factoring && g_belongs_to_factor[switch_var_id] != LeafFactorID::CENTER)
+        || value == state[switch_var_id]) {
         generator_for_value->generate_applicable_ops(state, applicable_ops);
     }
 }
