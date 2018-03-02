@@ -7,7 +7,6 @@
 #include "option_parser.h"
 #include "plugin.h"
 #include "compliant_paths/pruning_options.h"
-#include "successor_generator.h"
 #include "task_utils/causal_graph.h"
 #include "utils/timer.h"
 

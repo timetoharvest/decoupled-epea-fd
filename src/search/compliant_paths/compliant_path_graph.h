@@ -26,7 +26,7 @@ class CompliantPathGraph {
     friend class PruningOptions; // access to leaf_state_pre/successors
     friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg
-    friend class SuccessorGeneratorSwitch; // access to center_successors
+    friend class successor_generator::SuccessorGenerator; // access to center_successors
     
     /*
       this builds all entire leaf state spaces and stores them

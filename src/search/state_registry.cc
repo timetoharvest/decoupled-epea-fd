@@ -5,7 +5,6 @@
 #include "factoring.h"
 #include "operator.h"
 #include "search_engine.h"
-#include "successor_generator.h"
 
 #include <limits>
 #include <stdint.h>
