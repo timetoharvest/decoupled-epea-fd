@@ -342,7 +342,7 @@ void SearchSpace::trace_path(const State &goal_state,
                         LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
                         
                         assert(marked_leaf_states[factor] != predecessor_hash);
-                        assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == 0);
+                        assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == OperatorID::no_operator);
                         
                         if (price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor != LeafStateHash::MAX){
                             marked_leaf_states[factor] = predecessor_hash;

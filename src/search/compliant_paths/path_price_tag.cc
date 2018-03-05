@@ -126,7 +126,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     
                     if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == OperatorID::no_operator){
                             // is "dead-end" leaf state
                             ++id;
                             continue;

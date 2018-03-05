@@ -34,9 +34,9 @@ void FFHeuristic::initialize() {
     relaxed_plan.resize(g_operators.size(), false);
     
     if (search_type == STAR){
-	cout << "" << endl;
-	exit_with(utils::ExitCode::UNSUPPORTED);
-	// TODO need to check this. not sure if it works with OperatorsIDs
+        cout << "" << endl;
+        exit_with(utils::ExitCode::UNSUPPORTED);
+        // TODO need to check this. not sure if it works with OperatorsIDs
         relaxed_leaf_plan.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_plan[factor] = vector<bool>(g_state_registry->size(factor), false);
@@ -74,9 +74,10 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     return;
                 }
             }
-            for (size_t i = 0; i < unary_op->precondition.size(); ++i)
+            for (size_t i = 0; i < unary_op->precondition.size(); ++i){
                 mark_preferred_operators_and_relaxed_plan(
-                    state, unary_op->precondition[i]);
+                        state, unary_op->precondition[i]);
+            }
             OperatorID operator_no = unary_op->operator_no;
             if (operator_no != OperatorID::no_operator) {
                 // This is not an axiom.
