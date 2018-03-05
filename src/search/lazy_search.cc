@@ -85,10 +85,10 @@ void LazySearch::get_successor_operators(vector<OperatorID> &ops) {
     }
 
     if (preferred_successors_first) {
-        for (size_t i = 0; i < preferred_operators.size(); ++i) {
-            if (!g_operators[preferred_operators[i]].is_marked()) {
-                ops.push_back(preferred_operators[i]);
-                g_operators[preferred_operators[i]].mark();
+        for (OperatorID op_id : preferred_operators) {
+            if (!g_operators[op_id].is_marked()) {
+                ops.push_back(op_id);
+                g_operators[op_id].mark();
             }
         }
 
@@ -98,7 +98,7 @@ void LazySearch::get_successor_operators(vector<OperatorID> &ops) {
     } else {
         for (OperatorID id : preferred_operators)
             if (!g_operators[id].is_marked())
-                g_operators[preferred_operators[id]].mark();
+                g_operators[id].mark();
         ops.swap(all_operators);
     }
 }
