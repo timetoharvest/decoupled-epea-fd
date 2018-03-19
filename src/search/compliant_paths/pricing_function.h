@@ -2,18 +2,26 @@
 #define PRICING_FUNCTION_H
 
 #include "compliant_path_graph.h"
-#include "../globals.h"
-#include "../leaf_state.h"
 #include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 
 #include <vector>
 
+class PriceStorage;
 
-class Prices : public CompliantPathGraph, public Prunable {
+class Prices : public CompliantPathGraph {
     friend class CompliantPathGraph;
     
-    static Prices tmp_price;
+    static PriceStorage *cpg_storage;
+    
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+    
+        
+    Prices(const Prices *tag);
+
+    
+    // used when including part of the leaf cost into the g-value
+    // of a search node
+    void reduce_cost_by(LeafFactorID factor, int cost);
     
 protected:  
 
@@ -23,60 +31,41 @@ protected:
 
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
-        
-    Prices(const Prices *tag);
-      
-    // used when including part of the leaf cost into the g-value
-    // of a search node
-    void reduce_cost_by(int factor, int cost);
-    
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-    
+
     // return true, if the fact was actually added
-    // in satisficing planning, return true only if the leaf state was
-    // not already reached, before
-    bool add_state(const LeafStateID &fact, int cost);
-    
-    // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
+    bool add_state(LeafStateHash id, LeafFactorID factor, int cost);
     
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+    
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+                                                                          
+    virtual void update(const State &base_state) override;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     Prices(){};
     
-    virtual bool has_leaf_state(int id, int factor) const;
+    virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual bool has_effective_leaf_state(int id, int factor) const;
+    virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual int get_cost_of_state(int id, int factor) const;
+    virtual size_t get_number_states(LeafFactorID factor) const override;
     
-    virtual int get_effective_cost_of_state(int id, int factor) const;
+    virtual int get_goal_cost(LeafFactorID factor) const override;
     
-    virtual size_t get_number_states(int factor) const;
+    virtual bool goal_reachable(LeafFactorID factor) const override;
+    
+    virtual void dump() const override;
 
-    virtual size_t get_number_effective_states(int factor) const;
-    
-    virtual int get_goal_cost(int factor) const;
-    
-    virtual bool goal_reachable(int factor) const;
-    
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
-    
-    virtual void dump() const;
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
-    
-    static void create_init_state_prices();
 
-    static void store_new_graph(const State &state);
+    static void register_cpg_storage(PriceStorage *storage);
     
 };
 

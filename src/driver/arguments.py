@@ -112,11 +112,11 @@ def _set_components_and_inputs(parser, args):
        separate function."""
 
     args.components = []
-    if args.run_translator or args.run_all:
+    if args.translate or args.run_all:
         args.components.append("translate")
-    if args.run_preprocessor or args.run_all:
+    if args.preprocess or args.run_all:
         args.components.append("preprocess")
-    if args.run_search or args.run_all:
+    if args.search or args.run_all:
         args.components.append("search")
 
     if args.components == ["translate", "search"]:
@@ -171,13 +171,13 @@ def parse_args():
         "--run-all", action="store_true",
         help="run all components of the planner")
     parser.add_argument(
-        "--run-translator", action="store_true",
+        "--translate", action="store_true",
         help="run translator component of the planner")
     parser.add_argument(
-        "--run-preprocessor", action="store_true",
+        "--preprocess", action="store_true",
         help="run preprocessor component of the planner")
     parser.add_argument(
-        "--run-search", action="store_true",
+        "--search", action="store_true",
         help="run search component of the planner")
     parser.add_argument(
         "--show-aliases", action="store_true",

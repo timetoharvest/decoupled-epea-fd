@@ -6,27 +6,54 @@
 // For documentation on classes relevant to storing and working with registered
 // states see the file state_registry.h.
 
+struct LeafStateHash {
+private:
+    size_t val;
+public:
+    explicit LeafStateHash(size_t value) : val(value) {}
+    operator size_t() const {
+        return val;
+    }
+    void operator++() {
+        ++val;
+    }
+    static const LeafStateHash MAX;
+};
+
+struct LeafFactorID {
+private:
+    unsigned short val;
+public:
+    explicit LeafFactorID(unsigned short value) : val(value) {}
+    operator unsigned short() const {
+        return val;
+    }
+    void operator++() {
+        ++val;
+    }
+    static const LeafFactorID CENTER;
+};
+
+
+
 class LeafStateID {
     friend class StateRegistry;
     friend std::ostream &operator<<(std::ostream &os, LeafStateID id);
    
-    int value;
+    LeafStateHash value;
     
-    int factor;
+    LeafFactorID factor;
     
     // No implementation to prevent default construction
     LeafStateID();
     
 public:
     
-    explicit LeafStateID(int id, int factor)
+    explicit LeafStateID(LeafStateHash id, LeafFactorID factor)
         : value(id), factor(factor) {
     }
     
-    ~LeafStateID() {
-    }
-
-    static const LeafStateID no_state;
+    ~LeafStateID() = default;
 
     bool operator==(const LeafStateID &other) const {
         return value == other.value;
@@ -40,21 +67,24 @@ public:
         return value < other.value;
     }
 
-    size_t hash() const {
+    LeafStateHash hash() const {
         return value;
     }
     
-    int get_factor() const {
+    LeafFactorID get_factor() const {
         return factor;
     }
+    
+    
+    static const LeafStateID no_state;
 };
 
-std::ostream &operator<<(std::ostream &os, LeafStateID id);
+std::ostream &operator<<(std::ostream &os, const LeafStateID &id);
 
 namespace __gnu_cxx {
 template<>
 struct hash<LeafStateID> {
-    size_t operator()(LeafStateID id) const {
+    size_t operator()(const LeafStateID &id) const {
         return id.hash();
     }
 };

@@ -34,13 +34,14 @@ void FFHeuristic::initialize() {
     relaxed_plan.resize(g_operators.size(), false);
     
     if (search_type == STAR){
-        relaxed_leaf_plan.resize(g_factors.size());
-        for (size_t factor = 0; factor < g_factors.size(); factor++){
+        relaxed_leaf_plan.resize(g_leaves.size());
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_plan[factor] = vector<bool>(g_state_registry->size(factor), false);
         }
-        artificial_leaf_ops.resize(g_factors.size());
+        artificial_leaf_ops.resize(g_leaves.size());
         int counter = -1;
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
+            assert(CompliantPathGraph::precompute_leaf_state_space(factor));
             for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
                 artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
                 --counter;
@@ -84,7 +85,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     // If we had no 0-cost operators and axioms to worry
                     // about, it would also imply applicability.
                     const Operator *op = &g_operators[operator_no];
-                    if (op->get_affected_factor() == -1 && op->is_applicable(state)) {
+                    if (op->get_affected_factor() == LeafFactorID::CENTER && op->is_applicable(state)) {
                         // don't mark leaf ops as preferred
                         set_preferred(op);
                     }
@@ -95,10 +96,10 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 }
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& state) {
-    const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-    for (size_t factor = 0; factor < g_factors.size(); factor++){
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         int number_states = tag->get_number_states(factor);
-        size_t id = 0;
+        LeafStateHash id(0);
         while (number_states > 0){
             if (tag->has_leaf_state(id, factor)){
                 --number_states;
@@ -108,9 +109,9 @@ void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State& sta
                     op = artificial_leaf_ops[factor][id];
                     base_cost = tag->get_cost_of_state(id, factor);
                 }
-                LeafState f = g_state_registry->lookup_leaf_state(LeafStateID(id, factor));
-                for (size_t v = 0; v < g_factors[factor].size(); ++v) {
-                    int var = g_factors[factor][v];
+                LeafState f = g_state_registry->lookup_leaf_state(id, factor);
+                for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+                    int var = g_leaves[factor][v];
                     Proposition *effect = &propositions[var][f[var]];
                     enqueue_if_necessary(effect, base_cost, op);
                 }
@@ -144,13 +145,13 @@ int FFHeuristic::compute_heuristic(const State &state) {
     }
     int leaf_goal_cost = 0;
     if (search_type == STAR){
-        const CompliantPathGraph *tag = CPGStorage::get_cpg(state);
-        for (size_t factor = 0; factor < artificial_leaf_ops.size(); ++factor){
-            for (size_t fact = 0; fact < artificial_leaf_ops[factor].size(); ++fact){
-                if (relaxed_leaf_plan[factor][fact]){
-                    relaxed_leaf_plan[factor][fact] = false;
-                    assert(tag->get_cost_of_state(fact, factor) >= 0);
-                    leaf_goal_cost += tag->get_cost_of_state(fact, factor);
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+        for (LeafFactorID factor(0); factor < artificial_leaf_ops.size(); ++factor){
+            for (LeafStateHash id(0); id < artificial_leaf_ops[factor].size(); ++id){
+                if (relaxed_leaf_plan[factor][id]){
+                    relaxed_leaf_plan[factor][id] = false;
+                    assert(tag->get_cost_of_state(id, factor) >= 0);
+                    leaf_goal_cost += tag->get_cost_of_state(id, factor);
                 }
             }
         }

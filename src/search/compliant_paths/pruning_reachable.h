@@ -1,53 +1,47 @@
 #ifndef PRUNING_REACHABLE_H
 #define PRUNING_REACHABLE_H
 
-#include "../ext/boost/dynamic_bitset.hpp"
-#include "../globals.h"
-#include "../leaf_state.h"
-#include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 #include "reachability_function.h"
 
 #include <vector>
 
+class PruningReachableStorage;
+
 class PruningReachable : public Reachable {
+    friend class Reachable; // to get init state cpg
     
-    static PruningReachable tmp_p_reach;
+    static PruningReachableStorage *cpg_storage;
     
-protected:
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();   
     
-    std::vector<boost::dynamic_bitset<> > frontier;
-    
+    void compute_frontier();
     
     PruningReachable(const PruningReachable *tag);
     
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
-
-    // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
+protected:
     
-    void compute_frontier();
+    std::vector<boost::dynamic_bitset<> > frontier;    
+
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+                                                                                
+// no own implementation so far. the only use would be to skip non-frontier states in the update
+// virtual void update(const State &base_state) = 0;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     PruningReachable(){};
+    
+    virtual void dump() const override;
 
-
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
-    
-    virtual void dump() const;
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
     
     
-    static void store_new_graph(const State &state);
-    
-    static void create_init_state_reachable();
+    static void register_cpg_storage(PruningReachableStorage *storage);
  
 };
 

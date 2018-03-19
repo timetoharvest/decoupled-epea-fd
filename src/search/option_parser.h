@@ -4,7 +4,6 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
-#include "por/por_method.h"
 
 #include <algorithm>
 #include <iostream>
@@ -41,12 +40,14 @@ If NT shall be predefinable:
   should add an explanation to OptionParser::usage().
 */
 
+
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
 template<class Entry>
 class OpenList;
-class Pruning;
+class PruningMethod;
+class PruningOptions;
 class SearchEngine;
 class MergeStrategy;
 class ShrinkStrategy;
@@ -135,9 +136,9 @@ public:
 };
 
 template <>
-class TokenParser<Pruning *> {
+class TokenParser<PruningOptions *> {
 public:
-    static inline Pruning *parse(OptionParser &p);
+    static inline PruningOptions *parse(OptionParser &p);
 };
 
 template <>
@@ -153,9 +154,9 @@ public:
 };
 
 template <>
-class TokenParser<POR::PORMethod *> {
+class TokenParser<PruningMethod *> {
 public:
-    static inline POR::PORMethod *parse(OptionParser &p);
+    static inline PruningMethod *parse(OptionParser &p);
 };
 
 
@@ -420,10 +421,10 @@ SearchEngine *TokenParser<SearchEngine *>::parse(OptionParser &p) {
     return lookup_in_registry<SearchEngine>(p);
 }
 
-POR::PORMethod *TokenParser<POR::PORMethod *>::parse(OptionParser &p) {
+PruningMethod *TokenParser<PruningMethod *>::parse(OptionParser &p) {
     ParseTree::iterator pt = p.get_parse_tree()->begin();
-    if (Registry<POR::PORMethod *>::instance()->contains(pt->value)) {
-        return Registry<POR::PORMethod *>::instance()->get(pt->value) (p);
+    if (Registry<PruningMethod *>::instance()->contains(pt->value)) {
+        return Registry<PruningMethod *>::instance()->get(pt->value) (p);
     }
     p.error("POR method not found");
     return 0;
@@ -445,8 +446,8 @@ Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
     return lookup_in_registry<Factoring>(p);
 }
 
-Pruning *TokenParser<Pruning *>::parse(OptionParser &p) {
-    return lookup_in_registry<Pruning>(p);
+PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {
+    return lookup_in_registry<PruningOptions>(p);
 }
 
 ParseTree TokenParser<ParseTree>::parse(OptionParser &p) {

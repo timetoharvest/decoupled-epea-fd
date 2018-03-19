@@ -41,9 +41,7 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
-          compliant_paths/compliant_path_graph.h \
           countdown_timer.h \
-          compliant_paths/cpg_storage.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -57,8 +55,6 @@ HEADERS = \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
-          leaf_state.h\
-          leaf_state_id.h\
           max_evaluator.h \
           operator.h \
           operator_cost.h \
@@ -66,9 +62,8 @@ HEADERS = \
           option_parser_util.h \
           segmented_vector.h \
           per_state_information.h \
-          por/por_method.h \
           pref_evaluator.h \
-          pruning/pruning.h \
+          pruning_method.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -91,7 +86,8 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
-          lp_solver_interface.h \
+          lp_solver_interface.h
+
 
 ## Each of the following "HEADERS += ..." constructs defines a
 ## "plugin" feature that can be enabled or disabled by simply
@@ -100,9 +96,6 @@ HEADERS = \
 ## As with all changes to the Makefile, you will have to force a
 ## rebuild after such a change. Deleting the executable and running
 ## "make" to relink is enough; no need to do a complete rebuild.
-
-## Needed for factoring the variables
-HEADERS += ../preprocess/scc.h
 
 HEADERS += additive_heuristic.h
 HEADERS += blind_search_heuristic.h
@@ -164,21 +157,27 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
-# TODO check how to decouple this from the POR interface, so we can comment
-# this out here
-HEADERS += por/expansion_core.h \
-           por/simple_stubborn_sets.h \
-           por/sss_expansion_core.h \
-           
-HEADERS += pruning/cost_frontier.h \
-           pruning/simulation_relation.h \
-           pruning/prunable.h
+HEADERS += pruning/stubborn_sets.h \
+           pruning/stubborn_sets_decoupled.h \
+           pruning/stubborn_sets_simple.h \
+           pruning/stubborn_sets_ec.h
 
-HEADERS += compliant_paths/path_price_tag.h \
+# TODO make decoupled search plugable
+HEADERS += leaf_state.h\
+           leaf_state_id.h\
+           ../preprocess/scc.h
+
+HEADERS += compliant_paths/compliant_path_graph.h \
+           compliant_paths/cpg_storage.h \
+           compliant_paths/effective_prices.h \
+           compliant_paths/frontier_prices.h \
+           compliant_paths/path_price_tag.h \
            compliant_paths/pricing_function.h \
-           compliant_paths/pruning_prices.h \
+           compliant_paths/pruning_options.h \
            compliant_paths/pruning_reachable.h \
-           compliant_paths/reachability_function.h
+           compliant_paths/reachability_function.h \
+           compliant_paths/simulation_relation.h
+           
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
@@ -232,11 +231,6 @@ TARGET_DEBUG    = $(TARGET)$(TARGET_SUFFIX_DEBUG)
 OBJECTS_PROFILE = $(SOURCES:%.cc=.obj/%$(OBJECT_SUFFIX_PROFILE).o)
 TARGET_PROFILE  = $(TARGET)$(TARGET_SUFFIX_PROFILE)
 
-CXX = g++-4.9
-# nasty HACK to be able to compile Alvaro's magic constructs on the cluster
-ifeq (, $(shell which $(CXX)))
-    CXX = g++
-endif
 
 DEPEND = $(CXX) -MM
 
@@ -255,8 +249,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-# Note: we write "-std=c++0x" rather than "-std=c++11" to support gcc up to 4.6
-CXXFLAGS += -Wall -std=c++0x -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated -Werror
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -264,24 +257,6 @@ ifeq ($(DOWNWARD_OS), osx)
     CXXFLAGS += -I/opt/local/include/
 endif
 
-
-## The following lines contain workarounds for bugs when
-## cross-compiling to 64 bit on 32-bit systems using gcc 4.4 or gcc
-## 4.5 in some Ubuntu releases. (We don't usually cross-compile to
-## 64-bit, but in some cases we do; e.g. we did for the IPC.) See
-## http://stackoverflow.com/questions/4643197/missing-include-bits-cconfig-h-when-cross-compiling-64-bit-program-on-32-bit.
-ifeq ($(DOWNWARD_OS), linux) # workarounds only valid for Linux...
-    HAVE_GCC_4_4 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.4\.\\\))
-    HAVE_GCC_4_5 := $(shell expr "$$(gcc -dumpversion)" : \\\(4\.5\.\\\))
-
-    ifdef HAVE_GCC_4_4
-        CXXFLAGS += -I/usr/include/c++/4.4/i686-linux-gnu
-    endif
-
-    ifdef HAVE_GCC_4_5
-        CXXFLAGS += -I/usr/include/c++/4.5/i686-linux-gnu
-    endif
-endif
 
 LDFLAGS =
 LDFLAGS += $(BITWIDTHOPT)

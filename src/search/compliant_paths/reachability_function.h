@@ -2,73 +2,66 @@
 #define REACHABILITY_FUNCTION_H
 
 #include "compliant_path_graph.h"
-#include "../ext/boost/dynamic_bitset.hpp"
-#include "../globals.h"
-#include "../leaf_state.h"
-#include "../leaf_state_id.h"
-#include "../pruning/prunable.h"
 
 #include <vector>
 
-class Reachable : public CompliantPathGraph, public Prunable {
+class ReachableStorage;
+
+class Reachable : public CompliantPathGraph {
+    friend class CompliantPathGraph; // to get init state cpg
+
+    static ReachableStorage *cpg_storage;
     
-    static Reachable tmp_reach;
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+    
+    
+    Reachable(const Reachable *tag);
+    
+    
+    void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
 protected:
     
     std::vector<boost::dynamic_bitset<> > reachable;
     
-    boost::dynamic_bitset<> goal_reached;
-        
-    Reachable(const Reachable *tag);
-    
-    // returns the duplicate counter for this base state and price tag 
-    // i.e. the counter of the subsuming that or the current max + 1
-    int check_duplicate(const State &base_state, int curr_number_duplicates, 
-                        int g_value, const State &predecessor);
+    boost::dynamic_bitset<> goal_reached;    
     
     // return true, if the fact was actually added
     // in satisficing planning, return true only if the leaf state was
     // not already reached, before
-    bool add_state(const LeafStateID &fact);
-    
-    // returns the new duplicate counter
-    virtual int update_price_tags(int curr_number_duplicates,
-                                  const State &base_state,
-                                  int g_value,
-                                  const State &predecessor,
-                                  const Operator *op) const;
+    bool add_state(LeafStateHash id, LeafFactorID factor);
     
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
+    
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+                                                                                const Operator *op) const override;
+
+    virtual void update(const State &base_state) override;
+                                                                          
+    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    
+    virtual void store_new_graph(const State &state) const override;
     
 public:
     
     Reachable(){};
     
-    virtual bool has_leaf_state(int id, int factor) const;
+    virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual bool has_effective_leaf_state(int id, int factor) const;
+    virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
     
-    virtual int get_cost_of_state(int id, int factor) const;
+    virtual size_t get_number_states(LeafFactorID factor) const override;
     
-    virtual int get_effective_cost_of_state(int id, int factor) const;
+    virtual int get_goal_cost(LeafFactorID factor) const override;
     
-    virtual size_t get_number_states(int factor) const;
+    virtual bool goal_reachable(LeafFactorID factor) const override;
+    
+    virtual void dump() const override;
 
-    virtual size_t get_number_effective_states(int factor) const;
+    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
     
-    virtual int get_goal_cost(int factor) const;
-    
-    virtual bool goal_reachable(int factor) const;
-    
-    virtual const std::vector<boost::dynamic_bitset<> > & get_frontier();
-    
-    virtual void dump() const;
-    
-    
-    static void store_new_graph(const State &state);
-    
-    static void create_init_state_reachable();
+    static void register_cpg_storage(ReachableStorage *storage);
  
 };
 

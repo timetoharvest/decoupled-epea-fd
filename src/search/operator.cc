@@ -15,12 +15,12 @@ Condition::Condition(istream &in) {
 }
 
 bool Condition::is_applicable(const State &state) const {
-    assert(!g_use_decoupled_search || g_belongs_to_factor[var] == -1);
+    assert(!g_factoring || g_belongs_to_factor[var] == LeafFactorID::CENTER);
     return state[var] == val;
 }
 
 bool Condition::is_applicable(const LeafState &state) const {
-    assert(g_belongs_to_factor[var] == state.get_id().get_factor());
+    assert(g_belongs_to_factor[var] == (int) state.get_id().get_factor());
     return state[var] == val;
 }
 
@@ -41,7 +41,7 @@ void Operator::read_pre_post(istream &in) {
     effects.push_back(Effect(var, post, conditions));
 }
 
-Operator::Operator(istream &in, bool axiom) {
+Operator::Operator(istream &in, bool axiom) : affects_factor(LeafFactorID::CENTER) {
     marked = false;
     dead = false;
 
@@ -73,8 +73,6 @@ Operator::Operator(istream &in, bool axiom) {
         read_pre_post(in);
         check_magic(in, "end_rule");
     }
-    
-    affects_factor = -1;	// -1 => center factor
 }
 
 void Condition::dump() const {
@@ -93,15 +91,15 @@ void Effect::dump() const {
 }
 
 
-const vector<const Condition*> &Operator::get_preconditions(int factor) const {
-    map<int, vector<const Condition*> >::const_iterator it = pre_by_factor.find(factor);
+const vector<const Condition*> &Operator::get_preconditions(LeafFactorID factor) const {
+    map<LeafFactorID, vector<const Condition*> >::const_iterator it = pre_by_factor.find(factor);
     if (it == pre_by_factor.end()){
         return empty_pre;
     }
     return it->second;
 }
-const vector<const Effect*> &Operator::get_effects(int factor) const {
-    map<int, vector<const Effect*> >::const_iterator it = eff_by_factor.find(factor);
+const vector<const Effect*> &Operator::get_effects(LeafFactorID factor) const {
+    map<LeafFactorID, vector<const Effect*> >::const_iterator it = eff_by_factor.find(factor);
     if (it == eff_by_factor.end()){
         return empty_eff;
     }
@@ -109,24 +107,24 @@ const vector<const Effect*> &Operator::get_effects(int factor) const {
 }
 
 bool Operator::is_applicable(const State &state) const {
-    if (g_use_decoupled_search){    // not really efficient, but how to do it better?
+    if (g_factoring){    // not really efficient, but how to do it better?
         if (!is_center_applicable(state)){
             return false;
         }
-        if (g_factoring->get_profile() == FORK && affects_factor == -1){
+        if (g_factoring->get_profile() == FORK && affects_factor == LeafFactorID::CENTER){
             // in fork topology, center actions don't have leaf preconditions
             return true;
         }
-        const CompliantPathGraph *price_tag = CPGStorage::get_cpg(state);
-        for (size_t factor = 0; factor < g_factors.size(); ++factor){
+        const CompliantPathGraph *price_tag = CPGStorage::storage->get_cpg(state);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (has_precondition_on(factor)){
                 bool applicable = false;
                 size_t number_states = price_tag->get_number_states(factor);
-                size_t id = 0;
+                LeafStateHash id(0);
                 while (number_states > 0){
                     if (price_tag->has_leaf_state(id, factor)){
                         --number_states;
-                        if (is_applicable(LeafStateID(id, factor))){
+                        if (is_applicable(id, factor)){
                             applicable = true;
                             break;
                         }
@@ -148,12 +146,12 @@ bool Operator::is_applicable(const State &state) const {
     return true;
 }
 
-bool Operator::is_applicable(const LeafStateID &leaf_id) const {
-    const vector<const Condition*> &preconditions = get_preconditions(leaf_id.get_factor());
+bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
+    const vector<const Condition*> &preconditions = get_preconditions(factor);
     if (preconditions.empty()){
         return true;
     }
-    LeafState state = g_state_registry->lookup_leaf_state(leaf_id);
+    LeafState state = g_state_registry->lookup_leaf_state(id, factor);
     for (size_t i = 0; i < preconditions.size(); ++i){
         if (!preconditions[i]->is_applicable(state)){
             return false;
@@ -163,7 +161,7 @@ bool Operator::is_applicable(const LeafStateID &leaf_id) const {
 }
 
 bool Operator::is_center_applicable(const State &state) const {
-    const vector<const Condition*> &center_preconds = get_preconditions(-1);
+    const vector<const Condition*> &center_preconds = get_preconditions(LeafFactorID::CENTER);
     for (size_t i = 0; i < center_preconds.size(); ++i){
         if (!center_preconds[i]->is_applicable(state)){
             return false;
@@ -172,11 +170,11 @@ bool Operator::is_center_applicable(const State &state) const {
     return true;
 }
     
-void Operator::set_affected_factor(int factor) {
+void Operator::set_affected_factor(LeafFactorID factor) {
     affects_factor = factor;
 
     for (size_t i = 0; i < preconditions.size(); ++i){
-        int f = g_belongs_to_factor[preconditions[i].var];
+        LeafFactorID f = g_belongs_to_factor[preconditions[i].var];
         if (pre_by_factor.find(f) == pre_by_factor.end()){
             pre_by_factor.insert(make_pair(f, vector<const Condition*>()));
         }
@@ -184,7 +182,7 @@ void Operator::set_affected_factor(int factor) {
     }
     
     for (size_t i = 0; i < effects.size(); ++i){
-        int f = g_belongs_to_factor[effects[i].var];
+        LeafFactorID f = g_belongs_to_factor[effects[i].var];
         if (eff_by_factor.find(f) == eff_by_factor.end()){
             eff_by_factor.insert(make_pair(f, vector<const Effect*>()));
         }

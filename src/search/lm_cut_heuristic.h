@@ -100,7 +100,7 @@ struct RelaxedProposition {
        without explicit depth tie-breaking, then decide.
     */
 
-    RelaxedProposition() {
+    RelaxedProposition() : status(), h_max_cost() {
     }
 };
 

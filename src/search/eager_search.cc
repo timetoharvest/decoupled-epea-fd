@@ -1,18 +1,20 @@
 #include "eager_search.h"
 
+#include "compliant_paths/pruning_options.h"
+#include "factoring.h"
+#include "g_evaluator.h"
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser.h"
-#include "successor_generator.h"
-#include "g_evaluator.h"
-#include "sum_evaluator.h"
 #include "plugin.h"
-#include "factoring.h"
-#include "por/por_method.h"
+#include "pruning_method.h"
+#include "successor_generator.h"
+#include "sum_evaluator.h"
 
 #include <cassert>
 #include <cstdlib>
 #include <set>
+
 using namespace std;
 
 EagerSearch::EagerSearch(
@@ -27,12 +29,10 @@ EagerSearch::EagerSearch(
     } else {
         f_evaluator = 0;
     }
-    if (opts.contains("partial_order_reduction")){
-        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
-    } else {
-        partial_order_reduction_method = 0;
+    if (opts.contains("pruning")){
+        pruning_method = unique_ptr<PruningMethod>(opts.get<PruningMethod*>("pruning"));
     }
-    if (g_use_decoupled_search && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
+    if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
     } else {
         pruning_heuristic = 0;
@@ -41,8 +41,8 @@ EagerSearch::EagerSearch(
         preferred_operator_heuristics =
             opts.get_list<Heuristic *>("preferred");
     }
-    if (g_use_decoupled_search && reopen_closed_nodes){
-        g_factoring->set_reopen_closed_nodes();
+    if (g_factoring && reopen_closed_nodes){
+        PruningOptions::set_reopen_closed_nodes();
     }
 }
 
@@ -105,21 +105,17 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_options();
+    
+    if (pruning_method){
+        pruning_method->initialize();
     }
-}
-
-EagerSearch::~EagerSearch() {
-    // TODO also delete other members?
-    delete partial_order_reduction_method;
 }
 
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_statistics();
+    if (pruning_method){
+        pruning_method->print_statistics();
     }
 }
 
@@ -130,7 +126,7 @@ SearchStatus EagerSearch::step() {
     }
     SearchNode node = n.first;
     
-    if (g_use_decoupled_search &&
+    if (g_factoring &&
         g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
@@ -150,9 +146,9 @@ SearchStatus EagerSearch::step() {
     
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
-    // even when pruned by the POR method.
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->prune_operators(s, applicable_ops);
+    // even when pruned by the pruning method.
+    if (pruning_method){
+        pruning_method->prune_operators(s, applicable_ops);
     }
 
     // This evaluates the expanded state (again) to get preferred ops
@@ -174,7 +170,7 @@ SearchStatus EagerSearch::step() {
 
 	// g-value upper bound pruning for factored search => g_sum_min_goal_cost
         int goal_cost = g_sum_min_goal_cost;
-        if (g_use_decoupled_search && g_factoring->get_profile() != FORK){
+        if (g_factoring && g_factoring->get_profile() != FORK){
             // because g-value might include some goal cost
             goal_cost = max(0, goal_cost - node.get_leaf_part_g());
         }
@@ -257,7 +253,7 @@ SearchStatus EagerSearch::step() {
             
         } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
             
-            if (!g_use_decoupled_search || !g_factoring->ignore_current_search_state()){
+            if (!g_factoring || !PruningOptions::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
                 if (reopen_closed_nodes) {
                     //TODO:CR - test if we should add a reevaluate flag and if it helps
@@ -304,7 +300,7 @@ SearchStatus EagerSearch::step() {
 }
 
 bool EagerSearch::insert_state(const SearchNode &succ_node) {
-    if (!g_use_decoupled_search || !found_solution()){
+    if (!g_factoring || !found_solution()){
 	return true;
     }
     if (succ_node.get_g() + succ_node.get_h() >= bound){
@@ -355,7 +351,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
         }
         
         // upper bound pruning for factored search
-        if (g_use_decoupled_search && found_solution()){
+        if (g_factoring && found_solution()){
             int goal_cost = g_sum_min_goal_cost;
             if (g_factoring->get_profile() != FORK){
                 // because g-value might include some goal cost
@@ -502,9 +498,10 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
-    parser.add_option<POR::PORMethod*>("partial_order_reduction", 
-                                       "partial order reduction method",
-                                       "none");
+    parser.add_option<PruningMethod*>("pruning", 
+                                      "pruning method",
+                                      "",
+                                      OptionFlags(false));
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
