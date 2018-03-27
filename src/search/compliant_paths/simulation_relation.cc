@@ -206,11 +206,11 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
     cout << "Irrelevance pruning: " << num_transitions_before << " => " << num_transitions_after  << endl;
 }
 
-bool SimulationRelation::precondition_dominance(const vector<const Condition*> &pre, 
-						const vector<const Condition*> &pre2) const {
+bool SimulationRelation::precondition_dominance(OpsLeafProps<Condition> pre,
+						                        OpsLeafProps<Condition> pre2) const {
     for (const auto &p : pre){
-        if (find_if(begin(pre2), end(pre2), [p] (const Condition *p2){
-            return *p2 == *p;
+        if (find_if(begin(pre2), end(pre2), [p] (const Condition &p2){
+            return p2 == p;
         }
         ) == end(pre2)){
             return false;
@@ -234,7 +234,7 @@ void SimulationRelation::compute_label_dominance() {
         }
 
         int cost = get_adjusted_action_cost(*op, CompliantPathGraph::get_cost_type());
-        const auto & pre = op->get_preconditions(LeafFactorID::CENTER);
+        const auto pre = op->get_preconditions(LeafFactorID::CENTER);
 
         for (auto op2 = op; ++op2 != end(g_operators); ) {
             if(factor != op2->get_affected_factor()) {
@@ -243,7 +243,7 @@ void SimulationRelation::compute_label_dominance() {
             }
 
             int cost2 = get_adjusted_action_cost(*op2, CompliantPathGraph::get_cost_type());
-            const auto & pre2 = op2->get_preconditions(LeafFactorID::CENTER);
+            const auto pre2 = op2->get_preconditions(LeafFactorID::CENTER);
 
 
             if(cost <= cost2 && precondition_dominance(pre, pre2)) {

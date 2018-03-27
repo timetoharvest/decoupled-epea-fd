@@ -12,6 +12,8 @@
 class Condition;
 class CountdownTimer;
 class Operator;
+template<class T>
+class OpsLeafProps;
 
 
 class SimulationRelation {
@@ -33,8 +35,8 @@ private:
     // Whether states are reachable after irrelevance pruning
     std::vector<boost::dynamic_bitset<>> reachable;
 
-    bool precondition_dominance(const std::vector<const Condition*> &pre,
-                                const std::vector<const Condition*> &pre2) const;
+    bool precondition_dominance(OpsLeafProps<Condition> pre,
+                                OpsLeafProps<Condition> pre2) const;
 
     void compute_label_dominance();
 

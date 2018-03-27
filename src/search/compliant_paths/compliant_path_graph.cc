@@ -382,7 +382,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 
                 // apply all applicable_ops to predecessor and store the outcome          
                 for (const Operator *op : applicable_ops){
-                    if (!op->get_effects(factor).empty()){
+                    if (op->has_effect_on(factor)){
                         bool is_center_op = op->get_affected_factor() == LeafFactorID::CENTER;
                         
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
