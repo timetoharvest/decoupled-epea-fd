@@ -86,7 +86,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
         // the leaf preconditions. collecting all actions enabled by the current
         // center state is enough.
         
-        vector<int> counter(g_operators.size(), 0);
+        vector<size_t> counter(g_operators.size(), 0);
 
         const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(curr);
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
@@ -101,7 +101,7 @@ void SuccessorGeneratorSwitch::generate_applicable_ops(
                 if (tag->has_leaf_state(id, factor)){
                     --number_states;
                     assert(id < CompliantPathGraph::center_successors[factor].size());
-                    for (const size_t &index : CompliantPathGraph::center_successors[factor][id]){
+                    for (size_t index : CompliantPathGraph::center_successors[factor][id]){
                         if (!is_applicable_leaf[index]){
                             ++counter[index];
                             is_applicable_leaf[index] = true;
@@ -260,7 +260,7 @@ void SuccessorGeneratorGenerate::generate_applicable_ops_ignore_others(const Lea
         if (only_center_ops){
             if (operators[i]->get_affected_factor() == LeafFactorID::CENTER &&
                 (operators[i]->has_precondition_on(factor)
-                  || !operators[i]->get_effects(factor).empty())){
+                  || operators[i]->has_effect_on(factor))){
                 ops.push_back(operators[i]);
             }
         } else if (operators[i]->get_affected_factor() == factor){
