@@ -164,6 +164,9 @@ void Operator::dump() const {
         cout << "]";
     }
     cout << endl;
+    if (g_factoring){
+        factor_info->dump();
+    }
 }
 
 
@@ -206,6 +209,9 @@ public:
     }
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
+    }
+    void dump() const override {
+        cout << "SingleFactorInfo" << endl;
     }
 };
 
@@ -259,6 +265,9 @@ public:
     }
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
+    }
+    void dump() const override {
+        cout << "LeafOpWithCenterPreFactorInfo" << endl;
     }
 };
 
@@ -328,6 +337,12 @@ public:
         }
         return false;
     }
+    void dump() const override {
+        cout << "GeneralFactorInfo" << endl;
+        for (vector<Condition>::const_iterator it : pre_by_factor){
+            cout << (int)(it - *pre_by_factor.cbegin()) << endl;
+        }
+    }
 };
 
 void Operator::set_affected_factor(LeafFactorID affected_factor) {
@@ -361,6 +376,8 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
     });
 
     // TODO implement more special cases
+    // e.g. center actions with 1/2/more leaf preconditions
+    // center actions with 1/2/more leaf effects
 
     bool center_pre = !preconditions.empty();
     vector<std::vector<Condition>::const_iterator> pre_by_factor;
@@ -371,8 +388,8 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
     LeafFactorID curr_factor(LeafFactorID::CENTER);
     for (vector<Condition>::const_iterator it = preconditions.cbegin(); it != preconditions.cend(); ++it){
         if (g_belongs_to_factor[it->var] != curr_factor){
-            pre_by_factor.push_back(it);
             if (curr_factor == LeafFactorID::CENTER){
+                pre_by_factor.push_back(it);
                 curr_factor = LeafFactorID(0);
                 if (it == preconditions.cbegin()){
                     center_pre = false;
@@ -396,8 +413,8 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
         curr_factor = LeafFactorID::CENTER;
         for (vector<Effect>::const_iterator it = effects.cbegin(); it != effects.cend(); ++it){
             if (g_belongs_to_factor[it->var] != curr_factor){
-                eff_by_factor.push_back(it);
                 if (curr_factor == LeafFactorID::CENTER){
+                    eff_by_factor.push_back(it);
                     curr_factor = LeafFactorID(0);
                 }
                 while (curr_factor < g_belongs_to_factor[it->var]){
@@ -412,13 +429,14 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
 
     if (affected_factor == LeafFactorID::CENTER){
         if (pre_by_factor.size() == 2 && eff_by_factor.size() == 2){
+            // not preconditioned by or affects any leaf factor
             factor_info = new SingleFactorInfo(affected_factor, preconditions, effects);
         } else {
             factor_info = new GeneralFactorInfo(affected_factor, pre_by_factor, eff_by_factor);
         }
     } else {
         if (center_pre){
-            vector<Condition>::const_iterator start_leaf_pre;
+            vector<Condition>::const_iterator start_leaf_pre = pre_by_factor.back(); // in case there is no leaf precondition
             for (size_t i = 1; i < pre_by_factor.size() - 1; ++i){
                 if (pre_by_factor[i] != pre_by_factor[i+1]){
                     start_leaf_pre = pre_by_factor[i];
@@ -427,6 +445,7 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             }
             factor_info = new LeafOpWithCenterPreFactorInfo(affected_factor, pre_by_factor[0], start_leaf_pre, pre_by_factor.back(), effects);
         } else {
+            // not preconditioned by or affects center factor
             factor_info = new SingleFactorInfo(affected_factor, preconditions, effects);
         }
     }

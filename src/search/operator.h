@@ -110,6 +110,8 @@ public:
 
     virtual bool has_precondition_on(LeafFactorID factor) const = 0;
     virtual bool has_effect_on(LeafFactorID factor) const = 0;
+
+    virtual void dump() const = 0;
 };
 
 class Operator {
