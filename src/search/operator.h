@@ -90,18 +90,12 @@ struct Effect {
 };
 
 class FactorInfo {
-    FactorInfo();
 protected:
-    LeafFactorID affected_factor;
-    FactorInfo(LeafFactorID affected_factor) :
-            affected_factor(affected_factor) {}
+    FactorInfo(){}
 public:
-
     virtual ~FactorInfo() = default;
 
-    virtual LeafFactorID get_affected_factor() const {
-        return affected_factor;
-    }
+    virtual LeafFactorID get_affected_factor() const = 0;
 
     virtual size_t get_number_leaf_pre_factors() const = 0;
 
