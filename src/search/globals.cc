@@ -284,6 +284,64 @@ void read_everything(istream &in) {
         verify_no_axioms_no_conditional_effects();
         
         g_factoring->do_factoring_or_abstain();
+
+        size_t num_single_factor_leaf = 0;
+        size_t num_leaf_center_pre = 0;
+
+        vector<vector<size_t> > num_pre_eff(4, vector<size_t>(4, 0));
+        size_t num_general = 0;
+
+        for (const Operator &op : g_operators){
+            set<LeafFactorID> pre_factors;
+            set<LeafFactorID> eff_factors;
+            for (const Condition &pre : op.get_preconditions()){
+                pre_factors.insert(g_belongs_to_factor[pre.var]);
+            }
+            for (const Effect &eff : op.get_effects()){
+                eff_factors.insert(g_belongs_to_factor[eff.var]);
+            }
+            if (op.get_affected_factor() == LeafFactorID::CENTER){
+                pre_factors.erase(LeafFactorID::CENTER);
+                eff_factors.erase(LeafFactorID::CENTER);
+                if (pre_factors.size() <= 3 && eff_factors.size() <= 3){
+                    ++num_pre_eff[pre_factors.size()][eff_factors.size()];
+                } else {
+                    ++num_general;
+                }
+            } else {
+                if (eff_factors.size() != 1){
+                    exit_with(EXIT_CRITICAL_ERROR);
+                }
+                if (pre_factors.size() == 2){
+                    if (pre_factors.find(LeafFactorID::CENTER) == pre_factors.end()){
+                        exit_with(EXIT_CRITICAL_ERROR);
+                    }
+                    if (pre_factors.find(op.get_affected_factor()) == pre_factors.end()){
+                        exit_with(EXIT_CRITICAL_ERROR);
+                    }
+                    ++num_leaf_center_pre;
+                } else if (pre_factors.size() == 1){
+                    ++num_single_factor_leaf;
+                } else {
+                    exit_with(EXIT_CRITICAL_ERROR);
+                }
+            }
+        }
+        cout << endl << "Number of leaf-only actions " << num_single_factor_leaf << endl;
+        cout << "Number of leaf actions with center pre " << num_leaf_center_pre << endl << endl;
+
+        size_t sum = 0;
+        for (size_t i = 0; i < num_pre_eff.size(); ++i){
+            for (size_t j = 0; j < num_pre_eff[i].size(); ++j){
+                sum += num_pre_eff[i][j];
+                cout << "Number of center actions with " << i << " pre and " << j << " eff " << num_pre_eff[i][j] << endl;
+            }
+        }
+        cout << "Number of general center actions " << num_general << endl << endl;
+        if (sum + num_general + num_single_factor_leaf + num_leaf_center_pre != g_operators.size()){
+            exit_with(EXIT_CRITICAL_ERROR);
+        }
+        exit_with(EXIT_UNSOLVED_INCOMPLETE);
     }
 
     assert(!g_variable_domain.empty());
