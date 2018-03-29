@@ -290,6 +290,8 @@ void read_everything(istream &in) {
 
         vector<vector<size_t> > num_pre_eff(4, vector<size_t>(4, 0));
         size_t num_general = 0;
+        size_t num_center_many_pre_no_eff = 0;
+        size_t num_center_one_pre_eff_same_leaf = 0;
 
         for (const Operator &op : g_operators){
             set<LeafFactorID> pre_factors;
@@ -305,8 +307,14 @@ void read_everything(istream &in) {
                 eff_factors.erase(LeafFactorID::CENTER);
                 if (pre_factors.size() <= 3 && eff_factors.size() <= 3){
                     ++num_pre_eff[pre_factors.size()][eff_factors.size()];
+                    if (pre_factors.size() == 1 && eff_factors.size() == 1){
+                        ++num_center_one_pre_eff_same_leaf;
+                    }
                 } else {
                     ++num_general;
+                    if (eff_factors.empty()){
+                        ++num_center_many_pre_no_eff;
+                    }
                 }
             } else {
                 if (eff_factors.size() != 1){
@@ -337,7 +345,9 @@ void read_everything(istream &in) {
                 cout << "Number of center actions with " << i << " pre and " << j << " eff " << num_pre_eff[i][j] << endl;
             }
         }
-        cout << "Number of general center actions " << num_general << endl << endl;
+        cout << "Number of general center actions " << num_general << endl;
+        cout << "Number of center actions with pre and eff on one leaf " << num_center_one_pre_eff_same_leaf << endl;
+        cout << "Number of center actions with many leaf pre but not leaf eff " << num_center_many_pre_no_eff << endl << endl;
         if (sum + num_general + num_single_factor_leaf + num_leaf_center_pre != g_operators.size()){
             exit_with(EXIT_CRITICAL_ERROR);
         }
