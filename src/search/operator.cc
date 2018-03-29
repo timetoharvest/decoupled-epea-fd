@@ -399,6 +399,73 @@ public:
     }
 };
 
+class ManyLeafPreNoEffFactorInfo: public FactorInfo {
+    // center operator without leaf effect but with preconditions
+    // on more than 1 leaf
+
+    // index 0 is center factor, leaves shifted by one;
+    // last is end iterator of preconditions/effects of Operator
+    vector<vector<Condition>::const_iterator> pre_by_factor;
+    const vector<Effect> &effects;
+public:
+    ManyLeafPreNoEffFactorInfo(vector<vector<Condition>::const_iterator> pre_by_factor,
+                               vector<Effect> &effects) :
+                        pre_by_factor(pre_by_factor),
+                        effects(effects) {
+    }
+
+    LeafFactorID get_affected_factor() const override {
+        return LeafFactorID::CENTER;
+    }
+
+    size_t get_number_leaf_pre_factors() const override {
+        size_t pre_factors = 0;
+        for (size_t i = 1; i < pre_by_factor.size() - 1; ++i){
+            // if pre_by_factor[i] == pre_by_factor[i+1] => no preconditions on factor i-1
+            if (pre_by_factor[i] != pre_by_factor[i+1]){
+                ++pre_factors;
+            }
+        }
+        return pre_factors;
+    }
+
+    OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
+        if (factor == LeafFactorID::CENTER){
+            return OpsLeafProps<Condition>(pre_by_factor[0], pre_by_factor[1]);
+        }
+        if ((size_t) factor + 1 >= pre_by_factor.size() - 1){ // +1 for center shift; -1 for end() iterator
+            return OpsLeafProps<Condition>(pre_by_factor[0], pre_by_factor[0]);
+        }
+        return OpsLeafProps<Condition>(pre_by_factor[factor + 1], pre_by_factor[factor + 2]);
+    }
+
+    OpsLeafProps<Effect> get_effects(LeafFactorID factor) const override {
+        if (factor == LeafFactorID::CENTER){
+            return OpsLeafProps<Effect>(effects.begin(), effects.end());
+        }
+        return OpsLeafProps<Effect>(effects.begin(), effects.begin());
+    }
+
+    bool has_precondition_on(LeafFactorID factor) const override {
+        if (factor == LeafFactorID::CENTER){
+            return pre_by_factor[0] != pre_by_factor[1];
+        }
+        if ((size_t) factor + 1 < pre_by_factor.size() - 1){ // +1 for center shift; -1 for end() iterator
+            return pre_by_factor[factor + 1] != pre_by_factor[factor + 2];
+        }
+        return false;
+    }
+    bool has_effect_on(LeafFactorID factor) const override {
+        return factor == LeafFactorID::CENTER && !effects.empty();
+    }
+    void dump() const override {
+        cout << "ManyLeafPreNoEffFactorInfo" << endl;
+        for (vector<Condition>::const_iterator it : pre_by_factor){
+            cout << (int)(it - *pre_by_factor.cbegin()) << endl;
+        }
+    }
+};
+
 class GeneralFactorInfo: public FactorInfo {
     // operator does not fall into any other special case
     // this is necessarily a center action
@@ -589,6 +656,10 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             // we have to find an iterator in the loop
             assert(start_leaf_eff != eff_by_factor[0]);
             factor_info = new CenterOpLeafEffFactorInfo(g_belongs_to_factor[start_leaf_eff->var], preconditions, eff_by_factor[0], start_leaf_eff, eff_by_factor.back());
+//        } else if (num_leaf_pre == 1 && num_leaf_eff == 1 && ){
+//            // TODO
+        } else if (num_leaf_pre > 1 && num_leaf_eff == 0){
+            factor_info = new ManyLeafPreNoEffFactorInfo(pre_by_factor, effects);
         } else {
             factor_info = new GeneralFactorInfo(pre_by_factor, eff_by_factor);
         }
