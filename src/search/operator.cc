@@ -170,9 +170,10 @@ void Operator::dump() const {
 }
 
 
+// TODO put all these into a separate class
 class SingleFactorInfo: public FactorInfo {
     // operator is only preconditioned by and affects a single factor
-    LeafFactorID affected_factor;
+    const LeafFactorID affected_factor;
     const vector<Condition> &preconditions;
     const vector<Effect> &effects;
 public:
@@ -212,9 +213,11 @@ public:
     bool has_precondition_on(LeafFactorID factor) const override {
         return factor == affected_factor && !preconditions.empty();
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
     }
+
     void dump() const override {
         cout << "SingleFactorInfo" << endl;
     }
@@ -223,7 +226,7 @@ public:
 class LeafOpCenterLeafPreFactorInfo: public FactorInfo {
     // leaf operator that is preconditioned by CENTER and (possibly) by affected_factor
     // effects only on affected_factor
-    LeafFactorID affected_factor;
+    const LeafFactorID affected_factor;
     const vector<Condition>::const_iterator center_pre;
     const vector<Condition>::const_iterator leaf_pre;
     const vector<Condition>::const_iterator end_pre;
@@ -273,9 +276,11 @@ public:
     bool has_precondition_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER || (factor == affected_factor && leaf_pre != end_pre);
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
     }
+
     void dump() const override {
         cout << "LeafOpCenterLeafPreFactorInfo, factor " << affected_factor << endl;
     }
@@ -284,7 +289,7 @@ public:
 class CenterOpLeafPreFactorInfo: public FactorInfo {
     // center operator that is preconditioned by pre_factor and (possibly) by CENTER
     // effects only on CENTER
-    LeafFactorID pre_factor;
+    const LeafFactorID pre_factor;
     const vector<Condition>::const_iterator center_pre;
     const vector<Condition>::const_iterator leaf_pre;
     const vector<Condition>::const_iterator end_pre;
@@ -332,9 +337,11 @@ public:
     bool has_precondition_on(LeafFactorID factor) const override {
         return factor == pre_factor || (factor == LeafFactorID::CENTER && center_pre != leaf_pre);
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER && !effects.empty();
     }
+
     void dump() const override {
         cout << "CenterOpLeafPreFactorInfo, pre-factor " << pre_factor << endl;
     }
@@ -343,7 +350,7 @@ public:
 class CenterOpLeafEffFactorInfo: public FactorInfo {
     // center operator that is preconditioned only by CENTER
     // effects on eff_factor and CENTER
-    LeafFactorID eff_factor;
+    const LeafFactorID eff_factor;
     const vector<Condition> &preconditions;
     const vector<Effect>::const_iterator center_eff;
     const vector<Effect>::const_iterator leaf_eff;
@@ -391,9 +398,11 @@ public:
     bool has_precondition_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER && !preconditions.empty();
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == eff_factor || (factor == LeafFactorID::CENTER && center_eff != leaf_eff);
     }
+
     void dump() const override {
         cout << "CenterOpLeafEffFactorInfo, eff-factor " << eff_factor << endl;
     }
@@ -401,7 +410,7 @@ public:
 
 class CenterOpPreEffOneLeafFactorInfo: public FactorInfo {
     // center operator that is preconditioned by and has effect on leaf_factor
-    LeafFactorID leaf_factor;
+    const LeafFactorID leaf_factor;
     const vector<Condition>::const_iterator center_pre;
     const vector<Condition>::const_iterator leaf_pre;
     const vector<Condition>::const_iterator end_pre;
@@ -459,9 +468,11 @@ public:
     bool has_precondition_on(LeafFactorID factor) const override {
         return factor == leaf_factor || (factor == LeafFactorID::CENTER && center_pre != leaf_pre);
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == leaf_factor || (factor == LeafFactorID::CENTER && center_eff != leaf_eff);
     }
+
     void dump() const override {
         cout << "CenterOpPreEffOneLeafFactorInfo, leaf-factor " << leaf_factor << endl;
     }
@@ -473,7 +484,7 @@ class ManyLeafPreNoEffFactorInfo: public FactorInfo {
 
     // index 0 is center factor, leaves shifted by one;
     // last is end iterator of preconditions/effects of Operator
-    vector<vector<Condition>::const_iterator> pre_by_factor;
+    const vector<vector<Condition>::const_iterator> pre_by_factor;
     const vector<Effect> &effects;
 public:
     ManyLeafPreNoEffFactorInfo(vector<vector<Condition>::const_iterator> pre_by_factor,
@@ -523,9 +534,11 @@ public:
         }
         return false;
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER && !effects.empty();
     }
+
     void dump() const override {
         cout << "ManyLeafPreNoEffFactorInfo" << endl;
         for (vector<Condition>::const_iterator it : pre_by_factor){
@@ -540,8 +553,8 @@ class GeneralFactorInfo: public FactorInfo {
 
     // index 0 is center factor, leaves shifted by one;
     // last is end iterator of preconditions/effects of Operator
-    vector<vector<Condition>::const_iterator> pre_by_factor;
-    vector<vector<Effect>::const_iterator> eff_by_factor;
+    const vector<vector<Condition>::const_iterator> pre_by_factor;
+    const vector<vector<Effect>::const_iterator> eff_by_factor;
 public:
     GeneralFactorInfo(vector<vector<Condition>::const_iterator> pre_by_factor,
                       vector<vector<Effect>::const_iterator> eff_by_factor) :
@@ -593,6 +606,7 @@ public:
         }
         return false;
     }
+
     bool has_effect_on(LeafFactorID factor) const override {
         if (factor == LeafFactorID::CENTER){
             return eff_by_factor[0] != eff_by_factor[1];
@@ -602,6 +616,7 @@ public:
         }
         return false;
     }
+
     void dump() const override {
         cout << "GeneralFactorInfo" << endl;
         for (vector<Condition>::const_iterator it : pre_by_factor){
@@ -640,9 +655,6 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
         return a.var < b.var;
     });
 
-    // TODO implement more special cases
-    // e.g. center actions with 1/2/more leaf preconditions
-    // center actions with 1/2/more leaf effects
 
     bool center_pre = !preconditions.empty();
     int num_leaf_pre = 0;
@@ -711,7 +723,9 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             }
             // we have to find an iterator in the loop unless there are no center preconditions
             assert(start_leaf_pre != pre_by_factor[0] || pre_by_factor[0] == pre_by_factor[1]);
-            factor_info = new CenterOpLeafPreFactorInfo(g_belongs_to_factor[start_leaf_pre->var], pre_by_factor[0], start_leaf_pre, pre_by_factor.back(), effects);
+            factor_info = new CenterOpLeafPreFactorInfo(g_belongs_to_factor[start_leaf_pre->var],
+                                                        preconditions.cbegin(), start_leaf_pre, preconditions.cend(),
+                                                        effects);
         } else if (num_leaf_pre == 0 && num_leaf_eff == 1){
             // preconditions only on center, effects on one leaf + center
             vector<Effect>::const_iterator start_leaf_eff = eff_by_factor[0];
@@ -723,7 +737,9 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             }
             // we have to find an iterator in the loop
             assert(start_leaf_eff != eff_by_factor[0]);
-            factor_info = new CenterOpLeafEffFactorInfo(g_belongs_to_factor[start_leaf_eff->var], preconditions, eff_by_factor[0], start_leaf_eff, eff_by_factor.back());
+            factor_info = new CenterOpLeafEffFactorInfo(g_belongs_to_factor[start_leaf_eff->var],
+                                                        preconditions,
+                                                        effects.cbegin(), start_leaf_eff, effects.cend());
         } else if (num_leaf_pre == 1 && num_leaf_eff == 1 && pre_by_factor.size() == eff_by_factor.size()){
             // affects/preconditioned by center + one leaf factor
             vector<Condition>::const_iterator start_leaf_pre = pre_by_factor[0];
@@ -748,8 +764,8 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             assert(g_belongs_to_factor[start_leaf_pre->var] == g_belongs_to_factor[start_leaf_eff->var]);
 
             factor_info = new CenterOpPreEffOneLeafFactorInfo(g_belongs_to_factor[start_leaf_pre->var],
-                                                          preconditions.begin(), start_leaf_pre, preconditions.end(),
-                                                          effects.begin(), start_leaf_eff, effects.end());
+                                                              preconditions.begin(), start_leaf_pre, preconditions.end(),
+                                                              effects.begin(), start_leaf_eff, effects.end());
         } else if (num_leaf_pre > 1 && num_leaf_eff == 0){
             // only center effects, preconditions on more than one leaf factor
             factor_info = new ManyLeafPreNoEffFactorInfo(pre_by_factor, effects);
@@ -766,7 +782,9 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
                     break;
                 }
             }
-            factor_info = new LeafOpCenterLeafPreFactorInfo(affected_factor, pre_by_factor[0], start_leaf_pre, pre_by_factor.back(), effects);
+            factor_info = new LeafOpCenterLeafPreFactorInfo(affected_factor,
+                                                            preconditions.cbegin(), start_leaf_pre, preconditions.cend(),
+                                                            effects);
         } else {
             // not preconditioned by or affects center factor
             factor_info = new SingleFactorInfo(affected_factor, preconditions, effects);
