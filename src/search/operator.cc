@@ -627,7 +627,7 @@ public:
 
 void Operator::set_affected_factor(LeafFactorID affected_factor) {
     std::sort(preconditions.begin(), preconditions.end(),
-            [](Condition &a, Condition &b) {
+            [](const Condition &a, const Condition &b) {
         if (g_belongs_to_factor[a.var] == LeafFactorID::CENTER){
             if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
                 return a.var < b.var;
@@ -641,7 +641,7 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
         return a.var < b.var;
     });
     std::sort(effects.begin(), effects.end(),
-            [](Effect &a, Effect &b) {
+            [](const Effect &a, const Effect &b) {
         if (g_belongs_to_factor[a.var] == LeafFactorID::CENTER){
             if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
                 return a.var < b.var;
