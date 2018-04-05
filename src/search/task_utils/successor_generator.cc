@@ -26,7 +26,7 @@ SuccessorGenerator::SuccessorGenerator(LeafFactorID factor, bool only_keep_all_l
 
 SuccessorGenerator::~SuccessorGenerator() = default;
 
-vector<int> counter;
+vector<size_t> counter;
 boost::dynamic_bitset<> is_applicable_leaf;
 
 void SuccessorGenerator::generate_applicable_ops(

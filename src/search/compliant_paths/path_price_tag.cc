@@ -149,7 +149,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                             const Operator &op = g_operators[op_id];
                             assert(op.get_affected_factor() != LeafFactorID::CENTER);
                             
-                            if (op->has_effect_on(factor) && op.is_center_applicable(base_state)){
+                            if (op.has_effect_on(factor) && op.is_center_applicable(base_state)){
                                 LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
                                 
                                 if (lid >= leaf_state_id_map[factor].size()){
