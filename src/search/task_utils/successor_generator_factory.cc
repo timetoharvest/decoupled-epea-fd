@@ -268,25 +268,30 @@ GeneratorPtr SuccessorGeneratorFactory::construct_recursive(
     return construct_fork(move(nodes));
 }
 
-static vector<FactPair> build_sorted_precondition(const Operator &op) {
+static vector<FactPair> build_sorted_precondition(const Operator &op, LeafFactorID factor, bool only_keep_all_leaf_preconditions) {
     vector<FactPair> precond;
-    precond.reserve(op.get_preconditions().size());
+    if (!g_factoring){
+        precond.reserve(op.get_preconditions().size());
+    }
     for (const Condition &pre : op.get_preconditions()){
-        precond.emplace_back(pre.get_pair());
+        if (!g_factoring ||
+                (only_keep_all_leaf_preconditions && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER) ||
+                g_belongs_to_factor[pre.var] == factor){
+            precond.emplace_back(pre.get_pair());
+        }
     }
     // Preconditions must be sorted by variable.
     sort(precond.begin(), precond.end());
     return precond;
 }
 
-GeneratorPtr SuccessorGeneratorFactory::create(LeafFactorID factor) {
+GeneratorPtr SuccessorGeneratorFactory::create(LeafFactorID factor, bool only_keep_all_leaf_preconditions) {
     if (!g_factoring){
         operator_infos.reserve(g_operators.size());
     }
     for (const Operator &op : g_operators) {
-        if (!g_factoring || factor == op.get_affected_factor()){
-            operator_infos.emplace_back(
-                    OperatorID(op.get_id()), build_sorted_precondition(op));
+        if (!g_factoring || op.get_affected_factor() == factor){
+            operator_infos.emplace_back(op.get_id(), build_sorted_precondition(op, factor, only_keep_all_leaf_preconditions));
         }
     }
     /* Use stable_sort rather than sort for reproducibility.

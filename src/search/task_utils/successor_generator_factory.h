@@ -30,7 +30,7 @@ public:
     explicit SuccessorGeneratorFactory();
     // Destructor cannot be implicit because OperatorInfo is forward-declared.
     ~SuccessorGeneratorFactory();
-    GeneratorPtr create(LeafFactorID factor);
+    GeneratorPtr create(LeafFactorID factor, bool only_keep_all_leaf_preconditions);
 };
 }
 

@@ -142,7 +142,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                         const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
                         
                         vector<OperatorID> applicable_ops;
-                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_outside_pre(predecessor, applicable_ops);
+                        leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
 
                         // apply all applicable_ops to predecessor and store the outcome          
                         for (OperatorID op_id : applicable_ops){

@@ -107,7 +107,6 @@ extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;
 extern AxiomEvaluator *g_axiom_evaluator;
 extern successor_generator::SuccessorGenerator *g_successor_generator;
-extern std::vector<successor_generator::SuccessorGenerator*> g_leaf_successor_generators;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
 extern std::string g_plan_filename;
 extern RandomNumberGenerator g_rng;

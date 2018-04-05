@@ -189,7 +189,7 @@ void Reachable::update(const State &base_state) {
                             // store center ops whose preconditions are satisfied by predecessor
                             
                             vector<OperatorID> center_ops;
-                            g_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
+                            center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
                             
                             if (id >= center_successors[factor].size()){
                                 center_successors[factor].resize(id+1);
@@ -203,7 +203,7 @@ void Reachable::update(const State &base_state) {
                         }
                     }
 
-                    g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_outside_pre(predecessor, applicable_ops);
+                    leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
                     
                     bool fits_store = id < MAX_LEAF_SPACE_STORE;
                     if (fits_store && leaf_state_successors[factor].size() <= id){
@@ -480,7 +480,7 @@ void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFacto
         // store center ops whose preconditions are satisfied by the new leaf state
         
         vector<OperatorID> center_ops;
-        g_successor_generator->generate_applicable_ops_ignore_outside_pre(g_state_registry->lookup_leaf_state(id, factor), center_ops);
+        center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(g_state_registry->lookup_leaf_state(id, factor), center_ops);
         
         center_successors[factor].resize(id + 1);
         

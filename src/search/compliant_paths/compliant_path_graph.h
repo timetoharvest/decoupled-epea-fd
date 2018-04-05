@@ -37,6 +37,12 @@ class CompliantPathGraph {
     
 protected:
     
+    // contains center actions only, keeping their leaf preconditions
+    static std::unique_ptr<successor_generator::SuccessorGenerator> center_action_successor_generator;
+
+    // contains only leaf actions, branching only over the leaf preconditions
+    static std::vector<std::unique_ptr<successor_generator::SuccessorGenerator> > leaf_successor_generators;
+
     static SearchSpace *search_space;
     
     static OperatorCost cost_type;
@@ -118,6 +124,8 @@ public:
 
     static void initialize();
     
+    static void build_leaf_successor_generators();
+
     static const PruningOptions& get_pruning_options() {
         return *pruning;
     }

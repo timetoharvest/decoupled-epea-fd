@@ -320,10 +320,7 @@ void read_everything(istream &in) {
     utils::Timer successor_generator_timer;
     g_successor_generator = new successor_generator::SuccessorGenerator();
     if (g_factoring){
-        g_leaf_successor_generators.reserve(g_leaves.size());
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            g_leaf_successor_generators.push_back(new successor_generator::SuccessorGenerator(factor));
-        }
+        CompliantPathGraph::build_leaf_successor_generators();
     }
     successor_generator_timer.stop();
     cout << "done! [t=" << utils::g_timer << "]" << endl;
@@ -461,7 +458,6 @@ vector<Operator> g_operators;
 vector<Operator> g_axioms;
 AxiomEvaluator *g_axiom_evaluator;
 successor_generator::SuccessorGenerator *g_successor_generator;
-vector<successor_generator::SuccessorGenerator*> g_leaf_successor_generators;
 vector<DomainTransitionGraph *> g_transition_graphs;
 
 string g_plan_filename = "sas_plan";
