@@ -147,10 +147,9 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                         // apply all applicable_ops to predecessor and store the outcome          
                         for (OperatorID op_id : applicable_ops){
                             const Operator &op = g_operators[op_id];
-                            const vector<const Effect*> &effects = op.get_effects(factor);
                             assert(op.get_affected_factor() != LeafFactorID::CENTER);
                             
-                            if (!effects.empty() && op.is_center_applicable(base_state)){
+                            if (op->has_effect_on(factor) && op.is_center_applicable(base_state)){
                                 LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
                                 
                                 if (lid >= leaf_state_id_map[factor].size()){

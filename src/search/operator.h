@@ -14,6 +14,40 @@
 #include <string>
 #include <vector>
 
+template<class T>
+class OpsLeafProps {
+    
+    const typename std::vector<T>::const_iterator begin_it;
+    const typename std::vector<T>::const_iterator end_it;
+    
+public:
+    OpsLeafProps(typename std::vector<T>::const_iterator begin, typename std::vector<T>::const_iterator end)
+        : begin_it(begin), end_it(end) {
+        // TODO is there any way to ensure that begin and end are iterators of the same vector?
+        // could also pass the vector itself as argument, only used to check this
+    }
+    
+    size_t size() const {
+        return end_it - begin_it;
+    }
+    
+    const T& operator[](size_t index) const {
+        return *(begin_it + index);
+    }
+    
+    bool empty() const {
+        return begin_it == end_it;
+    }
+
+    const typename std::vector<T>::const_iterator begin() const {
+        return begin_it;
+    }
+
+    const typename std::vector<T>::const_iterator end() const {
+        return end_it;
+    }
+};
+
 struct Condition {
     int var;
     int val;
@@ -61,22 +95,39 @@ struct Effect {
     void dump() const;
 };
 
+class FactorInfo {
+protected:
+    FactorInfo(){}
+public:
+    virtual ~FactorInfo() = default;
+
+    virtual LeafFactorID get_affected_factor() const = 0;
+
+    virtual size_t get_number_leaf_pre_factors() const = 0;
+
+    virtual OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const = 0;
+    virtual OpsLeafProps<Effect> get_effects(LeafFactorID factor) const = 0;
+
+    virtual bool has_precondition_on(LeafFactorID factor) const = 0;
+    virtual bool has_effect_on(LeafFactorID factor) const = 0;
+
+    virtual void dump() const = 0;
+};
+
 class Operator {
+    friend class Factoring;
     
     bool is_an_axiom;
     
+    // in decoupled search, the following two are sorted by factor, center first
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
-    std::map<LeafFactorID, std::vector<const Condition*> > pre_by_factor;
-    std::map<LeafFactorID, std::vector<const Effect*> > eff_by_factor;
-    const static std::vector<const Condition*> empty_pre;// HACK
-    const static std::vector<const Effect*> empty_eff;// HACK
     
     std::string name;
     int cost;
 
     // the following is only needed for decoupled search
-    LeafFactorID affects_factor;
+    FactorInfo *factor_info;
 
     mutable bool marked; // Used for short-term marking of preferred operators
     
@@ -84,6 +135,8 @@ class Operator {
 
     void read_pre_post(std::istream &in);
     
+    void set_affected_factor(LeafFactorID factor);
+
 public:
     explicit Operator(std::istream &in, bool is_axiom);
     
@@ -113,9 +166,13 @@ public:
         return dead;
     }
 
-    const std::vector<const Condition*> &get_preconditions(LeafFactorID factor) const;
+    OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const {
+        return factor_info->get_preconditions(factor);
+    }
     
-    const std::vector<const Effect*> &get_effects(LeafFactorID factor) const;
+    OpsLeafProps<Effect> get_effects(LeafFactorID factor) const {
+        return factor_info->get_effects(factor);
+    }
     
     bool is_applicable(const State &state) const;
     
@@ -141,25 +198,20 @@ public:
         return OperatorID(op_index);
     }
     
-    void set_affected_factor(LeafFactorID factor);
-    
     LeafFactorID get_affected_factor() const {
-        return affects_factor;
+        return factor_info->get_affected_factor();
     }
     
     bool has_precondition_on(LeafFactorID factor) const {
-        return pre_by_factor.find(factor) != pre_by_factor.end();
+        return factor_info->has_precondition_on(factor);
     }
-    
+
     bool has_effect_on(LeafFactorID factor) const {
-        return eff_by_factor.find(factor) != eff_by_factor.end();
+        return factor_info->has_effect_on(factor);
     }
     
-    int get_number_leaf_pre_factors() const {
-        if (has_precondition_on(LeafFactorID::CENTER)){
-            return pre_by_factor.size() - 1;
-        }
-        return pre_by_factor.size();
+    size_t get_number_leaf_pre_factors() const {
+        return factor_info->get_number_leaf_pre_factors();
     }
 
     int get_cost() const {

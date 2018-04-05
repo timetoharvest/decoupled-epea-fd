@@ -334,7 +334,7 @@ void SearchSpace::trace_path(const State &goal_state,
 
                 bool need_compliant_leaf_state = false;
                 
-                if (op != nullptr && !op->get_effects(factor).empty()){
+                if (op != nullptr && op->has_effect_on(factor)){
                     // apply leaf effects to predecessor decoupled state
                     
                     if (marked_leaf_states[factor] != numeric_limits<size_t>::max()){

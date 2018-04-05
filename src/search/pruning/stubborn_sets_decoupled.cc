@@ -29,7 +29,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
     // in any reached leaf state. finally, add NES for open center precondition
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (op.has_precondition_on(factor)){
-            const vector<const Condition*> &preconds = op.get_preconditions(factor);
+            OpsLeafProps<Condition> preconds = op.get_preconditions(factor);
             
             vector<bool> unsat(preconds.size(), false);
             vector<bool> sat(preconds.size(), false);
@@ -41,7 +41,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
                     bool applicable_state = true;
                     for (size_t i = 0; i < preconds.size(); ++i){
-                        if (leaf_state[preconds[i]->var] != preconds[i]->val){
+                        if (leaf_state[preconds[i].var] != preconds[i].val){
                             unsat[i] = true;
                             applicable_state = false;
                         } else {
@@ -57,13 +57,13 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
             if (!applicable){
                 for (size_t i = 0; i < sat.size(); ++i){
                     if (!sat[i]){
-                        res.push_back(make_pair(preconds[i]->var, preconds[i]->val));
+                        res.push_back(make_pair(preconds[i].var, preconds[i].val));
                         return res;
                     }
                 }
                 for (size_t i = 0; i < unsat.size(); ++i){
                     if (unsat[i]){
-                        res.push_back(make_pair(preconds[i]->var, preconds[i]->val));
+                        res.push_back(make_pair(preconds[i].var, preconds[i].val));
                     }
                 }
                 return res;
@@ -72,9 +72,9 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
     }
     assert(res.empty());
     
-    for (const Condition *precondition : op.get_preconditions(LeafFactorID::CENTER)) {
-        int var = precondition->var;
-        int value = precondition->val;
+    for (const Condition &precondition : op.get_preconditions(LeafFactorID::CENTER)) {
+        int var = precondition.var;
+        int value = precondition.val;
         if (state[var] != value){
             res.push_back(make_pair(var, value));
             return res;
@@ -83,20 +83,20 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
-inline bool leaf_facts_agree(const LeafState &leaf_state, const vector<const Effect*> &leaf_effects) {
+inline bool leaf_facts_agree(const LeafState &leaf_state, OpsLeafProps<Effect> leaf_effects) {
     assert(!leaf_effects.empty());
-    for (auto eff : leaf_effects){
-        if (leaf_state[eff->var] != eff->val){
+    for (const Effect &eff : leaf_effects){
+        if (leaf_state[eff.var] != eff.val){
             return false;
         }
     }
     return true;
 }
 
-inline bool satisfies_leaf_pre(const LeafState &leaf_state, const vector<const Condition*> &leaf_pre) {
+inline bool satisfies_leaf_pre(const LeafState &leaf_state, OpsLeafProps<Condition> leaf_pre) {
     assert(!leaf_pre.empty());
-    for (auto pre : leaf_pre){
-        if (leaf_state[pre->var] != pre->val){
+    for (const Condition &pre : leaf_pre){
+        if (leaf_state[pre.var] != pre.val){
             return false;
         }
     }
@@ -355,7 +355,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
     }
 }
 
-void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const vector<const Condition*> &leaf_pre) {
+void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, OpsLeafProps<Condition> leaf_pre) {
     // TODO add option to switch off satisfies_leaf_pre check => probably not necessary, the overhead should be negligible
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
@@ -431,7 +431,7 @@ bool StubbornSetsDecoupled::mark_as_stubborn(OperatorID op_no) {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
                 bool reached = false;
-                auto &pre = op.get_preconditions(factor);
+                OpsLeafProps<Condition> pre = op.get_preconditions(factor);
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                     if (current_cpg->has_leaf_state(id, factor) && satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), pre)){
                         reached = true;

@@ -214,8 +214,7 @@ void Reachable::update(const State &base_state) {
                     for (OperatorID op_id : applicable_ops){
                         const Operator &op = g_operators[op_id];
 
-                        const vector<const Effect*> &effects = op.get_effects(factor);
-                        if (!effects.empty() && (fits_store || op.is_center_applicable(base_state))){
+                        if (op.has_effect_on(factor) && (fits_store || op.is_center_applicable(base_state))){
 
                             LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
                             
@@ -411,7 +410,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
-        const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
+        OpsLeafProps<Effect> eff_on_factor = op.get_effects(factor);
         
         if (!has_pre_on_factor && eff_on_factor.empty()){
             // op does not affect leaf at all => copy everything            
