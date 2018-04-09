@@ -5,6 +5,7 @@
 #include "factoring.h"
 #include "globals.h"
 #include "state_registry.h"
+#include "utils/memory.h"
 
 #include <iostream>
 
@@ -711,7 +712,7 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
     if (affected_factor == LeafFactorID::CENTER){
         if (num_leaf_pre == 0 && num_leaf_eff == 0){
             // not preconditioned by or affects any leaf factor
-            factor_info = new SingleFactorInfo(affected_factor, preconditions, effects);
+            factor_info = utils::make_unique_ptr<SingleFactorInfo>(affected_factor, preconditions, effects);
         } else if (num_leaf_pre == 1 && num_leaf_eff == 0){
             // effects only on center, preconditions on one leaf + possibly center
             vector<Condition>::const_iterator start_leaf_pre = pre_by_factor[0]; // in case there is no center precondition
@@ -723,7 +724,7 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             }
             // we have to find an iterator in the loop unless there are no center preconditions
             assert(start_leaf_pre != pre_by_factor[0] || pre_by_factor[0] == pre_by_factor[1]);
-            factor_info = new CenterOpLeafPreFactorInfo(g_belongs_to_factor[start_leaf_pre->var],
+            factor_info = utils::make_unique_ptr<CenterOpLeafPreFactorInfo>(g_belongs_to_factor[start_leaf_pre->var],
                                                         preconditions.cbegin(), start_leaf_pre, preconditions.cend(),
                                                         effects);
         } else if (num_leaf_pre == 0 && num_leaf_eff == 1){
@@ -737,10 +738,13 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             }
             // we have to find an iterator in the loop
             assert(start_leaf_eff != eff_by_factor[0]);
-            factor_info = new CenterOpLeafEffFactorInfo(g_belongs_to_factor[start_leaf_eff->var],
+            factor_info = utils::make_unique_ptr<CenterOpLeafEffFactorInfo>(g_belongs_to_factor[start_leaf_eff->var],
                                                         preconditions,
                                                         effects.cbegin(), start_leaf_eff, effects.cend());
         } else if (num_leaf_pre == 1 && num_leaf_eff == 1 && pre_by_factor.size() == eff_by_factor.size()){
+            // conditions are: has pre/eff on exactly one leaf,
+            // if pre_by_factor and eff_by_factor have same size => same leaf
+
             // affects/preconditioned by center + one leaf factor
             vector<Condition>::const_iterator start_leaf_pre = pre_by_factor[0];
             for (size_t i = 1; i < pre_by_factor.size() - 1; ++i){
@@ -750,7 +754,7 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
                 }
             }
             // we have to find an iterator in the loop
-            assert(start_leaf_pre != pre_by_factor[0]);
+            assert(start_leaf_pre != pre_by_factor[0] || g_belongs_to_factor[start_leaf_pre->var] != LeafFactorID::CENTER);
 
             vector<Effect>::const_iterator start_leaf_eff = eff_by_factor[0];
             for (size_t i = 1; i < eff_by_factor.size() - 1; ++i){
@@ -763,15 +767,15 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
             assert(start_leaf_eff != eff_by_factor[0]);
             assert(g_belongs_to_factor[start_leaf_pre->var] == g_belongs_to_factor[start_leaf_eff->var]);
 
-            factor_info = new CenterOpPreEffOneLeafFactorInfo(g_belongs_to_factor[start_leaf_pre->var],
+            factor_info = utils::make_unique_ptr<CenterOpPreEffOneLeafFactorInfo>(g_belongs_to_factor[start_leaf_pre->var],
                                                               preconditions.begin(), start_leaf_pre, preconditions.end(),
                                                               effects.begin(), start_leaf_eff, effects.end());
         } else if (num_leaf_pre > 1 && num_leaf_eff == 0){
             // only center effects, preconditions on more than one leaf factor
-            factor_info = new ManyLeafPreNoEffFactorInfo(pre_by_factor, effects);
+            factor_info = utils::make_unique_ptr<ManyLeafPreNoEffFactorInfo>(pre_by_factor, effects);
         } else {
             // no special case applies
-            factor_info = new GeneralFactorInfo(pre_by_factor, eff_by_factor);
+            factor_info = utils::make_unique_ptr<GeneralFactorInfo>(pre_by_factor, eff_by_factor);
         }
     } else {
         if (center_pre){
@@ -782,12 +786,12 @@ void Operator::set_affected_factor(LeafFactorID affected_factor) {
                     break;
                 }
             }
-            factor_info = new LeafOpCenterLeafPreFactorInfo(affected_factor,
+            factor_info = utils::make_unique_ptr<LeafOpCenterLeafPreFactorInfo>(affected_factor,
                                                             preconditions.cbegin(), start_leaf_pre, preconditions.cend(),
                                                             effects);
         } else {
             // not preconditioned by or affects center factor
-            factor_info = new SingleFactorInfo(affected_factor, preconditions, effects);
+            factor_info = utils::make_unique_ptr<SingleFactorInfo>(affected_factor, preconditions, effects);
         }
     }
 }

@@ -127,7 +127,7 @@ class Operator {
     int cost;
 
     // the following is only needed for decoupled search
-    FactorInfo *factor_info;
+    std::unique_ptr<FactorInfo> factor_info;
 
     mutable bool marked; // Used for short-term marking of preferred operators
     
