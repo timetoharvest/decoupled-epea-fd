@@ -276,7 +276,7 @@ static vector<FactPair> build_sorted_precondition(const Operator &op, LeafFactor
     for (const Condition &pre : op.get_preconditions()){
         if (!g_factoring ||
                 (only_keep_all_leaf_preconditions && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER) ||
-                g_belongs_to_factor[pre.var] == factor){
+                (!only_keep_all_leaf_preconditions && g_belongs_to_factor[pre.var] == factor)){
             precond.emplace_back(pre.get_pair());
         }
     }
@@ -290,8 +290,21 @@ GeneratorPtr SuccessorGeneratorFactory::create(LeafFactorID factor, bool only_ke
         operator_infos.reserve(g_operators.size());
     }
     for (const Operator &op : g_operators) {
+        bool add_action = false;
+        if (only_keep_all_leaf_preconditions && op.get_affected_factor() == LeafFactorID::CENTER){
+            // we only keep center actions that have a leaf precondition or effect
+            for (LeafFactorID leaf_factor(0); leaf_factor < g_leaves.size(); ++leaf_factor){
+                // TODO this check should be in FactorInfo, i.e. has_leaf_pre_or_eff()
+                if (op.has_precondition_on(leaf_factor) || op.has_effect_on(leaf_factor)){
+                    add_action = true;
+                    break;
+                }
+            }
+        }
         if (!g_factoring || op.get_affected_factor() == factor){
-            operator_infos.emplace_back(op.get_id(), build_sorted_precondition(op, factor, only_keep_all_leaf_preconditions));
+            if (!only_keep_all_leaf_preconditions || add_action){
+                operator_infos.emplace_back(op.get_id(), build_sorted_precondition(op, factor, only_keep_all_leaf_preconditions));
+            }
         }
     }
     /* Use stable_sort rather than sort for reproducibility.
