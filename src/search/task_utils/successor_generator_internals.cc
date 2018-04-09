@@ -1,6 +1,7 @@
 #include "successor_generator_internals.h"
 
 #include "../globals.h"
+#include "../operator.h"
 #include "../state.h"
 
 #include <cassert>
@@ -273,7 +274,7 @@ void GeneratorLeafVector::generate_applicable_ops(
 }
 
 void GeneratorLeafVector::generate_applicable_ops_ignore_outside_pre(
-    const LeafState &, vector<OperatorID> &applicable_ops) const {
+    const LeafState &state, vector<OperatorID> &applicable_ops) const {
     /*
       In our experiments (issue688), a loop over push_back was faster
       here than doing this with a single insert call because the
@@ -281,8 +282,12 @@ void GeneratorLeafVector::generate_applicable_ops_ignore_outside_pre(
       the container type from list to vector since then, so this might
       no longer apply.
     */
+    LeafFactorID factor = state.get_id().get_factor();
     for (OperatorID id : applicable_operators) {
-        applicable_ops.push_back(id);
+        if (g_operators[id].has_precondition_on(factor) ||
+                    g_operators[id].has_effect_on(factor)){
+            applicable_ops.push_back(id);
+        }
     }
 }
 
@@ -301,7 +306,11 @@ void GeneratorLeafSingle::generate_applicable_ops(
 }
 
 void GeneratorLeafSingle::generate_applicable_ops_ignore_outside_pre(
-    const LeafState &, vector<OperatorID> &applicable_ops) const {
-    applicable_ops.push_back(applicable_operator);
+    const LeafState &state, vector<OperatorID> &applicable_ops) const {
+    LeafFactorID factor = state.get_id().get_factor();
+    if (g_operators[applicable_operator].has_precondition_on(factor) ||
+            g_operators[applicable_operator].has_effect_on(factor)){
+        applicable_ops.push_back(applicable_operator);
+    }
 }
 }
