@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state.h"
+#include "operator_factor_info.h"
 #include "operator_id.h"
 #include "state.h"
 #include "task_utils/fact_pair.h"
@@ -14,39 +15,6 @@
 #include <string>
 #include <vector>
 
-template<class T>
-class OpsLeafProps {
-    
-    const typename std::vector<T>::const_iterator begin_it;
-    const typename std::vector<T>::const_iterator end_it;
-    
-public:
-    OpsLeafProps(typename std::vector<T>::const_iterator begin, typename std::vector<T>::const_iterator end)
-        : begin_it(begin), end_it(end) {
-        // TODO is there any way to ensure that begin and end are iterators of the same vector?
-        // could also pass the vector itself as argument, only used to check this
-    }
-    
-    size_t size() const {
-        return end_it - begin_it;
-    }
-    
-    const T& operator[](size_t index) const {
-        return *(begin_it + index);
-    }
-    
-    bool empty() const {
-        return begin_it == end_it;
-    }
-
-    const typename std::vector<T>::const_iterator begin() const {
-        return begin_it;
-    }
-
-    const typename std::vector<T>::const_iterator end() const {
-        return end_it;
-    }
-};
 
 struct Condition {
     int var;
@@ -95,24 +63,6 @@ struct Effect {
     void dump() const;
 };
 
-class FactorInfo {
-protected:
-    FactorInfo(){}
-public:
-    virtual ~FactorInfo() = default;
-
-    virtual LeafFactorID get_affected_factor() const = 0;
-
-    virtual size_t get_number_leaf_pre_factors() const = 0;
-
-    virtual OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const = 0;
-    virtual OpsLeafProps<Effect> get_effects(LeafFactorID factor) const = 0;
-
-    virtual bool has_precondition_on(LeafFactorID factor) const = 0;
-    virtual bool has_effect_on(LeafFactorID factor) const = 0;
-
-    virtual void dump() const = 0;
-};
 
 class Operator {
     friend class Factoring;

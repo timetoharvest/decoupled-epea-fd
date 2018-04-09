@@ -57,6 +57,7 @@ HEADERS = \
           max_evaluator.h \
           operator.h \
           operator_cost.h \
+          operator_factor_info.h \
           operator_id.h \
           option_parser.h \
           option_parser_util.h \
