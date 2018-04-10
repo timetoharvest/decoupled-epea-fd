@@ -83,7 +83,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
     return res;
 }
 
-inline bool leaf_facts_agree(const LeafState &leaf_state, OpsLeafProps<Effect> leaf_effects) {
+inline bool leaf_facts_agree(const LeafState &leaf_state, const OpsLeafProps<Effect> &leaf_effects) {
     assert(!leaf_effects.empty());
     for (const Effect &eff : leaf_effects){
         if (leaf_state[eff.var] != eff.val){
@@ -93,7 +93,7 @@ inline bool leaf_facts_agree(const LeafState &leaf_state, OpsLeafProps<Effect> l
     return true;
 }
 
-inline bool satisfies_leaf_pre(const LeafState &leaf_state, OpsLeafProps<Condition> leaf_pre) {
+inline bool satisfies_leaf_pre(const LeafState &leaf_state, const OpsLeafProps<Condition> &leaf_pre) {
     assert(!leaf_pre.empty());
     for (const Condition &pre : leaf_pre){
         if (leaf_state[pre.var] != pre.val){
@@ -355,7 +355,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
     }
 }
 
-void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, OpsLeafProps<Condition> leaf_pre) {
+void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, const OpsLeafProps<Condition> &leaf_pre) {
     // TODO add option to switch off satisfies_leaf_pre check => probably not necessary, the overhead should be negligible
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
