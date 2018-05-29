@@ -1,7 +1,7 @@
 #ifndef FACTORING_RANKING_H
 #define FACTORING_RANKING_H
 
-#include "utils/variable_int.h"
+#include "../utils/variable_int.h"
 
 #include <set>
 #include <vector>

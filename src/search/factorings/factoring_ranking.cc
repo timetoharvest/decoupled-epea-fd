@@ -1,9 +1,9 @@
 #include "factoring_ranking.h"
 
-#include "factoring.h"
-#include "operator.h"
-#include "option_parser.h"
-#include "plugin.h"
+#include "../factoring.h"
+#include "../operator.h"
+#include "../option_parser.h"
+#include "../plugin.h"
 
 using namespace std;
 
