@@ -179,9 +179,11 @@ HEADERS += pruning/stubborn_sets.h \
            pruning/stubborn_sets_ec.h
 
 # TODO make decoupled search plugable
-HEADERS += factorings/factoring_ranking.h \
-           leaf_state.h \
+HEADERS += leaf_state.h \
            leaf_state_id.h
+           
+HEADERS += factorings/factoring_ranking.h \
+           factorings/lp_factorings.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
