@@ -868,7 +868,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
         cout << "leaf factor " << l << ":" << endl;
         for (set<int>::iterator it = best_factoring[l].begin(); it != best_factoring[l].end(); ++it){
             cout << "   " << g_fact_names[*it][0] << endl;
-        }        
+        }
     }
     cout << endl;
 #endif
@@ -1427,54 +1427,54 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
         vars[var] = true;
     }
     
-    vector<bool> seen_vars(g_variable_domain.size(), false);
     vector<int> var_comp_map(g_variable_domain.size(), -1);
     
-    size_t number_seen_vars = 0;
+    vector<bool> handled_var(g_variable_domain.size(), false);    
+    size_t number_handled_vars = 0;    
+    vector<int> open_vars;
+    vector<bool> is_open_var(g_variable_domain.size(), false);
     
-    set<int> open_vars;
-    
-    while(number_seen_vars < variables.size()){
-	if (open_vars.empty()){
-	    for (size_t i = 0; i < variables.size(); i++){
-                int var = variables[i];
-	    	if (!seen_vars[var]){
-		    open_vars.insert(var);
-		    var_comp_map[var] = components.size();
-		    components.push_back(set<int>());
-		    components[var_comp_map[var]].insert(var);
-		    break;
-		}
-	    }
-	    continue;
-	}
-	
-	int curr = *open_vars.begin();
-	open_vars.erase(open_vars.begin());
-	
-	if (seen_vars[curr]){
-	    continue;
-	}
-	
-	seen_vars[curr] = true;
-	number_seen_vars++;
-	
-	for (size_t pre = 0; pre < g_causal_graph->get_predecessors(curr).size(); pre++){
-	    int var = g_causal_graph->get_predecessors(curr)[pre];
-	    if (vars[var]){
-		open_vars.insert(var);
-		var_comp_map[var] = var_comp_map[curr];
-		components[var_comp_map[var]].insert(var);
-	    }
-	}
-	for (size_t succ = 0; succ < g_causal_graph->get_successors(curr).size(); succ++){
-	    int var = g_causal_graph->get_successors(curr)[succ];
-	    if (vars[var]){
-                open_vars.insert(var);
+    while(number_handled_vars < variables.size()){
+        if (open_vars.empty()){
+            for (int var : variables){
+                if (!handled_var[var]){
+                    open_vars.push_back(var);
+                    is_open_var[var] = true;
+                    var_comp_map[var] = components.size();
+                    components.push_back(set<int>());
+                    components[var_comp_map[var]].insert(var);
+                    break;
+                }
+            }
+        }
+        
+        int curr = open_vars.back();
+        open_vars.pop_back();
+        is_open_var[curr] = false;
+        
+        if (handled_var[curr]){
+            continue;
+        }
+        
+        handled_var[curr] = true;
+        ++number_handled_vars;
+        
+        for (int var : g_causal_graph->get_predecessors(curr)){
+            if (vars[var] && !handled_var[var] && !is_open_var[var]){
+                open_vars.push_back(var);
+                is_open_var[var] = true;
                 var_comp_map[var] = var_comp_map[curr];
                 components[var_comp_map[var]].insert(var);
             }
-	}
+        }
+        for (int var : g_causal_graph->get_successors(curr)){
+            if (vars[var] && !handled_var[var] && !is_open_var[var]){
+                open_vars.push_back(var);
+                is_open_var[var] = true;
+                var_comp_map[var] = var_comp_map[curr];
+                components[var_comp_map[var]].insert(var);
+            }
+        }
     }
     
     return components;
