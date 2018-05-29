@@ -1,9 +1,11 @@
 #ifndef VARIABLE_INT_H
 #define VARIABLE_INT_H
 
-#include "ext/boost/dynamic_bitset.hpp"
+#include "../ext/boost/dynamic_bitset.hpp"
+
 #include <math.h>
 
+// TODO include this class in the namespace
 class VarInt {
 
     boost::dynamic_bitset<> value;

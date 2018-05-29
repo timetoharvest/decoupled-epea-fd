@@ -1,6 +1,7 @@
 #include "mis.h"
 
-#include "utils/countdown_timer.h"
+#include "../globals.h" // TODO get rid of this
+#include "../utils/countdown_timer.h"
 
 #include "assert.h"
 #include <iostream>

@@ -40,6 +40,7 @@ DOWNWARD_OS ?= auto
 HEADERS = \
           algorithms/equivalence_relation.h \
           algorithms/int_packer.h \
+          algorithms/mis.h \
           algorithms/priority_queues.h \
           algorithms/sccs.h \
           algorithms/segmented_vector.h \
@@ -92,7 +93,7 @@ HEADERS = \
           utils/system_unix.h \
           utils/system_windows.h \
           utils/timer.h \
-          variable_int.h \
+          utils/variable_int.h \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
@@ -180,8 +181,7 @@ HEADERS += pruning/stubborn_sets.h \
 # TODO make decoupled search plugable
 HEADERS += factoring_ranking.h \
            leaf_state.h \
-           leaf_state_id.h \
-           mis.h
+           leaf_state_id.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \

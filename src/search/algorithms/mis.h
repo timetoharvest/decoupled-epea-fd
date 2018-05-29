@@ -1,8 +1,7 @@
 #ifndef MIS_H
 #define MIS_H
 
-#include "globals.h"
-#include "ext/boost/dynamic_bitset.hpp"
+#include "../ext/boost/dynamic_bitset.hpp"
 
 #include <list>
 #include <map>
