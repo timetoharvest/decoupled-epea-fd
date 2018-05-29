@@ -41,7 +41,9 @@ enum ExitCode {
     EXIT_UNSOLVED_INCOMPLETE = 5,
     EXIT_OUT_OF_MEMORY = 6,
     // Currently unused.
-    EXIT_TIMEOUT = 7
+    EXIT_TIMEOUT = 7,
+    // factoring method failed + no fallback.
+    EXIT_ABSTAINED = 9
 };
 
 extern void exit_with(ExitCode returncode) __attribute__((noreturn));

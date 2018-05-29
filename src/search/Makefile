@@ -77,6 +77,7 @@ HEADERS = \
           sum_evaluator.h \
           timer.h \
           utilities.h \
+          variable_int.h \
           variable_order_finder.h \
           weighted_evaluator.h \
           \
@@ -165,7 +166,9 @@ HEADERS += pruning/stubborn_sets.h \
 # TODO make decoupled search plugable
 HEADERS += leaf_state.h\
            leaf_state_id.h\
-           ../preprocess/scc.h
+           mis.h \
+           ../preprocess/scc.h \
+           ranking.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \

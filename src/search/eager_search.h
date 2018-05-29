@@ -1,8 +1,6 @@
 #ifndef EAGER_SEARCH_H
 #define EAGER_SEARCH_H
 
-#include <vector>
-
 #include "evaluator.h"
 #include "state.h"
 #include "search_engine.h"
@@ -11,6 +9,9 @@
 #include "timer.h"
 
 #include "open_lists/open_list.h"
+
+#include <vector>
+
 
 class Heuristic;
 class Operator;

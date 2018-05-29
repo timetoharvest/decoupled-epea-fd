@@ -32,9 +32,6 @@ SearchEngine::SearchEngine(const Options &opts)
     }
 }
 
-SearchEngine::~SearchEngine() {
-}
-
 void SearchEngine::statistics() const {
 }
 
@@ -58,7 +55,7 @@ void SearchEngine::set_plan(const Plan &p) {
 
 void SearchEngine::search() {
     initialize();
-    
+
     CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
         status = step();

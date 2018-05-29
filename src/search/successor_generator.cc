@@ -57,8 +57,10 @@ public:
 SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(istream &in) {
     in >> switch_var;
     immediate_ops = read_successor_generator(in);
-    for (int i = 0; i < g_variable_domain[switch_var]; ++i)
+    generator_for_value.reserve(g_variable_domain[switch_var]);
+    for (int i = 0; i < g_variable_domain[switch_var]; ++i){
         generator_for_value.push_back(read_successor_generator(in));
+    }
     default_generator = read_successor_generator(in);
 }
 
@@ -70,6 +72,7 @@ SuccessorGeneratorSwitch::SuccessorGeneratorSwitch(const SuccessorGeneratorSwitc
                                                 switch_var(sg.switch_var){
     immediate_ops = sg.immediate_ops->copy();
     default_generator = sg.default_generator->copy();
+    generator_for_value.reserve(sg.generator_for_value.size());
     for (size_t i = 0; i < sg.generator_for_value.size(); ++i){
         generator_for_value.push_back(sg.generator_for_value[i]->copy());
     }

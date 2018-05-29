@@ -36,7 +36,7 @@ private:
     std::vector<Heuristic *> heuristics;
 public:
     SearchProgress();
-    virtual ~SearchProgress();
+    virtual ~SearchProgress() = default;
 
     void add_heuristic(Heuristic *h);
 

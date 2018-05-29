@@ -44,12 +44,13 @@ If NT shall be predefinable:
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
+class MergeStrategy;
 template<class Entry>
 class OpenList;
 class PruningMethod;
 class PruningOptions;
+class FactoringRanking;
 class SearchEngine;
-class MergeStrategy;
 class ShrinkStrategy;
 
 /*
@@ -133,6 +134,12 @@ template <>
 class TokenParser<Factoring *> {
 public:
     static inline Factoring *parse(OptionParser &p);
+};
+
+template <>
+class TokenParser<FactoringRanking *> {
+public:
+    static inline FactoringRanking *parse(OptionParser &p);
 };
 
 template <>
@@ -444,6 +451,10 @@ Synergy *TokenParser<Synergy *>::parse(OptionParser &p) {
 
 Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
     return lookup_in_registry<Factoring>(p);
+}
+
+FactoringRanking *TokenParser<FactoringRanking *>::parse(OptionParser &p) {
+    return lookup_in_registry<FactoringRanking>(p);
 }
 
 PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {
