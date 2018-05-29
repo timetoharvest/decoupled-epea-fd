@@ -1,7 +1,6 @@
 #include "mis.h"
 
-#include "countdown_timer.h"
-#include "utilities.h"
+#include "utils/countdown_timer.h"
 
 #include "assert.h"
 #include <iostream>
@@ -32,7 +31,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
     stack.push_front(g);
 
     size_t mis_steps = 0;
-    CountdownTimer timer(arg_timeout);
+    utils::CountdownTimer timer(arg_timeout);
     bool timeout = arg_timeout != 0;
 
     while (!stack.empty() && (!timeout || !timer.is_expired())) {
@@ -347,7 +346,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             // should never happen, as this case should have been resolved by dominance first
                             print_graph(g);
                             cout <<  "###############   INVALID FOLDING   ###############" << endl;
-                            exit_with(EXIT_CRITICAL_ERROR);
+                            exit_with(utils::ExitCode::CRITICAL_ERROR);
                         }
                     } else {
                         // select v of maximum degree, which minimizes |E(N(v))|
@@ -511,7 +510,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
             }
         }
     }
-    Timer timer_final;
+    utils::Timer timer_final;
 
     cout << "MIS algo steps: " << mis_steps << endl;
     cout << "MIS algo leaves: " << leaves.size() + stack.size() << endl;

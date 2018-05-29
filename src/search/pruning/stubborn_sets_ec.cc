@@ -131,10 +131,9 @@ void StubbornSetsEC::compute_operator_preconditions() {
     size_t num_operators = g_operators.size();
     size_t num_variables = g_variable_domain.size();
     op_preconditions_on_var.resize(num_operators);
-    for (size_t op_no = 0; op_no < num_operators; ++op_no) {
+    for (OperatorID op_no(0); op_no < num_operators; ++op_no) {
         op_preconditions_on_var[op_no].resize(num_variables, -1);
-        const Operator &op = g_operators[op_no];
-        for (const Condition &precondition : op.get_preconditions()) {
+        for (const Condition &precondition : g_operators[op_no].get_preconditions()) {
             op_preconditions_on_var[op_no][precondition.var] = precondition.val;
         }
     }
@@ -159,8 +158,7 @@ void StubbornSetsEC::build_reachability_map() {
 }
 
 void StubbornSetsEC::compute_active_operators(const State &state) {
-    size_t num_operators = g_operators.size();
-    for (size_t op_no = 0; op_no < num_operators; ++op_no) {
+    for (OperatorID op_no(0); op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         bool all_preconditions_are_active = true;
 
@@ -186,8 +184,8 @@ void StubbornSetsEC::compute_conflicts_and_disabling() {
     conflicting_and_disabling.resize(num_operators);
     disabled.resize(num_operators);
 
-    for (size_t op1_no = 0; op1_no < num_operators; ++op1_no) {
-        for (size_t op2_no = 0; op2_no < num_operators; ++op2_no) {
+    for (OperatorID op1_no(0); op1_no < num_operators; ++op1_no) {
+        for (OperatorID op2_no(0); op2_no < num_operators; ++op2_no) {
             if (op1_no != op2_no) {
                 bool conflict = can_conflict(op1_no, op2_no);
                 bool disable = can_disable(op2_no, op1_no);
@@ -204,7 +202,7 @@ void StubbornSetsEC::compute_conflicts_and_disabling() {
 
 // TODO: find a better name.
 void StubbornSetsEC::mark_as_stubborn_and_remember_written_vars(
-    size_t op_no, const State &state) {
+        OperatorID op_no, const State &state) {
     if (mark_as_stubborn(op_no)) {
         const Operator &op = g_operators[op_no];
         if (op.is_applicable(state)) {
@@ -218,7 +216,7 @@ void StubbornSetsEC::mark_as_stubborn_and_remember_written_vars(
 /* TODO: think about a better name, which distinguishes this method
    better from the corresponding method for simple stubborn sets */
 void StubbornSetsEC::add_nes_for_fact(const pair<int, int> &fact, const State &state) {
-    for (size_t achiever : achievers[fact.first][fact.second]) {
+    for (OperatorID achiever : achievers[fact.first][fact.second]) {
         if (active_ops[achiever]) {
             mark_as_stubborn_and_remember_written_vars(achiever, state);
         }
@@ -227,9 +225,9 @@ void StubbornSetsEC::add_nes_for_fact(const pair<int, int> &fact, const State &s
     nes_computed[fact.first][fact.second] = true;
 }
 
-void StubbornSetsEC::add_conflicting_and_disabling(size_t op_no,
+void StubbornSetsEC::add_conflicting_and_disabling(OperatorID op_no,
                                                    const State &state) {
-    for (size_t conflict : conflicting_and_disabling[op_no]) {
+    for (OperatorID conflict : conflicting_and_disabling[op_no]) {
         if (active_ops[conflict])
             mark_as_stubborn_and_remember_written_vars(conflict, state);
     }
@@ -237,7 +235,7 @@ void StubbornSetsEC::add_conflicting_and_disabling(size_t op_no,
 
 // Relies on op_effects and op_preconditions being sorted by variable.
 void StubbornSetsEC::get_disabled_vars(
-    size_t op1_no, size_t op2_no, vector<int> &disabled_vars) {
+        OperatorID op1_no, OperatorID op2_no, vector<int> &disabled_vars) {
     get_conflicting_vars(sorted_op_effects[op1_no],
                          sorted_op_preconditions[op2_no],
                          disabled_vars);
@@ -286,14 +284,14 @@ void StubbornSetsEC::initialize_stubborn_set(const State &state) {
     add_nes_for_fact(unsatisfied_goal, state);     // active operators used
 }
 
-void StubbornSetsEC::handle_stubborn_operator(const State &state, size_t op_no) {
+void StubbornSetsEC::handle_stubborn_operator(const State &state, OperatorID op_no) {
     const Operator &op = g_operators[op_no];
     if (op.is_applicable(state)) {
         //Rule S2 & S3
         add_conflicting_and_disabling(op_no, state);     // active operators used
         //Rule S4'
         vector<int> disabled_vars;
-        for (size_t disabled_op_no : disabled[op_no]) {
+        for (OperatorID disabled_op_no : disabled[op_no]) {
             if (active_ops[disabled_op_no]) {
                 get_disabled_vars(op_no, disabled_op_no, disabled_vars);
                 if (!disabled_vars.empty()) {     // == can_disable(op1_no, op2_no)

@@ -34,6 +34,9 @@ void FFHeuristic::initialize() {
     relaxed_plan.resize(g_operators.size(), false);
     
     if (search_type == STAR){
+        cout << "" << endl;
+        exit_with(utils::ExitCode::UNSUPPORTED);
+        // TODO need to check this. not sure if it works with OperatorsIDs
         relaxed_leaf_plan.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_plan[factor] = vector<bool>(g_state_registry->size(factor), false);
@@ -43,7 +46,7 @@ void FFHeuristic::initialize() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){   // TODO need to incrementally do this if leaf state space is not built upfront
             assert(CompliantPathGraph::precompute_leaf_state_space(factor));
             for (size_t fact = 0; fact < g_state_registry->size(factor); ++fact){
-                artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, counter, -1));
+                artificial_leaf_ops[factor].push_back(new UnaryOperator(vector<Proposition*>(), 0, OperatorID(counter), 0));
                 --counter;
             }
         }
@@ -71,11 +74,12 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     return;
                 }
             }
-            for (size_t i = 0; i < unary_op->precondition.size(); ++i)
+            for (size_t i = 0; i < unary_op->precondition.size(); ++i){
                 mark_preferred_operators_and_relaxed_plan(
-                    state, unary_op->precondition[i]);
-            int operator_no = unary_op->operator_no;
-            if (operator_no != -1) {
+                        state, unary_op->precondition[i]);
+            }
+            OperatorID operator_no = unary_op->operator_no;
+            if (operator_no != OperatorID::no_operator) {
                 // This is not an axiom.
                 relaxed_plan[operator_no] = true;
 
@@ -84,10 +88,10 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     // so we perform it to save work.
                     // If we had no 0-cost operators and axioms to worry
                     // about, it would also imply applicability.
-                    const Operator *op = &g_operators[operator_no];
-                    if (op->get_affected_factor() == LeafFactorID::CENTER && op->is_applicable(state)) {
+                    const Operator &op = g_operators[operator_no];
+                    if (op.get_affected_factor() == LeafFactorID::CENTER && op.is_applicable(state)) {
                         // don't mark leaf ops as preferred
-                        set_preferred(op);
+                        set_preferred(operator_no);
                     }
                 }
             }
@@ -140,7 +144,7 @@ int FFHeuristic::compute_heuristic(const State &state) {
     for (size_t op_no = 0; op_no < relaxed_plan.size(); ++op_no) {
         if (relaxed_plan[op_no]) {
             relaxed_plan[op_no] = false; // Clean up for next computation.
-            h_ff += get_adjusted_cost(g_operators[op_no]);
+            h_ff += get_adjusted_cost(OperatorID(op_no));
         }
     }
     int leaf_goal_cost = 0;

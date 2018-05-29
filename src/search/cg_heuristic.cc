@@ -1,17 +1,18 @@
 #include "cg_heuristic.h"
 
 #include "cg_cache.h"
-#include "domain_transition_graph.h"
 #include "operator.h"
 #include "state.h"
 #include "globals.h"
 #include "option_parser.h"
 #include "plugin.h"
+#include "task_utils/domain_transition_graph.h"
 
 #include <algorithm>
 #include <cassert>
 #include <limits>
 #include <vector>
+
 using namespace std;
 
 // TODO: Turn this into an option and check its impact.
@@ -24,7 +25,7 @@ CGHeuristic::CGHeuristic(const Options &opts)
       helpful_transition_extraction_counter(0) {
     prio_queues.reserve(g_transition_graphs.size());
     for (size_t i = 0; i < g_transition_graphs.size(); ++i)
-        prio_queues.push_back(new AdaptiveQueue<ValueNode *>);
+        prio_queues.push_back(new priority_queues::AdaptiveQueue<ValueNode *>);
 }
 
 CGHeuristic::~CGHeuristic() {
@@ -103,7 +104,7 @@ int CGHeuristic::get_transition_cost(const State &state,
             start->children_state[i] = state[dtg->local_to_global_child[i]];
 
         // Initialize Heap for Dijkstra's algorithm.
-        AdaptiveQueue<ValueNode *> &prio_queue = *prio_queues[var_no];
+        priority_queues::AdaptiveQueue<ValueNode *> &prio_queue = *prio_queues[var_no];
         prio_queue.clear();
         prio_queue.push(0, start);
 
@@ -256,7 +257,7 @@ void CGHeuristic::mark_helpful_transitions(const State &state,
     if (cost == get_adjusted_cost(*helpful->op) && !helpful->op->is_axiom()
         && helpful->op->is_applicable(state)) {
         // Transition immediately applicable, all preconditions true.
-        set_preferred(helpful->op);
+        set_preferred(helpful->op->get_id());
     } else {
         // Recursively compute helpful transitions for the precondition variables.
         const vector<LocalAssignment> &precond = helpful->precond;

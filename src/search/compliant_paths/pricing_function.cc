@@ -7,7 +7,6 @@
 #include "effective_prices.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
-#include "../utilities.h"
 
 #include <limits>
 
@@ -183,11 +182,11 @@ void Prices::update(const State &base_state) {
                     assert(id < leaf_state_successors[factor].size());
 
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                        const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                        if (is_ifork_leaf || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             change |= add_state(successor, factor, 
-                                                           cost + get_adjusted_action_cost(*op, cost_type));
+                                                cost + get_adjusted_action_cost(op, cost_type));
                         }
                     }
                     

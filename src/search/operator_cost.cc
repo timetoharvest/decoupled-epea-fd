@@ -3,10 +3,10 @@
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
-#include "utilities.h"
+#include "utils/system.h"
 
-#include <cstdlib>
 #include <vector>
+
 using namespace std;
 
 int get_adjusted_action_cost(const Operator &op, OperatorCost cost_type) {

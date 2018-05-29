@@ -1,17 +1,15 @@
 #include "factoring.h" 
 
-#include "causal_graph.h"
+#include "algorithms/sccs.h"
 #include "compliant_paths/compliant_path_graph.h"
+#include "factoring_ranking.h"
 #include "globals.h"
 #include "mis.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "../preprocess/scc.h"
-#include "ranking.h"
-#include "successor_generator.h"
-#include "timer.h"
-#include "utilities.h"
+#include "task_utils/causal_graph.h"
+#include "utils/timer.h"
 
 #include <iostream>
 #include <limits>
@@ -21,7 +19,6 @@
 #include <stdio.h>
 #include <sstream>
 #include <time.h>
-#include <set>
 
 
 using namespace std;
@@ -68,7 +65,7 @@ Factoring::Factoring(const Options &opts) :
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
         case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
         case NO_SEARCH : cout << "not running actual search" << endl; break;
-        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(EXIT_CRITICAL_ERROR);
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -573,7 +570,7 @@ void Factoring::print_factoring() const {
     cout << "max leaf factor size: " << max_size << endl;
 }
 
-void Factoring::exit_error(string message, ExitCode exit_code) const {
+void Factoring::exit_error(string message, utils::ExitCode exit_code) const {
     cout << "Error while factoring planning task!" << endl;
     cout << message << endl;
     exit_with(exit_code);
@@ -582,7 +579,7 @@ void Factoring::exit_error(string message, ExitCode exit_code) const {
 void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
-    Timer t;
+    utils::Timer t;
     
     FactoredVars best_factoring = get_factoring();
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
@@ -590,7 +587,7 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
     
     if (best_factoring.size() < min_number_leaves){
-        exit_error("No factoring found!", EXIT_ABSTAINED);
+        exit_error("No factoring found!", utils::ExitCode::ABSTAINED);
     }
     
     apply_factoring(best_factoring);    
@@ -599,7 +596,7 @@ void Factoring::do_factoring_or_abstain() {
     
     if (search_type == NO_SEARCH) {
         cout << "Factoring complete, do not perform search" << endl;
-        exit_with(EXIT_UNSOLVED_INCOMPLETE);
+        exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
     }
 }
 
@@ -646,7 +643,7 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
     for (size_t i = 0; i < inv_fork.size(); ++i){
         bool is_connected = false;
         for (set<int>::iterator var = inv_fork[i].begin(); var != inv_fork[i].end(); ++var){
-            vector<int> successors = g_causal_graph->get_successors(*var);
+            vector<int> successors = causal_graph::get_causal_graph().get_successors(*var);
             for (size_t succ = 0; succ < successors.size(); succ++){
                 for (size_t j = 0; j < best_factoring.size(); j++){
                     if (best_factoring[j].find(successors[succ]) != best_factoring[j].end()){
@@ -792,8 +789,8 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     vector<vector<int> > variables;
     
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
-        size_t arcs = g_causal_graph->get_successors(var).size();
-        arcs += g_causal_graph->get_predecessors(var).size();
+        size_t arcs = causal_graph::get_causal_graph().get_successors(var).size();
+        arcs += causal_graph::get_causal_graph().get_predecessors(var).size();
         if (arcs >= variables.size()){
             variables.resize(arcs + 1);
         }
@@ -906,16 +903,16 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                 current_size *= g_variable_domain[var];
             }
 
-            size_t bound = g_causal_graph->get_successors(var).size();
+            size_t bound = causal_graph::get_causal_graph().get_successors(var).size();
             if (inverted){
-                bound = g_causal_graph->get_predecessors(var).size();
+                bound = causal_graph::get_causal_graph().get_predecessors(var).size();
             }
             for (size_t succ = 0; succ < bound; ++succ){
                 int succ_pred;
                 if (inverted){
-                    succ_pred = g_causal_graph->get_predecessors(var)[succ];
+                    succ_pred = causal_graph::get_causal_graph().get_predecessors(var)[succ];
                 } else {
-                    succ_pred = g_causal_graph->get_successors(var)[succ];
+                    succ_pred = causal_graph::get_causal_graph().get_successors(var)[succ];
                 }
 
                 if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
@@ -958,17 +955,17 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
             
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
-                size_t bound = g_causal_graph->get_successors(vars[i]).size();
+                size_t bound = causal_graph::get_causal_graph().get_successors(vars[i]).size();
                 if (inverted){
-                    bound = g_causal_graph->get_predecessors(vars[i]).size();
+                    bound = causal_graph::get_causal_graph().get_predecessors(vars[i]).size();
                 }
                 for (size_t var = 0; var < bound; ++var){
                     found = false;
                     int succ_pred;
                     if (inverted){
-                        succ_pred = g_causal_graph->get_predecessors(vars[i])[var];
+                        succ_pred = causal_graph::get_causal_graph().get_predecessors(vars[i])[var];
                     } else {
-                        succ_pred = g_causal_graph->get_successors(vars[i])[var];
+                        succ_pred = causal_graph::get_causal_graph().get_successors(vars[i])[var];
                     }
                     if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
                         || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
@@ -1111,16 +1108,16 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                 current_size *= g_variable_domain[var];
             }
 
-            size_t bound = g_causal_graph->get_successors(var).size();
+            size_t bound = causal_graph::get_causal_graph().get_successors(var).size();
             if (inverted){
-                bound = g_causal_graph->get_predecessors(var).size();
+                bound = causal_graph::get_causal_graph().get_predecessors(var).size();
             }
             for (size_t succ = 0; succ < bound; ++succ){
                 int succ_pred;
                 if (inverted){
-                    succ_pred = g_causal_graph->get_predecessors(var)[succ];
+                    succ_pred = causal_graph::get_causal_graph().get_predecessors(var)[succ];
                 } else {
-                    succ_pred = g_causal_graph->get_successors(var)[succ];
+                    succ_pred = causal_graph::get_causal_graph().get_successors(var)[succ];
                 }
 
                 if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
@@ -1180,17 +1177,17 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
             
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
-                size_t bound = g_causal_graph->get_successors(vars[i]).size();
+                size_t bound = causal_graph::get_causal_graph().get_successors(vars[i]).size();
                 if (inverted){
-                    bound = g_causal_graph->get_predecessors(vars[i]).size();
+                    bound = causal_graph::get_causal_graph().get_predecessors(vars[i]).size();
                 }
                 for (size_t var = 0; var < bound; ++var){
                     found = false;
                     int succ_pred;
                     if (inverted){
-                        succ_pred = g_causal_graph->get_predecessors(vars[i])[var];
+                        succ_pred = causal_graph::get_causal_graph().get_predecessors(vars[i])[var];
                     } else {
-                        succ_pred = g_causal_graph->get_successors(vars[i])[var];
+                        succ_pred = causal_graph::get_causal_graph().get_successors(vars[i])[var];
                     }
                     if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
                         || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
@@ -1387,9 +1384,9 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
     size_t bound = variables.empty() ? g_variable_domain.size() : variables.size();
     for (size_t i = 0; i < bound; i++){
         if (variables.empty() || variables.size() == g_variable_domain.size()){
-            vars[i] = g_causal_graph->get_successors(i);
+            vars[i] = causal_graph::get_causal_graph().get_successors(i);
         } else {
-            vector<int> successors = g_causal_graph->get_successors(variables[i]);
+            vector<int> successors = causal_graph::get_causal_graph().get_successors(variables[i]);
             for (size_t succ = 0; succ < successors.size(); succ++){
                 if (find(variables.begin(), variables.end(), successors[succ]) != variables.end()){
                     vars[variables[i]].push_back(successors[succ]);
@@ -1398,8 +1395,7 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
         }
     }
     
-    SCC scc(vars);
-    vector<vector<int> > found_sccs = scc.get_result();
+    vector<vector<int> > found_sccs = sccs::compute_maximal_sccs(vars);
     FactoredVars real_sccs;
     
     for (size_t i = 0; i < found_sccs.size(); i++){
@@ -1459,7 +1455,7 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
         handled_var[curr] = true;
         ++number_handled_vars;
         
-        for (int var : g_causal_graph->get_predecessors(curr)){
+        for (int var : causal_graph::get_causal_graph().get_predecessors(curr)){
             if (vars[var] && !handled_var[var] && !is_open_var[var]){
                 open_vars.push_back(var);
                 is_open_var[var] = true;
@@ -1467,7 +1463,7 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
                 components[var_comp_map[var]].insert(var);
             }
         }
-        for (int var : g_causal_graph->get_successors(curr)){
+        for (int var : causal_graph::get_causal_graph().get_successors(curr)){
             if (vars[var] && !handled_var[var] && !is_open_var[var]){
                 open_vars.push_back(var);
                 is_open_var[var] = true;
@@ -1583,13 +1579,13 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         max_ind_sets.push_back(f);
     }
     if (max_ind_sets.empty()) {
-        exit_with(EXIT_ABSTAINED);
+        exit_with(utils::ExitCode::ABSTAINED);
     }
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
         bool valid = check_factoring(max_ind_sets[i]);
         if (!valid) {
             cerr << "ERROR: illegal factoring" << endl;
-            exit_with(EXIT_CRITICAL_ERROR);
+            exit_with(utils::ExitCode::CRITICAL_ERROR);
         }
     }
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
@@ -1674,7 +1670,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     bool valid = check_factoring(final_factoring);
     if (!valid) {
         cerr << "ERROR: invalid factoring" << endl;
-        exit_with(EXIT_CRITICAL_ERROR);
+        exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
     return final_factoring;
@@ -1695,10 +1691,10 @@ NGraph MaxIndependentSetFactoring::generate_ngraph() const {
     NGraph cg_g(g_variable_domain.size(), boost::dynamic_bitset<>(g_variable_domain.size()));
     for (size_t var = 0; var < g_variable_domain.size(); ++var) {
         cg_g[var].set(var);
-        for (auto pre : g_causal_graph->get_predecessors(var)) {
+        for (auto pre : causal_graph::get_causal_graph().get_predecessors(var)) {
             cg_g[var].set(pre);
         }
-        for (auto succ : g_causal_graph->get_successors(var)) {
+        for (auto succ : causal_graph::get_causal_graph().get_successors(var)) {
             cg_g[var].set(succ);
         }
     }
@@ -1722,12 +1718,12 @@ bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
         set<int> parents;
         set<int> children;
         for (set<int>::iterator it = f[i].begin(); it != f[i].end(); ++it) {
-            for (size_t pre = 0; pre < g_causal_graph->get_predecessors(vars[*it]).size(); pre++) {
-                int var = g_causal_graph->get_predecessors(vars[*it])[pre];
+            for (size_t pre = 0; pre < causal_graph::get_causal_graph().get_predecessors(vars[*it]).size(); pre++) {
+                int var = causal_graph::get_causal_graph().get_predecessors(vars[*it])[pre];
                 parents.insert(var_to_factor[var]);
             }
-            for (size_t succ = 0; succ < g_causal_graph->get_successors(vars[*it]).size(); succ++) {
-                int var = g_causal_graph->get_successors(vars[*it])[succ];
+            for (size_t succ = 0; succ < causal_graph::get_causal_graph().get_successors(vars[*it]).size(); succ++) {
+                int var = causal_graph::get_causal_graph().get_successors(vars[*it])[succ];
                 children.insert(var_to_factor[var]);
             }
         }

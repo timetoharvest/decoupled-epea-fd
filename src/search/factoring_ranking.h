@@ -1,5 +1,5 @@
-#ifndef RANKING_H
-#define RANKING_H
+#ifndef FACTORING_RANKING_H
+#define FACTORING_RANKING_H
 
 #include "variable_int.h"
 

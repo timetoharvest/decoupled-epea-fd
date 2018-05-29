@@ -2,7 +2,7 @@
 #define CG_HEURISTIC_H
 
 #include "heuristic.h"
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 
 #include <string>
 #include <vector>
@@ -13,7 +13,7 @@ class State;
 struct ValueNode;
 
 class CGHeuristic : public Heuristic {
-    std::vector<AdaptiveQueue<ValueNode *> *> prio_queues;
+    std::vector<priority_queues::AdaptiveQueue<ValueNode *> *> prio_queues;
 
     CGCache *cache;
     int cache_hits;

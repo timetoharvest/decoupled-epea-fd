@@ -1,4 +1,4 @@
-#include "ranking.h"
+#include "factoring_ranking.h"
 
 #include "factoring.h"
 #include "operator.h"
