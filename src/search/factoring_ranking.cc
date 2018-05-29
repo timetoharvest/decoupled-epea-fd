@@ -4,21 +4,19 @@
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "search_engine.h"
-#include "state_registry.h"
 
 using namespace std;
 
-Ranking::Ranking(const Options &opts) :
-            maximize(opts.get<bool>("maximize")) {
-}
 
+FactoringRanking::FactoringRanking(const Options &opts) :
+    maximize(opts.get<bool>("maximize")) {
+}
 
 VarInt FactoringRanking::get_rank(const vector<set<int>> & factoring) {
     return rank(factoring);
 }
 
-string FactoringRanking::print_feature() const{
+string FactoringRanking::print_feature() const {
     switch (feature) {
         case LEAVES:
             return "L";
@@ -40,21 +38,21 @@ string FactoringRanking::print_feature() const{
     }
 }
 
-void print_all_rankings(const vector<set<int> > &factoring) {
+void FactoringRanking::print_all_rankings(const vector<set<int> > &factoring) {
     MobilityRanking *mobility = new MobilityRanking();
-    cout << "mis_ranking_mobility: ";
+    cout << "ranking_mobility: ";
     mobility->get_rank(factoring).dump_number();
     LeavesRanking *leaves = new LeavesRanking();
-    cout << "mis_ranking_leaves: ";
+    cout << "ranking_leaves: ";
     leaves->get_rank(factoring).dump_number();
     DomSizeRanking *dom_size = new DomSizeRanking();
-    cout << "mis_ranking_dom_size: ";
+    cout << "ranking_dom_size: ";
     dom_size->get_rank(factoring).dump_number();
     VariablesRanking *vars = new VariablesRanking();
-    cout << "mis_ranking_variables: ";
+    cout << "ranking_variables: ";
     vars->get_rank(factoring).dump_number();
     AffActionsRanking *aff_actions = new AffActionsRanking();
-    cout << "mis_ranking_aff_actions: ";
+    cout << "ranking_aff_actions: ";
     aff_actions->get_rank(factoring).dump_number();
 }
 
@@ -314,7 +312,7 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
 }
 
 
-void Ranking::add_options_to_parser(OptionParser &parser) {
+void FactoringRanking::add_options_to_parser(OptionParser &parser) {
     parser.add_option<bool>(
             "maximize",
             "TODO",

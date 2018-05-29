@@ -1,8 +1,6 @@
 #ifndef RANKING_H
 #define RANKING_H
 
-#include "globals.h"
-#include "utilities.h"
 #include "variable_int.h"
 
 #include <set>
@@ -20,119 +18,125 @@ enum FACTORING_FEATURE {
 
 class OptionParser;
 class Options;
-class SearchEngine;
 
-class Ranking {
+
+class FactoringRanking {
 
 protected:
+
     bool maximize;
 
-    Ranking() {
-        maximize = true;
-    };
+    FACTORING_FEATURE feature;
 
-    Ranking(const Options &ops);
+    virtual VarInt rank(const std::vector<std::set<int> > &factoring) = 0;
 
 public:
+
+    FactoringRanking() {
+        maximize = true;
+    }
+
+    FactoringRanking(const Options &opts);
+
+    virtual ~FactoringRanking() = default;
+
+    FACTORING_FEATURE get_feature() const {
+        return feature;
+    }
+
+    VarInt get_rank(const std::vector<std::set<int> > &factoring);
+
     bool maximizes() const {
         return maximize;
     }
 
-    static void add_options_to_parser(OptionParser &parser);
-
-    virtual std::string print_feature() const = 0;
-
-};
-
-class FactoringRanking : public Ranking {
-
-protected:
-
-    FACTORING_FEATURE feature;
-
-    virtual VarInt rank(const std::vector<std::set<int> > &) = 0;
-
-public:
-
-    FactoringRanking() : Ranking() {};
-    FactoringRanking(const Options &ops) : Ranking(ops) {};
-    FACTORING_FEATURE get_feature() const {
-        return feature;
-    }
     std::string print_feature() const;
-    VarInt get_rank(const std::vector<std::set<int> > &);
+
+
+    static void print_all_rankings(const std::vector<std::set<int> > &factoring);
+
+    static void add_options_to_parser(OptionParser &parser);
 };
 
-void print_all_rankings(const std::vector<std::set<int> > &);
 
 class MobilityRanking : public FactoringRanking {
 
 public:
     MobilityRanking() : FactoringRanking() {
-        maximize = true;
         feature = MOBILITY;
     }
+
     MobilityRanking(const Options &opts) : FactoringRanking(opts) {
         feature = MOBILITY;
     };
 
-    VarInt rank(const std::vector<std::set<int> > &);
+    ~MobilityRanking() = default;
+
+    VarInt rank(const std::vector<std::set<int> > &factoring) override;
 };
 
 class LeavesRanking : public FactoringRanking {
 
 public:
     LeavesRanking() : FactoringRanking() {
-        maximize = true;
         feature = LEAVES;
     }
+
     LeavesRanking(const Options &opts) : FactoringRanking(opts) {
         feature = LEAVES;
     };
 
-    VarInt rank(const std::vector<std::set<int> > &);
+    ~LeavesRanking() = default;
+
+    VarInt rank(const std::vector<std::set<int> > &factoring) override;
 };
 
 class DomSizeRanking : public FactoringRanking {
 
 public:
     DomSizeRanking() : FactoringRanking() {
-        maximize = true;
         feature = DOM_SIZE;
     }
+
     DomSizeRanking(const Options &opts) : FactoringRanking(opts) {
         feature = DOM_SIZE;
     };
 
-    VarInt rank(const std::vector<std::set<int> > &);
+    ~DomSizeRanking() = default;
+
+    VarInt rank(const std::vector<std::set<int> > &factoring) override;
 };
 
 class VariablesRanking : public FactoringRanking {
 
 public:
     VariablesRanking() : FactoringRanking() {
-        maximize = true;
         feature = VARS;
     }
+
     VariablesRanking(const Options &opts) : FactoringRanking(opts) {
         feature = VARS;
     };
 
-    VarInt rank(const std::vector<std::set<int> > &);
+    ~VariablesRanking() = default;
+
+    VarInt rank(const std::vector<std::set<int> > &factoring) override;
 };
 
 class AffActionsRanking : public FactoringRanking {
 
 public:
     AffActionsRanking() : FactoringRanking() {
-        maximize = true;
         feature = AFF_ACTIONS;
     }
+
     AffActionsRanking(const Options &opts) : FactoringRanking(opts) {
         feature = AFF_ACTIONS;
     };
 
-    VarInt rank(const std::vector<std::set<int> > &);
+    ~AffActionsRanking() = default;
+
+    VarInt rank(const std::vector<std::set<int> > &factoring) override;
 };
 
 

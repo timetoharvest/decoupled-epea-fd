@@ -1652,7 +1652,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     if (arg_all_rankings) {
         cout << "All Rankings: " << endl;
 
-        print_all_rankings(final_factoring);
+        FactoringRanking::print_all_rankings(final_factoring);
         cout << endl;
     }
 
