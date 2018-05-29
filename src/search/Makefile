@@ -5,7 +5,7 @@
 ## By default, build in 32-bit mode. Use DOWNWARD_BITWIDTH=64
 ## to build in 64-bit mode and DOWNWARD_BITWIDTH=native to use
 ## the native bitness of the OS.
-DOWNWARD_BITWIDTH ?= 32
+DOWNWARD_BITWIDTH ?= 64
 
 ## Set DOWNWARD_USE_LP to 1 to enable linear programming stuff.
 DOWNWARD_USE_LP ?= 0
