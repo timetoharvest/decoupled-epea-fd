@@ -3,6 +3,10 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../factoring.h"
+
+#include "../lp/lp_solver.h"
+
 #include <iostream>
 
 
@@ -19,7 +23,6 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
 Factoring::FactoredVars LPFactoring::get_factoring() {
 
     // TODO implement factoring here
-
     return FactoredVars();
 }
 

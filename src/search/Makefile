@@ -8,19 +8,19 @@
 DOWNWARD_BITWIDTH ?= 64
 
 ## Set DOWNWARD_USE_LP to 1 to enable linear programming stuff.
-DOWNWARD_USE_LP ?= 0
+DOWNWARD_USE_LP ?= 1
 
 ## Fast Downward uses the Open Solver Interface (OSI) by the
 ## COIN-OR project for access to LP solvers. Set DOWNWARD_COIN_ROOT
 ## to a path where OSI is installed.
-DOWNWARD_COIN_ROOT ?= /opt/coin
+DOWNWARD_COIN_ROOT ?= /path/to/coin64
 
 ## To use an LP solver through OSI, set the following variables
 ## to paths for the solver's "include" and "lib" directories.
 DOWNWARD_CLP_INCDIR ?= $(DOWNWARD_COIN_ROOT)/include/coin
 DOWNWARD_CLP_LIBDIR ?= $(DOWNWARD_COIN_ROOT)/lib
-DOWNWARD_CPLEX_INCDIR ?= /opt/ibm/ILOG/CPLEX_Studio1251/cplex/include/ilcplex
-DOWNWARD_CPLEX_LIBDIR ?= /opt/ibm/ILOG/CPLEX_Studio1251/cplex/lib/x86_sles10_4.1/static_pic
+DOWNWARD_CPLEX_INCDIR ?= /opt/ibm/ILOG/CPLEX_Studio128/cplex/include/ilcplex
+DOWNWARD_CPLEX_LIBDIR ?= /opt/ibm/ILOG/CPLEX_Studio128/cplex/lib/x86-64_linux/static_pic
 DOWNWARD_GUROBI_INCDIR ?=
 DOWNWARD_GUROBI_LIBDIR ?=
 
@@ -137,7 +137,7 @@ HEADERS += max_heuristic.h
 #            merge_and_shrink/shrink_random.h \
 #            merge_and_shrink/shrink_strategy.h \
 #            merge_and_shrink/transition_system.h \
-# 
+#
 # HEADERS += landmarks/exploration.h \
 #            landmarks/h_m_landmarks.h \
 #            landmarks/lama_ff_synergy.h \
@@ -182,7 +182,7 @@ HEADERS += pruning/stubborn_sets.h \
 # TODO make decoupled search plugable
 HEADERS += leaf_state.h \
            leaf_state_id.h
-           
+
 HEADERS += factorings/factoring_ranking.h \
            factorings/lp_factorings.h
 
@@ -196,7 +196,7 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h \
            compliant_paths/simulation_relation.h
-           
+
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
@@ -378,9 +378,9 @@ COIN_LIBS += Osi CoinUtils
 
 COIN_CXXFLAGS += -I$(DOWNWARD_COIN_ROOT)/include/coin -D USE_LP
 ifeq ($(OS), osx)
-COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib $(COIN_LIBS:%=-l %)
+COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib $(COIN_LIBS:%=-l %) -ldl
 else
-COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib -Wl,-Bstatic $(COIN_LIBS:%=-l %)
+COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib -Wl,-Bstatic $(COIN_LIBS:%=-l %) -ldl
 endif
 
 CXXFLAGS += $(COIN_CXXFLAGS)
