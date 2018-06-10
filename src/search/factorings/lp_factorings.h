@@ -3,12 +3,20 @@
 
 #include "../factoring.h"
 
+enum STRATEGY {
+    MIS,
+};
+
 
 class LPFactoring : public Factoring {
 
 protected:
 
+    STRATEGY strategy;
+
     FactoredVars get_factoring() override;
+
+    FactoredVars get_mip_factoring();
 
 public:
 

@@ -103,7 +103,9 @@ HEADERS = \
           open_lists/tiebreaking_open_list.h \
           \
           lp/lp_solver.h \
-          lp/lp_internals.h
+          lp/lp_internals.h \
+					lp/mip_solver.h \
+					lp/mip_internals.h
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
