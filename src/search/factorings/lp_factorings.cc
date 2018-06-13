@@ -4,6 +4,8 @@
 #include "../factoring.h"
 #include "../lp/mip_solver.h"
 #include "../task_utils/causal_graph.h"
+#include "../globals.h"
+#include "../operator.h"
 
 #include <iostream>
 
@@ -19,11 +21,11 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
 
 Factoring::FactoredVars LPFactoring::get_factoring() {
 
-    // TODO implement factoring here
     FactoredVars factoring;
 
     switch (strategy) {
-      case MIS: factoring = get_mip_factoring(); break;
+      case MIS: factoring = get_mip_factoring(false); break;
+      case MIS_MOBILE: factoring = get_mip_factoring(true); break;
       default: exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
@@ -31,27 +33,44 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 
 }
 
-Factoring::FactoredVars LPFactoring::get_mip_factoring() {
-
-    FactoredVars factoring;
+Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
     mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
     vector<mip::MIPVariable> variables;
     vector<mip::MIPConstraint> constraints;
 
-    for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
-        for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-            mip::MIPConstraint constraint (0.0,1.0);
-            constraint.insert(var,1.0);
-            constraint.insert(suc,1.0);
-            constraints.push_back(constraint);
+    if (mobile_leaves) {
+        vector<bool> mobile_var = get_mobile_vars();
+        for (size_t var = 0; var < g_variable_domain.size(); var++) {
+            if (mobile_var[var]){
+                variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+            } else {
+                variables.push_back(mip::MIPVariable(0.0,0.0,1.0,mip::MIPVariableType::INT));
+            }
+            for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                mip::MIPConstraint constraint (0.0,1.0);
+                constraint.insert(var,1.0);
+                constraint.insert(suc,1.0);
+                constraints.push_back(constraint);
+            }
+        }
+    } else {
+        for (size_t var = 0; var < g_variable_domain.size(); var++) {
+            variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+            for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                mip::MIPConstraint constraint (0.0,1.0);
+                constraint.insert(var,1.0);
+                constraint.insert(suc,1.0);
+                constraints.push_back(constraint);
+            }
         }
     }
 
     mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
 
+    //extract solution
+    FactoredVars factoring;
     vector<double> solution = mip_solver.extract_solution();
     for (size_t var = 0; var < solution.size(); var++) {
         if (solution.at(var) == 1.0) {
@@ -65,6 +84,21 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring() {
 
 }
 
+//returns a vector that indicates for each variable v whether a leaf factor consisting of v is mobile
+vector<bool> LPFactoring::get_mobile_vars() {
+
+    vector<bool> mobile_var (g_variable_domain.size(), false);
+
+    for (const Operator &op : g_operators){
+        const vector<Effect> effects = op.get_effects();
+        if (effects.size() == 1) {
+            mobile_var[effects[0].var] = true;
+        }
+    }
+
+    return mobile_var;
+
+}
 
 
 void LPFactoring::add_options_to_parser(OptionParser &parser) {
@@ -76,6 +110,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
 
     vector<string> strategies;
     strategies.push_back("mis");
+    strategies.push_back("mis_mobile");
     parser.add_enum_option(
         "strategy",
         strategies,
