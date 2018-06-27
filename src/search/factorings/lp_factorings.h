@@ -6,6 +6,7 @@
 enum STRATEGY {
     MIS,
     MIS_MOBILE,
+    MAX_MOBILE_LEAVES,
 };
 
 
@@ -18,6 +19,8 @@ protected:
     FactoredVars get_factoring() override;
 
     FactoredVars get_mip_factoring(bool mobile_leaves);
+
+    FactoredVars get_max_mobile_leaves();
 
     std::vector<bool> get_mobile_vars();
 

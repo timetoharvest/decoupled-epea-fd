@@ -13,14 +13,14 @@ DOWNWARD_USE_LP ?= 1
 ## Fast Downward uses the Open Solver Interface (OSI) by the
 ## COIN-OR project for access to LP solvers. Set DOWNWARD_COIN_ROOT
 ## to a path where OSI is installed.
-DOWNWARD_COIN_ROOT ?= /path/to/coin64
+DOWNWARD_COIN_ROOT ?= ${DOWNWARD_COIN_ROOT64}
 
 ## To use an LP solver through OSI, set the following variables
 ## to paths for the solver's "include" and "lib" directories.
 DOWNWARD_CLP_INCDIR ?= $(DOWNWARD_COIN_ROOT)/include/coin
 DOWNWARD_CLP_LIBDIR ?= $(DOWNWARD_COIN_ROOT)/lib
-DOWNWARD_CPLEX_INCDIR ?= /opt/ibm/ILOG/CPLEX_Studio128/cplex/include/ilcplex
-DOWNWARD_CPLEX_LIBDIR ?= /opt/ibm/ILOG/CPLEX_Studio128/cplex/lib/x86-64_linux/static_pic
+DOWNWARD_CPLEX_INCDIR ?= ${DOWNWARD_CPLEX_ROOT64}/include/ilcplex
+DOWNWARD_CPLEX_LIBDIR ?= ${DOWNWARD_CPLEX_ROOT64}/lib/x86-64_linux/static_pic
 DOWNWARD_GUROBI_INCDIR ?=
 DOWNWARD_GUROBI_LIBDIR ?=
 
