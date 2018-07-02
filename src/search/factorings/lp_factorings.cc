@@ -16,6 +16,7 @@ using namespace std;
 LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
+     factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -125,7 +126,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     //(2) if y_ik = 1 then all variables that are affected by a_k are contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
-            const std::vector<Effect> &effects = g_operators[op].get_effects();
+            const vector<Effect> &effects = g_operators[op].get_effects();
             mip::MIPConstraint constraint (0.0,effects.size());
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
@@ -138,7 +139,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     //(3) if all variables that are affected by a_k are contained in leaf F_i then y_ik = 1
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
-            const std::vector<Effect> &effects = g_operators[op].get_effects();
+            const vector<Effect> &effects = g_operators[op].get_effects();
             mip::MIPConstraint constraint (0.0,effects.size()-1);
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
@@ -148,36 +149,72 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
-    //(4) if action a_k does not affect center it only affects a single leaf
-    for (size_t op = 0; op < g_operators.size(); op++) {
-        const std::vector<Effect> &effects = g_operators[op].get_effects();
-        mip::MIPConstraint constraint (0.0,effects.size()-1);
-        for (int i = 0; i < max_number_leaves; i++) {
-            for (const Effect &eff : effects) {
-                constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
+    if (factoring_type == STRICT_STAR) {
+        //(4) (5) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
+        for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
+            for (size_t op = 0; op < g_operators.size(); op++) {
+                const vector<Effect> &effects = g_operators[op].get_effects();
+                const vector<Condition> &preconditions = g_operators[op].get_preconditions();
+                for (const Effect &eff_1 : effects) {
+                    vector<double> coefficients (max_number_leaves * g_variable_domain.size(),0.0);
+                    for (const Effect &eff_2 : effects) {
+                        coefficients[i_1 * g_variable_domain.size() + eff_2.var] +=  -1.0;
+                        for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                            coefficients[i_2 * g_variable_domain.size() + eff_2.var] += 1.0;
+                        }
+                    }
+                    for (const Condition &pre : preconditions) {
+                        coefficients[i_1 * g_variable_domain.size() + pre.var] += -1.0;
+                        for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                            coefficients[i_2 * g_variable_domain.size() + pre.var] += 1.0;
+                        }
+                    }
+                    coefficients[i_1 * g_variable_domain.size() + eff_1.var] += effects.size() + preconditions.size();
+                    mip::MIPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), effects.size() + preconditions.size());
+                    for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
+                        if (coefficients[x] != 0.0) {
+                            constraint.insert(x,coefficients[x]);
+                        }
+                    }
+                    constraints.push_back(constraint);
+                }
             }
-            constraint.insert(max_number_leaves * g_variable_domain.size() + i * g_operators.size() + op, -1.0);
         }
-        constraints.push_back(constraint);
     }
 
-    //(5) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
-    for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
+    if (factoring_type == GENERAL_STAR) {
+        //(4) if action a_k does not affect center it only affects a single leaf
         for (size_t op = 0; op < g_operators.size(); op++) {
-            const std::vector<Condition> &preconditions = g_operators[op].get_preconditions();
-            mip::MIPConstraint constraint (0.0,preconditions.size());
-            for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
-                if (i_1 == i_2) {
-                    continue;
+            const vector<Effect> &effects = g_operators[op].get_effects();
+            mip::MIPConstraint constraint (0.0,effects.size()-1);
+            for (int i = 0; i < max_number_leaves; i++) {
+                for (const Effect &eff : effects) {
+                    constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
                 }
-                for (const Condition &pre : preconditions) {
-                    constraint.insert(i_2 * g_variable_domain.size() + pre.var, 1.0);
-                }
+                constraint.insert(max_number_leaves * g_variable_domain.size() + i * g_operators.size() + op, -1.0);
             }
-            constraint.insert(max_number_leaves * g_variable_domain.size() + i_1 * g_operators.size() + op, preconditions.size());
             constraints.push_back(constraint);
         }
+
+        //(5) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
+        for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
+            for (size_t op = 0; op < g_operators.size(); op++) {
+                const vector<Condition> &preconditions = g_operators[op].get_preconditions();
+                mip::MIPConstraint constraint (0.0,preconditions.size());
+                for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                    if (i_1 == i_2) {
+                        continue;
+                    }
+                    for (const Condition &pre : preconditions) {
+                        constraint.insert(i_2 * g_variable_domain.size() + pre.var, 1.0);
+                    }
+                }
+                constraint.insert(max_number_leaves * g_variable_domain.size() + i_1 * g_operators.size() + op, preconditions.size());
+                constraints.push_back(constraint);
+            }
+        }
     }
+
 
     //(6) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
@@ -201,11 +238,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
 
-
     //solve problem
     mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
-
 
     //extract solution
     FactoredVars factoring;
@@ -246,6 +281,56 @@ vector<bool> LPFactoring::get_mobile_vars() {
 
 }
 
+vector<ActionSchema> LPFactoring::get_action_schemes() {
+    vector<ActionSchema> schemes;
+    vector<int> pre_var;
+    vector<int> eff_var;
+    bool duplicate = false;
+    for (const Operator &op : g_operators) {
+        const std::vector<Condition> &preconditions = op.get_preconditions();
+        const std::vector<Effect> &effects = op.get_effects();
+        for (vector<ActionSchema>::reverse_iterator i = schemes.rbegin(); i != schemes.rend(); i++) {
+            duplicate = true;
+            pre_var = i->pre_var;
+            eff_var = i->eff_var;
+            if (pre_var.size() == preconditions.size() && eff_var.size() == effects.size()) {
+                for (size_t p = 0; p < preconditions.size(); p++) {
+                    if (pre_var[p] != preconditions[p].var) {
+                        duplicate = false;
+                        break;
+                    }
+                }
+                for (size_t e = 0; e < effects.size(); e++) {
+                    if (eff_var[e] != effects[e].var) {
+                        duplicate = false;
+                        break;
+                    }
+                }
+            } else {
+                duplicate = false;
+            }
+            if (duplicate) {
+                i->incr_num_action();
+                break;
+            }
+        }
+        if (!duplicate) {
+            pre_var.clear();
+            eff_var.clear();
+            for (const Condition &pre : preconditions) {
+                pre_var.push_back(pre.var);
+            }
+            for (const Effect &eff : effects) {
+                eff_var.push_back(eff.var);
+            }
+            ActionSchema schema (1, pre_var, eff_var);
+            schemes.push_back(schema);
+        }
+    }
+    return schemes;
+}
+
+
 
 void LPFactoring::add_options_to_parser(OptionParser &parser) {
     parser.add_option<bool>(
@@ -263,6 +348,17 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         strategies,
         "TODO",
         "mis",
+        vector<string>(),
+        OptionFlags(false));
+
+    vector<string> factoring_type;
+    factoring_type.push_back("strict_star");
+    factoring_type.push_back("general_star");
+    parser.add_enum_option(
+        "factoring_type",
+        factoring_type,
+        "TODO",
+        "general_star",
         vector<string>(),
         OptionFlags(false));
 }

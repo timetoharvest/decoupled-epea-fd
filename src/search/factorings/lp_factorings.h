@@ -9,12 +9,33 @@ enum STRATEGY {
     MAX_MOBILE_LEAVES,
 };
 
+enum FACTORING_TYPE {
+    STRICT_STAR,
+    GENERAL_STAR,
+};
+
+struct ActionSchema {
+    int num_actions;
+    std::vector<int> pre_var;
+    std::vector<int> eff_var;
+
+    ActionSchema(int num_actions, const std::vector<int> pre_var, const std::vector<int> eff_var)
+        : num_actions(num_actions), pre_var(pre_var), eff_var(eff_var) {}
+
+    void incr_num_action() {
+        num_actions++;
+    }
+
+    void dump() const;
+};
 
 class LPFactoring : public Factoring {
 
 protected:
 
     STRATEGY strategy;
+
+    FACTORING_TYPE factoring_type;
 
     FactoredVars get_factoring() override;
 
@@ -24,6 +45,7 @@ protected:
 
     std::vector<bool> get_mobile_vars();
 
+    std::vector<ActionSchema> get_action_schemes();
 
 public:
 
