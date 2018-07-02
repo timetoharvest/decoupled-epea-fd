@@ -1562,7 +1562,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
                 for (size_t it = 0; it < m.size(); ++it) {
                     if (m[it]) {
                         set<int> s;
-                        s.insert((int)it);
+                        s.insert((int) it);
                         f.push_back(s);
                     }
                 }

@@ -7,6 +7,9 @@ using namespace std;
 
 
 VarInt::VarInt(size_t v) {
+    if (v == 0){
+        return;
+    }
     value.resize(log2(v) + 1);
     for (short i = 32; i >= 0; --i){
         if (pow(2, i) <= v){
