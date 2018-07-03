@@ -37,11 +37,15 @@ protected:
 
     FACTORING_TYPE factoring_type;
 
+    bool action_schemes;
+
     FactoredVars get_factoring() override;
 
     FactoredVars get_mip_factoring(bool mobile_leaves);
 
     FactoredVars get_max_mobile_leaves();
+
+    FactoredVars get_max_mobile_leaves_no_schemes();
 
     std::vector<bool> get_mobile_vars();
 

@@ -17,6 +17,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
+     action_schemes = opts.get<bool>("action_schemes");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -27,7 +28,12 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
     switch (strategy) {
       case MIS: factoring = get_mip_factoring(false); break;
       case MIS_MOBILE: factoring = get_mip_factoring(true); break;
-      case MAX_MOBILE_LEAVES: factoring = get_max_mobile_leaves(); break;
+      case MAX_MOBILE_LEAVES:
+          if (action_schemes) {
+              factoring = get_max_mobile_leaves(); break;
+          } else {
+              factoring = get_max_mobile_leaves_no_schemes(); break;
+          }
       default: exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
@@ -88,6 +94,191 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
+
+    mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
+    vector<mip::MIPVariable> variables;
+    vector<mip::MIPConstraint> constraints;
+
+    int max_number_leaves = get_mip_factoring(false).size();
+
+    vector<ActionSchema> schemes = get_action_schemes();
+
+    size_t num_schemes = schemes.size();
+
+
+    //x_ij indicating whether variable v_j is contained in leaf F_i
+    for (int i = 0; i < max_number_leaves; i++) {
+        for (size_t var = 0; var < g_variable_domain.size(); var++) {
+            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+        }
+    }
+    //y_ik indicating whether action schema a_k affects only leaf F_i
+    for (int i = 0; i < max_number_leaves; i++) {
+        for (size_t schema = 0; schema < num_schemes; schema++) {
+            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+        }
+    }
+    //z_i indicating whether leaf F_i contains at least a single variable
+    for (int i = 0; i < max_number_leaves; i++) {
+        variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+    }
+
+
+    //(1) every variable is contained in at most one leaf
+    for (size_t var = 0; var < g_variable_domain.size(); var++) {
+        mip::MIPConstraint constraint (0.0,1.0);
+        for (int i = 0; i < max_number_leaves; i++) {
+            constraint.insert(i * g_variable_domain.size() + var, 1.0);
+        }
+        constraints.push_back(constraint);
+    }
+
+    //(2) if y_ik = 1 then all variables that are affected by schema a_k are contained in leaf F_i
+    for (int i = 0; i < max_number_leaves; i++) {
+        for (size_t schema = 0; schema < num_schemes; schema++) {
+            const vector<int> &eff_vars = schemes[schema].eff_var;
+            mip::MIPConstraint constraint (0.0,eff_vars.size());
+            for (const int &eff_var : eff_vars) {
+                constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
+            }
+            constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, (-1) * static_cast<int>(eff_vars.size()));
+            constraints.push_back(constraint);
+        }
+    }
+
+    //(3) if all variables that are affected by a_k are contained in leaf F_i then y_ik = 1
+    for (int i = 0; i < max_number_leaves; i++) {
+        for (size_t schema = 0; schema < num_schemes; schema++) {
+            const vector<int> &eff_vars = schemes[schema].eff_var;
+            mip::MIPConstraint constraint (0.0,eff_vars.size()-1);
+            for (const int &eff_var : eff_vars) {
+                constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
+            }
+            constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, -1.0);
+            constraints.push_back(constraint);
+        }
+    }
+
+    if (factoring_type == STRICT_STAR) {
+        //(4) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
+        for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
+            for (size_t schema = 0; schema < num_schemes; schema++) {
+                const vector<int> &eff_vars = schemes[schema].eff_var;
+                const vector<int> &pre_vars = schemes[schema].pre_var;
+                for (const int &eff_var_1 : eff_vars) {
+                    vector<double> coefficients (max_number_leaves * g_variable_domain.size(),0.0);
+                    for (const int &eff_var_2 : eff_vars) {
+                        coefficients[i_1 * g_variable_domain.size() + eff_var_2] +=  -1.0;
+                        for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                            coefficients[i_2 * g_variable_domain.size() + eff_var_2] += 1.0;
+                        }
+                    }
+                    for (const int &pre_var : pre_vars) {
+                        coefficients[i_1 * g_variable_domain.size() + pre_var] += -1.0;
+                        for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                            coefficients[i_2 * g_variable_domain.size() + pre_var] += 1.0;
+                        }
+                    }
+                    coefficients[i_1 * g_variable_domain.size() + eff_var_1] += eff_vars.size() + pre_vars.size();
+                    mip::MIPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), eff_vars.size() + pre_vars.size());
+                    for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
+                        if (coefficients[x] != 0.0) {
+                            constraint.insert(x,coefficients[x]);
+                        }
+                    }
+                    constraints.push_back(constraint);
+                }
+            }
+        }
+    }
+
+    if (factoring_type == GENERAL_STAR) {
+        //(4.1) if action a_k does not affect center it only affects a single leaf
+        for (size_t schema = 0; schema < num_schemes; schema++) {
+            const vector<int> &eff_vars = schemes[schema].eff_var;
+            mip::MIPConstraint constraint (0.0,eff_vars.size()-1);
+            for (int i = 0; i < max_number_leaves; i++) {
+                for (const int &eff_var : eff_vars) {
+                    constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
+                }
+                constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, -1.0);
+            }
+            constraints.push_back(constraint);
+        }
+
+        //(4.2) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
+        for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
+            for (size_t schema = 0; schema < num_schemes; schema++) {
+                const vector<int> &pre_vars = schemes[schema].pre_var;
+                mip::MIPConstraint constraint (0.0,pre_vars.size());
+                for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                    if (i_1 == i_2) {
+                        continue;
+                    }
+                    for (const int &pre_var : pre_vars) {
+                        constraint.insert(i_2 * g_variable_domain.size() + pre_var, 1.0);
+                    }
+                }
+                constraint.insert(max_number_leaves * g_variable_domain.size() + i_1 * num_schemes + schema, pre_vars.size());
+                constraints.push_back(constraint);
+            }
+        }
+    }
+
+
+    //(5) z_i = 1 iff F_i contains at least a single variable
+    for (int i = 0; i < max_number_leaves; i++) {
+        mip::MIPConstraint constraint (0.0, g_variable_domain.size()-1);
+        for (size_t var = 0; var < g_variable_domain.size(); var++) {
+            constraint.insert(i * g_variable_domain.size() + var, -1.0);
+        }
+        constraint.insert(max_number_leaves * g_variable_domain.size() + max_number_leaves * num_schemes + i, g_variable_domain.size());
+        constraints.push_back(constraint);
+    }
+
+
+    //(6) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
+    for (int i = 0; i < max_number_leaves; i++) {
+        mip::MIPConstraint constraint (0.0, num_schemes);
+        for (size_t schema = 0; schema < num_schemes; schema++) {
+            constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, 1.0);
+        }
+        constraint.insert(max_number_leaves * g_variable_domain.size() + max_number_leaves * num_schemes + i, -1.0);
+        constraints.push_back(constraint);
+    }
+
+
+    //solve problem
+    mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
+    mip_solver.solve();
+
+    mip_solver.print_statistics();
+
+    //extract solution
+    FactoredVars factoring;
+    vector<double> solution = mip_solver.extract_solution();
+
+
+    for (int i = 0; i < max_number_leaves; i++) {
+        set<int> leaf;
+        for (size_t var = 0; var < g_variable_domain.size(); var++) {
+            if (solution.at(i * g_variable_domain.size() + var) == 1.0) {
+                leaf.insert(var);
+            }
+        }
+        if (leaf.empty()){
+          continue;
+        }
+        factoring.push_back(leaf);
+    }
+
+    return factoring;
+
+}
+
+
+
+Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
     mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
     vector<mip::MIPVariable> variables;
@@ -242,6 +433,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
 
+    mip_solver.print_statistics();
+
     //extract solution
     FactoredVars factoring;
     vector<double> solution = mip_solver.extract_solution();
@@ -361,6 +554,11 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "general_star",
         vector<string>(),
         OptionFlags(false));
+
+    parser.add_option<bool>(
+        "action_schemes",
+        "TODO",
+        "true");
 }
 
 static Factoring *_parse_lp(OptionParser &parser) {
