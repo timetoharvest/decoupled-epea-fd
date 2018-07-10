@@ -26,7 +26,7 @@ CPLEXSolver::~CPLEXSolver() {
   env.end();
 }
 
-CPLEXSolver::CPLEXSolver()
+CPLEXSolver::CPLEXSolver(int num_threads)
     : ilo_variables(IloNumVarArray(env,0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env,0)),
@@ -34,6 +34,8 @@ CPLEXSolver::CPLEXSolver()
       cplex(IloCplex(env)) {
     is_initialized = false;
     is_solved = false;
+    cplex.setParam(IloCplex::Param::Threads, num_threads);
+    cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, 0.0);
 }
 
 void CPLEXSolver::load_problem(LPObjectiveSense sense,

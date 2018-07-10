@@ -47,7 +47,7 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 
 Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
-    LPSolver mip_solver (LPSolverType::CPLEX);
+    CPLEXSolver mip_solver (1);
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
@@ -99,7 +99,7 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
-    LPSolver mip_solver (LPSolverType::CPLEX);
+    CPLEXSolver mip_solver (1);
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
@@ -271,7 +271,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
-    LPSolver mip_solver (LPSolverType::CPLEX);
+    CPLEXSolver mip_solver (1);
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 

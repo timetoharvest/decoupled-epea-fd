@@ -26,8 +26,8 @@ class CPLEXSolver : public Solver{
     IloModel model;
     IloCplex cplex;
 public:
-    CPLEXSolver();
-    
+    CPLEXSolver(int num_threads);
+
     ~CPLEXSolver();
 
     void load_problem(
