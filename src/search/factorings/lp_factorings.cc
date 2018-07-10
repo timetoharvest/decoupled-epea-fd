@@ -137,11 +137,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         constraints.push_back(constraint);
     }
 
-    //(2) if y_ik = 1 then all variables that are affected by schema a_k are contained in leaf F_i
+    //(2) y_ik = 1 iff all variables that are affected by schema a_k are contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_var;
-            LPConstraint constraint (0.0,eff_vars.size());
+            LPConstraint constraint (0.0,eff_vars.size() - 1.0);
             for (const int &eff_var : eff_vars) {
                 constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
             }
@@ -150,21 +150,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
-    //(3) if all variables that are affected by a_k are contained in leaf F_i then y_ik = 1
-    for (int i = 0; i < max_number_leaves; i++) {
-        for (size_t schema = 0; schema < num_schemes; schema++) {
-            const vector<int> &eff_vars = schemes[schema].eff_var;
-            LPConstraint constraint (0.0,eff_vars.size()-1);
-            for (const int &eff_var : eff_vars) {
-                constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
-            }
-            constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, -1.0);
-            constraints.push_back(constraint);
-        }
-    }
-
     if (factoring_type == STRICT_STAR) {
-        //(4) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
+        //(3) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
                 const vector<int> &eff_vars = schemes[schema].eff_var;
@@ -197,7 +184,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
     if (factoring_type == GENERAL_STAR) {
-        //(4.1) if action a_k does not affect center it only affects a single leaf
+        //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_var;
             LPConstraint constraint (0.0,eff_vars.size()-1);
@@ -210,7 +197,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
             constraints.push_back(constraint);
         }
 
-        //(4.2) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
+        //(3.2) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
                 const vector<int> &pre_vars = schemes[schema].pre_var;
@@ -230,7 +217,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
 
-    //(5) z_i = 1 iff F_i contains at least a single variable
+    //(4) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
         LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
@@ -241,7 +228,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
 
-    //(6) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
+    //(5) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
         LPConstraint constraint (0.0, num_schemes);
         for (size_t schema = 0; schema < num_schemes; schema++) {
@@ -318,11 +305,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
         constraints.push_back(constraint);
     }
 
-    //(2) if y_ik = 1 then all variables that are affected by a_k are contained in leaf F_i
+    //(2) y_ik = 1 iff all variables that are affected by a_k are contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            LPConstraint constraint (0.0,effects.size());
+            LPConstraint constraint (0.0,effects.size() - 1.0);
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
             }
@@ -331,21 +318,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
         }
     }
 
-    //(3) if all variables that are affected by a_k are contained in leaf F_i then y_ik = 1
-    for (int i = 0; i < max_number_leaves; i++) {
-        for (size_t op = 0; op < g_operators.size(); op++) {
-            const vector<Effect> &effects = g_operators[op].get_effects();
-            LPConstraint constraint (0.0,effects.size()-1);
-            for (const Effect &eff : effects) {
-                constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
-            }
-            constraint.insert(max_number_leaves * g_variable_domain.size() + i * g_operators.size() + op, -1.0);
-            constraints.push_back(constraint);
-        }
-    }
 
     if (factoring_type == STRICT_STAR) {
-        //(4) (5) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
+        //(3) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t op = 0; op < g_operators.size(); op++) {
                 const vector<Effect> &effects = g_operators[op].get_effects();
@@ -378,7 +353,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     }
 
     if (factoring_type == GENERAL_STAR) {
-        //(4) if action a_k does not affect center it only affects a single leaf
+        //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
             LPConstraint constraint (0.0,effects.size()-1);
@@ -391,7 +366,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
             constraints.push_back(constraint);
         }
 
-        //(5) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
+        //(3.2) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t op = 0; op < g_operators.size(); op++) {
                 const vector<Condition> &preconditions = g_operators[op].get_preconditions();
@@ -411,7 +386,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     }
 
 
-    //(6) z_i = 1 iff F_i contains at least a single variable
+    //(4) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
         LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
@@ -422,7 +397,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     }
 
 
-    //(7) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
+    //(5) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
         LPConstraint constraint (0.0, g_operators.size());
         for (size_t op = 0; op < g_operators.size(); op++) {
