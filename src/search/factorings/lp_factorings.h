@@ -43,6 +43,8 @@ protected:
 
     FactoredVars get_mip_factoring(bool mobile_leaves);
 
+    FactoredVars get_mip_factoring_cplex();
+
     FactoredVars get_max_mobile_leaves();
 
     FactoredVars get_max_mobile_leaves_no_schemes();

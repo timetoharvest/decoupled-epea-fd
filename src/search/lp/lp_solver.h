@@ -3,6 +3,7 @@
 
 #include "../utils/language.h"
 #include "../utils/system.h"
+#include "solver.h"
 
 #include <functional>
 #include <memory>
@@ -35,57 +36,16 @@ enum class LPSolverType {
     CLP, CPLEX, GUROBI
 };
 
-enum class LPObjectiveSense {
-    MAXIMIZE, MINIMIZE
-};
-
 void add_lp_solver_option_to_parser(options::OptionParser &parser);
-
-class LPConstraint {
-    std::vector<int> variables;
-    std::vector<double> coefficients;
-    double lower_bound;
-    double upper_bound;
-public:
-    LPConstraint(double lower_bound, double upper_bound);
-
-    const std::vector<int> &get_variables() const {return variables; }
-    const std::vector<double> &get_coefficients() const {return coefficients; }
-
-    double get_lower_bound() const {return lower_bound; }
-    void set_lower_bound(double lb) {lower_bound = lb; }
-    double get_upper_bound() const {return upper_bound; }
-    void set_upper_bound(double ub) {upper_bound = ub; }
-
-    void clear();
-    bool empty() const;
-    // Coefficients must be added without duplicate indices.
-    void insert(int index, double coefficient);
-};
-
-struct LPVariable {
-    double lower_bound;
-    double upper_bound;
-    double objective_coefficient;
-
-    LPVariable(double lower_bound,
-               double upper_bound,
-               double objective_coefficient);
-};
 
 #ifdef __GNUG__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
-class LPSolver {
-    bool is_initialized;
-    bool is_solved;
+
+class LPSolver : public Solver{
     int num_permanent_constraints;
     bool has_temporary_constraints_;
-#ifdef USE_LP
-    std::unique_ptr<OsiSolverInterface> lp_solver;
-#endif
-
     /*
       Temporary data for assigning a new problem. We keep the vectors
       around to avoid recreating them in every assignment.
@@ -98,6 +58,10 @@ class LPSolver {
     std::vector<double> objective;
     std::vector<double> row_lb;
     std::vector<double> row_ub;
+    std::vector<int> int_vars;
+#ifdef USE_LP
+    std::unique_ptr<OsiSolverInterface> lp_solver;
+#endif
     std::vector<CoinPackedVectorBase *> rows;
     void clear_temporary_data();
 public:
@@ -114,6 +78,10 @@ public:
                   LPObjectiveSense sense,
                   const std::vector<LPVariable> &variables,
                   const std::vector<LPConstraint> &constraints))
+    LP_METHOD(void load_problem(
+                  LPObjectiveSense sense,
+                  const std::vector<MIPVariable> &variables,
+                  const std::vector<LPConstraint> &constraints))
     LP_METHOD(void add_temporary_constraints(const std::vector<LPConstraint> &constraints))
     LP_METHOD(void clear_temporary_constraints())
     LP_METHOD(double get_infinity() const)
@@ -126,6 +94,7 @@ public:
     LP_METHOD(void set_variable_upper_bound(int index, double bound))
 
     LP_METHOD(void solve())
+    LP_METHOD(void solveLPRelaxation())
 
     /*
       Return true if the solving the LP showed that it is bounded feasible and
@@ -154,7 +123,6 @@ public:
     LP_METHOD(int get_num_variables() const)
     LP_METHOD(int get_num_constraints() const)
     LP_METHOD(int has_temporary_constraints() const)
-    LP_METHOD(void print_statistics() const)
 };
 #ifdef __GNUG__
 #pragma GCC diagnostic pop

@@ -19,8 +19,8 @@ DOWNWARD_COIN_ROOT ?= ${DOWNWARD_COIN_ROOT64}
 ## to paths for the solver's "include" and "lib" directories.
 DOWNWARD_CLP_INCDIR ?= $(DOWNWARD_COIN_ROOT)/include/coin
 DOWNWARD_CLP_LIBDIR ?= $(DOWNWARD_COIN_ROOT)/lib
-DOWNWARD_CPLEX_INCDIR ?= ${DOWNWARD_CPLEX_ROOT64}/include/ilcplex
-DOWNWARD_CPLEX_LIBDIR ?= ${DOWNWARD_CPLEX_ROOT64}/lib/x86-64_linux/static_pic
+DOWNWARD_CPLEX_INCDIR ?= ${DOWNWARD_CPLEX_Studio}/cplex/include/ilcplex
+DOWNWARD_CPLEX_LIBDIR ?= ${DOWNWARD_CPLEX_Studio}/cplex/lib/x86-64_linux/static_pic
 DOWNWARD_GUROBI_INCDIR ?=
 DOWNWARD_GUROBI_LIBDIR ?=
 
@@ -102,10 +102,10 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
+					lp/solver.h\
           lp/lp_solver.h \
           lp/lp_internals.h \
-					lp/mip_solver.h \
-					lp/mip_internals.h
+					lp/cplex_solver.h
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
@@ -270,7 +270,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -397,6 +397,35 @@ POSTLINKOPT_RELEASE += -Wl,-Bdynamic
 endif
 POSTLINKOPT_DEBUG   += -Wl,-Bdynamic
 POSTLINKOPT_PROFILE += -Wl,-Bdynamic
+endif
+
+
+#CPLEX compiler options and linker options to use CPLEX without COIN
+CPX_AVAIL := $(shell test -d $(DOWNWARD_CPLEX_INCDIR) && test -f $(DOWNWARD_CPLEX_LIBDIR)/libcplex.a && echo 1)
+ifeq ($(CPX_AVAIL),1)
+
+CPLEXDIR      = ${DOWNWARD_CPLEX_Studio}/cplex
+CONCERTDIR    = ${DOWNWARD_CPLEX_Studio}/concert
+
+CPLEXLIBDIR   = $(DOWNWARD_CPLEX_LIBDIR)
+CONCERTLIBDIR = $(CONCERTDIR)/lib/x86-64_linux/static_pic
+
+CONCERTINCDIR = $(CONCERTDIR)/include
+CPLEXINCDIR   = $(CPLEXDIR)/include
+
+CCOPT = -m64 -O -fPIC -fno-strict-aliasing -fexceptions -DNDEBUG -DIL_STD
+
+CCLNDIRS  = -L$(CPLEXLIBDIR) -L$(CONCERTLIBDIR)
+CCLNFLAGS = $(CCLNDIRS)
+CCLNFLAGS += -lilocplex -lconcert -lcplex -lm -lpthread -ldl
+CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(CONCERTINCDIR)
+
+CXXFLAGS += $(CCFLAGS)
+
+POSTLINKOPT_RELEASE += $(CCLNFLAGS)
+POSTLINKOPT_DEBUG += $(CCLNLDFLAGS)
+POSTLINKOPT_PROFILE += $(CCLNLDFLAGS)
+
 endif
 
 endif # LP code

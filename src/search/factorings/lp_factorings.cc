@@ -2,7 +2,8 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 #include "../factoring.h"
-#include "../lp/mip_solver.h"
+#include "../lp/lp_solver.h"
+#include "../lp/cplex_solver.h"
 #include "../task_utils/causal_graph.h"
 #include "../globals.h"
 #include "../operator.h"
@@ -12,6 +13,8 @@
 
 using namespace std;
 
+using namespace lp;
+
 
 LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
@@ -20,6 +23,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      action_schemes = opts.get<bool>("action_schemes");
      cout << "using LP factoring strategy" << endl;
 }
+
 
 Factoring::FactoredVars LPFactoring::get_factoring() {
 
@@ -43,20 +47,20 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 
 Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
-    mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
-    vector<mip::MIPVariable> variables;
-    vector<mip::MIPConstraint> constraints;
+    LPSolver mip_solver (LPSolverType::CPLEX);
+    vector<MIPVariable> variables;
+    vector<LPConstraint> constraints;
 
     if (mobile_leaves) {
         vector<bool> mobile_var = get_mobile_vars();
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             if (mobile_var[var]){
-                variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+                variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
             } else {
-                variables.push_back(mip::MIPVariable(0.0,0.0,1.0,mip::MIPVariableType::INT));
+                variables.push_back(MIPVariable(0.0,0.0,1.0,MIPVariableType::INT));
             }
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                mip::MIPConstraint constraint (0.0,1.0);
+                LPConstraint constraint (0.0,1.0);
                 constraint.insert(var,1.0);
                 constraint.insert(suc,1.0);
                 constraints.push_back(constraint);
@@ -64,9 +68,9 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
         }
     } else {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                mip::MIPConstraint constraint (0.0,1.0);
+                LPConstraint constraint (0.0,1.0);
                 constraint.insert(var,1.0);
                 constraint.insert(suc,1.0);
                 constraints.push_back(constraint);
@@ -74,7 +78,7 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
         }
     }
 
-    mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
+    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
 
     //extract solution
@@ -95,9 +99,9 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
-    mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
-    vector<mip::MIPVariable> variables;
-    vector<mip::MIPConstraint> constraints;
+    LPSolver mip_solver (LPSolverType::CPLEX);
+    vector<MIPVariable> variables;
+    vector<LPConstraint> constraints;
 
     int max_number_leaves = get_mip_factoring(false).size();
 
@@ -109,24 +113,24 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     //x_ij indicating whether variable v_j is contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
         }
     }
     //y_ik indicating whether action schema a_k affects only leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
-            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
         }
     }
     //z_i indicating whether leaf F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
     }
 
 
     //(1) every variable is contained in at most one leaf
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        mip::MIPConstraint constraint (0.0,1.0);
+        LPConstraint constraint (0.0,1.0);
         for (int i = 0; i < max_number_leaves; i++) {
             constraint.insert(i * g_variable_domain.size() + var, 1.0);
         }
@@ -137,7 +141,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_var;
-            mip::MIPConstraint constraint (0.0,eff_vars.size());
+            LPConstraint constraint (0.0,eff_vars.size());
             for (const int &eff_var : eff_vars) {
                 constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
             }
@@ -150,7 +154,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_var;
-            mip::MIPConstraint constraint (0.0,eff_vars.size()-1);
+            LPConstraint constraint (0.0,eff_vars.size()-1);
             for (const int &eff_var : eff_vars) {
                 constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
             }
@@ -180,7 +184,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
                         }
                     }
                     coefficients[i_1 * g_variable_domain.size() + eff_var_1] += eff_vars.size() + pre_vars.size();
-                    mip::MIPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), eff_vars.size() + pre_vars.size());
+                    LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), eff_vars.size() + pre_vars.size());
                     for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
                         if (coefficients[x] != 0.0) {
                             constraint.insert(x,coefficients[x]);
@@ -196,7 +200,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         //(4.1) if action a_k does not affect center it only affects a single leaf
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_var;
-            mip::MIPConstraint constraint (0.0,eff_vars.size()-1);
+            LPConstraint constraint (0.0,eff_vars.size()-1);
             for (int i = 0; i < max_number_leaves; i++) {
                 for (const int &eff_var : eff_vars) {
                     constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
@@ -210,7 +214,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
                 const vector<int> &pre_vars = schemes[schema].pre_var;
-                mip::MIPConstraint constraint (0.0,pre_vars.size());
+                LPConstraint constraint (0.0,pre_vars.size());
                 for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
                     if (i_1 == i_2) {
                         continue;
@@ -228,7 +232,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     //(5) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        mip::MIPConstraint constraint (0.0, g_variable_domain.size()-1);
+        LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             constraint.insert(i * g_variable_domain.size() + var, -1.0);
         }
@@ -239,7 +243,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     //(6) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
-        mip::MIPConstraint constraint (0.0, num_schemes);
+        LPConstraint constraint (0.0, num_schemes);
         for (size_t schema = 0; schema < num_schemes; schema++) {
             constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, 1.0);
         }
@@ -249,7 +253,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
 
     //solve problem
-    mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
+    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
 
     mip_solver.print_statistics();
@@ -280,9 +284,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
-    mip::MIPSolver mip_solver (mip::MIPSolverType::CPLEX);
-    vector<mip::MIPVariable> variables;
-    vector<mip::MIPConstraint> constraints;
+    LPSolver mip_solver (LPSolverType::CPLEX);
+    vector<MIPVariable> variables;
+    vector<LPConstraint> constraints;
 
     int max_number_leaves = get_mip_factoring(false).size();
 
@@ -290,24 +294,24 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     //x_ij indicating whether variable v_j is contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
         }
     }
     //y_ik indicating whether action a_k is a leaf only action and affects leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
-            variables.push_back(mip::MIPVariable(0.0,1.0,0.0,mip::MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
         }
     }
     //z_i indicating whether leaf F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        variables.push_back(mip::MIPVariable(0.0,1.0,1.0,mip::MIPVariableType::INT));
+        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
     }
 
 
     //(1) every variable is contained in at most one leaf
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        mip::MIPConstraint constraint (0.0,1.0);
+        LPConstraint constraint (0.0,1.0);
         for (int i = 0; i < max_number_leaves; i++) {
             constraint.insert(i * g_variable_domain.size() + var, 1.0);
         }
@@ -318,7 +322,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            mip::MIPConstraint constraint (0.0,effects.size());
+            LPConstraint constraint (0.0,effects.size());
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
             }
@@ -331,7 +335,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            mip::MIPConstraint constraint (0.0,effects.size()-1);
+            LPConstraint constraint (0.0,effects.size()-1);
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
             }
@@ -361,7 +365,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
                         }
                     }
                     coefficients[i_1 * g_variable_domain.size() + eff_1.var] += effects.size() + preconditions.size();
-                    mip::MIPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), effects.size() + preconditions.size());
+                    LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), effects.size() + preconditions.size());
                     for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
                         if (coefficients[x] != 0.0) {
                             constraint.insert(x,coefficients[x]);
@@ -377,7 +381,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
         //(4) if action a_k does not affect center it only affects a single leaf
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            mip::MIPConstraint constraint (0.0,effects.size()-1);
+            LPConstraint constraint (0.0,effects.size()-1);
             for (int i = 0; i < max_number_leaves; i++) {
                 for (const Effect &eff : effects) {
                     constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
@@ -391,7 +395,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t op = 0; op < g_operators.size(); op++) {
                 const vector<Condition> &preconditions = g_operators[op].get_preconditions();
-                mip::MIPConstraint constraint (0.0,preconditions.size());
+                LPConstraint constraint (0.0,preconditions.size());
                 for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
                     if (i_1 == i_2) {
                         continue;
@@ -409,7 +413,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
     //(6) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        mip::MIPConstraint constraint (0.0, g_variable_domain.size()-1);
+        LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             constraint.insert(i * g_variable_domain.size() + var, -1.0);
         }
@@ -420,7 +424,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
     //(7) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
-        mip::MIPConstraint constraint (0.0, g_operators.size());
+        LPConstraint constraint (0.0, g_operators.size());
         for (size_t op = 0; op < g_operators.size(); op++) {
             constraint.insert(max_number_leaves * g_variable_domain.size() + i * g_operators.size() + op, 1.0);
         }
@@ -430,7 +434,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
 
     //solve problem
-    mip_solver.load_problem(mip::MIPObjectiveSense::MAXIMIZE,variables,constraints);
+    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
 
     mip_solver.print_statistics();
