@@ -26,7 +26,7 @@ class CPLEXSolver : public Solver{
     IloModel model;
     IloCplex cplex;
 public:
-    CPLEXSolver(int num_threads);
+    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0);
 
     ~CPLEXSolver();
 

@@ -6,6 +6,7 @@
 enum STRATEGY {
     MIS,
     MIS_MOBILE,
+    MIS_LP_RELAX,
     MAX_MOBILE_LEAVES,
 };
 

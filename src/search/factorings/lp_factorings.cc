@@ -32,6 +32,7 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
     switch (strategy) {
       case MIS: factoring = get_mip_factoring(false); break;
       case MIS_MOBILE: factoring = get_mip_factoring(true); break;
+      case MIS_LP_RELAX: factoring = get_mip_factoring(false); break;
       case MAX_MOBILE_LEAVES:
           if (action_schemes) {
               factoring = get_max_mobile_leaves(); break;
@@ -47,7 +48,7 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 
 Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 
-    CPLEXSolver mip_solver (1);
+    CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
@@ -79,27 +80,30 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
     }
 
     mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
-    mip_solver.solve();
+    if (strategy == MIS_LP_RELAX) {
+        mip_solver.solveLPRelaxation();
+    } else {
+        mip_solver.solve();
+    }
+
 
     //extract solution
     FactoredVars factoring;
     vector<double> solution = mip_solver.extract_solution();
     for (size_t var = 0; var < solution.size(); var++) {
-        if (solution.at(var) == 1.0) {
+        if (solution[var] > 0.5) {
             set<int> leaf;
             leaf.insert(var);
             factoring.push_back(leaf);
         }
     }
-
     return factoring;
-
 }
 
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
-    CPLEXSolver mip_solver (1);
+    CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
@@ -271,7 +275,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
 
-    CPLEXSolver mip_solver (1);
+    CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
@@ -514,6 +518,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
     vector<string> strategies;
     strategies.push_back("mis");
     strategies.push_back("mis_mobile");
+    strategies.push_back("mis_lp_relax");
     strategies.push_back("max_mobile_leaves");
     parser.add_enum_option(
         "strategy",

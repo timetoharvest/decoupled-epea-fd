@@ -26,7 +26,7 @@ CPLEXSolver::~CPLEXSolver() {
   env.end();
 }
 
-CPLEXSolver::CPLEXSolver(int num_threads)
+CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance)
     : ilo_variables(IloNumVarArray(env,0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env,0)),
@@ -34,8 +34,8 @@ CPLEXSolver::CPLEXSolver(int num_threads)
       cplex(IloCplex(env)) {
     is_initialized = false;
     is_solved = false;
-    cplex.setParam(IloCplex::Param::Threads, num_threads);
-    cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, 0.0);
+    cplex.setParam(IloCplex::Param::Threads, max_num_threads);
+    cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, integrality_tolerance);
 }
 
 void CPLEXSolver::load_problem(LPObjectiveSense sense,
@@ -164,7 +164,11 @@ void CPLEXSolver::solve() {
 }
 
 void CPLEXSolver::solveLPRelaxation() {
-    //TODO
+    IloModel relaxed_model(env);
+    relaxed_model.add(model);
+    relaxed_model.add(IloConversion (env, ilo_variables, ILOFLOAT));
+    cplex.extract(relaxed_model);
+    cplex.solve();
 }
 
 bool CPLEXSolver::has_optimal_solution() const {
