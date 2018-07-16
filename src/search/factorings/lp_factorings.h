@@ -7,12 +7,30 @@ enum STRATEGY {
     MIS,
     MIS_MOBILE,
     MIS_LP_RELAX,
-    MAX_MOBILE_LEAVES,
+    MML_MODULAR,
+    MML_MODULAR_NO_SCHEMES,
+    MML,
 };
 
 enum FACTORING_TYPE {
     STRICT_STAR,
     GENERAL_STAR,
+};
+
+struct EffectSchema {
+    int id;
+    int num_actions;
+    std::vector<int> eff_vars;
+
+    EffectSchema(int id, int num_actions, std::vector<int> eff_vars)
+        : id(id), num_actions(num_actions), eff_vars(eff_vars) {}
+
+    void incr_num_action() {
+        num_actions++;
+    }
+
+    void dump() const;
+
 };
 
 struct ActionSchema {
@@ -38,19 +56,19 @@ protected:
 
     FACTORING_TYPE factoring_type;
 
-    bool action_schemes;
-
     FactoredVars get_factoring() override;
 
-    FactoredVars get_mip_factoring(bool mobile_leaves);
-
-    FactoredVars get_mip_factoring_cplex();
+    FactoredVars get_mip_factoring();
 
     FactoredVars get_max_mobile_leaves();
 
-    FactoredVars get_max_mobile_leaves_no_schemes();
+    FactoredVars get_max_mobile_leaves_modular();
+
+    FactoredVars get_max_mobile_leaves_modular_no_schemes();
 
     std::vector<bool> get_mobile_vars();
+
+    std::vector<EffectSchema> get_effect_schemes(std::vector<ActionSchema> action_schemes);
 
     std::vector<ActionSchema> get_action_schemes();
 

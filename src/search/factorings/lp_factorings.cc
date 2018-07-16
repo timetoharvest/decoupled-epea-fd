@@ -20,7 +20,6 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
-     action_schemes = opts.get<bool>("action_schemes");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -30,15 +29,12 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
     FactoredVars factoring;
 
     switch (strategy) {
-      case MIS: factoring = get_mip_factoring(false); break;
-      case MIS_MOBILE: factoring = get_mip_factoring(true); break;
-      case MIS_LP_RELAX: factoring = get_mip_factoring(false); break;
-      case MAX_MOBILE_LEAVES:
-          if (action_schemes) {
-              factoring = get_max_mobile_leaves(); break;
-          } else {
-              factoring = get_max_mobile_leaves_no_schemes(); break;
-          }
+      case MIS: factoring = get_mip_factoring(); break;
+      case MIS_MOBILE: factoring = get_mip_factoring(); break;
+      case MIS_LP_RELAX: factoring = get_mip_factoring(); break;
+      case MML: factoring = get_max_mobile_leaves(); break;
+      case MML_MODULAR: factoring = get_max_mobile_leaves_modular(); break;
+      case MML_MODULAR_NO_SCHEMES: factoring = get_max_mobile_leaves_modular_no_schemes(); break;
       default: exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
@@ -46,13 +42,13 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 
 }
 
-Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
+Factoring::FactoredVars LPFactoring::get_mip_factoring() {
 
     CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
-    if (mobile_leaves) {
+    if (strategy == MIS_MOBILE) {
         vector<bool> mobile_var = get_mobile_vars();
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             if (mobile_var[var]){
@@ -101,16 +97,97 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring(bool mobile_leaves) {
 }
 
 
-Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
+Factoring::FactoredVars LPFactoring:: get_max_mobile_leaves() {
 
     CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
-    int max_number_leaves = get_mip_factoring(false).size();
+    vector<ActionSchema> schemes = get_action_schemes();
+    vector<EffectSchema> eff_schemes = get_effect_schemes(schemes);
+    size_t num_eff_schemes = eff_schemes.size();
+
+    vector<set<int>> var_eff_schemes_table (g_variable_domain.size(), set<int>());
+
+    for (EffectSchema &eff_schema : eff_schemes) {
+        for (int var : eff_schema.eff_vars) {
+            var_eff_schemes_table[var].insert(eff_schema.id);
+        }
+    }
+
+    vector<bool> eff_schemes_cg (num_eff_schemes * num_eff_schemes, false);
+
+    for (EffectSchema &eff_schema : eff_schemes) {
+        for (int var : eff_schema.eff_vars) {
+            for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                for (int i : var_eff_schemes_table[suc]) {
+                    if (eff_schema.eff_vars != eff_schemes[i].eff_vars) {
+                        eff_schemes_cg[eff_schema.id * num_eff_schemes + eff_schemes[i].id] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
+        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+    }
+
+    for (size_t eff_schema_1 = 0; eff_schema_1 < num_eff_schemes; eff_schema_1++) {
+        for (size_t eff_schema_2 = 0; eff_schema_2 < num_eff_schemes; eff_schema_2++) {
+            if (eff_schemes_cg[eff_schema_1 * num_eff_schemes + eff_schema_2]) {
+              LPConstraint constraint (0.0,1.0);
+              constraint.insert(eff_schema_1,1.0);
+              constraint.insert(eff_schema_2,1.0);
+              constraints.push_back(constraint);
+            }
+        }
+    }
+
+    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
+    mip_solver.print_statistics();
+    mip_solver.solve();
+
+    FactoredVars factoring;
+    vector<double> solution = mip_solver.extract_solution();
+    for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
+        if (solution[eff_schema] == 1.0) {
+            set<int> leaf;
+            for (int var : eff_schemes[eff_schema].eff_vars) {
+                leaf.insert(var);
+            }
+            factoring.push_back(leaf);
+        }
+    }
+
+    return factoring;
+
+}
+
+
+Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
+
+    CPLEXSolver mip_solver;
+    vector<MIPVariable> variables;
+    vector<LPConstraint> constraints;
+
+    FactoredVars mip_factoring = get_mip_factoring();
+
+
+    vector<bool> mobile_vars = get_mobile_vars();
+    bool mobile_factoring = true;
+    for (set<int> &factor : mip_factoring) {
+        for (int var : factor) {
+            mobile_factoring = mobile_factoring && mobile_vars[var];
+        }
+    }
+    if (mobile_factoring) {
+        return mip_factoring;
+    }
+
+    int max_number_leaves = get_mip_factoring().size();
 
     vector<ActionSchema> schemes = get_action_schemes();
-
     size_t num_schemes = schemes.size();
 
 
@@ -246,8 +323,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     //solve problem
     mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
-
     mip_solver.print_statistics();
+
+
 
     //extract solution
     FactoredVars factoring;
@@ -273,13 +351,13 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
 
 
-Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_no_schemes() {
+Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() {
 
     CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
-    int max_number_leaves = get_mip_factoring(false).size();
+    int max_number_leaves = get_mip_factoring().size();
 
 
     //x_ij indicating whether variable v_j is contained in leaf F_i
@@ -457,6 +535,27 @@ vector<bool> LPFactoring::get_mobile_vars() {
 
 }
 
+vector<EffectSchema> LPFactoring::get_effect_schemes(vector<ActionSchema> action_schemes) {
+    vector<EffectSchema> effect_schemes;
+    int id = 0;
+    for (ActionSchema action_schema : action_schemes) {
+        bool duplicate = false;
+        for (vector<EffectSchema>::reverse_iterator i = effect_schemes.rbegin(); i != effect_schemes.rend(); i++) {
+            if (action_schema.eff_var == i->eff_vars) {
+                i->num_actions += action_schema.num_actions;
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) {
+            EffectSchema eff_schema (id, action_schema.num_actions, action_schema.eff_var);
+            effect_schemes.push_back(eff_schema);
+            id++;
+        }
+    }
+    return effect_schemes;
+}
+
 vector<ActionSchema> LPFactoring::get_action_schemes() {
     vector<ActionSchema> schemes;
     vector<int> pre_var;
@@ -519,7 +618,9 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
     strategies.push_back("mis");
     strategies.push_back("mis_mobile");
     strategies.push_back("mis_lp_relax");
-    strategies.push_back("max_mobile_leaves");
+    strategies.push_back("mml_modular");
+    strategies.push_back("mml_modular_no_schemes");
+    strategies.push_back("mml");
     parser.add_enum_option(
         "strategy",
         strategies,
@@ -539,10 +640,6 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         vector<string>(),
         OptionFlags(false));
 
-    parser.add_option<bool>(
-        "action_schemes",
-        "TODO",
-        "true");
 }
 
 static Factoring *_parse_lp(OptionParser &parser) {
