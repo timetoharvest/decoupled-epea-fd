@@ -29,6 +29,10 @@ struct EffectSchema {
         num_actions++;
     }
 
+    void set_id(int new_id) {
+       id = new_id;
+    }
+
     void dump() const;
 
 };
@@ -56,6 +60,8 @@ protected:
 
     FACTORING_TYPE factoring_type;
 
+    int min_mobility;
+
     FactoredVars get_factoring() override;
 
     FactoredVars get_mip_factoring();
@@ -68,9 +74,9 @@ protected:
 
     std::vector<bool> get_mobile_vars();
 
-    std::vector<EffectSchema> get_effect_schemes(std::vector<ActionSchema> action_schemes);
+    std::vector<EffectSchema> get_effect_schemes(std::vector<ActionSchema> action_schemes, int min_num_actions = 1);
 
-    std::vector<ActionSchema> get_action_schemes();
+    std::vector<ActionSchema> get_action_schemes(int min_num_actions = 1);
 
 public:
 

@@ -20,6 +20,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
+     min_mobility = opts.get<int>("min_mobility");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -104,7 +105,7 @@ Factoring::FactoredVars LPFactoring:: get_max_mobile_leaves() {
     vector<LPConstraint> constraints;
 
     vector<ActionSchema> schemes = get_action_schemes();
-    vector<EffectSchema> eff_schemes = get_effect_schemes(schemes);
+    vector<EffectSchema> eff_schemes = get_effect_schemes(schemes, min_mobility);
     size_t num_eff_schemes = eff_schemes.size();
 
     vector<set<int>> var_eff_schemes_table (g_variable_domain.size(), set<int>());
@@ -535,7 +536,7 @@ vector<bool> LPFactoring::get_mobile_vars() {
 
 }
 
-vector<EffectSchema> LPFactoring::get_effect_schemes(vector<ActionSchema> action_schemes) {
+vector<EffectSchema> LPFactoring::get_effect_schemes(vector<ActionSchema> action_schemes, int min_num_actions) {
     vector<EffectSchema> effect_schemes;
     int id = 0;
     for (ActionSchema action_schema : action_schemes) {
@@ -553,10 +554,20 @@ vector<EffectSchema> LPFactoring::get_effect_schemes(vector<ActionSchema> action
             id++;
         }
     }
+    if (min_num_actions > 1) {
+        //erase effect schemes with num_actions < min_num_actions
+        effect_schemes.erase(remove_if(effect_schemes.begin(), effect_schemes.end(), [&min_num_actions](EffectSchema effect_schema){return effect_schema.num_actions < min_num_actions;}), effect_schemes.end());
+        //adjust IDs
+        id = 0;
+        for (EffectSchema &eff_schema : effect_schemes) {
+            eff_schema.set_id(id);
+            id++;
+        }
+    }
     return effect_schemes;
 }
 
-vector<ActionSchema> LPFactoring::get_action_schemes() {
+vector<ActionSchema> LPFactoring::get_action_schemes(int min_num_actions) {
     vector<ActionSchema> schemes;
     vector<int> pre_var;
     vector<int> eff_var;
@@ -602,6 +613,10 @@ vector<ActionSchema> LPFactoring::get_action_schemes() {
             schemes.push_back(schema);
         }
     }
+    if (min_num_actions > 1) {
+        //erase schemes with num_actions < min_num_actions
+        schemes.erase(remove_if(schemes.begin(), schemes.end(), [&min_num_actions](ActionSchema schema){return schema.num_actions < min_num_actions;}), schemes.end());
+    }
     return schemes;
 }
 
@@ -639,6 +654,12 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "general_star",
         vector<string>(),
         OptionFlags(false));
+
+    parser.add_option<int>(
+        "min_mobility",
+        "TODO",
+        "1"
+    );
 
 }
 
