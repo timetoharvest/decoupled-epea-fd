@@ -159,7 +159,7 @@ const State &StateRegistry::get_initial_state() {
 State StateRegistry::get_successor_state(const State &predecessor, const Operator &op) {
     g_inc_g_by = 0;
     
-    assert(op.get_affected_factor() == LeafFactorID::CENTER);
+    assert(!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER);
     assert(op.is_applicable(predecessor));
         
     assert(!op.is_axiom());

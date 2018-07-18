@@ -89,7 +89,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                     // If we had no 0-cost operators and axioms to worry
                     // about, it would also imply applicability.
                     const Operator &op = g_operators[operator_no];
-                    if (op.get_affected_factor() == LeafFactorID::CENTER && op.is_applicable(state)) {
+                    if ((!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER) && op.is_applicable(state)) {
                         // don't mark leaf ops as preferred
                         set_preferred(operator_no);
                     }
