@@ -140,7 +140,7 @@ void AdditiveHeuristic::mark_preferred_operators(
                 // If we had no 0-cost operators and axioms to worry
                 // about, this would also be a sufficient condition.
                 const Operator &op = g_operators[operator_no];
-                if (op.get_affected_factor() == LeafFactorID::CENTER && op.is_applicable(state))
+                if ((!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER) && op.is_applicable(state))
                     // don't mark leaf ops as preferred
                     set_preferred(operator_no);
             }
