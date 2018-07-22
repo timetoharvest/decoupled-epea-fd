@@ -7,9 +7,11 @@ enum STRATEGY {
     MIS,
     MIS_MOBILE,
     MIS_LP_RELAX,
+    MML,
     MML_MODULAR,
     MML_MODULAR_NO_SCHEMES,
-    MML,
+    MFES,
+    MMES,
 };
 
 enum FACTORING_TYPE {
@@ -19,37 +21,33 @@ enum FACTORING_TYPE {
 
 struct EffectSchema {
     int id;
-    int num_actions;
+    int num_actions; //number of actions with the effect schema
+    int num_leaf_only_actions; //number of leaf-only actions if the effect schema forms a leaf
+    int num_leaf_actions; //number of leaf actions if the effect schema forms a leaf
     std::vector<int> eff_vars;
 
     EffectSchema(int id, int num_actions, std::vector<int> eff_vars)
-        : id(id), num_actions(num_actions), eff_vars(eff_vars) {}
+        : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), eff_vars(eff_vars) {}
 
-    void incr_num_action() {
-        num_actions++;
+    float get_flexibility() {
+        return ((float) num_leaf_only_actions / (float) num_leaf_actions);
     }
-
-    void set_id(int new_id) {
-       id = new_id;
-    }
-
-    void dump() const;
 
 };
 
 struct ActionSchema {
-    int num_actions;
-    std::vector<int> pre_var;
-    std::vector<int> eff_var;
 
-    ActionSchema(int num_actions, const std::vector<int> pre_var, const std::vector<int> eff_var)
-        : num_actions(num_actions), pre_var(pre_var), eff_var(eff_var) {}
+    int num_actions; //number of actions with the action schema
+    std::vector<int> pre_vars;
+    std::vector<int> eff_vars;
+
+    ActionSchema(int num_actions, const std::vector<int> pre_vars, const std::vector<int> eff_vars)
+        : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {}
 
     void incr_num_action() {
         num_actions++;
     }
 
-    void dump() const;
 };
 
 class LPFactoring : public Factoring {
@@ -61,6 +59,14 @@ protected:
     FACTORING_TYPE factoring_type;
 
     int min_mobility;
+
+    int min_flexibility;
+
+    std::vector<ActionSchema> act_schemes;
+
+    std::vector<EffectSchema> eff_schemes;
+
+    std::vector<std::set<int>> var_to_eff_schemes;
 
     FactoredVars get_factoring() override;
 
@@ -74,9 +80,9 @@ protected:
 
     std::vector<bool> get_mobile_vars();
 
-    std::vector<EffectSchema> get_effect_schemes(std::vector<ActionSchema> action_schemes, int min_num_actions = 1);
+    void set_effect_schemes(int min_mobility = 1, int min_flexibility = 0, int min_num_actions = 1);
 
-    std::vector<ActionSchema> get_action_schemes(int min_num_actions = 1);
+    void set_action_schemes(int min_num_actions = 1);
 
 public:
 

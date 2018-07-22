@@ -20,7 +20,8 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
-     min_mobility = opts.get<int>("min_mobility");
+     min_mobility = opts.get<int>("min_mob");
+     min_flexibility = opts.get<int>("min_flex");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -36,6 +37,8 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
       case MML: factoring = get_max_mobile_leaves(); break;
       case MML_MODULAR: factoring = get_max_mobile_leaves_modular(); break;
       case MML_MODULAR_NO_SCHEMES: factoring = get_max_mobile_leaves_modular_no_schemes(); break;
+      case MFES: factoring = get_max_mobile_leaves(); break;
+      case MMES: factoring = get_max_mobile_leaves(); break;
       default: exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
@@ -98,30 +101,22 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring() {
 }
 
 
-Factoring::FactoredVars LPFactoring:: get_max_mobile_leaves() {
+Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     CPLEXSolver mip_solver;
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
-    vector<ActionSchema> schemes = get_action_schemes();
-    vector<EffectSchema> eff_schemes = get_effect_schemes(schemes, min_mobility);
+    set_action_schemes();
+    set_effect_schemes(min_mobility, min_flexibility);
     size_t num_eff_schemes = eff_schemes.size();
-
-    vector<set<int>> var_eff_schemes_table (g_variable_domain.size(), set<int>());
-
-    for (EffectSchema &eff_schema : eff_schemes) {
-        for (int var : eff_schema.eff_vars) {
-            var_eff_schemes_table[var].insert(eff_schema.id);
-        }
-    }
 
     vector<bool> eff_schemes_cg (num_eff_schemes * num_eff_schemes, false);
 
     for (EffectSchema &eff_schema : eff_schemes) {
         for (int var : eff_schema.eff_vars) {
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                for (int i : var_eff_schemes_table[suc]) {
+                for (int i : var_to_eff_schemes[suc]) {
                     if (eff_schema.eff_vars != eff_schemes[i].eff_vars) {
                         eff_schemes_cg[eff_schema.id * num_eff_schemes + eff_schemes[i].id] = true;
                     }
@@ -131,7 +126,19 @@ Factoring::FactoredVars LPFactoring:: get_max_mobile_leaves() {
     }
 
     for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
-        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+      switch (strategy) {
+        case MML:
+            variables.push_back(MIPVariable(0.0,1.0,1.0, MIPVariableType::INT));
+            break;
+        case MFES:
+            variables.push_back(MIPVariable(0.0,1.0,eff_schemes[eff_schema].get_flexibility(), MIPVariableType::INT));
+            break;
+        case MMES:
+            variables.push_back(MIPVariable(0.0,1.0,eff_schemes[eff_schema].num_leaf_only_actions, MIPVariableType::INT));
+            break;
+        default: exit_with(utils::ExitCode::CRITICAL_ERROR);
+      }
+
     }
 
     for (size_t eff_schema_1 = 0; eff_schema_1 < num_eff_schemes; eff_schema_1++) {
@@ -150,6 +157,7 @@ Factoring::FactoredVars LPFactoring:: get_max_mobile_leaves() {
     mip_solver.solve();
 
     FactoredVars factoring;
+
     vector<double> solution = mip_solver.extract_solution();
     for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
         if (solution[eff_schema] == 1.0) {
@@ -186,9 +194,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
         return mip_factoring;
     }
 
-    int max_number_leaves = get_mip_factoring().size();
+    int max_number_leaves = mip_factoring.size();
 
-    vector<ActionSchema> schemes = get_action_schemes();
+    set_action_schemes();
+    vector<ActionSchema> schemes = act_schemes;
     size_t num_schemes = schemes.size();
 
 
@@ -222,7 +231,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     //(2) y_ik = 1 iff all variables that are affected by schema a_k are contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
-            const vector<int> &eff_vars = schemes[schema].eff_var;
+            const vector<int> &eff_vars = schemes[schema].eff_vars;
             LPConstraint constraint (0.0,eff_vars.size() - 1.0);
             for (const int &eff_var : eff_vars) {
                 constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
@@ -236,8 +245,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
         //(3) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
-                const vector<int> &eff_vars = schemes[schema].eff_var;
-                const vector<int> &pre_vars = schemes[schema].pre_var;
+                const vector<int> &eff_vars = schemes[schema].eff_vars;
+                const vector<int> &pre_vars = schemes[schema].pre_vars;
                 for (const int &eff_var_1 : eff_vars) {
                     vector<double> coefficients (max_number_leaves * g_variable_domain.size(),0.0);
                     for (const int &eff_var_2 : eff_vars) {
@@ -268,7 +277,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     if (factoring_type == GENERAL_STAR) {
         //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t schema = 0; schema < num_schemes; schema++) {
-            const vector<int> &eff_vars = schemes[schema].eff_var;
+            const vector<int> &eff_vars = schemes[schema].eff_vars;
             LPConstraint constraint (0.0,eff_vars.size()-1);
             for (int i = 0; i < max_number_leaves; i++) {
                 for (const int &eff_var : eff_vars) {
@@ -282,7 +291,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
         //(3.2) if action a_k only affects leaf F_i it has only preconditions on F_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
-                const vector<int> &pre_vars = schemes[schema].pre_var;
+                const vector<int> &pre_vars = schemes[schema].pre_vars;
                 LPConstraint constraint (0.0,pre_vars.size());
                 for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
                     if (i_1 == i_2) {
@@ -536,58 +545,124 @@ vector<bool> LPFactoring::get_mobile_vars() {
 
 }
 
-vector<EffectSchema> LPFactoring::get_effect_schemes(vector<ActionSchema> action_schemes, int min_num_actions) {
-    vector<EffectSchema> effect_schemes;
+void LPFactoring::set_effect_schemes(int min_mobility, int min_flexibility, int min_num_actions) {
+
     int id = 0;
-    for (ActionSchema action_schema : action_schemes) {
+    for (ActionSchema action_schema : act_schemes) {
         bool duplicate = false;
-        for (vector<EffectSchema>::reverse_iterator i = effect_schemes.rbegin(); i != effect_schemes.rend(); i++) {
-            if (action_schema.eff_var == i->eff_vars) {
+        for (vector<EffectSchema>::reverse_iterator i = eff_schemes.rbegin(); i != eff_schemes.rend(); i++) {
+            if (action_schema.eff_vars == i->eff_vars) {
                 i->num_actions += action_schema.num_actions;
                 duplicate = true;
                 break;
             }
         }
         if (!duplicate) {
-            EffectSchema eff_schema (id, action_schema.num_actions, action_schema.eff_var);
-            effect_schemes.push_back(eff_schema);
+            EffectSchema eff_schema (id, action_schema.num_actions, action_schema.eff_vars);
+            eff_schemes.push_back(eff_schema);
             id++;
         }
     }
-    if (min_num_actions > 1) {
-        //erase effect schemes with num_actions < min_num_actions
-        effect_schemes.erase(remove_if(effect_schemes.begin(), effect_schemes.end(), [&min_num_actions](EffectSchema effect_schema){return effect_schema.num_actions < min_num_actions;}), effect_schemes.end());
+
+    var_to_eff_schemes.resize(g_variable_domain.size(), set<int>());
+
+    for (EffectSchema &eff_schema : eff_schemes) {
+        for (int var : eff_schema.eff_vars) {
+            var_to_eff_schemes[var].insert(eff_schema.id);
+        }
+    }
+
+    //set number of leaf actions
+    for (EffectSchema &eff_schema : eff_schemes) {
+        set<int> overlapping_schemes;
+        for (int var : eff_schema.eff_vars) {
+            for (int index : var_to_eff_schemes[var]) {
+                overlapping_schemes.insert(index);
+            }
+        }
+        int num_leaf_actions = 0;
+        for (int index : overlapping_schemes) {
+            num_leaf_actions += eff_schemes[index].num_actions;
+        }
+        eff_schema.num_leaf_actions = num_leaf_actions;
+    }
+
+    //set number of leaf-only actions
+    for (EffectSchema &eff_schema : eff_schemes) {
+        std::set<int> superset_schemes;
+        if (eff_schema.eff_vars.size() == 1) {
+            int var = (eff_schema.eff_vars)[0];
+            for (int index : var_to_eff_schemes[var]) {
+                superset_schemes.insert(index);
+            }
+        } else {
+            int var = eff_schema.eff_vars[1];
+            for (int index : var_to_eff_schemes[var]) {
+                bool superset_schema = true;
+                for (int var_1 : eff_schema.eff_vars) {
+                    bool var_contained = false;
+                    for (int var_2 : eff_schemes[index].eff_vars) {
+                        if (var_1 == var_2) {
+                            var_contained = true;
+                            break;
+                        }
+                    }
+                    if (!var_contained) {
+                        superset_schema = false;
+                        break;
+                    }
+                }
+                if (superset_schema) {
+                    superset_schemes.insert(index);
+                }
+            }
+        }
+        for (int index : superset_schemes) {
+            eff_schemes[index].num_leaf_only_actions += eff_schema.num_actions;
+        }
+    }
+
+    if (min_mobility > 1 || min_flexibility > 0 || min_num_actions > 1) {
+        //erase effect schemes that does not satisfy requirements
+        auto lambda_expr = [&](EffectSchema effect_schema){return effect_schema.num_actions < min_num_actions || effect_schema.num_leaf_only_actions < min_mobility || effect_schema.get_flexibility() < min_flexibility;};
+        eff_schemes.erase(remove_if(eff_schemes.begin(), eff_schemes.end(), lambda_expr), eff_schemes.end());
         //adjust IDs
         id = 0;
-        for (EffectSchema &eff_schema : effect_schemes) {
-            eff_schema.set_id(id);
+        for (EffectSchema &eff_schema : eff_schemes) {
+            eff_schema.id = id;
             id++;
         }
+        for (size_t var = 0; var < g_variable_domain.size(); var++){
+            var_to_eff_schemes[var].clear();
+        }
+        for (EffectSchema &eff_schema : eff_schemes) {
+            for (int var : eff_schema.eff_vars) {
+                var_to_eff_schemes[var].insert(eff_schema.id);
+            }
+        }
     }
-    return effect_schemes;
 }
 
-vector<ActionSchema> LPFactoring::get_action_schemes(int min_num_actions) {
-    vector<ActionSchema> schemes;
-    vector<int> pre_var;
-    vector<int> eff_var;
+void LPFactoring::set_action_schemes(int min_num_actions) {
+    vector<int> pre_vars;
+    vector<int> eff_vars;
     bool duplicate = false;
     for (const Operator &op : g_operators) {
         const std::vector<Condition> &preconditions = op.get_preconditions();
         const std::vector<Effect> &effects = op.get_effects();
-        for (vector<ActionSchema>::reverse_iterator i = schemes.rbegin(); i != schemes.rend(); i++) {
+        for (vector<ActionSchema>::reverse_iterator i = act_schemes.rbegin(); i != act_schemes.rend(); i++) {
             duplicate = true;
-            pre_var = i->pre_var;
-            eff_var = i->eff_var;
-            if (pre_var.size() == preconditions.size() && eff_var.size() == effects.size()) {
+            pre_vars = i->pre_vars;
+            eff_vars = i->eff_vars;
+            if (pre_vars.size() == preconditions.size() && eff_vars.size() == effects.size()) {
                 for (size_t p = 0; p < preconditions.size(); p++) {
-                    if (pre_var[p] != preconditions[p].var) {
+                    if (pre_vars[p] != preconditions[p].var) {
                         duplicate = false;
                         break;
                     }
                 }
                 for (size_t e = 0; e < effects.size(); e++) {
-                    if (eff_var[e] != effects[e].var) {
+                    if (eff_vars[e] != effects[e].var) {
                         duplicate = false;
                         break;
                     }
@@ -601,41 +676,36 @@ vector<ActionSchema> LPFactoring::get_action_schemes(int min_num_actions) {
             }
         }
         if (!duplicate) {
-            pre_var.clear();
-            eff_var.clear();
+            pre_vars.clear();
+            eff_vars.clear();
             for (const Condition &pre : preconditions) {
-                pre_var.push_back(pre.var);
+                pre_vars.push_back(pre.var);
             }
             for (const Effect &eff : effects) {
-                eff_var.push_back(eff.var);
+                eff_vars.push_back(eff.var);
             }
-            ActionSchema schema (1, pre_var, eff_var);
-            schemes.push_back(schema);
+            ActionSchema schema (1, pre_vars, eff_vars);
+            act_schemes.push_back(schema);
         }
     }
     if (min_num_actions > 1) {
         //erase schemes with num_actions < min_num_actions
-        schemes.erase(remove_if(schemes.begin(), schemes.end(), [&min_num_actions](ActionSchema schema){return schema.num_actions < min_num_actions;}), schemes.end());
+        act_schemes.erase(remove_if(act_schemes.begin(), act_schemes.end(), [&min_num_actions](ActionSchema schema){return schema.num_actions < min_num_actions;}), act_schemes.end());
     }
-    return schemes;
 }
 
 
-
 void LPFactoring::add_options_to_parser(OptionParser &parser) {
-    parser.add_option<bool>(
-            "some_option_name",
-            "TODO",
-            "false"
-    );
 
     vector<string> strategies;
     strategies.push_back("mis");
     strategies.push_back("mis_mobile");
     strategies.push_back("mis_lp_relax");
+    strategies.push_back("mml");
     strategies.push_back("mml_modular");
     strategies.push_back("mml_modular_no_schemes");
-    strategies.push_back("mml");
+    strategies.push_back("mfes");
+    strategies.push_back("mmes");
     parser.add_enum_option(
         "strategy",
         strategies,
@@ -656,9 +726,15 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         OptionFlags(false));
 
     parser.add_option<int>(
-        "min_mobility",
+        "min_mob",
         "TODO",
         "1"
+    );
+
+    parser.add_option<int>(
+        "min_flex",
+        "TODO",
+        "0"
     );
 
 }
