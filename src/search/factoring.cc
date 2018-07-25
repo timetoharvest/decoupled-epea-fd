@@ -1,4 +1,4 @@
-#include "factoring.h" 
+#include "factoring.h"
 
 #include "algorithms/mis.h"
 #include "algorithms/sccs.h"
@@ -89,39 +89,39 @@ Factoring::Factoring(const Options &opts) :
 }
 
 class CenterFactoring : public Factoring {
-    
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-    
+
 public:
-    
+
     CenterFactoring(const Options &opts)
             : Factoring(opts) {
         profile = STAR;
         cout << "using random 2-factor factoring profile" << endl;
     }
-    
+
 };
 
 class ForkFactoring : public Factoring {
-    
+
 protected:
-    
+
     bool maximize_mobility;
-    
+
     bool extend_leaves;
-    
+
     bool average_mobility;
-    
+
     FactoredVars get_fork_maximize_leaves(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
-    
+
     FactoredVars get_fork_maximize_mobility(bool inverted = false, std::vector<int> variables = std::vector<int>()) const;
-    
+
     FactoredVars get_factoring() override;
-    
+
 public:
-    
+
     ForkFactoring(const Options &opts, PROFILE profile = FORK)
             : Factoring(opts),
               maximize_mobility(opts.get<bool>("maximize_mobility")),
@@ -137,36 +137,36 @@ public:
     }
 
     static void add_options_to_parser(OptionParser &parser);
-    
+
 };
 
 class XShapeFactoring : public ForkFactoring {
-        
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-    
+
 public:
-    
+
     XShapeFactoring(const Options &opts)
             : ForkFactoring(opts, XSHAPE) {
         profile = XSHAPE;
         cout << "using X-shape factoring profile" << endl;
     }
-    
+
 };
 
 class IncidentArcsFactoring : public Factoring {
-    
+
 protected:
 
     bool arg_all_rankings;
     vector<FactoringRanking* > arg_rankings;
 
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     IncidentArcsFactoring(const Options &opts)
             : Factoring(opts),
               arg_all_rankings(opts.get<bool>("all_rankings")) {
@@ -187,11 +187,11 @@ public:
     }
 
     static void add_options_to_parser(OptionParser &parser);
-  
+
 };
 
 class MaxIndependentSetFactoring : public Factoring {
-    
+
     vector<FactoredVars> get_factorings(const vector<vector<FactoringRanking*> > &rankings);
 
 protected:
@@ -208,15 +208,15 @@ protected:
     NGraph cg_g; // cache used for AutoFactoring
     vector<FactoredVars> max_ind_sets; // cache used for AutoFactoring
 
-    
+
     void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &) const;
-    
+
     //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
-    
+
     NGraph generate_ngraph() const;
-    
+
     bool check_factoring(const FactoredVars &) const;
-    
+
     FactoredVars get_factoring() override;
 
 public:
@@ -263,85 +263,85 @@ public:
 };
 
 class SokobanFactoring : public Factoring {
-            
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     SokobanFactoring(const Options &opts)
             : Factoring(opts) {
         profile = SOKOBAN;
         cout << "using sokoban factoring profile" << endl;
     }
-  
+
 };
 
 class OpenstacksFactoring : public Factoring {
-            
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     OpenstacksFactoring(const Options &opts)
             : Factoring(opts) {
         profile = OPENSTACKS;
         cout << "using openstacks factoring profile" << endl;
     }
-    
+
 };
 
 class TPPConstrainedFactoring : public Factoring {
-    
+
     bool inverted;
-            
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     TPPConstrainedFactoring(const Options &opts)
             : Factoring(opts), inverted(opts.get<bool>("inverted")) {
         profile = OPENSTACKS;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
     }
-  
+
 };
 
 class DocTransferFactoring : public Factoring {
-            
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     DocTransferFactoring(const Options &opts)
             : Factoring(opts) {
         profile = DOC_TRANSFER;
         cout << "using doc transfer factoring profile" << endl;
     }
-    
+
 };
 
 class PegsolFactoring : public Factoring {
-            
+
 protected:
-    
+
     FactoredVars get_factoring() override;
-  
+
 public:
-    
+
     PegsolFactoring(const Options &opts)
             : Factoring(opts) {
         profile = PEGSOL;
         cout << "using pegsol factoring profile" << endl;
     }
-    
+
 };
 
 
@@ -350,22 +350,22 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     g_belongs_to_factor = vector<LeafFactorID>(g_variable_domain.size(), LeafFactorID::CENTER);
     g_new_index = vector<size_t>(g_variable_domain.size());
     g_leaves.resize(factoring.size());
-    
+
     InteractionGraph interaction_graph(factoring.size());
-    
+
     for (LeafFactorID factor(0); factor < factoring.size(); ++factor){
-        vector<int> variables(factoring[factor].begin(), factoring[factor].end());              
+        vector<int> variables(factoring[factor].begin(), factoring[factor].end());
         for (size_t j = 0; j < variables.size(); ++j){
             g_belongs_to_factor[variables[j]] = factor;
             g_new_index[variables[j]] = j;
         }
         g_leaves[factor] = variables;
     }
-    
+
 #ifdef DEBUG_FACTORING
     cout << "center factor:" << endl;
 #endif
-    
+
     for (size_t i = 0; i < g_variable_domain.size(); ++i){
         LeafFactorID affected_factor = g_belongs_to_factor[i];
         if (affected_factor == LeafFactorID::CENTER){
@@ -376,7 +376,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 #endif
         }
     }
-   
+
     // assign operators to their factors
 #ifdef DEBUG_FACTORING
     vector<int> num_ops_per_factor(g_leaves.size());
@@ -384,19 +384,19 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     bool is_fork_factoring = true;
     bool is_ifork_factoring = true;
     for (Operator &op : g_operators){
-        
+
         set<LeafFactorID> pre_factors;
         set<LeafFactorID> eff_factors;
 
-        for (const Condition &pre : op.get_preconditions()){            
+        for (const Condition &pre : op.get_preconditions()){
             pre_factors.insert(g_belongs_to_factor[pre.var]);
         }
-        
+
         for (const Effect &eff : op.get_effects()){
             eff_factors.insert(g_belongs_to_factor[eff.var]);
         }
         assert(!eff_factors.empty());
-        
+
         for (LeafFactorID pre_factor : pre_factors){
             for (LeafFactorID eff_factor : eff_factors){
                 if (pre_factor != eff_factor){
@@ -479,15 +479,15 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         profile = IFORK;
         cout << "factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
     }
-    
+
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < num_ops_per_factor.size(); i++) {
         cout << num_ops_per_factor[i] << " operators used in RPG of factor " << i << endl;
     }
 #endif
-    
+
     CompliantPathGraph::initialize();
-    
+
     // setup g_goals_per_factor
     // TODO check if each fork leaf contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
@@ -530,17 +530,17 @@ void Factoring::print_factoring() const {
         }
     }
 #endif
-    
+
     cout << "number leaf factors: " << g_leaves.size() << endl;
-    
+
     cout << g_center.size() << " variables in center factor" << endl;
-    
+
     for (size_t i = 0; i < g_leaves.size(); ++i) {
         cout << g_leaves[i].size() << " variables in leaf factor " << i << endl;
     }
-    
+
     vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
-    
+
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
@@ -557,17 +557,69 @@ void Factoring::print_factoring() const {
         max_size = max(max_size, f_size);
     }
     CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
-    
+
     uint64_t avg = 0;
     if (g_leaves.size() > 0){
         avg = avg_size / g_leaves.size();
     } else {
         min_size = 0;
     }
-    
+
     cout << "min leaf factor size: " << min_size << endl;
     cout << "average leaf factor size: " << avg << endl;
     cout << "max leaf factor size: " << max_size << endl;
+
+    // mobility and flexibility
+    vector<int> num_leaf_only_actions(g_leaves.size(), 0);
+    vector<int> num_leaf_actions(g_leaves.size(), 0);
+
+    for (Operator &op : g_operators) {
+        if (op.get_affected_factor() == LeafFactorID::CENTER) {
+            for (const Effect &eff : op.get_effects()) {
+                set<LeafFactorID> affected_leaf_factors;
+                if (g_belongs_to_factor[eff.var] != LeafFactorID::CENTER) {
+                    affected_leaf_factors.insert(g_belongs_to_factor[eff.var]);
+                }
+                for (LeafFactorID factor : affected_leaf_factors) {
+                    num_leaf_actions[factor] += 1;
+                }
+            }
+        } else {
+            num_leaf_actions[op.get_affected_factor()] += 1;
+            num_leaf_only_actions[op.get_affected_factor()] += 1;
+        }
+    }
+
+    int sum_mobility = 0;
+    int min_mobility = g_operators.size();
+    int max_mobility = 0;
+    double sum_flexibility = 0;
+    double min_flexibility = 1;
+    double max_flexibility = 0;
+
+    int f_mobility = 0;
+    double f_flexibility = 0;
+
+    for (size_t factor = 0; factor < g_leaves.size(); factor++) {
+        f_mobility = num_leaf_only_actions[factor];
+        sum_mobility += f_mobility;
+        min_mobility = min(min_mobility, f_mobility);
+        max_mobility = max(max_mobility, f_mobility);
+        f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
+        sum_flexibility += f_flexibility;
+        min_flexibility = min(min_flexibility, f_flexibility);
+        max_flexibility = max(max_flexibility, f_flexibility);
+    }
+
+    cout << "min mobility: " << min_mobility << endl;
+    cout << "avg mobility: " <<  (double) sum_mobility / (double) g_leaves.size() << endl;
+    cout << "max mobility: " << max_mobility << endl;
+    cout << "sum mobility: " << sum_mobility << endl;
+    cout << "min flexibility: " << min_flexibility << endl;
+    cout << "avg flexibility: " << (double) sum_flexibility / (double) g_leaves.size() << endl;
+    cout << "max flexibility: " << max_flexibility << endl;
+    cout << "sum flexibility: " << sum_flexibility << endl;
+
 }
 
 void Factoring::exit_error(string message, utils::ExitCode exit_code) const {
@@ -580,20 +632,20 @@ void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
     utils::Timer t;
-    
+
     FactoredVars best_factoring = get_factoring();
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
-    
+
     cout << "factoring time " << t << endl;
-    
+
     if (best_factoring.size() < min_number_leaves){
         exit_error("No factoring found!", utils::ExitCode::ABSTAINED);
     }
-    
-    apply_factoring(best_factoring);    
-    
+
+    apply_factoring(best_factoring);
+
     print_factoring();
-    
+
     if (search_type == NO_SEARCH) {
         cout << "Factoring complete, do not perform search" << endl;
         exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
@@ -601,16 +653,16 @@ void Factoring::do_factoring_or_abstain() {
 }
 
 Factoring::FactoredVars XShapeFactoring::get_factoring() {    ///////////////////////////  X-SHAPE
-    
+
     FactoredVars best_factoring;
     if (maximize_mobility){
         best_factoring = get_fork_maximize_mobility();
     } else {
         best_factoring = get_fork_maximize_leaves();
     }
-    
+
     vector<int> variables = vector<int>();
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         bool is_leaf = false;
         for (size_t i = 0; i < best_factoring.size(); i++){
@@ -623,11 +675,11 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
             variables.push_back(var);
         }
     }
-    
+
     cout << "found " << best_factoring.size() << " leaves" << endl;
-    
+
     FactoredVars inv_fork;
-    
+
     if (variables.size() > 0){
         // this happens e.g. in Movie, where the CG is not connected
         if (maximize_mobility){
@@ -636,9 +688,9 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
             inv_fork = get_fork_maximize_leaves(true, variables);
         }
     }
-                
+
     int added = 0;
-    
+
     // eliminate leaf -> leaf connections
     for (size_t i = 0; i < inv_fork.size(); ++i){
         bool is_connected = false;
@@ -666,24 +718,24 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
             ++added;
         }
     }
-    
+
     cout << "added " << added << " roots" << endl;
-    
+
     if (best_factoring.size() < min_number_leaves){
-        
+
         if (maximize_mobility){
             best_factoring = get_fork_maximize_mobility(true);
         } else {
             best_factoring = get_fork_maximize_leaves(true);
         }
-        
+
         cout << "found inv-fork factoring with " << best_factoring.size() << " leaves" << endl;
-        
+
         if (best_factoring.size() < min_number_leaves){
             return FactoredVars();
         }
     }
-    
+
     return best_factoring;
 }
 
@@ -692,9 +744,9 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
     FactoredVars best_factoring(1);
 
     srand(time(NULL));
-    
+
     uint64_t current_size = 1;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         if (rand() % 2 == 0){
             best_factoring[0].insert(var);
@@ -705,18 +757,18 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
 	    break;
 	}
     }
-    
+
     if (best_factoring[0].size() == g_variable_domain.size()){
         best_factoring[0].erase(rand() % g_variable_name.size());
     }
     if (best_factoring[0].size() == 0){
         best_factoring[0].insert(rand() % g_variable_name.size());
     }
-    
-        
+
+
 //     best_factoring[0].insert(0);
 //     best_factoring[0].insert(1);
-//     best_factoring[0].insert(2);    
+//     best_factoring[0].insert(2);
 //     best_factoring[0].insert(3);
 //     best_factoring[0].insert(4);
 //     best_factoring[0].insert(5);
@@ -746,7 +798,7 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
 //     best_factoring[0].insert(29);
 //     best_factoring[0].insert(30);
 //     best_factoring[0].insert(31);
-    
+
     cout << endl;
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         bool is_leaf = false;
@@ -761,12 +813,12 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
         }
     }
     cout << endl;
-        
+
     return best_factoring;
 }
 
 Factoring::FactoredVars ForkFactoring::get_factoring() { ////////////////////////////////  (INVERTED) FORK
-    
+
     FactoredVars factoring;
     if (maximize_mobility){
         factoring = get_fork_maximize_mobility(profile == IFORK);
@@ -787,7 +839,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
 
     // all variables sorted descendingly by number of incident arcs
     vector<vector<int> > variables;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         size_t arcs = causal_graph::get_causal_graph().get_successors(var).size();
         arcs += causal_graph::get_causal_graph().get_predecessors(var).size();
@@ -796,17 +848,17 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
         }
         variables[arcs].push_back(var);
     }
-    
+
     FactoredVars best_factoring;
     size_t best_number_leaves = 0;
 
     vector<bool> discarded_leaves;
-    
+
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         leaf_vars.insert(var);
     }
-    
+
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
         for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
 
@@ -839,7 +891,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                     --number_leaves;
                 }
             }
-            
+
             if (number_leaves >= best_number_leaves){
                 best_factoring = factoring;
                 discarded_leaves = discard_leaf;
@@ -854,11 +906,11 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
             best_factoring.erase(best_factoring.begin() + i);
         }
     }
-    
+
     if (best_factoring.size() < min_number_leaves){
         return FactoredVars();
     }
-    
+
 #ifdef DEBUG_FACTORING
     cout << endl;                      // output factoring
     for (size_t l = 0; l < best_factoring.size(); ++l){
@@ -869,15 +921,15 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
     cout << endl;
 #endif
-    
+
     return best_factoring;
 }
 
 Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, vector<int> used_vars) const {             ///////////////////////// HELPER FUNCTIONS
     // TODO probably refactor and merge with get_fork_maximize_mobility method
-    
+
     FactoredVars sccs = get_sccs(used_vars);
-    
+
     FactoredVars best_factoring;
 
     if (sccs.size() == 1){
@@ -886,17 +938,17 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
 #endif
         return best_factoring;
     }
-    
+
     typedef multimap<uint64_t, pair<vector<int>, set<int> > > CandSCCs;
     // contains all leaf SCCs sorted by size
     CandSCCs canditate_sccs;
-    
+
     bool all_leaves_fit_bound = true;
-    
+
     for (size_t i = 0; i < sccs.size(); ++i){
         uint64_t current_size = 1;
         bool is_leaf = true;
-        
+
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             if (max_leaf_size == 0 || current_size <= max_leaf_size){
@@ -915,7 +967,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                     succ_pred = causal_graph::get_causal_graph().get_successors(var)[succ];
                 }
 
-                if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
+                if (used_vars.empty() || used_vars.size() == g_variable_domain.size()
                     || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
                     if (sccs[i].find(succ_pred) == sccs[i].end()){
                         // SCC has successor/predecessor SCC
@@ -945,14 +997,14 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
     bool change = true;
     while (extend_leaves && change && (!all_leaves_fit_bound || canditate_sccs.size() > 1)){
         change = false;
-        
+
                 // update interaction graph of remaining SCCs
         for (CandSCCs::iterator it = canditate_sccs.begin(); it != canditate_sccs.end(); ++it){
             set<int> &succ_pred_sccs = it->second.second;
             succ_pred_sccs.clear();
-            
+
             const vector<int> &vars = it->second.first;
-            
+
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
                 size_t bound = causal_graph::get_causal_graph().get_successors(vars[i]).size();
@@ -967,7 +1019,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                     } else {
                         succ_pred = causal_graph::get_causal_graph().get_successors(vars[i])[var];
                     }
-                    if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
+                    if (used_vars.empty() || used_vars.size() == g_variable_domain.size()
                         || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
                         if (find(vars.begin(), vars.end(), succ_pred) != vars.end()){
                             found = true;
@@ -976,7 +1028,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                         for (size_t j = 0; j < best_factoring.size(); ++j){
                             if (best_factoring[j].find(succ_pred) != best_factoring[j].end()){
                                 succ_pred_sccs.insert(j);
-                                found = true; 
+                                found = true;
                                 break;
                             }
                         }
@@ -991,7 +1043,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                 }
             }
         }
-        
+
         // try to augment an existing leaf with another SCC
         for (CandSCCs::iterator it = canditate_sccs.begin(); it != canditate_sccs.end(); ++it){
 #ifdef DEBUG_FACTORING
@@ -1009,9 +1061,9 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
             if (it->second.second.size() == 1 &&
                 it->second.second.find(-1) == it->second.second.end()){
                 // candidate only has a single CG successor/predecessor SCC that is also a leaf
-                
+
                 int successor = *it->second.second.begin();
-                
+
                 bool can_add = true;
                 uint64_t new_size = it->first;
                 for (set<int>::const_iterator scc_it = best_factoring[successor].begin(); scc_it != best_factoring[successor].end(); ++scc_it){
@@ -1021,7 +1073,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                         break;
                     }
                 }
-                
+
                 if (can_add){
                     vector<int> &cand = it->second.first;
                     for (size_t i = 0; i < cand.size(); ++i){
@@ -1041,23 +1093,23 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
 #endif
             }
         }
-        
-        
+
+
     }
     return best_factoring;
 }
 
 Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted, vector<int> used_vars) const {
     // perform the actual factoring
-    
+
     typedef multimap<uint64_t, pair<vector<int>, set<int> > > CandSCCs;
-    
+
 #ifdef DEBUG_FACTORING
     cout << "maximizing leaf mobility" << endl;
 #endif
-    
+
     FactoredVars sccs = get_sccs(used_vars);
-    
+
     FactoredVars best_factoring;
 
     if (sccs.size() == 1){
@@ -1066,9 +1118,9 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 #endif
         return best_factoring;
     }
-    
+
     vector<size_t> mobility(sccs.size(), 0);
-    
+
     for (size_t i = 0; i < g_operators.size(); ++i){
         // only need to consider first effect, because each action
         // can only affect a single SCC, otherwise, eff-eff cycles between
@@ -1080,15 +1132,15 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
             }
         }
     }
-    
+
     vector<int> vars_to_sccs(g_variable_domain.size());
-    
+
     bool all_sscs_fit_bound = true;
-    
+
     uint64_t best_mobility = 1;
-    
+
     uint64_t current_size = 1;
-    
+
     // contains all leaf SCCs sorted by size
     CandSCCs canditate_sccs;
 
@@ -1097,10 +1149,10 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 #ifdef DEBUG_FACTORING
         cout << "mobility of SCC " << i << " = " << mobility[i] << endl;
 #endif
-        
+
         current_size = 1;
         bool is_leaf = true;
-        
+
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             int var = *it;
             vars_to_sccs[var] = i;
@@ -1120,7 +1172,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                     succ_pred = causal_graph::get_causal_graph().get_successors(var)[succ];
                 }
 
-                if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
+                if (used_vars.empty() || used_vars.size() == g_variable_domain.size()
                     || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
                     if (sccs[i].find(succ_pred) == sccs[i].end()){
                         // SCC has successor/predecessor SCC
@@ -1155,26 +1207,26 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 #endif
         }
     }
-    
+
 #ifdef DEBUG_FACTORING
     cout << "number leaf factors with leaf-SCCs only: " << best_factoring.size() << " mobility = " << (average_mobility ? best_mobility / best_factoring.size() : best_mobility) << endl;
     cout << "number canditate sccs: " << canditate_sccs.size() << endl;
 #endif
-    
+
     FactoredVars current_factoring = best_factoring;
-    
+
     bool change = !all_sscs_fit_bound || canditate_sccs.size() > 1;
     while (change){
 
         change = false;
-        
+
         // update interaction graph of remaining SCCs
         for (CandSCCs::iterator it = canditate_sccs.begin(); it != canditate_sccs.end(); ++it){
             set<int> &succ_pred_sccs = it->second.second;
             succ_pred_sccs.clear();
-            
+
             const vector<int> &vars = it->second.first;
-            
+
             for (size_t i = 0; i < vars.size(); ++i){
                 bool found = true;
                 size_t bound = causal_graph::get_causal_graph().get_successors(vars[i]).size();
@@ -1189,7 +1241,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                     } else {
                         succ_pred = causal_graph::get_causal_graph().get_successors(vars[i])[var];
                     }
-                    if (used_vars.empty() || used_vars.size() == g_variable_domain.size() 
+                    if (used_vars.empty() || used_vars.size() == g_variable_domain.size()
                         || find(used_vars.begin(), used_vars.end(), succ_pred) != used_vars.end()){
                         if (find(vars.begin(), vars.end(), succ_pred) != vars.end()){
                             found = true;
@@ -1198,7 +1250,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                         for (size_t j = 0; j < current_factoring.size(); ++j){
                             if (current_factoring[j].find(succ_pred) != current_factoring[j].end()){
                                 succ_pred_sccs.insert(j);
-                                found = true; 
+                                found = true;
                                 break;
                             }
                         }
@@ -1213,17 +1265,17 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                 }
             }
         }
-        
-        
+
+
         // find best SCC to add to leaves
         CandSCCs::iterator best_successor_scc;
         uint64_t successor_mobility = 0;
 
         for (CandSCCs::iterator it = canditate_sccs.begin(); it != canditate_sccs.end(); ++it){
             bool can_add = true;
-            
+
             set<int> &succ_pred_sccs = it->second.second;
-            
+
 #ifdef DEBUG_FACTORING
             const vector<int> &variables = it->second.first;
             cout << "current SCC: " << variables.size() << " vars, size = " << it->first << endl;
@@ -1242,7 +1294,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                 cout << "all successors are leaf factors => combining to new leaf factor" << endl;
 #endif
                 current_size = it->first;
-                
+
                 for (set<int>::iterator succ_it = succ_pred_sccs.begin(); succ_it != succ_pred_sccs.end(); ++succ_it){
                     const set<int> &successor = current_factoring[*succ_it];
                     for (set<int>::iterator succ_pred_vars = successor.begin(); succ_pred_vars != successor.end(); ++succ_pred_vars){
@@ -1255,7 +1307,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                         break;
                     }
                 }
-                
+
                 if (max_leaf_size != 0 && current_size > max_leaf_size){
                     can_add = false;
 #ifdef DEBUG_FACTORING
@@ -1263,7 +1315,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 #endif
                 }
             }
-            
+
             if (can_add){
                 // reconstruct of which SCCs the current leaf factors consist
                 uint64_t new_mobility = 1;
@@ -1283,12 +1335,12 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                     factors_to_remove.insert(*succ_it);
                 }
                 sccs.back().insert(vars_to_sccs[it->second.first.front()]);// the new SCC
-                
+
                 for (set<int>::reverse_iterator rem_it = factors_to_remove.rbegin(); rem_it != factors_to_remove.rend(); ++rem_it){
                     FactoredVars::iterator r_it = sccs.begin() + *rem_it;
                     sccs.erase(r_it);
-                }                
-                
+                }
+
                 // compute mobility of potentially new factoring
                 for (size_t i = 0; i < sccs.size(); ++i){
                     size_t mob = 0;
@@ -1307,48 +1359,48 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 #ifdef DEBUG_FACTORING
                 cout << "new factoring would have mobility " << new_mobility << " and " << sccs.size() << " leaf factors" << endl;
 #endif
-                
+
                 if (new_mobility > successor_mobility && sccs.size() >= min_number_leaves){
 #ifdef DEBUG_FACTORING
                     cout << "better than current best successor factoring => replace" << endl;
-#endif                    
+#endif
                     best_successor_scc = it;
                     successor_mobility = new_mobility;
                     change = true;
                 }
             }
         }
-        
+
         // update best factoring and check if any candidates left
         if (change){
             const set<int> &succ_pred_sccs = best_successor_scc->second.second;
-            
+
             current_factoring.push_back(set<int>());
             set<int> &new_factor = current_factoring.back();
-            
+
             set<int> factors_to_remove;
             for (set<int>::iterator succ_it = succ_pred_sccs.begin(); succ_it != succ_pred_sccs.end(); ++succ_it){
                 set<int> succ_pred = current_factoring[*succ_it];
-                
+
                 factors_to_remove.insert(*succ_it);
                 for (set<int>::iterator var_it = succ_pred.begin(); var_it != succ_pred.end(); ++var_it){
                     new_factor.insert(*var_it);
                 }
             }
-            
+
             const vector<int> &variables = best_successor_scc->second.first;
-            
+
             for (size_t i = 0; i < variables.size(); ++i){
                 new_factor.insert(variables[i]);
             }
-            
+
             for (set<int>::reverse_iterator rem_it = factors_to_remove.rbegin(); rem_it != factors_to_remove.rend(); ++rem_it){
                 FactoredVars::iterator r_it = current_factoring.begin() + *rem_it;
                 current_factoring.erase(r_it);
             }
-                    
+
             canditate_sccs.erase(best_successor_scc);
-            
+
             if (successor_mobility > best_mobility){
                 best_factoring = current_factoring;
                 best_mobility = successor_mobility;
@@ -1356,7 +1408,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                 cout << "found a new best factoring with " << best_factoring.size() << " leaf factors and mobility " << best_mobility << endl;
 #endif
             }
-            
+
             if (canditate_sccs.empty() || (all_sscs_fit_bound && canditate_sccs.size() == 1)){
 #ifdef DEBUG_FACTORING
                 cout << "no more candidates left, factoring completed" << endl;
@@ -1365,7 +1417,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
             }
         }
     }
-    
+
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < best_factoring.size(); i++){
         cout << "leaf factor " << i << endl;
@@ -1394,10 +1446,10 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
             }
         }
     }
-    
+
     vector<vector<int> > found_sccs = sccs::compute_maximal_sccs(vars);
     FactoredVars real_sccs;
-    
+
     for (size_t i = 0; i < found_sccs.size(); i++){
         if (found_sccs[i].size() != 1 || variables.empty() || variables.size() == g_variable_name.size()){
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
@@ -1407,29 +1459,29 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
         }
     }
-    
+
 #ifdef DEBUG_FACTORING
     cout << "found " << real_sccs.size() << " SCCs" << endl;
 #endif
-    
+
     return real_sccs;
 }
 
 Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
     FactoredVars components;
-    
+
     vector<bool> vars(g_variable_domain.size(), false);
     for (int var : variables){
         vars[var] = true;
     }
-    
+
     vector<int> var_comp_map(g_variable_domain.size(), -1);
-    
-    vector<bool> handled_var(g_variable_domain.size(), false);    
-    size_t number_handled_vars = 0;    
+
+    vector<bool> handled_var(g_variable_domain.size(), false);
+    size_t number_handled_vars = 0;
     vector<int> open_vars;
     vector<bool> is_open_var(g_variable_domain.size(), false);
-    
+
     while(number_handled_vars < variables.size()){
         if (open_vars.empty()){
             for (int var : variables){
@@ -1443,18 +1495,18 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
                 }
             }
         }
-        
+
         int curr = open_vars.back();
         open_vars.pop_back();
         is_open_var[curr] = false;
-        
+
         if (handled_var[curr]){
             continue;
         }
-        
+
         handled_var[curr] = true;
         ++number_handled_vars;
-        
+
         for (int var : causal_graph::get_causal_graph().get_predecessors(curr)){
             if (vars[var] && !handled_var[var] && !is_open_var[var]){
                 open_vars.push_back(var);
@@ -1472,7 +1524,7 @@ Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &v
             }
         }
     }
-    
+
     return components;
 }
 
@@ -1481,7 +1533,7 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
     vector<int> belongs_to_factor(g_variable_domain.size(), -1);
     size_t num_frozen = components.size();
     vector<bool> operator_seen(g_operators.size(), false);
-    
+
     for (size_t i = 0; i < components.size(); ++i){
         for (int var : components[i]){
             belongs_to_factor[var] = i;
@@ -2157,17 +2209,17 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
 
 
 Factoring::FactoredVars SokobanFactoring::get_factoring() {
-    
+
     FactoredVars best_factoring(1);
-    
+
     cout << "factoring sokoban" << endl;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); var++){
 	if (g_fact_names[var][0].find("player") != string::npos){
 	    best_factoring[0].insert(var);
 	}
     }
-    
+
     cout << endl;
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         bool is_leaf = false;
@@ -2182,24 +2234,24 @@ Factoring::FactoredVars SokobanFactoring::get_factoring() {
         }
     }
     cout << endl;
-    
+
     return best_factoring;
 }
 
 Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
-    
+
     vector<int> leaf_vars;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); var++){
 	if (g_fact_names[var][0].find("stacks-avail") == string::npos){
 	    leaf_vars.push_back(var);
 	}
     }
-    
+
     FactoredVars sccs = get_sccs(leaf_vars);
-    
+
     FactoredVars best_factoring;
-    
+
     for (size_t i = 0; i < sccs.size(); i++){
 	uint64_t current_size = 1;
 	for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
@@ -2212,8 +2264,8 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
 	    best_factoring.push_back(sccs[i]);
 	}
     }
-    
-    
+
+
     cout << endl;
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         bool is_leaf = false;
@@ -2227,19 +2279,19 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
             cout << "center:    " << g_fact_names[var][0] << endl;
         }
     }
-    cout << endl;    
-    
-    
+    cout << endl;
+
+
     return best_factoring;
 }
 
 
 Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
-        
+
     vector<int> leaf_vars;
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); var++){
-        if (g_fact_names[var][0].find("money(level") == string::npos 
+        if (g_fact_names[var][0].find("money(level") == string::npos
             && g_fact_names[var][0].find("at(truck") == string::npos){
             if (!inverted){
                 leaf_vars.push_back(var);
@@ -2248,11 +2300,11 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
             leaf_vars.push_back(var);
         }
     }
-    
+
     FactoredVars sccs = get_sccs(leaf_vars);
-    
+
     FactoredVars best_factoring;
-    
+
     for (size_t i = 0; i < sccs.size(); i++){
         uint64_t current_size = 1;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
@@ -2265,8 +2317,8 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
             best_factoring.push_back(sccs[i]);
         }
     }
-    
-    
+
+
     cout << endl;
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         bool is_leaf = false;
@@ -2280,9 +2332,9 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
             cout << "center:    " << g_fact_names[var][0] << endl;
         }
     }
-    cout << endl;    
-    
-    
+    cout << endl;
+
+
     return best_factoring;
 }
 
@@ -2305,7 +2357,7 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
     factors[1][0] = "Atom free(pos-2-0)";factors[1][1] = "Atom free(pos-3-0)";factors[1][2] = "Atom free(pos-4-0)";factors[1][3] = "Atom free(pos-2-1)";factors[1][4] = "Atom free(pos-3-1)";factors[1][5] = "Atom free(pos-4-1)";//factors[1][6] = "Atom free(pos-3-2)";
     factors[2][0] = "Atom free(pos-5-2)";factors[2][1] = "Atom free(pos-5-3)";factors[2][2] = "Atom free(pos-5-4)";factors[2][3] = "Atom free(pos-6-2)";factors[2][4] = "Atom free(pos-6-3)";factors[2][5] = "Atom free(pos-6-4)";//factors[2][6] = "Atom free(pos-4-3)";
     factors[3][0] = "Atom free(pos-2-5)";factors[3][1] = "Atom free(pos-3-5)";factors[3][2] = "Atom free(pos-4-5)";factors[3][3] = "Atom free(pos-2-6)";factors[3][4] = "Atom free(pos-3-6)";factors[3][5] = "Atom free(pos-4-6)";//factors[3][6] = "Atom free(pos-3-4)";
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         for (size_t factor = 0; factor < factors.size(); ++factor){
             vector<string>::const_iterator it = find(factors[factor].begin(), factors[factor].end(), g_fact_names[var][0].c_str());
@@ -2322,11 +2374,11 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
     parser.add_option<PruningOptions*>(
-        "pruning", 
-        "TODO", 
+        "pruning",
+        "TODO",
         "",
         OptionFlags(false));
-    
+
     vector<string> search_types;
     search_types.push_back("fra");
     search_types.push_back("asda");
@@ -2341,7 +2393,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "sda",
         vector<string>(),
         OptionFlags(false));
-    
+
     parser.add_option<int>(
         "max_leaf_size",
         "TODO",
@@ -2449,7 +2501,7 @@ static Factoring *_parse_fork(OptionParser &parser) {
     Options opts = parser.parse();
 
     ForkFactoring *factoring = 0;
-    if (!parser.dry_run()) {        
+    if (!parser.dry_run()) {
         factoring = new ForkFactoring(opts);
     }
 
@@ -2460,7 +2512,7 @@ static Factoring *_parse_ifork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
-    
+
     Options opts = parser.parse();
 
     ForkFactoring *factoring = 0;
@@ -2475,7 +2527,7 @@ static Factoring *_parse_xshape(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
-    
+
     Options opts = parser.parse();
 
     XShapeFactoring *factoring = 0;
@@ -2490,7 +2542,7 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     IncidentArcsFactoring::add_options_to_parser(parser);
-    
+
     Options opts = parser.parse();
 
     IncidentArcsFactoring *factoring = 0;
@@ -2519,7 +2571,7 @@ static Factoring *_parse_mis(OptionParser &parser) {
 static Factoring *_parse_doctransfer(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
-    
+
     Options opts = parser.parse();
 
     DocTransferFactoring *factoring = 0;
@@ -2533,7 +2585,7 @@ static Factoring *_parse_doctransfer(OptionParser &parser) {
 static Factoring *_parse_pegsol(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
-    
+
     Options opts = parser.parse();
 
     PegsolFactoring *factoring = 0;
@@ -2556,4 +2608,3 @@ static Plugin<Factoring> _plugin_mis("mis", _parse_mis);
 
 static Plugin<Factoring> _plugin_doctransfer("doctransfer", _parse_doctransfer);
 static Plugin<Factoring> _plugin_pegsol("pegsol", _parse_pegsol);
-
