@@ -605,7 +605,11 @@ void Factoring::print_factoring() const {
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
         max_mobility = max(max_mobility, f_mobility);
-        f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
+        if (num_leaf_actions[factor] == 0){
+            f_flexibility = 0;
+        } else {
+            f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
+        }
         sum_flexibility += f_flexibility;
         min_flexibility = min(min_flexibility, f_flexibility);
         max_flexibility = max(max_flexibility, f_flexibility);
