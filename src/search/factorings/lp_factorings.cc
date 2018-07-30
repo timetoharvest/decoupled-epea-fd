@@ -21,7 +21,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
      min_mobility = opts.get<int>("min_mob");
-     min_flexibility = opts.get<int>("min_flex");
+     min_flexibility = opts.get<float>("min_flex");
      max_merge_steps = opts.get<int>("max_merge");
      cout << "using LP factoring strategy" << endl;
 }
@@ -115,6 +115,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
     size_t num_p_leaves = potential_leaves.size();
 
+
     vector<bool> p_leaves_cg (num_p_leaves * num_p_leaves, false);
 
     for (PotentialLeaf &p_leaf : potential_leaves) {
@@ -175,7 +176,6 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
             factoring.push_back(leaf);
         }
     }
-
     return factoring;
 
 }
@@ -605,7 +605,7 @@ void LPFactoring::set_action_schemes(int min_num_actions) {
 }
 
 
-void LPFactoring::set_potential_leaves(int min_mobility, int min_flexibility, int min_num_actions) {
+void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, int min_num_actions) {
 
     int id = 0;
     for (ActionSchema action_schema : act_schemes) {
@@ -829,7 +829,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "1"
     );
 
-    parser.add_option<int>(
+    parser.add_option<float>(
         "min_flex",
         "TODO",
         "0"
