@@ -22,6 +22,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
      min_mobility = opts.get<int>("min_mob");
      min_flexibility = opts.get<int>("min_flex");
+     max_merge_steps = opts.get<int>("max_merge");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -37,8 +38,8 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
       case MML: factoring = get_max_mobile_leaves(); break;
       case MML_MODULAR: factoring = get_max_mobile_leaves_modular(); break;
       case MML_MODULAR_NO_SCHEMES: factoring = get_max_mobile_leaves_modular_no_schemes(); break;
-      case MFES: factoring = get_max_mobile_leaves(); break;
-      case MMES: factoring = get_max_mobile_leaves(); break;
+      case MM: factoring = get_max_mobile_leaves(); break;
+      case MF: factoring = get_max_mobile_leaves(); break;
       default: exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
 
@@ -108,48 +109,54 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     vector<LPConstraint> constraints;
 
     set_action_schemes();
-    set_effect_schemes(min_mobility, min_flexibility);
-    size_t num_eff_schemes = eff_schemes.size();
+    set_potential_leaves(min_mobility, min_flexibility);
+    if (max_merge_steps > 0) {
+        merge_potential_leaves(max_merge_steps);
+    }
+    size_t num_p_leaves = potential_leaves.size();
 
-    vector<bool> eff_schemes_cg (num_eff_schemes * num_eff_schemes, false);
+    vector<bool> p_leaves_cg (num_p_leaves * num_p_leaves, false);
 
-    for (EffectSchema &eff_schema : eff_schemes) {
-        for (int var : eff_schema.eff_vars) {
+    for (PotentialLeaf &p_leaf : potential_leaves) {
+        for (int var : p_leaf.vars) {
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                for (int i : var_to_eff_schemes[suc]) {
-                    if (eff_schema.eff_vars != eff_schemes[i].eff_vars) {
-                        eff_schemes_cg[eff_schema.id * num_eff_schemes + eff_schemes[i].id] = true;
+                for (int i : var_to_p_leaves[suc]) {
+                    if (p_leaf.vars != potential_leaves[i].vars) {
+                        p_leaves_cg[p_leaf.id * num_p_leaves + potential_leaves[i].id] = true;
                     }
                 }
             }
         }
     }
 
-    for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
+    for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
       switch (strategy) {
         case MML:
             variables.push_back(MIPVariable(0.0,1.0,1.0, MIPVariableType::INT));
             break;
-        case MFES:
-            variables.push_back(MIPVariable(0.0,1.0,eff_schemes[eff_schema].get_flexibility(), MIPVariableType::INT));
+        case MF:
+            variables.push_back(MIPVariable(0.0,1.0,potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
             break;
-        case MMES:
-            variables.push_back(MIPVariable(0.0,1.0,eff_schemes[eff_schema].num_leaf_only_actions, MIPVariableType::INT));
+        case MM:
+            variables.push_back(MIPVariable(0.0,1.0,potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
             break;
         default: exit_with(utils::ExitCode::CRITICAL_ERROR);
       }
-
     }
 
-    for (size_t eff_schema_1 = 0; eff_schema_1 < num_eff_schemes; eff_schema_1++) {
-        for (size_t eff_schema_2 = 0; eff_schema_2 < num_eff_schemes; eff_schema_2++) {
-            if (eff_schemes_cg[eff_schema_1 * num_eff_schemes + eff_schema_2]) {
+    for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
+        for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
+            if (p_leaves_cg[p_leaf_1 * num_p_leaves + p_leaf_2]) {
               LPConstraint constraint (0.0,1.0);
-              constraint.insert(eff_schema_1,1.0);
-              constraint.insert(eff_schema_2,1.0);
+              constraint.insert(p_leaf_1,1.0);
+              constraint.insert(p_leaf_2,1.0);
               constraints.push_back(constraint);
             }
         }
+    }
+
+    if (variables.size() > 2000 && constraints.size() > 4500000) {
+        exit_error("Number of LP variables and number of LP constraints exceed limit.", utils::ExitCode::OUT_OF_MEMORY);
     }
 
     mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
@@ -159,10 +166,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     FactoredVars factoring;
 
     vector<double> solution = mip_solver.extract_solution();
-    for (size_t eff_schema = 0; eff_schema < num_eff_schemes; eff_schema++) {
-        if (solution[eff_schema] == 1.0) {
+    for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
+        if (solution[p_leaf] == 1.0) {
             set<int> leaf;
-            for (int var : eff_schemes[eff_schema].eff_vars) {
+            for (int var : potential_leaves[p_leaf].vars) {
                 leaf.insert(var);
             }
             factoring.push_back(leaf);
@@ -545,103 +552,6 @@ vector<bool> LPFactoring::get_mobile_vars() {
 
 }
 
-void LPFactoring::set_effect_schemes(int min_mobility, int min_flexibility, int min_num_actions) {
-
-    int id = 0;
-    for (ActionSchema action_schema : act_schemes) {
-        bool duplicate = false;
-        for (vector<EffectSchema>::reverse_iterator i = eff_schemes.rbegin(); i != eff_schemes.rend(); i++) {
-            if (action_schema.eff_vars == i->eff_vars) {
-                i->num_actions += action_schema.num_actions;
-                duplicate = true;
-                break;
-            }
-        }
-        if (!duplicate) {
-            EffectSchema eff_schema (id, action_schema.num_actions, action_schema.eff_vars);
-            eff_schemes.push_back(eff_schema);
-            id++;
-        }
-    }
-
-    var_to_eff_schemes.resize(g_variable_domain.size(), set<int>());
-
-    for (EffectSchema &eff_schema : eff_schemes) {
-        for (int var : eff_schema.eff_vars) {
-            var_to_eff_schemes[var].insert(eff_schema.id);
-        }
-    }
-
-    //set number of leaf actions
-    for (EffectSchema &eff_schema : eff_schemes) {
-        set<int> overlapping_schemes;
-        for (int var : eff_schema.eff_vars) {
-            for (int index : var_to_eff_schemes[var]) {
-                overlapping_schemes.insert(index);
-            }
-        }
-        int num_leaf_actions = 0;
-        for (int index : overlapping_schemes) {
-            num_leaf_actions += eff_schemes[index].num_actions;
-        }
-        eff_schema.num_leaf_actions = num_leaf_actions;
-    }
-
-    //set number of leaf-only actions
-    for (EffectSchema &eff_schema : eff_schemes) {
-        std::set<int> superset_schemes;
-        if (eff_schema.eff_vars.size() == 1) {
-            int var = (eff_schema.eff_vars)[0];
-            for (int index : var_to_eff_schemes[var]) {
-                superset_schemes.insert(index);
-            }
-        } else {
-            int var = eff_schema.eff_vars[1];
-            for (int index : var_to_eff_schemes[var]) {
-                bool superset_schema = true;
-                for (int var_1 : eff_schema.eff_vars) {
-                    bool var_contained = false;
-                    for (int var_2 : eff_schemes[index].eff_vars) {
-                        if (var_1 == var_2) {
-                            var_contained = true;
-                            break;
-                        }
-                    }
-                    if (!var_contained) {
-                        superset_schema = false;
-                        break;
-                    }
-                }
-                if (superset_schema) {
-                    superset_schemes.insert(index);
-                }
-            }
-        }
-        for (int index : superset_schemes) {
-            eff_schemes[index].num_leaf_only_actions += eff_schema.num_actions;
-        }
-    }
-
-    if (min_mobility > 1 || min_flexibility > 0 || min_num_actions > 1) {
-        //erase effect schemes that does not satisfy requirements
-        auto lambda_expr = [&](EffectSchema effect_schema){return effect_schema.num_actions < min_num_actions || effect_schema.num_leaf_only_actions < min_mobility || effect_schema.get_flexibility() < min_flexibility;};
-        eff_schemes.erase(remove_if(eff_schemes.begin(), eff_schemes.end(), lambda_expr), eff_schemes.end());
-        //adjust IDs
-        id = 0;
-        for (EffectSchema &eff_schema : eff_schemes) {
-            eff_schema.id = id;
-            id++;
-        }
-        for (size_t var = 0; var < g_variable_domain.size(); var++){
-            var_to_eff_schemes[var].clear();
-        }
-        for (EffectSchema &eff_schema : eff_schemes) {
-            for (int var : eff_schema.eff_vars) {
-                var_to_eff_schemes[var].insert(eff_schema.id);
-            }
-        }
-    }
-}
 
 void LPFactoring::set_action_schemes(int min_num_actions) {
     vector<int> pre_vars;
@@ -695,6 +605,192 @@ void LPFactoring::set_action_schemes(int min_num_actions) {
 }
 
 
+void LPFactoring::set_potential_leaves(int min_mobility, int min_flexibility, int min_num_actions) {
+
+    int id = 0;
+    for (ActionSchema action_schema : act_schemes) {
+        bool duplicate = false;
+        for (vector<PotentialLeaf>::reverse_iterator i = potential_leaves.rbegin(); i != potential_leaves.rend(); i++) {
+            if (action_schema.eff_vars == i->vars) {
+                i->num_actions += action_schema.num_actions;
+                duplicate = true;
+                break;
+            }
+        }
+        if (!duplicate) {
+            PotentialLeaf p_leaf (id, action_schema.num_actions, action_schema.eff_vars);
+            potential_leaves.push_back(p_leaf);
+            id++;
+        }
+    }
+
+    var_to_p_leaves.resize(g_variable_domain.size(), set<int>());
+
+    for (PotentialLeaf &p_leaf : potential_leaves) {
+        for (int var : p_leaf.vars) {
+            var_to_p_leaves[var].insert(p_leaf.id);
+        }
+    }
+
+    //set number of leaf actions
+    for (PotentialLeaf &p_leaf : potential_leaves) {
+        set<int> overlapping_schemes;
+        for (int var : p_leaf.vars) {
+            for (int index : var_to_p_leaves[var]) {
+                overlapping_schemes.insert(index);
+            }
+        }
+        int num_leaf_actions = 0;
+        for (int index : overlapping_schemes) {
+            num_leaf_actions += potential_leaves[index].num_actions;
+        }
+        p_leaf.num_leaf_actions = num_leaf_actions;
+    }
+
+    //set number of leaf-only actions
+    for (PotentialLeaf &p_leaf : potential_leaves) {
+        std::set<int> superset_schemes;
+        if (p_leaf.vars.size() == 1) {
+            int var = (p_leaf.vars)[0];
+            for (int index : var_to_p_leaves[var]) {
+                superset_schemes.insert(index);
+            }
+        } else {
+            int var = p_leaf.vars[0];
+            for (int index : var_to_p_leaves[var]) {
+                bool superset_schema = true;
+                for (int var_1 : p_leaf.vars) {
+                    bool var_contained = false;
+                    for (int var_2 : potential_leaves[index].vars) {
+                        if (var_1 == var_2) {
+                            var_contained = true;
+                            break;
+                        }
+                    }
+                    if (!var_contained) {
+                        superset_schema = false;
+                        break;
+                    }
+                }
+                if (superset_schema) {
+                    superset_schemes.insert(index);
+                }
+            }
+        }
+        for (int index : superset_schemes) {
+            potential_leaves[index].num_leaf_only_actions += p_leaf.num_actions;
+        }
+    }
+
+    if (min_mobility > 1 || min_flexibility > 0 || min_num_actions > 1) {
+        //erase effect schemes that does not satisfy requirements
+        auto lambda_expr = [&](PotentialLeaf p_leaf){return p_leaf.num_actions < min_num_actions || p_leaf.num_leaf_only_actions < min_mobility || p_leaf.get_flexibility() < min_flexibility;};
+        potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
+        //adjust IDs
+        id = 0;
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            p_leaf.id = id;
+            id++;
+        }
+        for (size_t var = 0; var < g_variable_domain.size(); var++){
+            var_to_p_leaves[var].clear();
+        }
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            for (int var : p_leaf.vars) {
+                var_to_p_leaves[var].insert(p_leaf.id);
+            }
+        }
+    }
+}
+
+
+void LPFactoring::merge_potential_leaves(int max_iterations) {
+
+    queue<PotentialLeaf> open;
+    for (PotentialLeaf &p_leaf : potential_leaves) {
+        sort(p_leaf.vars.begin(), p_leaf.vars.end());
+        if (p_leaf.vars.size() > 1) {
+            open.push(p_leaf);
+        }
+    }
+
+    int id = potential_leaves.size();
+    vector<PotentialLeaf> merged_leaves;
+    for (int iteration = 0; iteration < max_iterations; iteration++) {
+        while (!open.empty()) {
+            PotentialLeaf p_leaf = open.front();
+            open.pop();
+            set<int> overlapping_leaves;
+            for (int var : p_leaf.vars) {
+                for (int index : var_to_p_leaves[var]) {
+                    overlapping_leaves.insert(index);
+                }
+            }
+
+            for (int i : overlapping_leaves) {
+                vector<int> vars = potential_leaves[i].vars;
+                if (vars.size() == 1 || includes(p_leaf.vars.begin(), p_leaf.vars.end(), vars.begin(), vars.end()) || includes(vars.begin(), vars.end(), p_leaf.vars.begin(), p_leaf.vars.end())) {
+                    continue;
+                }
+                vector<int> merged_vars (p_leaf.vars.size() + vars.size());
+                auto it = set_union(p_leaf.vars.begin(), p_leaf.vars.end(), vars.begin(), vars.end(), merged_vars.begin());
+                merged_vars.resize(it - merged_vars.begin());
+
+                //duplicate check
+                bool dublicate = false;
+                for (int j : var_to_p_leaves[merged_vars[0]]) {
+                    if (potential_leaves[j].vars == merged_vars) {
+                       dublicate = true;
+                       break;
+                    }
+                }
+                if (!dublicate) {
+                    for (PotentialLeaf &merged_leaf : merged_leaves) {
+                        if (merged_leaf.vars == merged_vars) {
+                           dublicate = true;
+                           break;
+                        }
+                    }
+                }
+                if (dublicate) {
+                    continue;
+                }
+
+                PotentialLeaf merged_leaf (id, 0, merged_vars);
+
+                //calculate number of leaf actions and leaf-only actions
+                set<int> overlapping_with_merged_leaf;
+                for (int var : merged_vars) {
+                    for (int j : var_to_p_leaves[var]) {
+                        overlapping_with_merged_leaf.insert(j);
+                    }
+                }
+                for (int j : overlapping_with_merged_leaf) {
+                    merged_leaf.num_leaf_actions += potential_leaves[j].num_actions;
+                    if (includes(merged_vars.begin(), merged_vars.end(), potential_leaves[j].vars.begin(), potential_leaves[j].vars.end())) {
+                        merged_leaf.num_leaf_only_actions += potential_leaves[j].num_actions;
+                    }
+                }
+                if (p_leaf.get_flexibility() > merged_leaf.get_flexibility() || potential_leaves[i].get_flexibility() > merged_leaf.get_flexibility()) {
+                    continue;
+                }
+
+                merged_leaves.push_back(merged_leaf);
+                id++;
+            }
+        }
+        for (PotentialLeaf &merged_leaf : merged_leaves) {
+            potential_leaves.push_back(merged_leaf);
+            open.push(merged_leaf);
+            for (int var : merged_leaf.vars) {
+                var_to_p_leaves[var].insert(merged_leaf.id);
+            }
+        }
+        merged_leaves.clear();
+    }
+}
+
+
 void LPFactoring::add_options_to_parser(OptionParser &parser) {
 
     vector<string> strategies;
@@ -704,8 +800,8 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
     strategies.push_back("mml");
     strategies.push_back("mml_modular");
     strategies.push_back("mml_modular_no_schemes");
-    strategies.push_back("mfes");
-    strategies.push_back("mmes");
+    strategies.push_back("mm");
+    strategies.push_back("mf");
     parser.add_enum_option(
         "strategy",
         strategies,
@@ -715,13 +811,15 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         OptionFlags(false));
 
     vector<string> factoring_type;
-    factoring_type.push_back("strict_star");
     factoring_type.push_back("general_star");
+    factoring_type.push_back("strict_star");
+    factoring_type.push_back("f");
+    factoring_type.push_back("if");
     parser.add_enum_option(
         "factoring_type",
         factoring_type,
         "TODO",
-        "general_star",
+        "strict_star",
         vector<string>(),
         OptionFlags(false));
 
@@ -733,6 +831,12 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
 
     parser.add_option<int>(
         "min_flex",
+        "TODO",
+        "0"
+    );
+
+    parser.add_option<int>(
+        "max_merge",
         "TODO",
         "0"
     );

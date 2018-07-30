@@ -10,28 +10,31 @@ enum STRATEGY {
     MML,
     MML_MODULAR,
     MML_MODULAR_NO_SCHEMES,
-    MFES,
-    MMES,
+    MM,
+    MF,
 };
 
 enum FACTORING_TYPE {
-    STRICT_STAR,
     GENERAL_STAR,
+    STRICT_STAR,
+    F,
+    IF,
 };
 
-struct EffectSchema {
-    int id;
-    int num_actions; //number of actions with the effect schema
-    int num_leaf_only_actions; //number of leaf-only actions if the effect schema forms a leaf
-    int num_leaf_actions; //number of leaf actions if the effect schema forms a leaf
-    std::vector<int> eff_vars;
+struct PotentialLeaf {
+  int id;
+  int num_actions; //number of actions with the effect schema
+  int num_leaf_only_actions; //number of leaf-only actions if the effect schema forms a leaf
+  int num_leaf_actions; //number of leaf actions if the effect schema forms a leaf
+  std::vector<int> vars;
+  std::vector<int> overlapping_leaves;
 
-    EffectSchema(int id, int num_actions, std::vector<int> eff_vars)
-        : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), eff_vars(eff_vars) {}
+  PotentialLeaf(int id, int num_actions, std::vector<int> vars)
+      : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), vars(vars) {}
 
-    float get_flexibility() {
-        return ((float) num_leaf_only_actions / (float) num_leaf_actions);
-    }
+  float get_flexibility() {
+      return ((float) num_leaf_only_actions / (float) num_leaf_actions);
+  }
 
 };
 
@@ -62,11 +65,13 @@ protected:
 
     int min_flexibility;
 
+    int max_merge_steps;
+
     std::vector<ActionSchema> act_schemes;
 
-    std::vector<EffectSchema> eff_schemes;
+    std::vector<PotentialLeaf> potential_leaves;
 
-    std::vector<std::set<int>> var_to_eff_schemes;
+    std::vector<std::set<int>> var_to_p_leaves;
 
     FactoredVars get_factoring() override;
 
@@ -80,9 +85,11 @@ protected:
 
     std::vector<bool> get_mobile_vars();
 
-    void set_effect_schemes(int min_mobility = 1, int min_flexibility = 0, int min_num_actions = 1);
-
     void set_action_schemes(int min_num_actions = 1);
+
+    void set_potential_leaves(int min_mobility = 1, int min_flexibility = 0, int min_num_actions = 1);
+
+    void merge_potential_leaves(int max_iterations = 2);
 
 public:
 
