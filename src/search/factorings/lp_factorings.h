@@ -12,11 +12,12 @@ enum STRATEGY {
     MML_MODULAR_NO_SCHEMES,
     MM,
     MF,
+    MMF,
 };
 
 enum FACTORING_TYPE {
-    GENERAL_STAR,
-    STRICT_STAR,
+    GENERAL,
+    STRICT,
     F,
     IF,
 };
