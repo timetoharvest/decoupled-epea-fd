@@ -194,15 +194,17 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
 
     FactoredVars mip_factoring = get_mip_factoring();
 
-    vector<bool> mobile_vars = get_mobile_vars();
-    bool mobile_factoring = true;
-    for (set<int> &factor : mip_factoring) {
-        for (int var : factor) {
-            mobile_factoring = mobile_factoring && mobile_vars[var];
+    if (factoring_type == STRICT) {
+        vector<bool> mobile_vars = get_mobile_vars();
+        bool mobile_factoring = true;
+        for (set<int> &factor : mip_factoring) {
+            for (int var : factor) {
+                mobile_factoring = mobile_factoring && mobile_vars[var];
+            }
         }
-    }
-    if (mobile_factoring) {
-        return mip_factoring;
+        if (mobile_factoring) {
+            return mip_factoring;
+        }
     }
 
     int max_number_leaves = mip_factoring.size();
@@ -253,6 +255,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     }
 
     if (factoring_type == STRICT || factoring_type == F || factoring_type == IF) {
+
         //(3) if a_k affects v_j and v_j is contained in F^L_i then a_k has only preconditions / effects on F^L_i or the center
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
@@ -291,11 +294,34 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
                     }
                     constraints.push_back(constraint);
                 }
+                if (factoring_type == F) {
+                    for (const int &pre_var_1 : pre_vars) {
+                        vector<double> coefficients (max_number_leaves * g_variable_domain.size(),0.0);
+                        for (const int &eff_var_1 : eff_vars) {
+                            coefficients[i_1 * g_variable_domain.size() + eff_var_1] +=  -1.0;
+                        }
+                        for (const int &pre_var_2 : pre_vars) {
+                            coefficients[i_1 * g_variable_domain.size() + pre_var_2] += -1.0;
+                            for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                                coefficients[i_2 * g_variable_domain.size() + pre_var_2] += 1.0;
+                            }
+                        }
+                        coefficients[i_1 * g_variable_domain.size() + pre_var_1] += eff_vars.size() + pre_vars.size();
+                        LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), pre_vars.size());
+                        for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
+                            if (coefficients[x] != 0.0) {
+                                constraint.insert(x,coefficients[x]);
+                            }
+                        }
+                        constraints.push_back(constraint);
+                    }
+                }
             }
         }
     }
 
     if (factoring_type == GENERAL) {
+
         //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_vars;
@@ -328,7 +354,6 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
         }
     }
 
-
     //(4) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
         LPConstraint constraint (0.0, g_variable_domain.size()-1);
@@ -356,6 +381,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     mip_solver.solve();
     mip_solver.print_statistics();
 
+
     //extract solution
     FactoredVars factoring;
     vector<double> solution = mip_solver.extract_solution();
@@ -363,12 +389,13 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            if (solution.at(i * g_variable_domain.size() + var) == 1.0) {
+            //no comparison with 1.0 due to numeric difficulties
+            if (solution.at(i * g_variable_domain.size() + var) > 0.9) {
                 leaf.insert(var);
             }
         }
         if (leaf.empty()){
-          continue;
+            continue;
         }
         factoring.push_back(leaf);
     }
@@ -385,7 +412,22 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     vector<MIPVariable> variables;
     vector<LPConstraint> constraints;
 
-    int max_number_leaves = get_mip_factoring().size();
+    FactoredVars mip_factoring = get_mip_factoring();
+
+    if (factoring_type == STRICT) {
+        vector<bool> mobile_vars = get_mobile_vars();
+        bool mobile_factoring = true;
+        for (set<int> &factor : mip_factoring) {
+            for (int var : factor) {
+                mobile_factoring = mobile_factoring && mobile_vars[var];
+            }
+        }
+        if (mobile_factoring) {
+            return mip_factoring;
+        }
+    }
+
+    int max_number_leaves = mip_factoring.size();
 
 
     //x_ij indicating whether variable v_j is contained in leaf F_i
@@ -468,6 +510,28 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
                     }
                     constraints.push_back(constraint);
                 }
+                if (factoring_type == F) {
+                    for (const Condition &pre_1 : preconditions) {
+                        vector<double> coefficients (max_number_leaves * g_variable_domain.size(),0.0);
+                        for (const Effect &eff_1 : effects) {
+                            coefficients[i_1 * g_variable_domain.size() + eff_1.var] +=  -1.0;
+                        }
+                        for (const Condition &pre_2 : preconditions) {
+                            coefficients[i_1 * g_variable_domain.size() + pre_2.var] += -1.0;
+                            for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
+                                coefficients[i_2 * g_variable_domain.size() + pre_2.var] += 1.0;
+                            }
+                        }
+                        coefficients[i_1 * g_variable_domain.size() + pre_1.var] += effects.size() + preconditions.size();
+                        LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), preconditions.size());
+                        for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
+                            if (coefficients[x] != 0.0) {
+                                constraint.insert(x,coefficients[x]);
+                            }
+                        }
+                        constraints.push_back(constraint);
+                    }
+                }
             }
         }
     }
@@ -542,7 +606,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            if (solution.at(i * g_variable_domain.size() + var) == 1.0) {
+            //no comparison with 1.0 due to numeric difficulties
+            if (solution.at(i * g_variable_domain.size() + var) > 0.9) {
                 leaf.insert(var);
             }
         }
