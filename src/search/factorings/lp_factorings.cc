@@ -179,6 +179,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     FactoredVars factoring;
 
+    if (!mip_solver.has_optimal_solution()) {
+        return factoring;
+    }
+
     vector<double> solution = mip_solver.extract_solution();
     for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
         if (solution[p_leaf] == 1.0) {
@@ -390,9 +394,13 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() {
     mip_solver.solve();
     mip_solver.print_statistics();
 
+    FactoredVars factoring;
+
+    if (!mip_solver.has_optimal_solution()) {
+        return factoring;
+    }
 
     //extract solution
-    FactoredVars factoring;
     vector<double> solution = mip_solver.extract_solution();
 
     for (int i = 0; i < max_number_leaves; i++) {
@@ -604,13 +612,16 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     //solve problem
     mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
     mip_solver.solve();
-
     mip_solver.print_statistics();
 
-    //extract solution
     FactoredVars factoring;
-    vector<double> solution = mip_solver.extract_solution();
 
+    if (!mip_solver.has_optimal_solution()) {
+        return factoring;
+    }
+
+    //extract solution
+    vector<double> solution = mip_solver.extract_solution();
 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
