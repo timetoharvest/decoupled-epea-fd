@@ -23,6 +23,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
      min_mobility = opts.get<int>("min_mob");
      min_flexibility = opts.get<float>("min_flex");
      max_merge_steps = opts.get<int>("max_merge");
+     min_num_leaves = opts.get<int>("min_num_leaves");
      cout << "using LP factoring strategy" << endl;
 }
 
@@ -158,6 +159,14 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
               constraints.push_back(constraint);
             }
         }
+    }
+
+    if (min_num_leaves > 1) {
+        LPConstraint constraint(min_num_leaves, g_variable_domain.size());
+        for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
+            constraint.insert(p_leaf, 1.0);
+        }
+        constraints.push_back(constraint);
     }
 
     if (variables.size() > 2000 && constraints.size() > 4500000) {
@@ -906,7 +915,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "factoring_type",
         factoring_type,
         "TODO",
-        "strict_star",
+        "strict",
         vector<string>(),
         OptionFlags(false));
 
@@ -926,6 +935,12 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "max_merge",
         "TODO",
         "0"
+    );
+
+    parser.add_option<int>(
+        "min_num_leaves",
+        "TODO",
+        "1"
     );
 
 }

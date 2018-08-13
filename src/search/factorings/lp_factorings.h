@@ -68,6 +68,8 @@ protected:
 
     int max_merge_steps;
 
+    int min_num_leaves;
+
     std::vector<ActionSchema> act_schemes;
 
     std::vector<PotentialLeaf> potential_leaves;
