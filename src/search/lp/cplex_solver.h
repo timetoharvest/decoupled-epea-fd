@@ -76,6 +76,9 @@ public:
 
     int get_num_variables() const;
     int get_num_constraints() const;
+
+    NO_RETURN
+    void handle_cplex_error(const IloException &exception) const;
 };
 #ifdef __GNUG__
 #pragma GCC diagnostic pop
