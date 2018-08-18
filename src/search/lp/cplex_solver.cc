@@ -16,7 +16,8 @@ using namespace std;
 
 namespace lp {
 
-static const string CPLEX_ERROR_MEMORY = "CPLEX Error  1001: Out of memory.\n";
+static const string CPLEX_ERROR_MEMORY_1 = "CPLEX Error  1001: Out of memory.\n";
+static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
 
 CPLEXSolver::~CPLEXSolver() {
     cplex.end();
@@ -223,12 +224,14 @@ int CPLEXSolver::get_num_constraints() const {
 
 NO_RETURN
 void CPLEXSolver::handle_cplex_error(const IloException &exception) const{
-  if (exception.getMessage() == CPLEX_ERROR_MEMORY) {
+  string error_message = exception.getMessage();
+  if (error_message == CPLEX_ERROR_MEMORY_1 ||
+      error_message == CPLEX_ERROR_MEMORY_2) {
       cout << "Error while factoring planning task!" << endl;
       cout << "CPLEX Out of Memory" << endl;
       exit_with(utils::ExitCode::OUT_OF_MEMORY);
   } else {
-      cout << "Error : " << exception.getMessage() << "\n";
+      cout << "Error : " << error_message << "\n";
       exit_with(utils::ExitCode::CRITICAL_ERROR);
   }
 }
