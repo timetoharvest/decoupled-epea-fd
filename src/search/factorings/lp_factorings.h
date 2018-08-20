@@ -29,6 +29,7 @@ struct PotentialLeaf {
   int num_leaf_actions; //number of leaf actions if the effect schema forms a leaf
   std::vector<int> vars;
   std::vector<int> overlapping_leaves;
+  std::set<int> leaf_only_schemes;
 
   PotentialLeaf(int id, int num_actions, std::vector<int> vars)
       : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), vars(vars) {}

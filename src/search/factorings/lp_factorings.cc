@@ -120,17 +120,43 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     vector<bool> p_leaves_cg (num_p_leaves * num_p_leaves, false);
 
-    for (PotentialLeaf &p_leaf : potential_leaves) {
-        for (int var : p_leaf.vars) {
-            for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                for (int i : var_to_p_leaves[suc]) {
-                    if (p_leaf.vars != potential_leaves[i].vars) {
-                        p_leaves_cg[p_leaf.id * num_p_leaves + potential_leaves[i].id] = true;
+    if (factoring_type == STRICT) {
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            for (int var : p_leaf.vars) {
+                for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                    for (int i : var_to_p_leaves[suc]) {
+                        if (p_leaf.vars != potential_leaves[i].vars) {
+                            p_leaves_cg[p_leaf.id * num_p_leaves + potential_leaves[i].id] = true;
+                        }
                     }
                 }
             }
         }
     }
+
+
+    if (factoring_type == GENERAL) {
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            for (int action_schema : p_leaf.leaf_only_schemes) {
+                for (int pre : act_schemes[action_schema].pre_vars) {
+                    for (int index : var_to_p_leaves[pre]) {
+                        if (index != p_leaf.id) {
+                            p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                        }
+                    }
+                }
+            }
+            for (int var : p_leaf.vars) {
+                for (int index : var_to_p_leaves[var]) {
+                    if (index != p_leaf.id) {
+                      p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                    }
+                }
+            }
+        }
+    }
+
+
 
     for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
       switch (strategy) {
@@ -150,6 +176,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
       }
     }
 
+
     for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
         for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
             if (p_leaves_cg[p_leaf_1 * num_p_leaves + p_leaf_2]) {
@@ -157,6 +184,47 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
               constraint.insert(p_leaf_1,1.0);
               constraint.insert(p_leaf_2,1.0);
               constraints.push_back(constraint);
+            }
+        }
+    }
+
+
+    if (factoring_type == GENERAL) {
+        for (ActionSchema &act_schema : act_schemes) {
+            if (act_schema.eff_vars.size() < 2) {
+                continue;
+            }
+            set<int> relevant_p_leaves;
+            for (int var : act_schema.eff_vars) {
+                for (int index : var_to_p_leaves[var]) {
+                    relevant_p_leaves.insert(index);
+                }
+            }
+            LPConstraint constraint (0.0,act_schema.eff_vars.size() - 1);
+            bool non_empty = false;
+            for (int index : relevant_p_leaves) {
+                bool superset = true;
+                int size_intersection = 0;
+                for (int var_1 : act_schema.eff_vars) {
+                    bool var_contained = false;
+                    for (int var_2 : potential_leaves[index].vars) {
+                        if (var_1 == var_2) {
+                            var_contained = true;
+                            size_intersection++;
+                            break;
+                        }
+                    }
+                    if (!var_contained) {
+                        superset = false;
+                    }
+                }
+                if (!superset) {
+                    constraint.insert(index,size_intersection);
+                    non_empty = true;
+                }
+            }
+            if (non_empty) {
+                constraints.push_back(constraint);
             }
         }
     }
@@ -714,17 +782,20 @@ void LPFactoring::set_action_schemes(int min_num_actions) {
 void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, int min_num_actions) {
 
     int id = 0;
-    for (ActionSchema action_schema : act_schemes) {
+    for (size_t as = 0; as < act_schemes.size(); as++) {
+        ActionSchema action_schema = act_schemes[as];
         bool duplicate = false;
         for (vector<PotentialLeaf>::reverse_iterator i = potential_leaves.rbegin(); i != potential_leaves.rend(); i++) {
             if (action_schema.eff_vars == i->vars) {
                 i->num_actions += action_schema.num_actions;
+                i->leaf_only_schemes.insert(as);
                 duplicate = true;
                 break;
             }
         }
         if (!duplicate) {
             PotentialLeaf p_leaf (id, action_schema.num_actions, action_schema.eff_vars);
+            p_leaf.leaf_only_schemes.insert(as);
             potential_leaves.push_back(p_leaf);
             id++;
         }
@@ -785,6 +856,9 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         }
         for (int index : superset_schemes) {
             potential_leaves[index].num_leaf_only_actions += p_leaf.num_actions;
+            for (int leaf_only_schema : p_leaf.leaf_only_schemes) {
+                potential_leaves[index].leaf_only_schemes.insert(leaf_only_schema);
+            }
         }
     }
 
