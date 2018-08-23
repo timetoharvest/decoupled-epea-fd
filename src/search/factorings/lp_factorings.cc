@@ -229,7 +229,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
-    if (min_num_leaves > 1) {
+    if (min_num_leaves > 2) {
         LPConstraint constraint(min_num_leaves, g_variable_domain.size());
         for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
             constraint.insert(p_leaf, 1.0);
@@ -865,6 +865,101 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
     if (min_mobility > 1 || min_flexibility > 0 || min_num_actions > 1) {
         //erase effect schemes that does not satisfy requirements
         auto lambda_expr = [&](PotentialLeaf p_leaf){return p_leaf.num_actions < min_num_actions || p_leaf.num_leaf_only_actions < min_mobility || p_leaf.get_flexibility() < min_flexibility;};
+        potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
+        //adjust IDs
+        id = 0;
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            p_leaf.id = id;
+            id++;
+        }
+        for (size_t var = 0; var < g_variable_domain.size(); var++){
+            var_to_p_leaves[var].clear();
+        }
+        for (PotentialLeaf &p_leaf : potential_leaves) {
+            for (int var : p_leaf.vars) {
+                var_to_p_leaves[var].insert(p_leaf.id);
+            }
+        }
+    }
+    if (min_num_leaves == 2) {
+        int num_p_leaves = potential_leaves.size();
+        vector<bool> p_leaves_cg (num_p_leaves * num_p_leaves, false);
+        if (factoring_type == STRICT) {
+            for (PotentialLeaf &p_leaf : potential_leaves) {
+                for (int var : p_leaf.vars) {
+                    for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                        for (int index : var_to_p_leaves[suc]) {
+                            if (index != p_leaf.id) {
+                                p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                                p_leaves_cg[index * num_p_leaves + p_leaf.id] = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (factoring_type == GENERAL) {
+            for (PotentialLeaf &p_leaf : potential_leaves) {
+                for (int action_schema : p_leaf.leaf_only_schemes) {
+                    for (int pre : act_schemes[action_schema].pre_vars) {
+                        for (int index : var_to_p_leaves[pre]) {
+                            if (index != p_leaf.id) {
+                                p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                                p_leaves_cg[index * num_p_leaves + p_leaf.id] = true;
+                            }
+                        }
+                    }
+                }
+                for (int var : p_leaf.vars) {
+                    for (int index : var_to_p_leaves[var]) {
+                        if (index != p_leaf.id) {
+                          p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                        }
+                    }
+                }
+            }
+            for (ActionSchema &action_schema : act_schemes) {
+                if (action_schema.eff_vars.size() == 1) {
+                    continue;
+                }
+                for (int index_1 : var_to_p_leaves[action_schema.eff_vars[0]]) {
+                    PotentialLeaf p_leaf = potential_leaves[index_1];
+                    vector<int> missing_variables;
+                    for (int var : action_schema.eff_vars) {
+                          if (!(find(p_leaf.vars.begin(), p_leaf.vars.end(), var) != p_leaf.vars.end())) {
+                              missing_variables.push_back(var);
+                          }
+                    }
+                    if (!missing_variables.empty()) {
+                        set<int> completing_p_leaves = var_to_p_leaves[missing_variables[0]];
+                        for (size_t i = 1; i < missing_variables.size(); i++) {
+                            set<int> intersection;
+                            set_intersection(completing_p_leaves.begin(),completing_p_leaves.end(),var_to_p_leaves[missing_variables[i]].begin(),var_to_p_leaves[missing_variables[i]].end(), inserter(intersection, intersection.begin()));
+                            completing_p_leaves = intersection;
+                        }
+                        for (int index_2 : completing_p_leaves) {
+                            p_leaves_cg[index_1 * num_p_leaves + index_2] = true;
+                            p_leaves_cg[index_2 * num_p_leaves + index_1] = true;
+                        }
+                    }
+                }
+            }
+        }
+        vector<bool> fully_connected_p_leaves(num_p_leaves, false);
+        for (int i_1 = 0; i_1 < num_p_leaves; i_1++) {
+            bool fully_connected = true;
+            for (int i_2 = 0; i_2 < num_p_leaves; i_2++) {
+                if ((!p_leaves_cg[i_1 * num_p_leaves + i_2]) && i_1 != i_2) {
+                    fully_connected = false;
+                    break;
+                }
+            }
+            if (fully_connected) {
+               fully_connected_p_leaves[i_1] = true;
+            }
+        }
+        auto lambda_expr = [&](PotentialLeaf p_leaf){return fully_connected_p_leaves[p_leaf.id];};
         potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
         //adjust IDs
         id = 0;
