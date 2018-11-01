@@ -41,7 +41,7 @@ enum class ExitCode {
     UNSOLVED_INCOMPLETE = 5,
     OUT_OF_MEMORY = 6,
     // factoring method failed + no fallback.
-    ABSTAINED = 7
+    ABSTAINED = 9
 };
 
 NO_RETURN extern void exit_with(ExitCode returncode);
