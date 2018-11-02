@@ -23,31 +23,31 @@ enum FACTORING_TYPE {
 };
 
 struct PotentialLeaf {
-  int id;
-  int num_actions; //number of actions with the effect schema
-  int num_leaf_only_actions; //number of leaf-only actions if the effect schema forms a leaf
-  int num_leaf_actions; //number of leaf actions if the effect schema forms a leaf
-  std::vector<int> vars;
-  std::vector<int> overlapping_leaves;
-  std::set<int> leaf_only_schemes;
+    int id;
+    int num_actions; // number of actions with the effect schema
+    int num_leaf_only_actions; // number of leaf-only actions if the effect schema forms a leaf
+    int num_leaf_actions; // number of leaf actions if the effect schema forms a leaf
+    std::vector<int> vars; // sorted
+    std::set<int> leaf_only_schemes;
 
-  PotentialLeaf(int id, int num_actions, std::vector<int> vars)
-      : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), vars(vars) {}
+    PotentialLeaf(int id, int num_actions, const std::vector<int> &vars)
+    : id(id), num_actions(num_actions), num_leaf_only_actions(0), num_leaf_actions(0), vars(vars) {}
 
-  float get_flexibility() {
-      return ((float) num_leaf_only_actions / (float) num_leaf_actions);
-  }
+    float get_flexibility() const {
+        return ((float) num_leaf_only_actions / (float) num_leaf_actions);
+    }
 
 };
 
 struct ActionSchema {
 
-    int num_actions; //number of actions with the action schema
-    std::vector<int> pre_vars;
-    std::vector<int> eff_vars;
+    int num_actions; // number of actions with the action schema
+    std::vector<int> pre_vars; // sorted
+    std::vector<int> eff_vars; // sorted
 
-    ActionSchema(int num_actions, const std::vector<int> pre_vars, const std::vector<int> eff_vars)
-        : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {}
+    ActionSchema(int num_actions, const std::vector<int> &pre_vars, const std::vector<int> &eff_vars)
+        : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {
+    }
 
     void incr_num_action() {
         num_actions++;
@@ -69,7 +69,7 @@ protected:
 
     int max_merge_steps;
 
-    int min_num_leaves;
+    int cplex_time_limit;
 
     std::vector<ActionSchema> act_schemes;
 

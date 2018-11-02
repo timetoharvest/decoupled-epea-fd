@@ -84,7 +84,7 @@ Factoring::Factoring(const Options &opts) :
         CompliantPathGraph::set_pruning_options(new PruningOptions());
         cout << "using default pruning method: BasicPruning" << endl;
     }
-    min_number_leaves = 2;
+    min_number_leaves = opts.get<int>("min_num_leaves");;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
 }
 
@@ -2407,6 +2407,11 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "build_state_space_size",
         "TODO",
         "10000");
+    parser.add_option<int>(
+        "min_num_leaves",
+        "TODO",
+        "2"
+    );
 }
 
 void ForkFactoring::add_options_to_parser(OptionParser &parser) {
