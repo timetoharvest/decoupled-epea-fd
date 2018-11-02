@@ -30,7 +30,7 @@ CPLEXSolver::~CPLEXSolver() {
     env.end();
 }
 
-CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance)
+CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit)
     : ilo_variables(IloNumVarArray(env,0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env,0)),
@@ -40,6 +40,11 @@ CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance)
     is_solved = false;
     cplex.setParam(IloCplex::Param::Threads, max_num_threads);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, integrality_tolerance);
+    cplex.setParam(IloCplex::Param::MIP::Limits::Populate, 5);
+    cplex.setParam(IloCplex::Param::MIP::Pool::Replace, CPX_SOLNPOOL_OBJ);
+    if (time_limit > 0){
+        cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
+    }
 }
 
 void CPLEXSolver::load_problem(LPObjectiveSense sense,
@@ -171,6 +176,16 @@ void CPLEXSolver::solve() {
     }
 }
 
+void CPLEXSolver::populate() {
+    try {
+        cplex.extract(model);
+        cplex.populate();
+        is_solved = true;
+    } catch (IloException &exception) {
+        handle_cplex_error(exception);
+    }
+}
+
 void CPLEXSolver::solveLPRelaxation() {
     try {
         IloModel relaxed_model(env);
@@ -206,7 +221,25 @@ vector<double> CPLEXSolver::extract_solution() const {
         assert(has_optimal_solution());
         vector<double> solution;
         for (int var = 0; var < get_num_variables(); var++) {
-          solution.push_back(cplex.getValue(ilo_variables[var]));
+            solution.push_back(cplex.getValue(ilo_variables[var]));
+        }
+        return solution;
+    } catch (IloException &exception) {
+        handle_cplex_error(exception);
+    }
+}
+
+vector<double> CPLEXSolver::extract_best_solution() const {
+    try {
+        int best = 0;
+        for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
+            if (cplex.getObjValue(i) > cplex.getObjValue(best)){
+                best = i;
+            }
+        }
+        vector<double> solution;
+        for (int var = 0; var < get_num_variables(); var++) {
+            solution.push_back(cplex.getValue(ilo_variables[var], best));
         }
         return solution;
     } catch (IloException &exception) {

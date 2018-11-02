@@ -18,7 +18,7 @@ namespace lp {
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
-class CPLEXSolver : public Solver{
+class CPLEXSolver : public Solver {
     IloEnv env;
     IloNumVarArray ilo_variables;
     IloObjective ilo_objective;
@@ -26,7 +26,7 @@ class CPLEXSolver : public Solver{
     IloModel model;
     IloCplex cplex;
 public:
-    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0);
+    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0, int time_limit = -1);
 
     ~CPLEXSolver();
 
@@ -48,6 +48,8 @@ public:
     void set_variable_upper_bound(int index, double bound);
 
     void solve();
+    // solves the MIP, populating the solution pool
+    void populate();
     void solveLPRelaxation();
 
     /*
@@ -73,6 +75,8 @@ public:
       solution before calling this method.
     */
     std::vector<double> extract_solution() const;
+
+    std::vector<double> extract_best_solution() const;
 
     int get_num_variables() const;
     int get_num_constraints() const;
