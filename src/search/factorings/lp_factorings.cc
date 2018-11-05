@@ -125,6 +125,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     set_action_schemes();
     set_potential_leaves(min_mobility, min_flexibility);
+
+    if (potential_leaves.empty()){
+        return FactoredVars();
+    }
+
     if (max_merge_steps > 0) {
         merge_potential_leaves(max_merge_steps);
     }
@@ -171,23 +176,22 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
 
-
     for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
-      switch (strategy) {
+        switch (strategy) {
         case MML:
-            variables.push_back(MIPVariable(0.0,1.0,1.0, MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0, 1.0, 1.0, MIPVariableType::INT));
             break;
         case MF:
-            variables.push_back(MIPVariable(0.0,1.0,potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
             break;
         case MM:
-            variables.push_back(MIPVariable(0.0,1.0,potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
             break;
         case MMF:
-            variables.push_back(MIPVariable(0.0,1.0,potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
             break;
         default: exit_with(utils::ExitCode::CRITICAL_ERROR);
-      }
+        }
     }
 
 
@@ -243,8 +247,12 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
-    if (min_number_leaves >= 2) {
-        LPConstraint constraint(min_number_leaves, g_variable_domain.size());
+    if (min_number_leaves > 2) {
+        // adding the constraint typically increases runtime of CPLEX,
+        // therefore, we only add it if we need strictly more than 2 leaves,
+        // since 2 leaves are guaranteed by the elimination of potential leaves
+        // in set_potential_leaves()
+        LPConstraint constraint(min_number_leaves, min(num_p_leaves, g_variable_domain.size()));
         for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
             constraint.insert(p_leaf, 1.0);
         }
@@ -853,6 +861,7 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 overlapping_schemes.insert(index);
             }
         }
+        assert(p_leaf.num_leaf_actions == 0);
         for (int index : overlapping_schemes) {
             p_leaf.num_leaf_actions += potential_leaves[index].num_actions;
         }
@@ -912,9 +921,10 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         }
     }
 
-    cout << "Eliminating potential leaves [" << utils::g_timer << "s]" << endl;
-
     if (min_number_leaves >= 2) {
+
+        utils::Timer timer;
+        cout << "Eliminating potential leaves... " << flush;
 
         int num_p_leaves = potential_leaves.size();
         vector<bool> p_leaves_cg(num_p_leaves * num_p_leaves, false);
@@ -947,10 +957,8 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 for (int action_schema : p_leaf.leaf_only_schemes) {
                     for (int pre : act_schemes[action_schema].pre_vars) {
                         for (int index : var_to_p_leaves[pre]) {
-                            if (index != p_leaf.id) {
-                                p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
-                                p_leaves_cg[index * num_p_leaves + p_leaf.id] = true;
-                            }
+                            p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                            p_leaves_cg[index * num_p_leaves + p_leaf.id] = true;
                         }
                     }
                 }
@@ -967,20 +975,61 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
             }
 
             for (const ActionSchema &action_schema : act_schemes) {
+                // add (hyper-)edges between potential leaves where there exists an action (schema) such that
+                // when all become an actual leaf, this action affects these leaves, but not the center.
+                // adding these hyperedges ensures that at most one of the potential leaves can become a leaf in
+                // the obtained factoring, avoiding such actions
                 if (action_schema.eff_vars.size() == 1) {
+                    // all actions are leaf-only
                     continue;
                 }
-//                for (int eff_var : action_schema.eff_vars){ // TODO why don't we need this?
+                if (action_schema.eff_vars.size() == 2){
+                    // special case handling for two effect variables. here, we introduce an edge
+                    // between all pairs of potential leaves that contain exactly one of the effect variables
+                    vector<int> all_p_leaves;
+
+                    set_union(var_to_p_leaves[action_schema.eff_vars[0]].begin(), var_to_p_leaves[action_schema.eff_vars[0]].end(),
+                            var_to_p_leaves[action_schema.eff_vars[1]].begin(), var_to_p_leaves[action_schema.eff_vars[1]].end(),
+                            back_inserter(all_p_leaves));
+
+                    vector<int> intersection;
+
+                    set_intersection(var_to_p_leaves[action_schema.eff_vars[0]].begin(), var_to_p_leaves[action_schema.eff_vars[0]].end(),
+                            var_to_p_leaves[action_schema.eff_vars[1]].begin(), var_to_p_leaves[action_schema.eff_vars[1]].end(),
+                            back_inserter(intersection));
+
+                    vector<int> conflicting_p_leaves;
+
+                    set_difference(all_p_leaves.begin(), all_p_leaves.end(),
+                            intersection.begin(), intersection.end(),
+                            back_inserter(conflicting_p_leaves));
+
+
+                    for (int index_1 : conflicting_p_leaves){
+                        for (int index_2 : conflicting_p_leaves){
+                            p_leaves_cg[index_1 * num_p_leaves + index_2] = true;
+                            p_leaves_cg[index_2 * num_p_leaves + index_1] = true;
+                        }
+                    }
+                    continue;
+                }
+                // general case: introduce a hyperedge between all potential leaves with non-empty
+                // intersection with the effect schema such that any pair of such potential leaves
+                // covers the entire action schema. in this case, the action schema would otherwise
+                // affect multiple leaves without affecting the center
+                // TODO: note that we could easily handle such actions by simply making them center
+                // actions, i.e. branch over them in the search. however, this goes beyong our
+                // definition of general-star factorings.
+                vector<size_t> p_leaf_counter(num_p_leaves, 0);
                 for (int index_1 : var_to_p_leaves[action_schema.eff_vars[0]]) {
                     const vector<int> &p_leaf_vars = potential_leaves[index_1].vars;
 
                     vector<int> missing_variables;
                     set_difference(action_schema.eff_vars.begin(), action_schema.eff_vars.end(),
                             p_leaf_vars.begin(), p_leaf_vars.end(),
-                            inserter(missing_variables, missing_variables.end()));
+                            back_inserter(missing_variables));
 
                     if (!missing_variables.empty()) {
-                        vector<size_t> p_leaf_counter(num_p_leaves, 0);
                         for (int missing_var : missing_variables){
                             for (int missing_p_leaf : var_to_p_leaves[missing_var]){
                                 p_leaf_counter[missing_p_leaf]++;
@@ -991,14 +1040,12 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                                 p_leaves_cg[index_1 * num_p_leaves + index_2] = true;
                                 p_leaves_cg[index_2 * num_p_leaves + index_1] = true;
                             }
+                            p_leaf_counter[index_2] = 0;
                         }
                     }
                 }
-//                }
             }
         }
-
-        cout << "Analysis done [" << utils::g_timer << "s]" << endl;
 
         vector<bool> fully_connected_p_leaves(num_p_leaves, false);
         for (int i_1 = 0; i_1 < num_p_leaves; ++i_1) {
@@ -1016,8 +1063,6 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         auto lambda_expr = [&](const PotentialLeaf &p_leaf){return fully_connected_p_leaves[p_leaf.id];};
         potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
 
-        cout << (num_p_leaves - potential_leaves.size()) << " potential leaves removed" << endl;
-
         //adjust IDs
         id = 0;
         for (PotentialLeaf &p_leaf : potential_leaves) {
@@ -1032,6 +1077,10 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 var_to_p_leaves[var].insert(p_leaf.id);
             }
         }
+
+        cout << "done [" << timer << "]" << endl;
+
+        cout << (num_p_leaves - potential_leaves.size()) << " potential leaves removed" << endl;
     }
 }
 
