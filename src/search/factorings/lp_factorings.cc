@@ -923,6 +923,12 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
 
     if (min_number_leaves >= 2) {
 
+        if (factoring_type == STRICT){
+            // HACK to avoid logging to get messy when
+            // CG print collides with the "Eliminating.." one
+            causal_graph::get_causal_graph();
+        }
+
         utils::Timer timer;
         cout << "Eliminating potential leaves... " << flush;
 
