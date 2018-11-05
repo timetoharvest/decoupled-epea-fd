@@ -1017,7 +1017,7 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 // intersection with the effect schema such that any pair of such potential leaves
                 // covers the entire action schema. in this case, the action schema would otherwise
                 // affect multiple leaves without affecting the center
-                // TODO: note that we could easily handle such actions by simply making them center
+                // TODO: note that we could easily handle such actions by simply labeling them center
                 // actions, i.e. branch over them in the search. however, this goes beyong our
                 // definition of general-star factorings.
                 vector<size_t> p_leaf_counter(num_p_leaves, 0);
