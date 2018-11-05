@@ -573,16 +573,16 @@ void Factoring::print_factoring() const {
     vector<int> num_leaf_only_actions(g_leaves.size(), 0);
     vector<int> num_leaf_actions(g_leaves.size(), 0);
 
-    for (Operator &op : g_operators) {
+    for (const Operator &op : g_operators) {
         if (op.get_affected_factor() == LeafFactorID::CENTER) {
+            set<LeafFactorID> affected_leaf_factors;
             for (const Effect &eff : op.get_effects()) {
-                set<LeafFactorID> affected_leaf_factors;
                 if (g_belongs_to_factor[eff.var] != LeafFactorID::CENTER) {
                     affected_leaf_factors.insert(g_belongs_to_factor[eff.var]);
                 }
-                for (LeafFactorID factor : affected_leaf_factors) {
-                    num_leaf_actions[factor] += 1;
-                }
+            }
+            for (LeafFactorID factor : affected_leaf_factors) {
+                num_leaf_actions[factor] += 1;
             }
         } else {
             num_leaf_actions[op.get_affected_factor()] += 1;
