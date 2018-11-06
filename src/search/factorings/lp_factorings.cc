@@ -134,83 +134,89 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         merge_potential_leaves(max_merge_steps);
     }
 
-    size_t num_p_leaves = potential_leaves.size();
-    vector<vector<bool> > p_leaves_cg(num_p_leaves - 1);
-    for (size_t i = 0; i < p_leaves_cg.size(); ++i){
-        p_leaves_cg[i].resize(num_p_leaves - i - 1, false);
-    }
 
-    if (factoring_type == STRICT) {
-        for (const PotentialLeaf &p_leaf : potential_leaves) {
-            for (int var : p_leaf.vars) {
-                for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                    for (int id : var_to_p_leaves[suc]) {
-                        if (p_leaf.id < id) {
-                            p_leaves_cg[p_leaf.id][id - p_leaf.id - 1] = true;
-                        } else if (p_leaf.id > id) {
-                            p_leaves_cg[id][p_leaf.id - id - 1] = true;
+    size_t num_p_leaves = potential_leaves.size();
+
+    {
+
+        vector<vector<bool> > p_leaves_cg(num_p_leaves - 1);
+        for (size_t i = 0; i < p_leaves_cg.size(); ++i){
+            p_leaves_cg[i].resize(num_p_leaves - i - 1, false);
+        }
+
+        if (factoring_type == STRICT) {
+            for (const PotentialLeaf &p_leaf : potential_leaves) {
+                for (int var : p_leaf.vars) {
+                    for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
+                        for (int id : var_to_p_leaves[suc]) {
+                            if (p_leaf.id < id) {
+                                p_leaves_cg[p_leaf.id][id - p_leaf.id - 1] = true;
+                            } else if (p_leaf.id > id) {
+                                p_leaves_cg[id][p_leaf.id - id - 1] = true;
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
 
-    if (factoring_type == GENERAL) {
-        for (const PotentialLeaf &p_leaf : potential_leaves) {
-            // no precondition on another leaf for leaf-only actions
-            for (int action_schema : p_leaf.leaf_only_schemes) {
-                for (int pre : act_schemes[action_schema].pre_vars) {
-                    for (int index : var_to_p_leaves[pre]) {
+        if (factoring_type == GENERAL) {
+            for (const PotentialLeaf &p_leaf : potential_leaves) {
+                // no precondition on another leaf for leaf-only actions
+                for (int action_schema : p_leaf.leaf_only_schemes) {
+                    for (int pre : act_schemes[action_schema].pre_vars) {
+                        for (int index : var_to_p_leaves[pre]) {
+                            if (index < p_leaf.id) {
+                                p_leaves_cg[index][p_leaf.id - index - 1] = true;
+                            } else if (index > p_leaf.id){
+                                p_leaves_cg[p_leaf.id][index - p_leaf.id - 1] = true;
+                            }
+                        }
+                    }
+                }
+                for (int var : p_leaf.vars) {
+                    for (int index : var_to_p_leaves[var]) {
                         if (index < p_leaf.id) {
                             p_leaves_cg[index][p_leaf.id - index - 1] = true;
-                        } else if (index > p_leaf.id){
-                            p_leaves_cg[p_leaf.id][index - p_leaf.id - 1] = true;
                         }
                     }
                 }
             }
-            for (int var : p_leaf.vars) {
-                for (int index : var_to_p_leaves[var]) {
-                    if (index < p_leaf.id) {
-                        p_leaves_cg[index][p_leaf.id - index - 1] = true;
-                    }
+        }
+
+
+        for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
+            switch (strategy) {
+            case MML:
+                variables.push_back(MIPVariable(0.0, 1.0, 1.0, MIPVariableType::INT));
+                break;
+            case MF:
+                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+                break;
+            case MM:
+                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
+                break;
+            case MMF:
+                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+                break;
+            default: exit_with(utils::ExitCode::CRITICAL_ERROR);
+            }
+        }
+
+
+        for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
+            for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
+                if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) ||
+                        (p_leaf_1 > p_leaf_2 && p_leaves_cg[p_leaf_2][p_leaf_1 - p_leaf_2 - 1])) {
+                    LPConstraint constraint(0.0, 1.0);
+                    constraint.insert(p_leaf_1, 1.0);
+                    constraint.insert(p_leaf_2, 1.0);
+                    constraints.push_back(constraint);
                 }
             }
         }
-    }
 
-
-    for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
-        switch (strategy) {
-        case MML:
-            variables.push_back(MIPVariable(0.0, 1.0, 1.0, MIPVariableType::INT));
-            break;
-        case MF:
-            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
-            break;
-        case MM:
-            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
-            break;
-        case MMF:
-            variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
-            break;
-        default: exit_with(utils::ExitCode::CRITICAL_ERROR);
-        }
-    }
-
-
-    for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
-        for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
-            if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) ||
-                    (p_leaf_1 > p_leaf_2 && p_leaves_cg[p_leaf_2][p_leaf_1 - p_leaf_2 - 1])) {
-                LPConstraint constraint(0.0, 1.0);
-                constraint.insert(p_leaf_1, 1.0);
-                constraint.insert(p_leaf_2, 1.0);
-                constraints.push_back(constraint);
-            }
-        }
     }
 
 
@@ -266,9 +272,6 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         constraints.push_back(constraint);
     }
 
-    if (variables.size() > 2000 && constraints.size() > 4500000) {
-        exit_error("Number of LP variables and number of LP constraints exceed limit.", utils::ExitCode::OUT_OF_MEMORY);
-    }
 
     CPLEXSolver mip_solver(1, 0, cplex_time_limit);
 
