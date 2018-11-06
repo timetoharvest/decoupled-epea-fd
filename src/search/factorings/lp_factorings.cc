@@ -124,6 +124,12 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     vector<LPConstraint> constraints;
 
     set_action_schemes();
+
+    if (act_schemes.empty()){
+        // for trivially unsolvable task
+        return FactoredVars();
+    }
+
     set_potential_leaves(min_mobility, min_flexibility);
 
     if (potential_leaves.empty()){
