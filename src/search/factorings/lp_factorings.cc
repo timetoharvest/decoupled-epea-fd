@@ -133,18 +133,22 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     if (max_merge_steps > 0) {
         merge_potential_leaves(max_merge_steps);
     }
+
     size_t num_p_leaves = potential_leaves.size();
-
-
-    vector<bool> p_leaves_cg(num_p_leaves * num_p_leaves, false);
+    vector<vector<bool> > p_leaves_cg(num_p_leaves - 1);
+    for (size_t i = 0; i < p_leaves_cg.size(); ++i){
+        p_leaves_cg[i].resize(num_p_leaves - i - 1, false);
+    }
 
     if (factoring_type == STRICT) {
         for (const PotentialLeaf &p_leaf : potential_leaves) {
             for (int var : p_leaf.vars) {
                 for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
                     for (int id : var_to_p_leaves[suc]) {
-                        if (p_leaf.id != id) {
-                            p_leaves_cg[p_leaf.id * num_p_leaves + potential_leaves[id].id] = true;
+                        if (p_leaf.id < id) {
+                            p_leaves_cg[p_leaf.id][id - p_leaf.id - 1] = true;
+                        } else if (p_leaf.id > id) {
+                            p_leaves_cg[id][p_leaf.id - id - 1] = true;
                         }
                     }
                 }
@@ -159,16 +163,18 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
             for (int action_schema : p_leaf.leaf_only_schemes) {
                 for (int pre : act_schemes[action_schema].pre_vars) {
                     for (int index : var_to_p_leaves[pre]) {
-                        if (index != p_leaf.id) {
-                            p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                        if (index < p_leaf.id) {
+                            p_leaves_cg[index][p_leaf.id - index - 1] = true;
+                        } else if (index > p_leaf.id){
+                            p_leaves_cg[p_leaf.id][index - p_leaf.id - 1] = true;
                         }
                     }
                 }
             }
             for (int var : p_leaf.vars) {
                 for (int index : var_to_p_leaves[var]) {
-                    if (index != p_leaf.id) {
-                        p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
+                    if (index < p_leaf.id) {
+                        p_leaves_cg[index][p_leaf.id - index - 1] = true;
                     }
                 }
             }
@@ -197,10 +203,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
         for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
-            if (p_leaves_cg[p_leaf_1 * num_p_leaves + p_leaf_2]) {
-                LPConstraint constraint (0.0,1.0);
-                constraint.insert(p_leaf_1,1.0);
-                constraint.insert(p_leaf_2,1.0);
+            if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) ||
+                    (p_leaf_1 > p_leaf_2 && p_leaves_cg[p_leaf_2][p_leaf_1 - p_leaf_2 - 1])) {
+                LPConstraint constraint(0.0, 1.0);
+                constraint.insert(p_leaf_1, 1.0);
+                constraint.insert(p_leaf_2, 1.0);
                 constraints.push_back(constraint);
             }
         }
@@ -932,24 +939,31 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         utils::Timer timer;
         cout << "Eliminating potential leaves... " << flush;
 
-        int num_p_leaves = potential_leaves.size();
-        vector<bool> p_leaves_cg(num_p_leaves * num_p_leaves, false);
+        size_t num_p_leaves = potential_leaves.size();
+        vector<vector<bool> > p_leaves_cg(num_p_leaves - 1);
+        for (size_t i = 0; i < p_leaves_cg.size(); ++i){
+            p_leaves_cg[i].resize(num_p_leaves - i - 1, false);
+        }
 
         if (factoring_type == STRICT) {
             for (int var = 0; var < (int) g_variable_domain.size(); ++var){
                 // check if intersection non-empty
                 for (int pot_leaf_1 : var_to_p_leaves[var]){
                     for (int pot_leaf_2 : var_to_p_leaves[var]){
-                        p_leaves_cg[pot_leaf_1 * num_p_leaves + pot_leaf_2] = true;
-                        p_leaves_cg[pot_leaf_2 * num_p_leaves + pot_leaf_1] = true;
+                        if (pot_leaf_1 < pot_leaf_2){
+                            p_leaves_cg[pot_leaf_1][pot_leaf_2 - pot_leaf_1 - 1] = true;
+                        }
                     }
                 }
                 // check CG connection of contained variables
                 for (int cg_succ : causal_graph::get_causal_graph().get_successors(var)){
                     for (int pot_leaf_succ : var_to_p_leaves[cg_succ]){
                         for (int pot_leaf : var_to_p_leaves[var]) {
-                            p_leaves_cg[pot_leaf * num_p_leaves + pot_leaf_succ] = true;
-                            p_leaves_cg[pot_leaf_succ * num_p_leaves + pot_leaf] = true;
+                            if (pot_leaf < pot_leaf_succ){
+                                p_leaves_cg[pot_leaf][pot_leaf_succ - pot_leaf - 1] = true;
+                            } else if (pot_leaf > pot_leaf_succ){
+                                p_leaves_cg[pot_leaf_succ][pot_leaf - pot_leaf_succ - 1] = true;
+                            }
                         }
                     }
                 }
@@ -963,8 +977,11 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 for (int action_schema : p_leaf.leaf_only_schemes) {
                     for (int pre : act_schemes[action_schema].pre_vars) {
                         for (int index : var_to_p_leaves[pre]) {
-                            p_leaves_cg[p_leaf.id * num_p_leaves + index] = true;
-                            p_leaves_cg[index * num_p_leaves + p_leaf.id] = true;
+                            if (p_leaf.id < index){
+                                p_leaves_cg[p_leaf.id][index - p_leaf.id - 1] = true;
+                            } else if (p_leaf.id > index){
+                                p_leaves_cg[index][p_leaf.id - index - 1] = true;
+                            }
                         }
                     }
                 }
@@ -974,8 +991,9 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 // check if intersection non-empty
                 for (int pot_leaf_1 : var_to_p_leaves[var]){
                     for (int pot_leaf_2 : var_to_p_leaves[var]){
-                        p_leaves_cg[pot_leaf_1 * num_p_leaves + pot_leaf_2] = true;
-                        p_leaves_cg[pot_leaf_2 * num_p_leaves + pot_leaf_1] = true;
+                        if (pot_leaf_1 < pot_leaf_2){
+                            p_leaves_cg[pot_leaf_1][pot_leaf_2 - pot_leaf_1 - 1] = true;
+                        }
                     }
                 }
             }
@@ -1013,8 +1031,9 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
 
                     for (int index_1 : conflicting_p_leaves){
                         for (int index_2 : conflicting_p_leaves){
-                            p_leaves_cg[index_1 * num_p_leaves + index_2] = true;
-                            p_leaves_cg[index_2 * num_p_leaves + index_1] = true;
+                            if (index_1 < index_2){
+                                p_leaves_cg[index_1][index_2 - index_1 - 1] = true;
+                            }
                         }
                     }
                     continue;
@@ -1043,8 +1062,11 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                         }
                         for (size_t index_2 = 0; index_2 < p_leaf_counter.size(); ++index_2) {
                             if (p_leaf_counter[index_2] == missing_variables.size()){
-                                p_leaves_cg[index_1 * num_p_leaves + index_2] = true;
-                                p_leaves_cg[index_2 * num_p_leaves + index_1] = true;
+                                if (index_1 < index_2){
+                                    p_leaves_cg[index_1][index_2 - index_1 - 1] = true;
+                                } else if (index_1 > index_2){
+                                    p_leaves_cg[index_2][index_1 - index_2 - 1] = true;
+                                }
                             }
                             p_leaf_counter[index_2] = 0;
                         }
@@ -1054,12 +1076,19 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         }
 
         vector<bool> fully_connected_p_leaves(num_p_leaves, false);
-        for (int i_1 = 0; i_1 < num_p_leaves; ++i_1) {
+        for (size_t i_1 = 0; i_1 < num_p_leaves; ++i_1) {
             bool fully_connected = true;
-            for (int i_2 = 0; i_2 < num_p_leaves; ++i_2) {
-                if (i_1 != i_2 && !p_leaves_cg[i_1 * num_p_leaves + i_2]) {
-                    fully_connected = false;
-                    break;
+            for (size_t i_2 = 0; i_2 < num_p_leaves; ++i_2) {
+                if (i_1 < i_2) {
+                    if (!p_leaves_cg[i_1][i_2 - i_1 - 1]){
+                        fully_connected = false;
+                        break;
+                    }
+                } else if (i_1 > i_2) {
+                    if (!p_leaves_cg[i_2][i_1 - i_2 - 1]){
+                        fully_connected = false;
+                        break;
+                    }
                 }
             }
             if (fully_connected) {
