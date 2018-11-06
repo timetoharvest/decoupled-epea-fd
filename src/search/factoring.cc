@@ -600,23 +600,21 @@ void Factoring::print_factoring() const {
     int f_mobility = 0;
     double f_flexibility = 0;
 
-    for (size_t factor = 0; factor < g_leaves.size(); factor++) {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
         f_mobility = num_leaf_only_actions[factor];
         if (f_mobility == 0){
             cerr << "ERROR: non-mobile leaf factor " << factor << endl;
             for (int var : g_leaves[factor]){
-                cout << g_fact_names[var][0] << endl;
+                cerr << g_fact_names[var][0] << endl;
             }
             exit_with(utils::ExitCode::CRITICAL_ERROR);
         }
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
         max_mobility = max(max_mobility, f_mobility);
-        if (num_leaf_actions[factor] == 0){
-            f_flexibility = 0;
-        } else {
-            f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
-        }
+
+        f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
+
         sum_flexibility += f_flexibility;
         min_flexibility = min(min_flexibility, f_flexibility);
         max_flexibility = max(max_flexibility, f_flexibility);
