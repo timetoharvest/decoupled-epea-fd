@@ -237,6 +237,7 @@ vector<double> CPLEXSolver::extract_best_solution() const {
                 best = i;
             }
         }
+        cout << "status: " << cplex.getStatus() << endl;
         vector<double> solution;
         for (int var = 0; var < get_num_variables(); var++) {
             solution.push_back(cplex.getValue(ilo_variables[var], best));
