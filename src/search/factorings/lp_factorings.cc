@@ -299,9 +299,16 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     FactoredVars factoring;
 
-    if (cplex_time_limit <= 0 && !mip_solver.has_optimal_solution()) {
-        cout << "no optimal solution to LP found, factoring failed" << endl;
-        return factoring;
+    if (cplex_time_limit <= 0) {
+        if (!mip_solver.has_optimal_solution()){
+            cout << "no optimal solution to LP found, factoring failed" << endl;
+            return factoring;
+        }
+    } else {
+        if (!mip_solver.has_solution()){
+            cout << "no solution to LP found, factoring failed" << endl;
+            return factoring;
+        }
     }
 
     vector<double> solution;
@@ -310,14 +317,34 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     } else {
         solution = mip_solver.extract_best_solution();
     }
+
+    // simple sanity check
+    bool all_potential_leaves = true;
+    bool leaves_overlap = false;
+    vector<bool> leaf_variables(g_variable_domain.size(), false);
     for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
         if (solution[p_leaf] == 1.0) {
             set<int> leaf;
             for (int var : potential_leaves[p_leaf].vars) {
+                if (leaf_variables[var]){
+                    leaves_overlap = true;
+                }
+                leaf_variables[var] = true;
                 leaf.insert(var);
             }
             factoring.push_back(leaf);
+        } else {
+            all_potential_leaves = false;
         }
+    }
+
+    if (all_potential_leaves && leaves_overlap){
+        // TODO: investigate this!
+        // this tends to happen when CPLEX is running out of memory on the cluster,
+        // when run with an external memory limit. could try to additionally set
+        // the memory limit for CPLEX explicitly
+        cerr << "ERROR: solution returned by CPLEX is not a valid factoring; all potential leaves become leaves, but do overlap." << endl;
+        return FactoredVars();
     }
 
     return factoring;
