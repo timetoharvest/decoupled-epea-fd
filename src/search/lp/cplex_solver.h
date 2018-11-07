@@ -62,6 +62,12 @@ public:
     bool has_optimal_solution() const;
 
     /*
+      Return true if the solving the LP showed that it is bounded feasible.
+      The LP has to be solved with a call to solve() or populate() before calling this method.
+     */
+    bool has_solution() const;
+
+    /*
       Return the objective value found after solving an LP.
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.

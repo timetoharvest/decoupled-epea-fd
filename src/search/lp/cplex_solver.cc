@@ -40,10 +40,10 @@ CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int 
     is_solved = false;
     cplex.setParam(IloCplex::Param::Threads, max_num_threads);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, integrality_tolerance);
-    cplex.setParam(IloCplex::Param::MIP::Limits::Populate, 5);
-    cplex.setParam(IloCplex::Param::MIP::Pool::Replace, CPX_SOLNPOOL_OBJ);
     if (time_limit > 0){
         cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
+        cplex.setParam(IloCplex::Param::MIP::Limits::Populate, 5);
+        cplex.setParam(IloCplex::Param::MIP::Pool::Replace, CPX_SOLNPOOL_OBJ);
     }
 }
 
@@ -193,6 +193,7 @@ void CPLEXSolver::solveLPRelaxation() {
         relaxed_model.add(IloConversion (env, ilo_variables, ILOFLOAT));
         cplex.extract(relaxed_model);
         cplex.solve();
+        is_solved = true;
     } catch (IloException &exception) {
         handle_cplex_error(exception);
     }
@@ -202,6 +203,19 @@ bool CPLEXSolver::has_optimal_solution() const {
     try {
         assert(is_solved);
         return cplex.getStatus() == IloAlgorithm::Optimal;
+    } catch (IloException &exception) {
+        handle_cplex_error(exception);
+    }
+}
+
+bool CPLEXSolver::has_solution() const {
+    try {
+        assert(is_solved);
+        if (cplex.getStatus() == IloAlgorithm::Optimal ||
+                cplex.getStatus() == IloAlgorithm::Feasible){
+            return true;
+        }
+        return false;
     } catch (IloException &exception) {
         handle_cplex_error(exception);
     }
@@ -219,6 +233,7 @@ double CPLEXSolver::get_objective_value() const {
 vector<double> CPLEXSolver::extract_solution() const {
     try {
         assert(has_optimal_solution());
+        cout << "CPLEX status: " << cplex.getStatus() << endl;
         vector<double> solution;
         for (int var = 0; var < get_num_variables(); var++) {
             solution.push_back(cplex.getValue(ilo_variables[var]));
@@ -231,13 +246,14 @@ vector<double> CPLEXSolver::extract_solution() const {
 
 vector<double> CPLEXSolver::extract_best_solution() const {
     try {
+        assert(has_solution());
+        cout << "CPLEX status: " << cplex.getStatus() << endl;
         int best = 0;
         for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
             if (cplex.getObjValue(i) > cplex.getObjValue(best)){
                 best = i;
             }
         }
-        cout << "status: " << cplex.getStatus() << endl;
         vector<double> solution;
         for (int var = 0; var < get_num_variables(); var++) {
             solution.push_back(cplex.getValue(ilo_variables[var], best));
