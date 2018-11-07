@@ -347,6 +347,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         return FactoredVars();
     }
 
+    // save memory
+    potential_leaves = vector<PotentialLeaf>();
+    act_schemes = vector<ActionSchema>();
+    var_to_p_leaves = vector<set<size_t> >();
+
     return factoring;
 }
 
@@ -888,7 +893,7 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
     cout << act_schemes.size() << " action schemes" << endl;
     cout << potential_leaves.size() << " potential leaves" << endl;
 
-    var_to_p_leaves.resize(g_variable_domain.size(), set<int>());
+    var_to_p_leaves.resize(g_variable_domain.size(), set<size_t>());
 
     for (const PotentialLeaf &p_leaf : potential_leaves) {
         for (int var : p_leaf.vars) {
@@ -1082,7 +1087,7 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
                 // actions, i.e. branch over them in the search. however, this goes beyong our
                 // definition of general-star factorings.
                 vector<size_t> p_leaf_counter(num_p_leaves, 0);
-                for (int index_1 : var_to_p_leaves[action_schema.eff_vars[0]]) {
+                for (size_t index_1 : var_to_p_leaves[action_schema.eff_vars[0]]) {
                     const vector<int> &p_leaf_vars = potential_leaves[index_1].vars;
 
                     vector<int> missing_variables;

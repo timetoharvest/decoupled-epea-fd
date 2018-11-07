@@ -645,6 +645,9 @@ void Factoring::do_factoring_or_abstain() {
     FactoredVars best_factoring = get_factoring();
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
 
+    // save memory
+    var_to_affecting_op = vector<set<int> >();
+
     cout << "factoring time " << t << endl;
 
     if (best_factoring.size() < min_number_leaves){

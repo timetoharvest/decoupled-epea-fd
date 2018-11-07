@@ -75,7 +75,7 @@ protected:
 
     std::vector<PotentialLeaf> potential_leaves;
 
-    std::vector<std::set<int>> var_to_p_leaves;
+    std::vector<std::set<size_t>> var_to_p_leaves;
 
     FactoredVars get_factoring() override;
 
