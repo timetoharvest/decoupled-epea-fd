@@ -91,7 +91,7 @@ protected:
 
     void set_action_schemes(int min_num_actions = 1);
 
-    void set_potential_leaves(int min_mobility = 1, float min_flexibility = 0, int min_num_actions = 1);
+    void set_potential_leaves(int min_mobility = 1, float min_flexibility = 0);
 
     void merge_potential_leaves(int max_iterations = 2);
 

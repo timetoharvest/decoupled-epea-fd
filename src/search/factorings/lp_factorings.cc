@@ -153,6 +153,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         if (factoring_type == STRICT) {
             for (const PotentialLeaf &p_leaf : potential_leaves) {
                 for (int var : p_leaf.vars) {
+                    // iterating over all successors will introduce a few unnecessary "true"
+                    // edges in the graph, namely for those potential leaves connected via
+                    // eff-eff variables. however, it will not lead to superfluous constraints,
+                    // since we only check these in one direction.
                     for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
                         for (int id : var_to_p_leaves[suc]) {
                             if (p_leaf.id < id) {
@@ -211,10 +215,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
 
 
-        for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; p_leaf_1++) {
-            for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; p_leaf_2++) {
-                if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) ||
-                        (p_leaf_1 > p_leaf_2 && p_leaves_cg[p_leaf_2][p_leaf_1 - p_leaf_2 - 1])) {
+        for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; ++p_leaf_1) {
+            for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; ++p_leaf_2) {
+                if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1])) {
                     LPConstraint constraint(0.0, 1.0);
                     constraint.insert(p_leaf_1, 1.0);
                     constraint.insert(p_leaf_2, 1.0);
@@ -867,7 +870,7 @@ void LPFactoring::set_action_schemes(int min_num_actions) {
     }
 }
 
-void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, int min_num_actions) {
+void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) {
     assert(potential_leaves.empty());
 
     int id = 0;
@@ -916,8 +919,10 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
     }
 
     if (min_mobility > 1 || min_flexibility > 0 ||
-            strategy == STRATEGY::MF || strategy == STRATEGY::MM || strategy == STRATEGY::MMF) {
-        // set number of leaf-only actions
+            strategy == STRATEGY::MF || strategy == STRATEGY::MM || strategy == STRATEGY::MMF ||
+            (strategy == STRATEGY::MML && factoring_type == GENERAL)) {
+        // in the latter case, we need leaf_only_schemes of potential_leaves
+        // for the rest, we need to set the number of leaf-only actions
         for (const PotentialLeaf &p_leaf : potential_leaves) {
             set<int> superset_schemes;
             if (p_leaf.vars.size() == 1) {
@@ -949,9 +954,9 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility, 
         }
     }
 
-    if (min_mobility > 1 || min_flexibility > 0 || min_num_actions > 1) {
+    if (min_mobility > 1 || min_flexibility > 0) {
         //erase effect schemes that does not satisfy requirements
-        auto lambda_expr = [&](const PotentialLeaf &p_leaf){return p_leaf.num_actions < min_num_actions || p_leaf.num_leaf_only_actions < min_mobility || p_leaf.get_flexibility() < min_flexibility;};
+        auto lambda_expr = [&](const PotentialLeaf &p_leaf){return p_leaf.num_leaf_only_actions < min_mobility || p_leaf.get_flexibility() < min_flexibility;};
         potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
         //adjust IDs
         id = 0;
