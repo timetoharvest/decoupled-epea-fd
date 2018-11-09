@@ -84,6 +84,10 @@ public:
 
     std::vector<double> extract_best_solution() const;
 
+    std::vector<int> extract_int_solution() const;
+
+    std::vector<int> extract_best_int_solution() const;
+
     int get_num_variables() const;
     int get_num_constraints() const;
 

@@ -230,6 +230,40 @@ double CPLEXSolver::get_objective_value() const {
     }
 }
 
+vector<int> CPLEXSolver::extract_int_solution() const {
+    try {
+        assert(has_optimal_solution());
+        cout << "CPLEX status: " << cplex.getStatus() << endl;
+        vector<int> solution;
+        for (int var = 0; var < get_num_variables(); var++) {
+            solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
+        }
+        return solution;
+    } catch (IloException &exception) {
+        handle_cplex_error(exception);
+    }
+}
+
+vector<int> CPLEXSolver::extract_best_int_solution() const {
+    try {
+        assert(has_solution());
+        cout << "CPLEX status: " << cplex.getStatus() << endl;
+        int best = 0;
+        for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
+            if (cplex.getObjValue(i) > cplex.getObjValue(best)){
+                best = i;
+            }
+        }
+        vector<int> solution;
+        for (int var = 0; var < get_num_variables(); var++) {
+            solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
+        }
+        return solution;
+    } catch (IloException &exception) {
+        handle_cplex_error(exception);
+    }
+}
+
 vector<double> CPLEXSolver::extract_solution() const {
     try {
         assert(has_optimal_solution());

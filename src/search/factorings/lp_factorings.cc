@@ -196,7 +196,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
 
 
-        for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
+        for (size_t p_leaf = 0; p_leaf < num_p_leaves; ++p_leaf) {
             switch (strategy) {
             case MML:
                 variables.push_back(MIPVariable(0.0, 1.0, 1.0, MIPVariableType::INT));
@@ -217,7 +217,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
         for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; ++p_leaf_1) {
             for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; ++p_leaf_2) {
-                if ((p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1])) {
+                if (p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) {
                     LPConstraint constraint(0.0, 1.0);
                     constraint.insert(p_leaf_1, 1.0);
                     constraint.insert(p_leaf_2, 1.0);
@@ -314,11 +314,11 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
-    vector<double> solution;
+    vector<int> solution;
     if (cplex_time_limit <= 0){
-        solution = mip_solver.extract_solution();
+        solution = mip_solver.extract_int_solution();
     } else {
-        solution = mip_solver.extract_best_solution();
+        solution = mip_solver.extract_best_int_solution();
     }
 
     // simple sanity check
@@ -326,7 +326,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     bool leaves_overlap = false;
     vector<bool> leaf_variables(g_variable_domain.size(), false);
     for (size_t p_leaf = 0; p_leaf < num_p_leaves; p_leaf++) {
-        if (solution[p_leaf] == 1.0) {
+        if (solution[p_leaf] == 1) {
             set<int> leaf;
             for (int var : potential_leaves[p_leaf].vars) {
                 if (leaf_variables[var]){
