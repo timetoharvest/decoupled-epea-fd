@@ -1269,7 +1269,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "strategy",
         strategies,
         "TODO",
-        "mis",
+        "mml",
         vector<string>(),
         OptionFlags(false));
 
