@@ -17,6 +17,8 @@ const char *get_exit_code_message_reentrant(ExitCode exitcode) {
         return "Search stopped without finding a solution.";
     case ExitCode::OUT_OF_MEMORY:
         return "Memory limit has been reached.";
+    case ExitCode::ABSTAINED:
+        return "Factoring strategy abstained.";
     default:
         return nullptr;
     }

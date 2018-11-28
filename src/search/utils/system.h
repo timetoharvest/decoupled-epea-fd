@@ -39,7 +39,9 @@ enum class ExitCode {
     UNSOLVABLE = 4,
     // Search ended without finding a solution.
     UNSOLVED_INCOMPLETE = 5,
-    OUT_OF_MEMORY = 6
+    OUT_OF_MEMORY = 6,
+    // factoring method failed + no fallback.
+    ABSTAINED = 9
 };
 
 NO_RETURN extern void exit_with(ExitCode returncode);

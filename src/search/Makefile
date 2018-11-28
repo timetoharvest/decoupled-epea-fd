@@ -42,7 +42,7 @@ HEADERS = \
           algorithms/int_packer.h \
           algorithms/priority_queues.h \
           algorithms/sccs.h \
-		  algorithms/segmented_vector.h \
+          algorithms/segmented_vector.h \
           axioms.h \
           combining_evaluator.h \
           eager_search.h \
@@ -177,8 +177,8 @@ HEADERS += pruning/stubborn_sets.h \
            pruning/stubborn_sets_ec.h
 
 # TODO make decoupled search plugable
-HEADERS += leaf_state.h\
-           leaf_state_id.h\
+HEADERS += leaf_state.h \
+           leaf_state_id.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
@@ -190,7 +190,7 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h \
            compliant_paths/simulation_relation.h
-           
+
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward

@@ -44,12 +44,12 @@ If NT shall be predefinable:
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
+class MergeStrategy;
 template<class Entry>
 class OpenList;
 class PruningMethod;
 class PruningOptions;
 class SearchEngine;
-class MergeStrategy;
 class ShrinkStrategy;
 
 /*

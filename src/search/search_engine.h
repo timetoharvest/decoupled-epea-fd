@@ -41,7 +41,7 @@ protected:
     int get_adjusted_cost(const Operator &op) const;
 public:
     SearchEngine(const Options &opts);
-    virtual ~SearchEngine();
+    virtual ~SearchEngine() = default;
     virtual void statistics() const;
     virtual void heuristic_statistics() const {}
     virtual void save_plan_if_necessary() const;
