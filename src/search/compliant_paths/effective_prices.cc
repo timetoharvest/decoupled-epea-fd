@@ -4,11 +4,10 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator.h"
-#include "../priority_queue.h"
+#include "../algorithms/priority_queues.h"
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
-#include "../utilities.h"
 
 #include <limits>
 
@@ -241,7 +240,7 @@ void EffectivePrices::goal_price_propagation() {
         //Alvaro: Given the size of leaf factors I think a bucketqueue
         //should work better but requires some implementation
         //effort. Probably worth it to reduce overhead
-        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue? 
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue?
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
             //cout << s << " is goal " << endl; 
@@ -271,7 +270,7 @@ void EffectivePrices::goal_price_propagation() {
                     continue;
                 }
 
-                int action_cost = get_adjusted_action_cost(*transition.first, cost_type);
+                int action_cost = get_adjusted_action_cost(g_operators[transition.first], cost_type);
                 int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
                 int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :

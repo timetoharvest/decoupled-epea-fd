@@ -24,7 +24,7 @@ class StubbornSets : public PruningMethod {
       (i.e. more operators might need to be added to stubborn because
       of the operators in the queue).
     */
-    std::vector<size_t> stubborn_queue;
+    std::vector<OperatorID> stubborn_queue;
 
     void compute_sorted_operators();
     void compute_achievers();
@@ -35,18 +35,18 @@ protected:
 
     /* achievers[var][value] contains all operator indices of
        operators that achieve the fact (var, value). */
-    std::vector<std::vector<std::vector<size_t>>> achievers;
+    std::vector<std::vector<std::vector<OperatorID>>> achievers;
 
-    bool can_disable(size_t op1_no, size_t op2_no);
-    bool can_conflict(size_t op1_no, size_t op2_no);
+    bool can_disable(OperatorID op1_no, OperatorID op2_no);
+    bool can_conflict(OperatorID op1_no, OperatorID op2_no);
     bool contain_conflicting_fact(const std::vector<std::pair<int, int>> &facts1,
                                   const std::vector<std::pair<int, int>> &facts2);
 
     // Returns true iff the operators was enqueued.
     // TODO: rename to enqueue_stubborn_operator?
-    virtual bool mark_as_stubborn(size_t op_no);
+    virtual bool mark_as_stubborn(OperatorID op_no);
     virtual void initialize_stubborn_set(const State &state) = 0;
-    virtual void handle_stubborn_operator(const State &state, size_t op_no) = 0;
+    virtual void handle_stubborn_operator(const State &state, OperatorID op_no) = 0;
 public:
     StubbornSets(const Options &opts);
     virtual ~StubbornSets() = default;
@@ -57,7 +57,7 @@ public:
        base class to have only one method virtual, and to make the
        interface more obvious */
     virtual void prune_operators(const State &state,
-                                 std::vector<const Operator *> &ops) override;
+                                 std::vector<OperatorID> &ops) override;
     virtual void print_statistics() const override;
     
     static void add_options_to_parser(OptionParser &parser);

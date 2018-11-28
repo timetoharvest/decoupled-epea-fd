@@ -10,9 +10,8 @@
 
 #include <cassert>
 #include <vector>
+
 using namespace std;
-
-
 
 
 // construction and destruction
@@ -133,17 +132,17 @@ void AdditiveHeuristic::mark_preferred_operators(
         if (unary_op) { // We have not yet chained back to a start node.
             for (size_t i = 0; i < unary_op->precondition.size(); ++i)
                 mark_preferred_operators(state, unary_op->precondition[i]);
-            int operator_no = unary_op->operator_no;
-            if (unary_op->cost == unary_op->base_cost && operator_no != -1) {
+            OperatorID operator_no = unary_op->operator_no;
+            if (unary_op->cost == unary_op->base_cost && operator_no != OperatorID::no_operator) {
                 // Necessary condition for this being a preferred
                 // operator, which we use as a quick test before the
                 // more expensive applicability test.
                 // If we had no 0-cost operators and axioms to worry
                 // about, this would also be a sufficient condition.
-                const Operator *op = &g_operators[operator_no];
-                if (op->get_affected_factor() == LeafFactorID::CENTER && op->is_applicable(state))
+                const Operator &op = g_operators[operator_no];
+                if ((!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER) && op.is_applicable(state))
                     // don't mark leaf ops as preferred
-                    set_preferred(op);
+                    set_preferred(operator_no);
             }
         }
     }

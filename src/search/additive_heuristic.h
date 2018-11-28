@@ -1,7 +1,7 @@
 #ifndef ADDITIVE_HEURISTIC_H
 #define ADDITIVE_HEURISTIC_H
 
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 #include "relaxation_heuristic.h"
 #include <cassert>
 
@@ -15,7 +15,7 @@ class AdditiveHeuristic : public RelaxationHeuristic {
      */
     static const int MAX_COST_VALUE = 100000000;
 
-    AdaptiveQueue<Proposition *> queue;
+    priority_queues::AdaptiveQueue<Proposition *> queue;
     bool did_write_overflow_warning;
 
     void setup_exploration_queue_decoupled_leaf_states(const State &state);

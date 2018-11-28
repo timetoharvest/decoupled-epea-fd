@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-class Operator;
+class OperatorID;
 class State;
 class OptionParser;
 class Options;
@@ -21,7 +21,7 @@ class Heuristic : public ScalarEvaluator {
     // if set with set_evaluator_value which is done if we use precalculated
     // estimates, eg. when re-opening a search node
 
-    std::vector<const Operator *> preferred_operators;
+    std::vector<OperatorID> preferred_operators;
 protected:
     enum SearchType{STD, STAR, CENTER};
     OperatorCost cost_type;
@@ -32,7 +32,8 @@ protected:
     // Usage note: It's OK to set the same operator as preferred
     // multiple times -- it will still only appear in the list of
     // preferred operators for this heuristic once.
-    void set_preferred(const Operator *op);
+    void set_preferred(OperatorID op);
+    int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:
     Heuristic(const Options &options);
@@ -42,9 +43,9 @@ public:
     bool is_dead_end() const;
     int get_heuristic();
     // changed to virtual, so HeuristicProxy can delegate this:
-    virtual void get_preferred_operators(std::vector<const Operator *> &result);
+    virtual void get_preferred_operators(std::vector<OperatorID> &result);
     virtual bool dead_ends_are_reliable() const {return true; }
-    virtual bool reach_state(const State &parent_state, const Operator &op,
+    virtual bool reach_state(const State &parent_state, OperatorID op,
                              const State &state);
 
     // for abstract parent ScalarEvaluator

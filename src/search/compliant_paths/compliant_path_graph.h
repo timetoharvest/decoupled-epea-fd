@@ -5,6 +5,7 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator_cost.h"
+#include "../operator_id.h"
 #include "pruning_options.h"
 
 #include <vector>
@@ -25,7 +26,7 @@ class CompliantPathGraph {
     friend class PruningOptions; // access to leaf_state_pre/successors
     friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg
-    friend class SuccessorGeneratorSwitch; // access to center_successors
+    friend class successor_generator::SuccessorGenerator; // access to center_successors
     
     /*
       this builds all entire leaf state spaces and stores them
@@ -36,6 +37,12 @@ class CompliantPathGraph {
     
 protected:
     
+    // contains center actions only, keeping their leaf preconditions
+    static std::unique_ptr<successor_generator::SuccessorGenerator> center_action_successor_generator;
+
+    // contains only leaf actions, branching only over the leaf preconditions
+    static std::vector<std::unique_ptr<successor_generator::SuccessorGenerator> > leaf_successor_generators;
+
     static SearchSpace *search_space;
     
     static OperatorCost cost_type;
@@ -57,11 +64,11 @@ protected:
     // these are only computed if compute_leaf_backwards_graph is true
     static std::vector<std::vector<LeafStateHash> > leaf_goal_states;
     
-    static std::vector<std::vector<std::vector<size_t> > > center_successors;
+    static std::vector<std::vector<std::vector<OperatorID> > > center_successors;
     
-    static std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > leaf_state_successors;
+    static std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > leaf_state_successors;
     
-    static std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > leaf_state_predecessors;
+    static std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > leaf_state_predecessors;
     
     static std::vector<std::vector<int> > leaf_state_id_map;
     
@@ -117,6 +124,8 @@ public:
 
     static void initialize();
     
+    static void build_leaf_successor_generators();
+
     static const PruningOptions& get_pruning_options() {
         return *pruning;
     }

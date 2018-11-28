@@ -40,11 +40,11 @@ public:
 
     void open_initial(int h);
     void open(int h, const SearchNode &parent_node,
-              const Operator *parent_op);
+              OperatorID parent_op);
     void reopen(const SearchNode &parent_node,
-                const Operator *parent_op);
+                OperatorID parent_op);
     void update_parent(const SearchNode &parent_node,
-                       const Operator *parent_op);
+                       OperatorID parent_op);
     void increase_h(int h);
     void close();
     void mark_as_dead_end();
@@ -61,7 +61,7 @@ public:
     SearchSpace(OperatorCost cost_type_);
     SearchNode get_node(const State &state);
     void trace_path(const State &goal_state,
-                    std::vector<const Operator *> &path) const;
+                    std::vector<OperatorID> &path) const;
 
     void dump() const;
     void statistics() const;

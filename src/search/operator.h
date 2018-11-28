@@ -3,8 +3,11 @@
 
 #include "globals.h"
 #include "leaf_state.h"
+#include "operator_factor_info.h"
+#include "operator_id.h"
 #include "state.h"
-#include "utilities.h"
+#include "task_utils/fact_pair.h"
+#include "utils/collections.h"
 
 #include <cassert>
 #include <iostream>
@@ -12,12 +15,13 @@
 #include <string>
 #include <vector>
 
+
 struct Condition {
     int var;
     int val;
     explicit Condition(std::istream &in);
     Condition(int v, int p) : var(v), val(p) {
-        assert(in_bounds(var, g_variable_name));
+        assert(utils::in_bounds(var, g_variable_name));
         assert(val >= 0 && val < g_variable_domain[var]);
     }
 
@@ -31,6 +35,10 @@ struct Condition {
 
     bool operator!=(const Condition &other) const {
         return !(*this == other);
+    }
+
+    FactPair get_pair() const {
+        return FactPair(var, val);
     }
 
     void dump() const;
@@ -55,22 +63,21 @@ struct Effect {
     void dump() const;
 };
 
+
 class Operator {
+    friend class Factoring; // to set affected factor
     
     bool is_an_axiom;
     
+    // in decoupled search, the following two are sorted by factor, center first
     std::vector<Condition> preconditions;      // var, val
     std::vector<Effect> effects;     // var, val, effect conditions
-    std::map<LeafFactorID, std::vector<const Condition*> > pre_by_factor;
-    std::map<LeafFactorID, std::vector<const Effect*> > eff_by_factor;
-    const static std::vector<const Condition*> empty_pre;// HACK
-    const static std::vector<const Effect*> empty_eff;// HACK
     
     std::string name;
     int cost;
 
     // the following is only needed for decoupled search
-    LeafFactorID affects_factor;
+    std::unique_ptr<FactorInfo> factor_info;
 
     mutable bool marked; // Used for short-term marking of preferred operators
     
@@ -78,6 +85,8 @@ class Operator {
 
     void read_pre_post(std::istream &in);
     
+    void set_affected_factor(LeafFactorID factor);
+
 public:
     explicit Operator(std::istream &in, bool is_axiom);
     
@@ -107,9 +116,13 @@ public:
         return dead;
     }
 
-    const std::vector<const Condition*> &get_preconditions(LeafFactorID factor) const;
+    OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const {
+        return factor_info->get_preconditions(factor);
+    }
     
-    const std::vector<const Effect*> &get_effects(LeafFactorID factor) const;
+    OpsLeafProps<Effect> get_effects(LeafFactorID factor) const {
+        return factor_info->get_effects(factor);
+    }
     
     bool is_applicable(const State &state) const;
     
@@ -129,31 +142,26 @@ public:
         marked = false;
     }
     
-    size_t get_index() const {
+    OperatorID get_id() const {
         int op_index = this - &*g_operators.begin();
         assert(op_index >= 0 && (size_t) op_index < g_operators.size());
-        return op_index;
+        return OperatorID(op_index);
     }
     
-    void set_affected_factor(LeafFactorID factor);
-    
     LeafFactorID get_affected_factor() const {
-        return affects_factor;
+        return factor_info->get_affected_factor();
     }
     
     bool has_precondition_on(LeafFactorID factor) const {
-        return pre_by_factor.find(factor) != pre_by_factor.end();
+        return factor_info->has_precondition_on(factor);
     }
-    
+
     bool has_effect_on(LeafFactorID factor) const {
-        return eff_by_factor.find(factor) != eff_by_factor.end();
+        return factor_info->has_effect_on(factor);
     }
     
-    int get_number_leaf_pre_factors() const {
-        if (has_precondition_on(LeafFactorID::CENTER)){
-            return pre_by_factor.size() - 1;
-        }
-        return pre_by_factor.size();
+    size_t get_number_leaf_pre_factors() const {
+        return factor_info->get_number_leaf_pre_factors();
     }
 
     int get_cost() const {

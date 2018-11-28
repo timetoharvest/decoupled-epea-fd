@@ -3,7 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state_id.h"
-#include "utilities.h"
+#include "utils/system.h"
 
 #include <set>
 #include <string>
@@ -110,7 +110,7 @@ protected:
     
     void print_factoring() const;
     
-    void exit_error(std::string message, ExitCode exit_code) const;
+    void exit_error(std::string message, utils::ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
