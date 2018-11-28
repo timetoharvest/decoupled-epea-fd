@@ -1,12 +1,11 @@
 #ifndef PER_STATE_INFORMATION_H
 #define PER_STATE_INFORMATION_H
 
+#include "algorithms/segmented_vector.h"
 #include "globals.h"
 #include "state.h"
 #include "state_id.h"
 #include "state_registry.h"
-
-#include "algorithms/segmented_vector.h"
 #include "utils/collections.h"
 
 #include <cassert>

@@ -65,7 +65,7 @@ struct Effect {
 
 
 class Operator {
-    friend class Factoring;
+    friend class Factoring; // to set affected factor
     
     bool is_an_axiom;
     

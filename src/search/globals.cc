@@ -269,7 +269,7 @@ void read_everything(istream &in) {
     
     
     if (g_factoring){
-        verify_no_axioms_no_conditional_effects();
+        verify_no_axioms_no_conditional_effects(); // TODO move this to into Factoring
         
         g_factoring->do_factoring_or_abstain();
     }
