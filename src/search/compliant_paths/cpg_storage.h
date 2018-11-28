@@ -21,13 +21,16 @@ protected:
 
 public:
     
-    static CPGStorage *storage;
+    virtual ~CPGStorage() = default;
     
-    static void initialize();
-
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
     
     virtual size_t size(const StateRegistry *registry) const = 0;
+    
+    
+    static CPGStorage *storage;
+    
+    static void initialize();
     
 };
 

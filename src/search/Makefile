@@ -5,22 +5,22 @@
 ## By default, build in 32-bit mode. Use DOWNWARD_BITWIDTH=64
 ## to build in 64-bit mode and DOWNWARD_BITWIDTH=native to use
 ## the native bitness of the OS.
-DOWNWARD_BITWIDTH ?= 32
+DOWNWARD_BITWIDTH ?= 64
 
 ## Set DOWNWARD_USE_LP to 1 to enable linear programming stuff.
-DOWNWARD_USE_LP ?= 0
+DOWNWARD_USE_LP ?= 1
 
 ## Fast Downward uses the Open Solver Interface (OSI) by the
 ## COIN-OR project for access to LP solvers. Set DOWNWARD_COIN_ROOT
 ## to a path where OSI is installed.
-DOWNWARD_COIN_ROOT ?= /opt/coin
+DOWNWARD_COIN_ROOT ?= ${DOWNWARD_COIN_ROOT64}
 
 ## To use an LP solver through OSI, set the following variables
 ## to paths for the solver's "include" and "lib" directories.
 DOWNWARD_CLP_INCDIR ?= $(DOWNWARD_COIN_ROOT)/include/coin
 DOWNWARD_CLP_LIBDIR ?= $(DOWNWARD_COIN_ROOT)/lib
-DOWNWARD_CPLEX_INCDIR ?= /opt/ibm/ILOG/CPLEX_Studio1251/cplex/include/ilcplex
-DOWNWARD_CPLEX_LIBDIR ?= /opt/ibm/ILOG/CPLEX_Studio1251/cplex/lib/x86_sles10_4.1/static_pic
+DOWNWARD_CPLEX_INCDIR ?= ${DOWNWARD_CPLEX_Studio}/cplex/include/ilcplex
+DOWNWARD_CPLEX_LIBDIR ?= ${DOWNWARD_CPLEX_Studio}/cplex/lib/x86-64_linux/static_pic
 DOWNWARD_GUROBI_INCDIR ?=
 DOWNWARD_GUROBI_LIBDIR ?=
 
@@ -40,9 +40,10 @@ DOWNWARD_OS ?= auto
 HEADERS = \
           algorithms/equivalence_relation.h \
           algorithms/int_packer.h \
+          algorithms/mis.h \
           algorithms/priority_queues.h \
           algorithms/sccs.h \
-		  algorithms/segmented_vector.h \
+          algorithms/segmented_vector.h \
           axioms.h \
           combining_evaluator.h \
           eager_search.h \
@@ -92,6 +93,7 @@ HEADERS = \
           utils/system_unix.h \
           utils/system_windows.h \
           utils/timer.h \
+          utils/variable_int.h \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
@@ -100,7 +102,10 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
-          lp_solver_interface.h
+					lp/solver.h\
+          lp/lp_solver.h \
+          lp/lp_internals.h \
+					lp/cplex_solver.h
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
@@ -134,7 +139,7 @@ HEADERS += max_heuristic.h
 #            merge_and_shrink/shrink_random.h \
 #            merge_and_shrink/shrink_strategy.h \
 #            merge_and_shrink/transition_system.h \
-# 
+#
 # HEADERS += landmarks/exploration.h \
 #            landmarks/h_m_landmarks.h \
 #            landmarks/lama_ff_synergy.h \
@@ -177,8 +182,11 @@ HEADERS += pruning/stubborn_sets.h \
            pruning/stubborn_sets_ec.h
 
 # TODO make decoupled search plugable
-HEADERS += leaf_state.h\
-           leaf_state_id.h\
+HEADERS += leaf_state.h \
+           leaf_state_id.h
+
+HEADERS += factorings/factoring_ranking.h \
+           factorings/lp_factorings.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
@@ -190,7 +198,7 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h \
            compliant_paths/simulation_relation.h
-           
+
 
 SOURCES = planner.cc $(HEADERS:%.h=%.cc)
 TARGET = downward
@@ -262,7 +270,7 @@ endif
 CXXFLAGS =
 CXXFLAGS += -g
 CXXFLAGS += $(BITWIDTHOPT)
-CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated -Werror
+CXXFLAGS += -Wall -std=c++11 -Wextra -pedantic -Wno-deprecated
 
 CXXFLAGS += -Iext
 ifeq ($(DOWNWARD_OS), osx)
@@ -372,9 +380,9 @@ COIN_LIBS += Osi CoinUtils
 
 COIN_CXXFLAGS += -I$(DOWNWARD_COIN_ROOT)/include/coin -D USE_LP
 ifeq ($(OS), osx)
-COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib $(COIN_LIBS:%=-l %)
+COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib $(COIN_LIBS:%=-l %) -ldl
 else
-COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib -Wl,-Bstatic $(COIN_LIBS:%=-l %)
+COIN_LDFLAGS += -L$(DOWNWARD_COIN_ROOT)/lib -Wl,-Bstatic $(COIN_LIBS:%=-l %) -ldl
 endif
 
 CXXFLAGS += $(COIN_CXXFLAGS)
@@ -389,6 +397,35 @@ POSTLINKOPT_RELEASE += -Wl,-Bdynamic
 endif
 POSTLINKOPT_DEBUG   += -Wl,-Bdynamic
 POSTLINKOPT_PROFILE += -Wl,-Bdynamic
+endif
+
+
+#CPLEX compiler options and linker options to use CPLEX without COIN
+CPX_AVAIL := $(shell test -d $(DOWNWARD_CPLEX_INCDIR) && test -f $(DOWNWARD_CPLEX_LIBDIR)/libcplex.a && echo 1)
+ifeq ($(CPX_AVAIL),1)
+
+CPLEXDIR      = ${DOWNWARD_CPLEX_Studio}/cplex
+CONCERTDIR    = ${DOWNWARD_CPLEX_Studio}/concert
+
+CPLEXLIBDIR   = $(DOWNWARD_CPLEX_LIBDIR)
+CONCERTLIBDIR = $(CONCERTDIR)/lib/x86-64_linux/static_pic
+
+CONCERTINCDIR = $(CONCERTDIR)/include
+CPLEXINCDIR   = $(CPLEXDIR)/include
+
+CCOPT = -m64 -O -fPIC -fno-strict-aliasing -fexceptions -DNDEBUG -DIL_STD
+
+CCLNDIRS  = -L$(CPLEXLIBDIR) -L$(CONCERTLIBDIR)
+CCLNFLAGS = $(CCLNDIRS)
+CCLNFLAGS += -lilocplex -lconcert -lcplex -lm -lpthread -ldl
+CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(CONCERTINCDIR)
+
+CXXFLAGS += $(CCFLAGS)
+
+POSTLINKOPT_RELEASE += $(CCLNFLAGS)
+POSTLINKOPT_DEBUG += $(CCLNLDFLAGS)
+POSTLINKOPT_PROFILE += $(CCLNLDFLAGS)
+
 endif
 
 endif # LP code

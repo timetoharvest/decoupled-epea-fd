@@ -33,9 +33,6 @@ SearchEngine::SearchEngine(const Options &opts)
     }
 }
 
-SearchEngine::~SearchEngine() {
-}
-
 void SearchEngine::statistics() const {
 }
 

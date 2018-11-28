@@ -17,13 +17,14 @@
 
 
 class Factoring;
-class MergeStrategy;
-class ShrinkStrategy;
-class LandmarkGraph;
 class Heuristic;
+class LandmarkGraph;
+class MergeStrategy;
+class FactoringRanking;
 class ScalarEvaluator;
 class Synergy;
 class SearchEngine;
+class ShrinkStrategy;
 class OptionParser;
 template<class Entry>
 class OpenList;
@@ -214,6 +215,13 @@ template <>
 struct TypeNamer<Factoring *> {
     static std::string name() {
         return "Factoring";
+    }
+};
+
+template <>
+struct TypeNamer<FactoringRanking *> {
+    static std::string name() {
+        return "FactoringRanking";
     }
 };
 
