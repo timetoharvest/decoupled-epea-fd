@@ -4,7 +4,6 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser_util.h"
-#include "pruning/por_method.h"
 
 #include <algorithm>
 #include <iostream>
@@ -46,11 +45,12 @@ class Factoring;
 class OptionParser;
 class LandmarkGraph;
 class GraphCreator;
+class MergeStrategy;
 template<class Entry>
 class OpenList;
+class PruningMethod;
 class PruningOptions;
 class SearchEngine;
-class MergeStrategy;
 class ShrinkStrategy;
 
 /*
@@ -161,9 +161,9 @@ public:
 };
 
 template <>
-class TokenParser<POR::PORMethod *> {
+class TokenParser<PruningMethod *> {
 public:
-    static inline POR::PORMethod *parse(OptionParser &p);
+    static inline PruningMethod *parse(OptionParser &p);
 };
 
 
@@ -436,10 +436,10 @@ SearchEngine *TokenParser<SearchEngine *>::parse(OptionParser &p) {
     return lookup_in_registry<SearchEngine>(p);
 }
 
-POR::PORMethod *TokenParser<POR::PORMethod *>::parse(OptionParser &p) {
+PruningMethod *TokenParser<PruningMethod *>::parse(OptionParser &p) {
     ParseTree::iterator pt = p.get_parse_tree()->begin();
-    if (Registry<POR::PORMethod *>::instance()->contains(pt->value)) {
-        return Registry<POR::PORMethod *>::instance()->get(pt->value) (p);
+    if (Registry<PruningMethod *>::instance()->contains(pt->value)) {
+        return Registry<PruningMethod *>::instance()->get(pt->value) (p);
     }
     p.error("POR method not found");
     return 0;

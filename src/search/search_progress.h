@@ -2,8 +2,8 @@
 #define SEARCH_PROGRESS_H
 
 #include "globals.h"
-#include "timer.h"
 #include "heuristic.h"
+#include "utils/timer.h"
 
 /**
  * This class is a class that helps track search progress.
@@ -36,7 +36,7 @@ private:
     std::vector<Heuristic *> heuristics;
 public:
     SearchProgress();
-    virtual ~SearchProgress();
+    virtual ~SearchProgress() = default;
 
     void add_heuristic(Heuristic *h);
 

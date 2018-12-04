@@ -11,32 +11,34 @@
 // #define DEBUG_FACTORING
 // #define DEBUG_PRUNING
 // #define DEBUG_PLAN_EXTRACTION
-//#define DEBUG_SUCCESSOR_GENERATION
-// #define DEBUG_NEW_SG
-//#define DEBUG_ACTION_SPLITTING        // factoring of operators in SuccessorGenerator
 // #define DEBUG_PRECOMPUTE_GOAL_COST
-// #define DEBUG_POR
 #endif
 
 class Axiom;
 class AxiomEvaluator;
-class CausalGraph;
 class DomainTransitionGraph;
 class Factoring;
 class GraphCreator;
+namespace int_packer {
 class IntPacker;
+}
 struct LeafFactorID;
 class Operator;
+class OperatorID;
 class RandomNumberGenerator;
 class State;
 class StateID;
+namespace successor_generator {
 class SuccessorGenerator;
+}
+namespace utils {
 class Timer;
+}
 class StateRegistry;
 
 bool test_goal(const State &state);
-void save_plan(const std::vector<const Operator *> &plan, int iter);
-int calculate_plan_cost(const std::vector<const Operator *> &plan);
+void save_plan(const std::vector<OperatorID> &plan, int iter);
+int calculate_plan_cost(const std::vector<OperatorID> &plan);
 
 void read_everything(std::istream &in);
 void dump_everything();
@@ -80,8 +82,8 @@ extern std::vector<std::vector<std::string> > g_fact_names;
 extern std::vector<int> g_axiom_layers;
 extern std::vector<int> g_default_axiom_values;
 
-extern IntPacker *g_state_packer;
-extern std::vector<IntPacker*> g_leaf_factor_packers;
+extern int_packer::IntPacker *g_state_packer;
+extern std::vector<int_packer::IntPacker*> g_leaf_factor_packers;
 
 // This vector holds the initial values *before* the axioms have been evaluated.
 // Use the state registry to obtain the real initial state.
@@ -101,11 +103,8 @@ extern int g_sum_min_goal_cost;
 extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;
 extern AxiomEvaluator *g_axiom_evaluator;
-extern SuccessorGenerator *g_successor_generator;
-extern std::vector<SuccessorGenerator*> g_leaf_successor_generators;
+extern successor_generator::SuccessorGenerator *g_successor_generator;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
-extern CausalGraph *g_causal_graph;
-extern Timer g_timer;
 extern std::string g_plan_filename;
 extern RandomNumberGenerator g_rng;
 

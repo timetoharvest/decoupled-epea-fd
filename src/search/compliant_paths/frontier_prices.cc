@@ -4,12 +4,11 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator.h"
-#include "../priority_queue.h"
+#include "../algorithms/priority_queues.h"
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
 #include "../symmetries/decoupled_permutation.h"
-#include "../utilities.h"
 
 #include <limits>
 #include <numeric>
@@ -39,7 +38,7 @@ FrontierPrices::FrontierPrices(const FrontierPrices *tag) {
 }
 
 unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const State &predecessor,
-                                                                               const Operator*) const {
+                                                                               const Operator&) const {
     
     assert(g_factoring->get_profile() == FORK); // not supported, yet
     
@@ -116,18 +115,18 @@ void FrontierPrices::update(const State &base_state) {
 
                     bool all_applicable = !pruning->propagate_goal_prices();
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (op->is_center_applicable(base_state)){
+                        const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                        if (op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             bool added = add_state(successor, factor, 
-                                                   cost + get_adjusted_action_cost(*op, cost_type));
+                                                   cost + get_adjusted_action_cost(op, cost_type));
                             change |= added;
                             if (added){
                                 frontier[factor][successor] = true;
                             }
                         } else if (!pruning->propagate_goal_prices()) {
                             all_applicable = false;
-                            int new_cost = cost + get_adjusted_action_cost(*op, cost_type);
+                            int new_cost = cost + get_adjusted_action_cost(op, cost_type);
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             if (!has_leaf_state(successor, factor) || get_cost_of_state(successor, factor) > new_cost){
                                 frontier[factor][id] = true;
@@ -303,7 +302,7 @@ void FrontierPrices::goal_price_propagation() {
         // should work better but requires some implementation
         // effort. Probably worth it to reduce overhead
         // Alvaro: Use a heap_queue?
-        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open;
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
             open.push(goal_cost[factor], s);
@@ -332,7 +331,7 @@ void FrontierPrices::goal_price_propagation() {
                     continue;
                 }
 
-                int action_cost = get_adjusted_action_cost(*transition.first, cost_type);
+                int action_cost = get_adjusted_action_cost(g_operators[transition.first], cost_type);
                 int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
                 int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :
@@ -417,7 +416,7 @@ void FrontierPrices::compute_cost_frontier(LeafFactorID factor) {
                 frontier[factor][id] = true;
                 break;
             }
-            int action_cost = get_adjusted_action_cost(*leaf_state_successors[factor][id][o].first, cost_type);
+            int action_cost = get_adjusted_action_cost(g_operators[leaf_state_successors[factor][id][o].first], cost_type);
             int new_cost = get_effective_cost_of_state(id, factor) + action_cost;
             if (get_effective_cost_of_state(successor, factor) > new_cost){
                 frontier[factor][id] = true;

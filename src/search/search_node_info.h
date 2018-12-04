@@ -15,13 +15,13 @@ struct SearchNodeInfo {
     int h : 31; // TODO:CR - should we get rid of it
     bool h_is_dirty : 1;
     StateID parent_state_id;
-    const Operator *creating_operator;
+    OperatorID creating_operator;
     int real_g;
     int leaf_part_g;
 
     SearchNodeInfo()
         : status(NEW), g(-1), h(-1), h_is_dirty(false),
-          parent_state_id(StateID::no_state), creating_operator(0),
+          parent_state_id(StateID::no_state), creating_operator(OperatorID::no_operator),
           real_g(-1), leaf_part_g(-1) {
     }
 };

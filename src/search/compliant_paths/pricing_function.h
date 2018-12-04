@@ -39,7 +39,7 @@ protected:
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator *op) const override;
+                                                                                const Operator &op) const override;
                                                                           
     virtual void update(const State &base_state) override;
                                                                           

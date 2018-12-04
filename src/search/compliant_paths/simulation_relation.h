@@ -10,15 +10,23 @@
 
 
 class Condition;
-class Operator;
-
+namespace utils {
+class CountdownTimer;
+}
+class OperatorID;
+template<class T>
+class OpsLeafProps;
 
 class SimulationRelation {
     
 private:
     
-    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd;
-    std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd;
+    // TODO for now, we hard-coded that the simulation relation is only computed for fork-leaves
+
+    static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
+    
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_fwd;
+    std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_bwd;
     
     // For each operator, list of operators that dominate it in the center
     std::vector<boost::dynamic_bitset<> > op_dominated_by;
@@ -28,16 +36,12 @@ private:
     // Whether states are reachable after irrelevance pruning
     std::vector<boost::dynamic_bitset<>> reachable;
 
-
-    static std::vector<std::vector<std::vector<LeafStateHash> > > simulated_states;
-
-
-    bool precondition_dominance(const std::vector<const Condition*> &pre,
-                                const std::vector<const Condition*> &pre2) const;
+    bool precondition_dominance(OpsLeafProps<Condition> pre,
+                                OpsLeafProps<Condition> pre2) const;
 
     void compute_label_dominance();
 
-    void compute_simulation (LeafFactorID factor);
+    void compute_simulation (LeafFactorID factor, const utils::CountdownTimer &timer);
 
     inline bool simulates(LeafFactorID factor, LeafStateHash s, LeafStateHash t) const {
         return relation[factor][s][t];
@@ -69,16 +73,16 @@ private:
 
 public:
 
-    SimulationRelation(std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_fwd_,
-                       std::vector<std::vector<std::vector<std::pair<const Operator*, LeafStateHash> > > > &transition_system_bwd_);
+    SimulationRelation(std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_fwd_,
+                       std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > &transition_system_bwd_);
 
-    void init();
+    void init(int timeout = -1);
 
     void statistics() const;
 
     void set_list_dominated_states() const;
 
-    void perform_leaf_irrelevance_pruning(bool only_remove_states = false);
+    void perform_leaf_irrelevance_pruning(bool prune_bwd_graph, bool only_remove_states, bool mark_dead_ops);
     
     
     static const std::vector<std::vector<std::vector<LeafStateHash> > >& get_simulation_relation() {

@@ -4,7 +4,7 @@
 #include "lexicographic_ordering.h"
 #include "../operator.h"
 #include "permutation.h"
-#include "../timer.h"
+#include "../utils/timer.h"
 
 #include <vector>
 
@@ -40,18 +40,18 @@ void GraphCreator::initialize() {
 #else
     if (time_bound > 0) {
         cerr << "Warning! Time bound is implemented only in Bliss 0.5" << endl;
-        exit_with(EXIT_UNSUPPORTED);
+        exit_with(utils::ExitCode::UNSUPPORTED);
     }
     if (generators_bound > 0) {
         cerr << "Warning! Generators bound is implemented only in Bliss 0.5" << endl;
-        exit_with(EXIT_UNSUPPORTED);
+        exit_with(utils::ExitCode::UNSUPPORTED);
     }
 #endif
 
     bliss::Stats stats1;
     cout << "Using Bliss to find group generators" << endl;
     graph->canonical_form(stats1, &(Group::add_permutation), group.get());
-    cout << "Got " << group->get_num_generators() << " group generators, time step: [t=" << g_timer << "]" << endl;
+    cout << "Got " << group->get_num_generators() << " group generators, time step: [t=" << utils::g_timer << "]" << endl;
 
     group->default_direct_product();
     cout << "Number of generators: " << group->get_num_generators() << endl;
@@ -59,7 +59,7 @@ void GraphCreator::initialize() {
     if(g_factoring) {
         decoupled_group = unique_ptr<DecoupledGroup>(new DecoupledGroup(*group));
     }
-    cout << "done initializing symmetries [t=" << g_timer << "]" << endl;
+    cout << "done initializing symmetries [t=" << utils::g_timer << "]" << endl;
 #else
     cerr << "You must build the planner with the USE_BLISS symbol defined" << endl;
     exit_with(EXIT_CRITICAL_ERROR);

@@ -4,12 +4,11 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator.h"
-#include "../priority_queue.h"
+#include "../algorithms/priority_queues.h"
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
 #include "../symmetries/decoupled_permutation.h"
-#include "../utilities.h"
 
 #include <limits>
 #include <numeric>
@@ -70,7 +69,7 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
 }
 
 unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State&,
-                                                                                const Operator *) const {    
+                                                                                const Operator &) const {
     assert(g_factoring->get_profile() == FORK); // not supported, yet
 
     return clone();
@@ -242,7 +241,7 @@ void EffectivePrices::goal_price_propagation() {
         // should work better but requires some implementation
         // effort. Probably worth it to reduce overhead
         // Alvaro: Use a heap_queue?
-        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open;
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
             open.push(goal_cost[factor], s);
@@ -271,7 +270,7 @@ void EffectivePrices::goal_price_propagation() {
                     continue;
                 }
 
-                int action_cost = get_adjusted_action_cost(*transition.first, cost_type);
+                int action_cost = get_adjusted_action_cost(g_operators[transition.first], cost_type);
                 int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
                 int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :

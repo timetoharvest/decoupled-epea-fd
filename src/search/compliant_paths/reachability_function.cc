@@ -5,9 +5,8 @@
 #include "../operator.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
-#include "../successor_generator.h"
 #include "../symmetries/decoupled_permutation.h"
-#include "../utilities.h"
+#include "../task_utils/successor_generator.h"
 
 #include <limits>
 
@@ -51,11 +50,11 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator* op) const {
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator &op) const {
     
     if (g_factoring->get_profile() != FORK){
         unique_ptr<Reachable> tmp_reach(new Reachable(0));
-        tmp_reach->apply_center_op_to_leaves(*this, *op);
+        tmp_reach->apply_center_op_to_leaves(*this, op);
         return tmp_reach;
     } else {                
         return clone();
@@ -168,14 +167,13 @@ void Reachable::update(const State &base_state) {
                 
                 if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                    if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
+                    if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == OperatorID::no_operator){
                         // is "dead-end" leaf state
                         ++id;
                         continue;
                     }
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                        if (is_ifork_leaf || g_operators[leaf_state_successors[factor][id][o].first].is_center_applicable(base_state)){
                             if(add_state(leaf_state_successors[factor][id][o].second, factor)) {
                                 ++added;
                             }
@@ -185,28 +183,28 @@ void Reachable::update(const State &base_state) {
                     
                     const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);     
                     
-                    vector<const Operator*> applicable_ops;
+                    vector<OperatorID> applicable_ops;
                     
                     if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
                         if (id >= center_successors[factor].size() || center_successors[factor][id].empty()){
                             // store center ops whose preconditions are satisfied by predecessor
                             
-                            vector<const Operator*> center_ops;
-                            g_successor_generator->generate_applicable_ops_ignore_others(predecessor, center_ops, true);
+                            vector<OperatorID> center_ops;
+                            center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
                             
                             if (id >= center_successors[factor].size()){
                                 center_successors[factor].resize(id+1);
                             }
                             center_successors[factor][id].reserve(center_ops.size());
-                            for (size_t op = 0; op < center_ops.size(); ++op){
-                                if (center_ops[op]->has_precondition_on(factor)){
-                                    center_successors[factor][id].push_back(center_ops[op]->get_index());
+                            for (OperatorID op_id : center_ops){
+                                if (g_operators[op_id].has_precondition_on(factor)){
+                                    center_successors[factor][id].push_back(op_id);
                                 }
                             }
                         }
                     }
 
-                    g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                    leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
                     
                     bool fits_store = id < MAX_LEAF_SPACE_STORE;
                     if (fits_store && leaf_state_successors[factor].size() <= id){
@@ -214,13 +212,12 @@ void Reachable::update(const State &base_state) {
                     }
 
                     // apply all applicable_ops to predecessor and store the outcome          
-                    for (size_t j = 0; j < applicable_ops.size(); ++j){
-                        const Operator *op = applicable_ops[j];
+                    for (OperatorID op_id : applicable_ops){
+                        const Operator &op = g_operators[op_id];
 
-                        const vector<const Effect*> &effects = op->get_effects(factor);
-                        if (!effects.empty() && (fits_store || op->is_center_applicable(base_state))){
+                        if (op.has_effect_on(factor) && (fits_store || op.is_center_applicable(base_state))){
 
-                            LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, *op);
+                            LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
                             
                             if (lid >= handled.size()){
                                 handled.resize(lid + 1, false);
@@ -230,20 +227,20 @@ void Reachable::update(const State &base_state) {
                                 leaf_state_id_map[factor].resize(lid + 1, -1);
                             }
                             
-                            if(!fits_store || op->is_center_applicable(base_state)){
+                            if(!fits_store || op.is_center_applicable(base_state)){
                                 if (add_state(lid, factor)){
                                     ++added;
                                 }
                             }
                             
                             if (fits_store){
-                                leaf_state_successors[factor][id].push_back(make_pair(op, lid));
+                                leaf_state_successors[factor][id].push_back(make_pair(op_id, lid));
                             }
                         }
                     }
                     if (fits_store && leaf_state_successors[factor][id].empty()){
                         // to mark "dead end" leaf states
-                        leaf_state_successors[factor][id].push_back(make_pair<const Operator*, LeafStateHash>(0, LeafStateHash(0))); // HACK
+                        leaf_state_successors[factor][id].push_back(make_pair(OperatorID::no_operator, LeafStateHash(0))); // HACK
                     }
                 }
                 
@@ -414,7 +411,7 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
-        const vector<const Effect*> &eff_on_factor = op.get_effects(factor);
+        OpsLeafProps<Effect> eff_on_factor = op.get_effects(factor);
         
         if (!has_pre_on_factor && eff_on_factor.empty()){
             // op does not affect leaf at all => copy everything            
@@ -482,15 +479,15 @@ void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFacto
     if (has_predecessors){
         // store center ops whose preconditions are satisfied by the new leaf state
         
-        vector<const Operator*> center_ops;
-        g_successor_generator->generate_applicable_ops_ignore_others(g_state_registry->lookup_leaf_state(id, factor), center_ops, true);
+        vector<OperatorID> center_ops;
+        center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(g_state_registry->lookup_leaf_state(id, factor), center_ops);
         
         center_successors[factor].resize(id + 1);
         
         center_successors[factor][id].reserve(center_ops.size());
-        for (size_t op = 0; op < center_ops.size(); ++op){
-            if (center_ops[op]->has_precondition_on(factor)){
-                center_successors[factor][id].push_back(center_ops[op]->get_index());
+        for (OperatorID op_id : center_ops){
+            if (g_operators[op_id].has_precondition_on(factor)){
+                center_successors[factor][id].push_back(op_id);
             }
         }
     }

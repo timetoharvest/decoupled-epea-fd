@@ -47,18 +47,22 @@ void PruningOptions::verify_options() const {
     if (g_factoring->get_profile() != FORK){
         if (frontier_pruning || goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
             cerr << "Advanced pruning methods are only supported for fork factorings!" << endl;
-            exit_with(EXIT_INPUT_ERROR);
+            exit_with(utils::ExitCode::INPUT_ERROR);
         }
     }
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-        if (goal_price_propagation || do_simulation){
-            cerr << "Goal price propagation and simulation are not (yet) supported for satisficing search!" << endl;
-            exit_with(EXIT_INPUT_ERROR);
+        if (goal_price_propagation){
+            cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
+            exit_with(utils::ExitCode::INPUT_ERROR);
+        }        
+        if (do_simulation){
+            cout << "simulation is not (yet) supported for satisficing search" << endl;
+            exit_with(utils::ExitCode::INPUT_ERROR);
         }
     }
     if (g_symmetry_graph && irrelevance != IRRELEVANCE::NO){
         cout << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
-        exit_with(EXIT_INPUT_ERROR);
+        exit_with(utils::ExitCode::INPUT_ERROR);
     }
 }
 
@@ -69,7 +73,7 @@ void PruningOptions::initialize() const {
         rel.init();
         rel.statistics();
         if (irrelevance != IRRELEVANCE::NO) {
-            rel.perform_leaf_irrelevance_pruning(irrelevance == STATES);
+            rel.perform_leaf_irrelevance_pruning(CompliantPathGraph::compute_leaf_backwards_graph, irrelevance == STATES, true);
         }
 
         if (do_simulation) {

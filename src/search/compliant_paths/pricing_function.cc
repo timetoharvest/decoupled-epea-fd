@@ -7,7 +7,6 @@
 #include "effective_prices.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
-#include "../utilities.h"
 #include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
@@ -81,12 +80,12 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
 }
 
 unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const State&, 
-                                                                       const Operator* op) const {
+                                                                       const Operator &op) const {
     // TODO what about having a static pointer in the class to prevent reallocation?
         
     if (g_factoring->get_profile() != FORK){
         unique_ptr<Prices> tmp_price(new Prices(0));
-        tmp_price->apply_center_op_to_leaves(*this, *op);
+        tmp_price->apply_center_op_to_leaves(*this, op);
         return tmp_price;
     } else {                
         return clone();
@@ -192,11 +191,11 @@ void Prices::update(const State &base_state) {
                     assert(id < leaf_state_successors[factor].size());
 
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                        const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                        if (is_ifork_leaf || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             change |= add_state(successor, factor, 
-                                                           cost + get_adjusted_action_cost(*op, cost_type));
+                                                cost + get_adjusted_action_cost(op, cost_type));
                         }
                     }
                     

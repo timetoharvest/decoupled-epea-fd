@@ -41,31 +41,32 @@ DOWNWARD_OS ?= auto
 
 
 HEADERS = \
+          algorithms/equivalence_relation.h \
+          algorithms/int_packer.h \
+          algorithms/priority_queues.h \
+          algorithms/sccs.h \
+          algorithms/segmented_vector.h \
           axioms.h \
-          causal_graph.h \
           combining_evaluator.h \
-          countdown_timer.h \
-          domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
-          equivalence_relation.h \
-          exact_timer.h \
+          factoring.h \
           g_evaluator.h \
           globals.h \
           heuristic.h \
-          int_packer.h \
           ipc_max_heuristic.h \
           iterated_search.h \
           lazy_search.h \
           max_evaluator.h \
           operator.h \
           operator_cost.h \
+          operator_factor_info.h \
+          operator_id.h \
           option_parser.h \
           option_parser_util.h \
-          segmented_vector.h \
           per_state_information.h \
-          pruning/por_method.h \
           pref_evaluator.h \
+          pruning_method.h \
           relaxation_heuristic.h \
           rng.h \
           search_engine.h \
@@ -75,11 +76,25 @@ HEADERS = \
           state.h \
           state_id.h \
           state_registry.h \
-          successor_generator.h \
           sum_evaluator.h \
-          timer.h \
-          utilities.h \
-          variable_order_finder.h \
+          task_utils/causal_graph.h \
+          task_utils/domain_transition_graph.h \
+          task_utils/fact_pair.h \
+          task_utils/successor_generator.h \
+          task_utils/successor_generator_factory.h \
+          task_utils/successor_generator_internals.h \
+          task_utils/variable_order_finder.h \
+          utils/collections.h \
+          utils/countdown_timer.h \
+          utils/hash.h \
+          utils/language.h \
+          utils/logging.h \
+          utils/math.h \
+          utils/memory.h \
+          utils/system.h \
+          utils/system_unix.h \
+          utils/system_windows.h \
+          utils/timer.h \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
@@ -159,17 +174,14 @@ HEADERS += max_heuristic.h
 #            pdbs/util.h \
 #            pdbs/zero_one_pdbs_heuristic.h \
 
-# TODO check how to decouple this from the POR interface, so we can comment
-# this out here
-HEADERS += pruning/expansion_core.h \
-           pruning/simple_stubborn_sets.h \
-           pruning/sss_expansion_core.h
-           
+HEADERS += pruning/stubborn_sets.h \
+           pruning/stubborn_sets_decoupled.h \
+           pruning/stubborn_sets_simple.h \
+           pruning/stubborn_sets_ec.h
+
 # TODO make decoupled search plugable
-HEADERS += factoring.h \
-           leaf_state.h\
-           leaf_state_id.h\
-           ../preprocess/scc.h
+HEADERS += leaf_state.h \
+           leaf_state_id.h
 
 HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/cpg_storage.h \
@@ -181,7 +193,7 @@ HEADERS += compliant_paths/compliant_path_graph.h \
            compliant_paths/pruning_reachable.h \
            compliant_paths/reachability_function.h \
            compliant_paths/simulation_relation.h
-           
+
 HEADERS += symmetries/graph_creator.h \
            symmetries/permutation.h \
            symmetries/group.h \

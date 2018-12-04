@@ -1,8 +1,11 @@
 #include "search_progress.h"
-#include "utilities.h"
+
 #include "factoring.h"
+#include "utils/system.h"
+#include "utils/timer.h"
 
 #include <iostream>
+
 using namespace std;
 
 SearchProgress::SearchProgress() {
@@ -21,9 +24,6 @@ SearchProgress::SearchProgress() {
     lastjump_generated_states = 0;
 
     lastjump_f_value = -1;
-}
-
-SearchProgress::~SearchProgress() {
 }
 
 void SearchProgress::add_heuristic(Heuristic *h) {
@@ -91,8 +91,8 @@ void SearchProgress::print_line() const {
     if (reopened_states > 0) {
         cout << reopened_states << " reopened, ";
     }
-    cout << "t=" << g_timer;
-    cout << ", " << get_peak_memory_in_kb() << " KB";
+    cout << "t=" << utils::g_timer;
+    cout << ", " << utils::get_peak_memory_in_kb() << " KB";
 }
 
 void SearchProgress::print_statistics() const {

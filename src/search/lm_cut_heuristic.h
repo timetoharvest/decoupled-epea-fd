@@ -3,7 +3,7 @@
 
 #include "globals.h"
 #include "heuristic.h"
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 
 #include <algorithm>
 #include <cassert>
@@ -110,7 +110,7 @@ class LandmarkCutHeuristic : public Heuristic {
     RelaxedProposition artificial_precondition;
     RelaxedProposition artificial_goal;
     int num_propositions;
-    AdaptiveQueue<RelaxedProposition *> priority_queue;
+    priority_queues::AdaptiveQueue<RelaxedProposition *> priority_queue;
     // needed for decoupled search
     std::vector<std::vector<RelaxedOperator> > relaxed_leaf_operators;
     std::vector<std::vector<size_t> > number_center_effs;

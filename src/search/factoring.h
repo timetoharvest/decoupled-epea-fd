@@ -3,7 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state_id.h"
-#include "utilities.h"
+#include "utils/system.h"
 
 #include <set>
 #include <string>
@@ -19,15 +19,15 @@
 
 enum PROFILE {
     FORK,
-    I_FORK,
-    X_SHAPE,
+    IFORK,
+    XSHAPE,
     STAR,
-    SOKOBAN,    // domain dependant factoring
-    OPENSTACKS, // domain dependant factoring
-    TPP_CONSTRAINED, // domain dependant factoring
-    INV_TPP_CONSTRAINED, // domain dependant factoring
-    DOC_TRANSFER, // domain dependant factoring
-    PEGSOL // domain dependant factoring
+    SOKOBAN,    // domain dependent factoring
+    OPENSTACKS, // domain dependent factoring
+    TPP_CONSTRAINED, // domain dependent factoring
+    INV_TPP_CONSTRAINED, // domain dependent factoring
+    DOC_TRANSFER, // domain dependent factoring
+    PEGSOL, // domain dependent factoring
 };
 
 enum SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
@@ -35,7 +35,8 @@ enum SEARCH_TYPE { // TODO rename this + add a type that starts standard search 
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
     SAT,        // satisficing search
-    UNSAT       // for proving unsolvability (SAT + optimizations)
+    UNSAT,      // for proving unsolvability (SAT + optimizations)
+    NO_SEARCH   // stop after doing the factoring
 };
 
 
@@ -87,6 +88,11 @@ protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
     
+    static FactoredVars var_to_affecting_op;
+
+    static void init_var_to_ops_map();
+
+
     size_t max_leaf_size;
     
     size_t min_number_leaves;
@@ -96,10 +102,6 @@ protected:
     std::vector<bool> fork_leaf;
     
     std::vector<bool> ifork_leaf;
-
-
-    static std::vector<std::set<int>> var_to_affecting_op;
-
     
     virtual FactoredVars get_factoring() = 0;
     
@@ -113,12 +115,9 @@ protected:
     
     void print_factoring() const;
     
-    void exit_error(std::string message, ExitCode exit_code) const;
+    void exit_error(std::string message, utils::ExitCode exit_code) const;
     
     Factoring(const Options &ops);
-
-
-    static void init_var_to_ops_map();
     
 public:
     
@@ -141,7 +140,12 @@ public:
     SEARCH_TYPE get_search_type() const {
         return search_type;
     }
+
     
+    static const FactoredVars& get_var_to_affecting_op() {
+        init_var_to_ops_map();
+        return var_to_affecting_op;
+    }
 
     static void add_options_to_parser(OptionParser &parser);
     

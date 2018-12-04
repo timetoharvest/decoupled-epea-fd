@@ -1,7 +1,7 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include "int_packer.h"
+#include "algorithms/int_packer.h"
 #include "state_id.h"
 
 #include <cstddef>
@@ -11,7 +11,7 @@
 
 class StateRegistry;
 
-typedef IntPacker::Bin PackedStateBin;
+typedef int_packer::IntPacker::Bin PackedStateBin;
 
 // For documentation on classes relevant to storing and working with registered
 // states see the file state_registry.h.

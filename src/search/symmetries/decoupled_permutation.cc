@@ -2,8 +2,9 @@
 
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../compliant_paths/pricing_function.h"
-#include "lexicographic_ordering.h"
 #include "../globals.h"
+#include "lexicographic_ordering.h"
+#include "../operator.h"
 #include "../state_registry.h"
 
 #include <algorithm>
@@ -296,15 +297,15 @@ void LeavesPermutation::set_value(int ind, int val) {
     from_factors[to_var] = var;
 }
 
-bool LeavesPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
+bool LeavesPermutation::is_symmetric_op(const Operator &op, const Operator &op2) const {
     // we have to check in both directions below because otherwise, although
     // the sizes of pre/effs are equal, those can be distributed differently
     // over center and leaves, and since we skip center conditions/effects, we
     // might miss some of them.
-    const auto &effects = op->get_effects();
-    const auto &effects2 = op2->get_effects();
-    const auto &preconditions = op->get_preconditions();
-    const auto &preconditions2 = op2->get_preconditions();
+    const auto &effects = op.get_effects();
+    const auto &effects2 = op2.get_effects();
+    const auto &preconditions = op.get_preconditions();
+    const auto &preconditions2 = op2.get_preconditions();
 
     if (preconditions.size() != preconditions2.size() || effects.size() != effects2.size()){
         return false;
@@ -482,16 +483,16 @@ CenterPermutation::CenterPermutation(const CenterPermutation &p1,
     assert(is_valid());
 }
 
-bool CenterPermutation::is_symmetric_op(const Operator *op, const Operator *op2) const {
-    const vector<const Effect*> &effects = op->get_effects(LeafFactorID::CENTER);
-    const vector<const Effect*> &effects2 = op2->get_effects(LeafFactorID::CENTER);
+bool CenterPermutation::is_symmetric_op(const Operator &op, const Operator &op2) const {
+    const auto effects = op.get_effects(LeafFactorID::CENTER);
+    const auto effects2 = op2.get_effects(LeafFactorID::CENTER);
     if (effects.size() != effects2.size()){
         return false;
     }
     for (auto eff : effects) {
-        auto new_var_val = get_new_var_val_by_old_var_val(eff->var, eff->val);
-        if (find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect* eff2) {
-            return eff2->var == new_var_val.first && eff2->val == new_var_val.second;
+        auto new_var_val = get_new_var_val_by_old_var_val(eff.var, eff.val);
+        if (find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect &eff2) {
+            return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
         }) == effects2.end() ) {
             return false;
         }
@@ -606,14 +607,14 @@ void DecoupledPermutation::permute_center_state(vector<int> &center) const {
     }
 }
 
-inline bool are_equal(const vector<const Condition*> &preconds1, const vector<const Condition*> &preconds2) {
+inline bool are_equal(OpsLeafProps<Condition> preconds1, OpsLeafProps<Condition> preconds2) {
     if (preconds1.size() != preconds2.size()){
         return false;
     }
     for (auto pre1 : preconds1){
         bool found = false;
         for (auto pre2 : preconds2){
-            if (pre1->var == pre2->var && pre1->val == pre2->val){
+            if (pre1.var == pre2.var && pre1.val == pre2.val){
                 found = true;
                 break;
             }
@@ -625,14 +626,14 @@ inline bool are_equal(const vector<const Condition*> &preconds1, const vector<co
     return true;
 }
 
-inline bool are_equal(const vector<const Effect*> &effs1, const vector<const Effect*> &effs2) {
+inline bool are_equal(OpsLeafProps<Effect> effs1, OpsLeafProps<Effect> effs2) {
     if (effs1.size() != effs2.size()){
         return false;
     }
     for (auto eff1 : effs1){
         bool found = false;
         for (auto eff2 : effs2){
-            if (eff1->var == eff2->var && eff1->val == eff2->val){
+            if (eff1.var == eff2.var && eff1.val == eff2.val){
                 found = true;
                 break;
             }
@@ -644,22 +645,23 @@ inline bool are_equal(const vector<const Effect*> &effs1, const vector<const Eff
     return true;
 }
 
-const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator *main_op, 
-									  const vector<const Operator *> &ops) const {
+OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator &main_op,
+					                            const vector<OperatorID> &ops) const {
 
     assert(!ops.empty());
 
     if (!center_permutation && !leaves_permutation){
-        assert(find(ops.begin(), ops.end(), main_op) != ops.end());
-        return main_op;
+        assert(find(ops.begin(), ops.end(), main_op.get_id()) != ops.end());
+        return main_op.get_id();
     }
     
     OperatorCost cost_type = CompliantPathGraph::get_cost_type();
 
-    for(const auto op : ops) {
-        if (get_adjusted_action_cost(*op, cost_type) == get_adjusted_action_cost(*main_op, cost_type)) {
+    for(const auto op_id : ops) {
+        const Operator &op = g_operators[op_id];
+        if (get_adjusted_action_cost(op, cost_type) == get_adjusted_action_cost(main_op, cost_type)) {
             if (!center_permutation){
-                if(!are_equal(main_op->get_effects(LeafFactorID::CENTER), op->get_effects(LeafFactorID::CENTER))) {
+                if(!are_equal(main_op.get_effects(LeafFactorID::CENTER), op.get_effects(LeafFactorID::CENTER))) {
                     continue;
                 }
             } else if (!center_permutation->is_symmetric_op(main_op, op)){
@@ -669,12 +671,12 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
             if (!leaves_permutation){
                 bool equal = true;
                 for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                    if(!are_equal(main_op->get_effects(factor), op->get_effects(factor))){
+                    if(!are_equal(main_op.get_effects(factor), op.get_effects(factor))){
                         equal = false;
                         break;
                     }
 
-                    if(!are_equal(main_op->get_preconditions(factor), op->get_preconditions(factor))){
+                    if(!are_equal(main_op.get_preconditions(factor), op.get_preconditions(factor))){
                         equal = false;
                         break;
                     }
@@ -686,12 +688,12 @@ const Operator * DecoupledPermutation::find_matching_min_cost_permuted_op(const 
                 continue;
             }
 
-            return op;
+            return op_id;
         }
     }
 
     cerr << "Error: no symmetric operator found in  DecoupledPermutation::find_matching_min_cost_permuted_op"  << endl;    
-    exit(EXIT_CRITICAL_ERROR); 
+    exit_with(utils::ExitCode::CRITICAL_ERROR);
 }
 
 bool DecoupledPermutation::stabilizes_center(const State &center) const {

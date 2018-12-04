@@ -34,7 +34,7 @@ protected:
     
 
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator *op) const override;
+                                                                                const Operator &op) const override;
                                                                                 
     virtual void update(const State &base_state) override;
                                                                           
