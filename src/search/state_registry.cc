@@ -310,10 +310,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         }
         g_axiom_evaluator->evaluate(buffer);
     } else {
-        OpsLeafProps<Effect> effects = op.get_effects(LeafFactorID::CENTER);
-        for (size_t i = 0; i < effects.size(); ++i){
+        for (const Effect &eff : op.get_effects(LeafFactorID::CENTER)){
             // no need to check does_fire here, because no conditional effects allowed (yet)
-            g_state_packer->set(buffer, g_new_index[effects[i].var], effects[i].val);
+            g_state_packer->set(buffer, g_new_index[eff.var], eff.val);
         }
         g_state_packer->set(buffer, g_center.size(), 0);
     }
@@ -504,10 +503,9 @@ LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &pred
     leaf_state_data_pool[factor]->push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
 
-    OpsLeafProps<Effect> effects = op.get_effects(factor);
-    for (size_t i = 0; i < effects.size(); ++i){
+    for (const Effect &eff : op.get_effects(factor)){
         // no need to check does_fire here, because no conditional effects allowed (yet)
-        g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[i].var], effects[i].val);
+        g_leaf_factor_packers[factor]->set(buffer, g_new_index[eff.var], eff.val);
     }
     
     // not supported (yet)
