@@ -11,6 +11,21 @@ except ImportError:
     def match_func(repo, ctx, patterns, options):
         return cmdutil.match(repo, patterns, options)
 
+
+cmdtable = {}
+try:
+    # use new registrar.command decorator to register uncrustify later
+    from mercurial import registrar
+    command = registrar.command(cmdtable)
+except (ImportError, AttributeError):
+    # make own decorator valid for the old way
+    def command(name, opts, synopsis):
+        def _decorator(func):
+            cmdtable[name] = (func, opts, synopsis)
+            return func
+        return _decorator
+
+
 import errno
 import os
 import os.path
@@ -23,7 +38,7 @@ def _call_subprocesses(cmddesc, *cmd_lists):
     for cmd_list in cmd_lists:
         try:
             exitcode = subprocess.call(cmd_list)
-        except OSError, e:
+        except OSError as e:
             # If command is not found, swallow error and try next command.
             if e.errno != errno.ENOENT:
                 raise util.Abort("error running %s: %s" % (cmddesc, e))
@@ -56,7 +71,14 @@ def _run_uncrustify(config_file, filenames):
                "--suffix", SUFFIX] + inputs
         returncode = _call_subprocesses("uncrustify", cmd)
         if returncode:
-            raise util.Abort("uncrustify error: %d" % returncode)
+            uncrustify_version = subprocess.check_output(
+                ["uncrustify", "--version"]).strip()
+            raise util.Abort(
+                "uncrustify exited with {returncode}. Are you using an "
+                "outdated version? We require uncrustify 0.67, you "
+                "have {uncrustify_version}. Please consult "
+                "www.fast-downward.org/ForDevelopers/Uncrustify".format(
+                **locals()))
 
 
 def _run_diff(oldfile, newfile):
@@ -84,22 +106,42 @@ def _get_files(repo, patterns, options):
     ctx = repo[None]
     match = match_func(repo, ctx, patterns, options)
     try:
-        ctx.status(listclean=True, listignored=True, listunknown=True)
+        status = ctx.status(listclean=True, listignored=True, listunknown=True)
     except TypeError:
         # Compatibility with older Mercurial versions.
-        ctx.status(clean=True, ignored=True, unknown=True)
+        status = ctx.status(clean=True, ignored=True, unknown=True)
+    modified = status[0]
+    added = status[1]
+    unknown = status[4]
+    ignored = status[5]
+    clean = status[6]
     files = []
-    for file_list in [ctx.clean(), ctx.modified(), ctx.added()]:
+    for file_list in [clean, modified, added]:
         for filename in file_list:
             if match(filename):
                 files.append(filename)
-    for file_list in [ctx.ignored(), ctx.unknown()]:
+    for file_list in [ignored, unknown]:
         for filename in file_list:
             if match.exact(filename):
                 files.append(filename)
     return files
 
 
+@command("uncrustify",
+         [("d", "diff", None,
+           "show diff of changes that --modify would make"),
+          ("m", "modify", None,
+           "actually modify the files that need to be uncrustified"),
+          ("", "no-backup", None,
+           "do not save backup copies of modified files"),
+          ("", "show-clean", None,
+           "also list clean source files"),
+          ("I", "include", [],
+           "include names matching the given patterns", "PATTERN"),
+          ("X", "exclude", [],
+           "exclude names matching the given patterns", "PATTERN"),
+          ],
+         "[OPTION]... [FILE]...")
 def uncrustify(ui, repo, *patterns, **options):
     """Run uncrustify on the specified files or directories.
 
@@ -177,22 +219,3 @@ def uncrustify(ui, repo, *patterns, **options):
                 elif mode == "modify":
                     ui.write("%s is clean\n" % relpath)
             util.unlink(uncr_relpath)
-
-
-cmdtable = {
-    "uncrustify": (
-        uncrustify,
-        [("d", "diff", None,
-          "show diff of changes that --modify would make"),
-         ("m", "modify", None,
-          "actually modify the files that need to be uncrustified"),
-         ("", "no-backup", None,
-          "do not save backup copies of modified files"),
-         ("", "show-clean", None,
-          "also list clean source files"),
-         ("I", "include", [],
-          "include names matching the given patterns", "PATTERN"),
-         ("X", "exclude", [],
-          "exclude names matching the given patterns", "PATTERN"),
-         ], "[OPTION]... [FILE]...")
-}
