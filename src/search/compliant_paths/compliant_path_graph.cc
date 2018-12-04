@@ -370,7 +370,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                         center_successors[factor][id].swap(center_successors[factor][id]);
                         if (!g_factoring->is_ifork_leaf(factor)){
                             // no need to apply center ops if none of them changes this leaf factor
-                            applicable_ops.swap(center_successors[factor][id]);
+                            applicable_ops = center_successors[factor][id];
                         }
                     } else if (!g_factoring->is_ifork_leaf(factor)){
                         // no need to apply center ops if none of them changes this leaf factor
@@ -510,7 +510,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     bool all_built = true;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (precompute_leaf_state_spaces[factor] && (!g_symmetry_graph || g_leaves[factor].size() != 1)){
+        if (precompute_leaf_state_spaces[factor] && (!g_symmetry_graph || g_leaves[factor].size() == 1)){
             // when doing orbit search, we need to keep the leaf successor
             // generators to get the actions applicable in symmetric leaf states that
             // are not reachable from the initial state
@@ -642,7 +642,7 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
                         center_successors[factor][id].swap(center_successors[factor][id]);
                         if (!g_factoring->is_ifork_leaf(factor)){
                             // no need to apply center ops if none of them changes this leaf factor
-                            applicable_ops.swap(center_successors[factor][id]);
+                            applicable_ops = center_successors[factor][id];
                         }
                     } else if (!g_factoring->is_ifork_leaf(factor)){
                         // no need to apply center ops if none of them changes this leaf factor
