@@ -270,9 +270,9 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             dp->print_all();
             cout << "Help output finished." << endl;
             exit(0);
-        } else if (arg.compare("--plan-file") == 0) {
+        } else if (arg.compare("--internal-plan-file") == 0) {
             if (is_last)
-                throw ArgError("missing argument after --plan-file");
+                throw ArgError("missing argument after --internal-plan-file");
             ++i;
             g_plan_filename = args[i];
         } else if (arg.compare("--decoupling") == 0) {
@@ -304,7 +304,7 @@ string OptionParser::usage(string progname) {
         "    by the name that is specified in the definition.\n"
         "--random-seed SEED\n"
         "    Use random seed SEED\n\n"
-        "--plan-file FILENAME\n"
+        "--internal-plan-file FILENAME\n"
         "    Plan will be output to a file called FILENAME\n\n"
         "See http://www.fast-downward.org/ for details.";
     return usage;

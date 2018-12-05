@@ -263,7 +263,6 @@ void read_everything(istream &in) {
     read_goal(in);
     read_operators(in);
     read_axioms(in);
-    check_magic(in, "begin_SG"); // ignore everything from here
 
     cout << "done reading input! [t=" << utils::g_timer << "]" << endl;
     
