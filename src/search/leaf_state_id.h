@@ -1,7 +1,7 @@
 #ifndef LEAF_STATE_ID_H
 #define LEAF_STATE_ID_H
 
-#include <ext/hash_set>
+#include <iostream>
 
 // For documentation on classes relevant to storing and working with registered
 // states see the file state_registry.h.
@@ -80,14 +80,5 @@ public:
 };
 
 std::ostream &operator<<(std::ostream &os, const LeafStateID &id);
-
-namespace __gnu_cxx {
-template<>
-struct hash<LeafStateID> {
-    size_t operator()(const LeafStateID &id) const {
-        return id.hash();
-    }
-};
-}
 
 #endif

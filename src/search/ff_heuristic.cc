@@ -11,11 +11,8 @@
 
 #include <cassert>
 #include <vector>
+
 using namespace std;
-
-#include <ext/hash_map>
-using namespace __gnu_cxx;
-
 
 
 
