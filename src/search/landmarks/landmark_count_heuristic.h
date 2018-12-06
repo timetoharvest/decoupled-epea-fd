@@ -46,8 +46,7 @@ protected:
     virtual int compute_heuristic(const State &state);
 public:
     LandmarkCountHeuristic(const Options &opts);
-    ~LandmarkCountHeuristic() {
-    }
+    ~LandmarkCountHeuristic() = default;
     virtual bool reach_state(const State &parent_state, const Operator &op,
                              const State &state);
     virtual bool dead_ends_are_reliable() const;
