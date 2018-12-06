@@ -538,12 +538,6 @@ void Factoring::print_factoring() const {
     cout << "sum flexibility: " << sum_flexibility << endl;
 }
 
-void Factoring::exit_error(string message, utils::ExitCode exit_code) const {
-    cout << "Error while factoring planning task!" << endl;
-    cout << message << endl;
-    exit_with(exit_code);
-}
-
 void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
@@ -558,7 +552,8 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
 
     if (best_factoring.size() < min_number_leaves){
-        exit_error("No factoring with at least " + to_string(min_number_leaves) + " leaves found!", utils::ExitCode::ABSTAINED);
+        cerr << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
+        exit_with(utils::ExitCode::ABSTAINED);
     }
 
     apply_factoring(best_factoring);
@@ -1348,17 +1343,16 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
     return best_factoring;
 }
 
-Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
+Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const {
     vector<vector<int> > vars(g_variable_domain.size());
     size_t bound = variables.empty() ? g_variable_domain.size() : variables.size();
     for (size_t i = 0; i < bound; i++){
         if (variables.empty() || variables.size() == g_variable_domain.size()){
             vars[i] = causal_graph::get_causal_graph().get_successors(i);
         } else {
-            vector<int> successors = causal_graph::get_causal_graph().get_successors(variables[i]);
-            for (size_t succ = 0; succ < successors.size(); succ++){
-                if (find(variables.begin(), variables.end(), successors[succ]) != variables.end()){
-                    vars[variables[i]].push_back(successors[succ]);
+            for (int succ : causal_graph::get_causal_graph().get_successors(variables[i])){
+                if (find(variables.begin(), variables.end(), succ) != variables.end()){
+                    vars[variables[i]].push_back(succ);
                 }
             }
         }
@@ -1371,8 +1365,9 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
         if (found_sccs[i].size() != 1 || variables.empty() || variables.size() == g_variable_name.size()){
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
         } else if (find(variables.begin(), variables.end(), found_sccs[i][0]) != variables.end()){
-	    // this can happen if not all variables are in *variables*
-	    // the SCC class needs the input vector to be aligned very specifically
+            // TODO check this
+            // this can happen if not all variables are in *variables*
+            // the SCC class needs the input vector to be aligned very specifically
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
         }
     }

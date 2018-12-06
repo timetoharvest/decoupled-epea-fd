@@ -105,7 +105,7 @@ protected:
     
     virtual FactoredVars get_factoring() = 0;
     
-    FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
+    FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
     
     FactoredVars get_connected_components(const std::vector<int> &variables) const;
     
@@ -114,8 +114,6 @@ protected:
     void apply_factoring(const FactoredVars &factoring);
     
     void print_factoring() const;
-    
-    void exit_error(std::string message, utils::ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
