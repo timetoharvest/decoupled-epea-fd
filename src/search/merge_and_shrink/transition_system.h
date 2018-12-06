@@ -1,16 +1,18 @@
 #ifndef MERGE_AND_SHRINK_TRANSITION_SYSTEM_H
 #define MERGE_AND_SHRINK_TRANSITION_SYSTEM_H
 
-#include <ext/slist>
+#include <list>
 #include <string>
 #include <vector>
 
+namespace equivalence_relation {
 class EquivalenceRelation;
+}
 class State;
 class Label;
 class Labels;
 
-typedef int AbstractStateRef;
+using AbstractStateRef = int;
 
 // Positive infinity. The name "INFINITY" is taken by an ISO C99 macro.
 extern const int INF;
@@ -94,7 +96,7 @@ class TransitionSystem {
     // construction (composite transition system) and shrinking (apply_abstraction).
     bool are_transitions_sorted_unique() const;
 
-    void apply_abstraction(std::vector<__gnu_cxx::slist<AbstractStateRef> > &collapsed_groups);
+    void apply_abstraction(std::vector<std::list<AbstractStateRef> > &collapsed_groups);
 
     int total_transitions() const;
     int unique_unlabeled_transitions() const;
@@ -123,7 +125,7 @@ public:
     void compute_distances_and_prune();
     bool is_normalized() const;
     void normalize();
-    EquivalenceRelation *compute_local_equivalence_relation() const;
+    equivalence_relation::EquivalenceRelation *compute_local_equivalence_relation() const;
 
     int get_cost(const State &state) const;
     void statistics(bool include_expensive_statistics) const;

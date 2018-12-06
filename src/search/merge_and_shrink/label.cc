@@ -1,6 +1,6 @@
 #include "label.h"
 
-#include "../utilities.h"
+#include "../utils/system.h"
 #include "../globals.h"
 
 #include <ostream>
@@ -43,7 +43,7 @@ void CompositeLabel::update_root(CompositeLabel *new_root) {
 }
 
 const std::vector<Label *> &OperatorLabel::get_parents() const {
-    exit_with(EXIT_CRITICAL_ERROR);
+    exit_with(utils::ExitCode::CRITICAL_ERROR);
 }
 
 void Label::dump() const {

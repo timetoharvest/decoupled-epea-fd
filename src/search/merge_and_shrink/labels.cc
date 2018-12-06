@@ -3,8 +3,9 @@
 #include "label.h"
 #include "label_reducer.h"
 
+#include "../utils/collections.h"
 #include "../globals.h"
-#include "../utilities.h"
+#include "../utils/system.h"
 
 #include <algorithm>
 #include <cassert>
@@ -15,7 +16,7 @@ Labels::Labels(const Options &options, OperatorCost cost_type) {
     label_reducer = new LabelReducer(options);
     if (!g_operators.empty()) {
         if (g_operators.size() * 2 - 1 > labels.max_size())
-            exit_with(EXIT_OUT_OF_MEMORY);
+            exit_with(utils::ExitCode::OUT_OF_MEMORY);
         labels.reserve(g_operators.size() * 2 - 1);
     }
     for (size_t i = 0; i < g_operators.size(); ++i) {
@@ -35,7 +36,7 @@ void Labels::reduce(pair<int, int> next_merge,
 }
 
 const Label *Labels::get_label_by_index(int index) const {
-    assert(in_bounds(index, labels));
+    assert(utils::in_bounds(index, labels));
     return labels[index];
 }
 

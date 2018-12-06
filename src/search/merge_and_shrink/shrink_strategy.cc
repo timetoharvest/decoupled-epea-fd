@@ -1,16 +1,17 @@
 #include "shrink_strategy.h"
 
 #include "transition_system.h"
-
 #include "../option_parser.h"
-#include "../utilities.h"
+#include "../utils/math.h"
+#include "../utils/system.h"
+#include "../utils/collections.h"
 
 #include <cassert>
 #include <cmath>
 #include <iostream>
 #include <vector>
+
 using namespace std;
-using namespace __gnu_cxx;
 
 
 ShrinkStrategy::ShrinkStrategy(const Options &opts)
@@ -55,7 +56,7 @@ pair<size_t, size_t> ShrinkStrategy::compute_shrink_sizes(
     size_t new_size1 = min(size1, max_before_merge);
     size_t new_size2 = min(size2, max_before_merge);
 
-    if (!is_product_within_limit(new_size1, new_size2, max_states)) {
+    if (!utils::is_product_within_limit(new_size1, new_size2, max_states)) {
         size_t balanced_size = size_t(sqrt(max_states));
 
         if (new_size1 <= balanced_size) {
@@ -143,7 +144,7 @@ void ShrinkStrategy::handle_option_defaults(Options &opts) {
         max_states_before_merge = max_states;
     } else if (max_states == -1) {
         int n = max_states_before_merge;
-        if (is_product_within_limit(n, n, numeric_limits<int>::max())) {
+        if (utils::is_product_within_limit(n, n, numeric_limits<int>::max())) {
             max_states = n * n;
         } else {
             max_states = numeric_limits<int>::max();
@@ -158,13 +159,13 @@ void ShrinkStrategy::handle_option_defaults(Options &opts) {
 
     if (max_states < 1) {
         cerr << "error: transition system size must be at least 1" << endl;
-        exit_with(EXIT_INPUT_ERROR);
+        exit_with(utils::ExitCode::INPUT_ERROR);
     }
 
     if (max_states_before_merge < 1) {
         cerr << "error: transition system size before merge must be at least 1"
              << endl;
-        exit_with(EXIT_INPUT_ERROR);
+        exit_with(utils::ExitCode::INPUT_ERROR);
     }
 
     opts.set<int>("max_states", max_states);
