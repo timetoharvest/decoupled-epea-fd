@@ -4,6 +4,7 @@
 #include "globals.h"
 #include "operator.h"
 #include "state.h"
+#include "../utils/hash.h"
 
 #include <cassert>
 #include <vector>

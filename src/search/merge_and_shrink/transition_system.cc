@@ -6,6 +6,7 @@
 #include "../algorithms/equivalence_relation.h"
 #include "../globals.h"
 #include "../algorithms/priority_queues.h"
+#include "../utils/hash.h"
 #include "../utils/system.h"
 #include "../utils/timer.h"
 
