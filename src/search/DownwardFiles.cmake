@@ -52,6 +52,7 @@ fast_downward_plugin(
         combining_evaluator
         eager_search
         enforced_hill_climbing_search
+        evaluator
         factoring
         g_evaluator
         globals
