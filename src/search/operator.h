@@ -6,7 +6,6 @@
 #include "operator_factor_info.h"
 #include "operator_id.h"
 #include "state.h"
-#include "task_utils/fact_pair.h"
 #include "utils/collections.h"
 
 #include <cassert>
@@ -35,10 +34,6 @@ struct Condition {
 
     bool operator!=(const Condition &other) const {
         return !(*this == other);
-    }
-
-    FactPair get_pair() const {
-        return FactPair(var, val);
     }
 
     void dump() const;

@@ -78,8 +78,6 @@ fast_downward_plugin(
         state_id
         state_registry
         sum_evaluator
-        
-        task_utils/fact_pair
 
         weighted_evaluator
           
