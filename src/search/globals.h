@@ -28,7 +28,6 @@ class IntPacker;
 struct LeafFactorID;
 class Operator;
 class OperatorID;
-class RandomNumberGenerator;
 class State;
 class StateID;
 namespace successor_generator {
@@ -112,7 +111,6 @@ extern std::string g_plan_filename;
 extern bool g_is_part_of_anytime_portfolio;
 extern int g_num_previously_generated_plans;
 
-extern RandomNumberGenerator g_rng;
 // Only one global object for now. Could later be changed to use one instance
 // for each problem in this case the method State::get_id would also have to be
 // changed.

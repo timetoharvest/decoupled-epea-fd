@@ -3,7 +3,7 @@
 #include "../globals.h"
 #include "pdb_heuristic.h"
 #include "../plugin.h"
-#include "../rng.h"
+#include "../utils/rng.h"
 #include "../task_utils/causal_graph.h"
 #include "../utils/logging.h"
 #include "../utils/math.h"
@@ -46,13 +46,14 @@ void PatternGenerationEdelkamp::select(const vector<double> &fitness_values) {
 
     vector<vector<vector<bool> > > new_pattern_collections;
     new_pattern_collections.reserve(num_collections);
+    utils::RandomNumberGenerator rng;
     for (int i = 0; i < num_collections; ++i) {
         int selected;
         if (total_so_far == 0) {
             // All fitness values are 0 => choose uniformly.
-            selected = g_rng(fitness_values.size());
+            selected = rng(fitness_values.size());
         } else {
-            double random = g_rng() * total_so_far; // [0..total_so_far)
+            double random = rng() * total_so_far; // [0..total_so_far)
             // Find first entry which is strictly greater than random.
             selected = upper_bound(cumulative_fitness.begin(),
                                    cumulative_fitness.end(), random) -
@@ -64,11 +65,12 @@ void PatternGenerationEdelkamp::select(const vector<double> &fitness_values) {
 }
 
 void PatternGenerationEdelkamp::mutate() {
+    utils::RandomNumberGenerator rng;
     for (size_t i = 0; i < pattern_collections.size(); ++i) {
         for (size_t j = 0; j < pattern_collections[i].size(); ++j) {
             vector<bool> &pattern = pattern_collections[i][j];
             for (size_t k = 0; k < pattern.size(); ++k) {
-                double random = g_rng(); // [0..1)
+                double random = rng(); // [0..1)
                 if (random < mutation_probability) {
                     pattern[k].flip();
                 }
@@ -208,10 +210,10 @@ void PatternGenerationEdelkamp::bin_packing() {
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         variables.push_back(i);
     }
-
+    utils::RandomNumberGenerator rng;
     for (int i = 0; i < num_collections; ++i) {
         // random variable ordering for all pattern collections
-        random_shuffle(variables.begin(), variables.end(), g_rng);
+        rng.shuffle(variables);
         vector<vector<bool> > pattern_collection;
         vector<bool> pattern(g_variable_name.size(), false);
         int current_size = 1;

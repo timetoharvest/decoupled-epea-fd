@@ -9,7 +9,6 @@
 #include "heuristic.h"
 #include "leaf_state_id.h"
 #include "operator.h"
-#include "rng.h"
 #include "state.h"
 #include "state_registry.h"
 #include "task_utils/successor_generator.h"
@@ -466,5 +465,4 @@ string g_plan_filename = "sas_plan";
 bool g_is_part_of_anytime_portfolio = false;
 int g_num_previously_generated_plans = 0;
 
-RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
 StateRegistry *g_state_registry = 0;

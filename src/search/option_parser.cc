@@ -3,7 +3,6 @@
 #include "ext/tree_util.hh"
 #include "factoring.h"
 #include "plugin.h"
-#include "rng.h"
 
 #include <algorithm>
 #include <iostream>
@@ -234,13 +233,6 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             ++i;
             OptionParser p(args[i], dry_run);
             engine = p.start_parsing<SearchEngine *>();
-        } else if (arg.compare("--random-seed") == 0) {
-            if (is_last)
-                throw ArgError("missing argument after --random-seed");
-            ++i;
-            srand(atoi(args[i].c_str()));
-            g_rng.seed(atoi(args[i].c_str()));
-            cout << "random seed " << args[i] << endl;
         } else if ((arg.compare("--help") == 0) && dry_run) {
             cout << "Help:" << endl;
             bool txt2tags = false;

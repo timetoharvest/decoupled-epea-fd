@@ -70,7 +70,6 @@ fast_downward_plugin(
         pref_evaluator
         pruning_method
         relaxation_heuristic
-        rng
         search_engine
         search_node_info
         search_progress
@@ -114,6 +113,8 @@ fast_downward_plugin(
         utils/logging
         utils/math
         utils/memory
+        utils/rng
+        utils/rng_options
         utils/system
         utils/system_unix
         utils/system_windows
@@ -207,7 +208,6 @@ fast_downward_plugin(
     HELP "Base class for all stubborn set partial order reduction methods"
     SOURCES
         pruning/stubborn_sets
-    DEPENDS TASK_PROPERTIES
     DEPENDENCY_ONLY
 )
  
@@ -331,6 +331,30 @@ fast_downward_plugin(
          "directed graph."
     SOURCES
         algorithms/sccs
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME DYNAMIC_BITSET
+    HELP "Dynamic bitset implementation."
+    SOURCES
+        algorithms/dynamic_bitset
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME INT_HASH_SET
+    HELP "Int hashset implementation."
+    SOURCES
+        algorithms/int_hash_set
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME ORDERED_SET
+    HELP "Ordered set implementation"
+    SOURCES
+        algorithms/ordered_set
     DEPENDENCY_ONLY
 )
 

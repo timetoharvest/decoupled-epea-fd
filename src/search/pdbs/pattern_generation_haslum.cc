@@ -8,7 +8,7 @@
 #include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../rng.h"
+#include "../utils/rng.h"
 #include "../state_registry.h"
 #include "../task_utils/causal_graph.h"
 #include "../task_utils/successor_generator.h"
@@ -121,6 +121,7 @@ void PatternGenerationHaslum::sample_states(StateRegistry &sample_registry,
     // (We multiply by 2 because the heuristic is underestimating.)
 
     samples.reserve(num_samples);
+    utils::RandomNumberGenerator rng;
     for (int i = 0; i < num_samples; ++i) {
         if (hill_climbing_timer->is_expired())
             throw HillClimbingTimeout();
@@ -128,7 +129,7 @@ void PatternGenerationHaslum::sample_states(StateRegistry &sample_registry,
         // calculate length of random walk accoring to a binomial distribution
         int length = 0;
         for (int j = 0; j < n; ++j) {
-            double random = g_rng(); // [0..1)
+            double random = rng(); // [0..1)
             if (random < p)
                 ++length;
         }
@@ -142,7 +143,7 @@ void PatternGenerationHaslum::sample_states(StateRegistry &sample_registry,
             if (applicable_ops.empty()) {
                 break;
             } else {
-                int random = g_rng.next(applicable_ops.size()); // [0..applicable_os.size())
+                int random = rng(applicable_ops.size()); // [0..applicable_os.size())
                 assert(g_operators[applicable_ops[random]].is_applicable(current_state));
                 current_state = sample_registry.get_successor_state(current_state, g_operators[applicable_ops[random]]);
                 // if current state is a dead end, then restart with initial state
