@@ -168,7 +168,7 @@ void SearchEngine::save_plan_if_necessary() const {
         if (g_factoring){
             search_space.trace_path(g_state_registry->lookup_state(cheapest_goal_state), plan);
         }
-        save_plan(get_plan(), 0);
+        save_plan(get_plan(), false);
     }
 }
 

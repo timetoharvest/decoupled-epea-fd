@@ -197,23 +197,23 @@ SearchEngine *OptionParser::parse_cmd_line(
 
 void OptionParser::parse_decoupled_search(int argc, const char** argv) {
     for (int i = 0; i < argc; i++){
-	string arg = argv[i];
-	if (arg.compare("--decoupling") == 0){            
-	    if (i == argc - 1){
-		throw ArgError("missing argument after --decoupling");
-	    }
-	    
+        string arg = argv[i];
+        if (arg.compare("--decoupling") == 0){
+            if (i == argc - 1){
+                throw ArgError("missing argument after --decoupling");
+            }
+
             OptionParser dry(argv[i+1], true); // dry run
             dry.start_parsing<Factoring *>();
-            
+
             OptionParser p(argv[i+1], false);
             g_factoring = unique_ptr<Factoring>(p.start_parsing<Factoring *>());
-	}
+        }
     }
 }
 
 SearchEngine *OptionParser::parse_cmd_line_aux(
-    const vector<string> &args, bool dry_run) {
+        const vector<string> &args, bool dry_run) {
     SearchEngine *engine(0);
     for (size_t i = 0; i < args.size(); ++i) {
         string arg = args[i];
@@ -271,17 +271,28 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             cout << "Help output finished." << endl;
             exit(0);
         } else if (arg.compare("--internal-plan-file") == 0) {
-            if (is_last)
+            if (is_last){
                 throw ArgError("missing argument after --internal-plan-file");
+            }
             ++i;
             g_plan_filename = args[i];
+        } else if (arg == "--internal-previous-portfolio-plans") {
+            if (is_last){
+                throw ArgError("missing argument after --internal-previous-portfolio-plans");
+            }
+            ++i;
+            g_is_part_of_anytime_portfolio = true;
+            g_num_previously_generated_plans = atoi(args[i].c_str());
+            if (g_num_previously_generated_plans < 0){
+                throw ArgError("argument for --internal-previous-portfolio-plans must be positive");
+            }
         } else if (arg.compare("--decoupling") == 0) {
-            // decoupled search settings have to be read in seperately in parse_factored_search()
+            // decoupled search settings have to be read in separately in parse_factored_search()
             // because factoring needs to be done within the read_everything function
-	    ++i;
+            ++i;
         } else {
-	    throw ArgError("unknown option " + arg);
-	}
+            throw ArgError("unknown option " + arg);
+        }
     }
     return engine;
 }
@@ -306,6 +317,10 @@ string OptionParser::usage(string progname) {
         "    Use random seed SEED\n\n"
         "--internal-plan-file FILENAME\n"
         "    Plan will be output to a file called FILENAME\n\n"
+        "--internal-previous-portfolio-plans COUNTER\n"
+        "    This planner call is part of a portfolio which already created\n"
+        "    plan files FILENAME.1 up to FILENAME.COUNTER.\n"
+        "    Start enumerating plan files with COUNTER+1, i.e. FILENAME.COUNTER+1\n\n"
         "See http://www.fast-downward.org/ for details.";
     return usage;
 }
