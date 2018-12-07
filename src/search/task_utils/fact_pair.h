@@ -42,8 +42,9 @@ template<>
 struct hash<FactPair> {
     size_t operator()(const FactPair &fact) const {
         std::pair<int, int> raw_fact(fact.var, fact.value);
-        std::hash<std::pair<int, int>> hasher;
-        return hasher(raw_fact);
+        utils::HashState hash_state;
+        feed(hash_state, raw_fact);
+        return hash_state.get_hash64();
     }
 };
 }
