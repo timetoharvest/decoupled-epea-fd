@@ -32,7 +32,7 @@ void FFHeuristic::initialize() {
     
     if (search_type == STAR){
         cout << "FF star heuristic is not supported" << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         // TODO need to check this. not sure if it works with OperatorsIDs
         relaxed_leaf_plan.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){

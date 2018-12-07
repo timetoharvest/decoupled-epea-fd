@@ -497,7 +497,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                     cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
                 }
                 cout << "Total time: " << utils::g_timer << endl;
-                exit_with(utils::ExitCode::UNSOLVABLE);
+                exit_with(utils::ExitCode::SEARCH_UNSOLVABLE);
             }
             g_min_goal_cost[factor] = 0;
         } else {

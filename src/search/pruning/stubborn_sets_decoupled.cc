@@ -131,10 +131,10 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     } else if (g_factoring->get_search_type() == SEARCH_TYPE::SAT){
     	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::INPUT_ERROR);
+    	exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     

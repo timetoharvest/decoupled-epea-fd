@@ -63,7 +63,7 @@ Factoring::Factoring(const Options &opts) :
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
         case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
         case NO_SEARCH : cout << "not running actual search" << endl; break;
-        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::CRITICAL_ERROR);
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -515,7 +515,7 @@ void Factoring::print_factoring() const {
             for (int var : g_leaves[factor]){
                 cerr << g_fact_names[var][0] << endl;
             }
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
@@ -553,7 +553,7 @@ void Factoring::do_factoring_or_abstain() {
 
     if (best_factoring.size() < min_number_leaves){
         cerr << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
-        exit_with(utils::ExitCode::ABSTAINED);
+        exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
     }
 
     apply_factoring(best_factoring);
@@ -562,7 +562,7 @@ void Factoring::do_factoring_or_abstain() {
 
     if (search_type == NO_SEARCH) {
         cout << "Factoring complete, do not perform search" << endl;
-        exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+        exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
 

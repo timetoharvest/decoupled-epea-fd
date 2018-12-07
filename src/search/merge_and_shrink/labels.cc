@@ -16,7 +16,7 @@ Labels::Labels(const Options &options, OperatorCost cost_type) {
     label_reducer = new LabelReducer(options);
     if (!g_operators.empty()) {
         if (g_operators.size() * 2 - 1 > labels.max_size())
-            exit_with(utils::ExitCode::OUT_OF_MEMORY);
+            exit_with(utils::ExitCode::SEARCH_OUT_OF_MEMORY);
         labels.reserve(g_operators.size() * 2 - 1);
     }
     for (size_t i = 0; i < g_operators.size(); ++i) {

@@ -35,7 +35,7 @@ pair<int, int> MergeLinear::get_next(const std::vector<TransitionSystem *> &all_
     --remaining_merges;
     if (done() && !order.done()) {
         cerr << "Variable order finder not done, but no merges remaining" << endl;
-        exit_with(utils::ExitCode::CRITICAL_ERROR);
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
     return make_pair(first, second);
 }

@@ -155,7 +155,7 @@ LandmarkEfficientOptimalSharedCostAssignment::LandmarkEfficientOptimalSharedCost
     // silence unused variable warning
     (void)solver_type;
     cerr << "You must build the planner with the USE_LP symbol defined" << endl;
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 #endif
 }
 
@@ -282,6 +282,6 @@ double LandmarkEfficientOptimalSharedCostAssignment::cost_sharing_h_value() {
     }
 #else
     // Should be unreachable if USE_LP is not set.
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 #endif
 }

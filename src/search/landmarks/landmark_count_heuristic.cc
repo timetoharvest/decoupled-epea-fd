@@ -26,13 +26,13 @@ LandmarkCountHeuristic::LandmarkCountHeuristic(const Options &opts)
         use_cost_sharing = true;
         if (lgraph.is_using_reasonable_orderings()) {
             cerr << "Reasonable orderings should not be used for admissible heuristics" << endl;
-            exit_with(utils::ExitCode::INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         } else if (has_axioms()) {
             cerr << "cost partitioning does not support axioms" << endl;
-            exit_with(utils::ExitCode::UNSUPPORTED);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         } else if (has_conditional_effects() && !lgraph.supports_conditional_effects()) {
             cerr << "conditional effects not supported by the landmark generation method" << endl;
-            exit_with(utils::ExitCode::UNSUPPORTED);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
         if (opts.get<bool>("optimal")) {
 #ifdef USE_LP
@@ -43,7 +43,7 @@ LandmarkCountHeuristic::LandmarkCountHeuristic(const Options &opts)
 #else
             cerr << "You must build the planner with the USE_LP symbol defined." << endl
                  << "If you already did, try \"make clean\" before rebuilding with USE_LP=1." << endl;
-            exit_with(utils::ExitCode::INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 #endif
         } else {
             lm_cost_assignment = new LandmarkUniformSharedCostAssignment(
