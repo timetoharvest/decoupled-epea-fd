@@ -90,7 +90,7 @@ protected:
     
     static FactoredVars var_to_affecting_op;
 
-    static void init_ops_helper();
+    static void init_var_to_ops_map();
 
 
     size_t max_leaf_size;
@@ -141,7 +141,7 @@ public:
 
     
     static const FactoredVars& get_var_to_affecting_op() {
-        init_ops_helper();
+        init_var_to_ops_map();
         return var_to_affecting_op;
     }
 

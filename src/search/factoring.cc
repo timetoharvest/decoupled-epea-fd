@@ -43,7 +43,7 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
 
 vector<set<int>> Factoring::var_to_affecting_op;
 
-void Factoring::init_ops_helper() {
+void Factoring::init_var_to_ops_map() {
     if (var_to_affecting_op.empty()) {
         var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());
         for (size_t op = 0; op < g_operators.size(); ++op) {
@@ -63,7 +63,7 @@ Factoring::Factoring(const Options &opts) :
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
         case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
         case NO_SEARCH : cout << "not running actual search" << endl; break;
-        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -166,7 +166,7 @@ public:
             : Factoring(opts) {
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
-    };
+    }
 
 };
 
@@ -426,13 +426,33 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         cout << "no center goals" << endl;
     }
 #endif
+
+    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
+    
+    if (search_type == SAT || search_type == UNSAT){
+        for (size_t i = 0; i < g_leaves.size(); ++i){
+            uint64_t f_size = 1;
+            for (size_t j = 0; j < g_leaves[i].size(); ++j){
+                f_size *= g_variable_domain[g_leaves[i][j]];
+                if (f_size > max_precompute_state_space_size){
+                    precompute_leaf_state_space[i] = false;
+                    break;
+                }
+            }
+        }
+    }
+    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
 }
 
 void Factoring::print_factoring() const {
 #ifdef DEBUG_FACTORING
     cout << "final factoring:" << endl;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        cout << "leaf factor " << factor << endl;
+        cout << "leaf " << factor << ": ";
+        for (int var : g_leaves[factor]){
+            cout << var << ", ";
+        }
+        cout << endl;
         for (size_t var_i = 0; var_i < g_leaves[factor].size(); ++var_i){
             cout << "   " << g_fact_names[g_leaves[factor][var_i]][0] << endl;
         }
@@ -447,8 +467,6 @@ void Factoring::print_factoring() const {
         cout << g_leaves[i].size() << " variables in leaf factor " << i << endl;
     }
     
-    vector<bool> precompute_leaf_state_space(g_leaves.size(), true);
-    
     uint64_t min_size = numeric_limits<uint64_t>::max();
     double avg_size = 0;
     uint64_t max_size = 0;
@@ -456,25 +474,14 @@ void Factoring::print_factoring() const {
         uint64_t f_size = 1;
         for (size_t j = 0; j < g_leaves[factor].size(); ++j){
             f_size *= g_variable_domain[g_leaves[factor][j]];
-            if ((search_type == SAT || search_type == UNSAT) && f_size > max_precompute_state_space_size){
-                precompute_leaf_state_space[factor] = false;
-            }
         }
         avg_size += f_size;
         min_size = min(min_size, f_size);
         max_size = max(max_size, f_size);
     }
-    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
-    
-    uint64_t avg = 0;
-    if (g_leaves.size() > 0){
-        avg = avg_size / g_leaves.size();
-    } else {
-        min_size = 0;
-    }
     
     cout << "min leaf factor size: " << min_size << endl;
-    cout << "average leaf factor size: " << avg << endl;
+    cout << "average leaf factor size: " << (avg_size / g_leaves.size()) << endl;
     cout << "max leaf factor size: " << max_size << endl;
 
     // mobility and flexibility
@@ -552,7 +559,7 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
 
     if (best_factoring.size() < min_number_leaves){
-        cerr << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
+        cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
         exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
     }
 
@@ -561,7 +568,7 @@ void Factoring::do_factoring_or_abstain() {
     print_factoring();
 
     if (search_type == NO_SEARCH) {
-        cout << "Factoring complete, do not perform search" << endl;
+        cout << "Factoring complete, do not perform search." << endl;
         exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
@@ -749,7 +756,7 @@ Factoring::FactoredVars ForkFactoring::get_factoring() { ///////////////////////
 
 Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  ///////////////////// INCIDENT ARCS
 
-    init_ops_helper();
+    init_var_to_ops_map();
 
     // all variables sorted descendingly by number of incident arcs
     vector<vector<int> > variables;
