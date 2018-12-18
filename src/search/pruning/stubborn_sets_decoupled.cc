@@ -375,6 +375,7 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
 }
 
 void StubbornSetsDecoupled::compute_interference_relation() {
+    // TODO try to compute interference incrementally
     size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
 
