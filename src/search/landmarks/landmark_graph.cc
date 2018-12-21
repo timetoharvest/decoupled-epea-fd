@@ -265,7 +265,7 @@ void LandmarkGraph::dump() const {
     cout << "Landmark graph: " << endl;
     set<LandmarkNode *, LandmarkNodeComparer> nodes2(nodes.begin(), nodes.end());
 
-    for (set<LandmarkNode *>::const_iterator it = nodes2.begin(); it
+    for (set<LandmarkNode *, LandmarkNodeComparer>::const_iterator it = nodes2.begin(); it
          != nodes2.end(); ++it) {
         LandmarkNode *node_p = *it;
         dump_node(node_p);
