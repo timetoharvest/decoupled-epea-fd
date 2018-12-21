@@ -559,7 +559,7 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
 
     if (best_factoring.size() < min_number_leaves){
-	cerr << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
+	cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
         exit_with(utils::ExitCode::ABSTAINED);
     }
 

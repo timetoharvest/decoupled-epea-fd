@@ -424,11 +424,11 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
             // center op completely overwrites this leaf factor
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
-            
+
             size_t size_before = g_state_registry->size(factor);
             
             LeafStateHash succ_id(g_state_registry->get_successor_leaf_state_hash(pred, op));
-            
+
             if (succ_id >= size_before){
                 // new leaf state, need to store applicable center actions
                 handle_new_leaf_state_from_center_op(succ_id, factor);
