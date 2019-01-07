@@ -1,9 +1,9 @@
 #ifndef MERGE_AND_SHRINK_SHRINK_STRATEGY_H
 #define MERGE_AND_SHRINK_SHRINK_STRATEGY_H
 
+#include <list>
 #include <string>
 #include <vector>
-#include <ext/slist>
 
 class TransitionSystem;
 class OptionParser;
@@ -22,9 +22,9 @@ protected:
        This is used to remove unreachable and irrelevant states.
     */
 
-    typedef int AbstractStateRef;
-    typedef __gnu_cxx::slist<AbstractStateRef> EquivalenceClass;
-    typedef std::vector<EquivalenceClass> EquivalenceRelation;
+    using AbstractStateRef = int;
+    using EquivalenceClass = std::list<AbstractStateRef>;
+    using EquivalenceRelation = std::vector<EquivalenceClass>;
 public:
     // HACK/TODO: The following method would usually be protected, but
     // the option parser requires it to be public for the

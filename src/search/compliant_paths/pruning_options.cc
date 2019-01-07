@@ -47,11 +47,11 @@ void PruningOptions::init() const {
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
             cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }        
         if (do_simulation){
             cout << "simulation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
     assert(!frontier_pruning || g_factoring->get_profile() == FORK);

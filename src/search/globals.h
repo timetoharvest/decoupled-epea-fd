@@ -28,7 +28,6 @@ class IntPacker;
 struct LeafFactorID;
 class Operator;
 class OperatorID;
-class RandomNumberGenerator;
 class State;
 class StateID;
 namespace successor_generator {
@@ -40,7 +39,7 @@ class Timer;
 class StateRegistry;
 
 bool test_goal(const State &state);
-void save_plan(const std::vector<OperatorID> &plan, int iter);
+void save_plan(const std::vector<OperatorID> &plan, bool generates_multiple_plan_files);
 int calculate_plan_cost(const std::vector<OperatorID> &plan);
 
 void read_everything(std::istream &in);
@@ -109,7 +108,9 @@ extern AxiomEvaluator *g_axiom_evaluator;
 extern successor_generator::SuccessorGenerator *g_successor_generator;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
 extern std::string g_plan_filename;
-extern RandomNumberGenerator g_rng;
+extern bool g_is_part_of_anytime_portfolio;
+extern int g_num_previously_generated_plans;
+
 // Only one global object for now. Could later be changed to use one instance
 // for each problem in this case the method State::get_id would also have to be
 // changed.

@@ -1,7 +1,7 @@
 #include "landmark_status_manager.h"
 
-using namespace __gnu_cxx;
 using namespace std;
+
 
 LandmarkStatusManager::LandmarkStatusManager(LandmarkGraph &graph)
     : lm_graph(graph) {
@@ -177,10 +177,10 @@ bool LandmarkStatusManager::update_lm_status(const State &state) {
 
 
 bool LandmarkStatusManager::check_lost_landmark_children_needed_again(const LandmarkNode &node) const {
-    const hash_map<LandmarkNode *, edge_type, hash_pointer > &children =
+    const utils::HashMap<LandmarkNode *, edge_type > &children =
         node.children;
 
-    for (hash_map<LandmarkNode *, edge_type, hash_pointer >::const_iterator child_it =
+    for (utils::HashMap<LandmarkNode *, edge_type>::const_iterator child_it =
              children.begin(); child_it != children.end(); ++child_it) {
         LandmarkNode *child_p = child_it->first;
         if (child_it->second >= greedy_necessary &&
@@ -193,7 +193,7 @@ bool LandmarkStatusManager::check_lost_landmark_children_needed_again(const Land
 bool LandmarkStatusManager::landmark_is_leaf(const LandmarkNode &node,
                                              const vector<bool> &reached) const {
 //Note: this is the same as !check_node_orders_disobeyed
-    const hash_map<LandmarkNode *, edge_type, hash_pointer > &parents =
+    const utils::HashMap<LandmarkNode *, edge_type> &parents =
         node.parents;
     /*
       cout << "in is_leaf, reached is ----- " << endl;
@@ -204,7 +204,7 @@ bool LandmarkStatusManager::landmark_is_leaf(const LandmarkNode &node,
       }
       cout << "---------" << endl;
     */
-    for (hash_map<LandmarkNode *, edge_type, hash_pointer >::const_iterator parent_it =
+    for (utils::HashMap<LandmarkNode *, edge_type>::const_iterator parent_it =
              parents.begin(); parent_it != parents.end(); ++parent_it) {
         LandmarkNode *parent_p = parent_it->first;
 

@@ -86,7 +86,7 @@ Entry AlternationOpenList<Entry>::remove_min(vector<int> *key) {
     assert(size > 0);
     if (key) {
         cerr << "not implemented -- see msg639 in the tracker" << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     int best = -1;
     for (size_t i = 0; i < open_lists.size(); ++i) {

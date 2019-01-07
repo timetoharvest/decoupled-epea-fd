@@ -2,7 +2,6 @@
 
 #include "successor_generator_internals.h"
 
-#include "fact_pair.h"
 #include "../globals.h"
 #include "../operator.h"
 #include "../utils/collections.h"
@@ -74,6 +73,17 @@ struct OperatorRange {
     }
 };
 
+struct FactPair {
+    int var;
+    int val;
+
+    FactPair(int var, int val) : var(var), val(val) {
+    }
+
+    bool operator<(const FactPair &other) const {
+        return var < other.var || (var == other.var && val < other.val);
+    }
+};
 
 class OperatorInfo {
     /*
@@ -106,7 +116,7 @@ public:
     }
 
     int get_value(int depth) const {
-        return precondition[depth].value;
+        return precondition[depth].val;
     }
 };
 
@@ -277,7 +287,7 @@ static vector<FactPair> build_sorted_precondition(const Operator &op, LeafFactor
         if (!g_factoring ||
                 (only_keep_all_leaf_preconditions && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER) ||
                 (!only_keep_all_leaf_preconditions && g_belongs_to_factor[pre.var] == factor)){
-            precond.emplace_back(pre.get_pair());
+            precond.emplace_back(FactPair(pre.var, pre.val));
         }
     }
     // Preconditions must be sorted by variable.

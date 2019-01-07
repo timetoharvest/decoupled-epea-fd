@@ -131,10 +131,10 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     } else if (g_factoring->get_search_type() == SEARCH_TYPE::SAT){
     	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::INPUT_ERROR);
+    	exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     
@@ -375,6 +375,7 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
 }
 
 void StubbornSetsDecoupled::compute_interference_relation() {
+    // TODO try to compute interference incrementally
     size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
 

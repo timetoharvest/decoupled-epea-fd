@@ -13,7 +13,7 @@ protected:
 
         virtual void initialize();
         virtual int get_heuristic_value() = 0;
-        virtual void get_preferred_operators(std::vector<const Operator *> &result) = 0;
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) = 0;
 public:
         HeuristicProxy(LamaFFSynergy *synergy_);
         virtual ~HeuristicProxy() {}
@@ -29,7 +29,7 @@ public:
         virtual int get_heuristic_value() {
             return synergy->ff_heuristic_value;
         }
-        virtual void get_preferred_operators(std::vector<const Operator *> &result) {
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) {
             synergy->get_ff_preferred_operators(result);
         }
 public:
@@ -40,7 +40,7 @@ public:
         virtual int get_heuristic_value() {
             return synergy->lama_heuristic_value;
         }
-        virtual void get_preferred_operators(std::vector<const Operator *> &result) {
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) {
             synergy->get_lama_preferred_operators(result);
         }
 public:
@@ -63,8 +63,8 @@ public:
     bool lm_admissible;
     bool lm_optimal;
     bool use_action_landmarks;
-    std::vector<const Operator *> lama_preferred_operators;
-    std::vector<const Operator *> ff_preferred_operators;
+    std::vector<OperatorID> lama_preferred_operators;
+    std::vector<OperatorID> ff_preferred_operators;
     bool initialized;
 
     void initialize() {
@@ -76,8 +76,8 @@ public:
                           const State &state);
 
     void compute_heuristics(const State &);
-    void get_lama_preferred_operators(std::vector<const Operator *> &result);
-    void get_ff_preferred_operators(std::vector<const Operator *> &result);
+    void get_lama_preferred_operators(std::vector<OperatorID> &result);
+    void get_ff_preferred_operators(std::vector<OperatorID> &result);
 public:
     LamaFFSynergy(const Options &opts);
     ~LamaFFSynergy() {}

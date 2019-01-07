@@ -4,13 +4,13 @@
 #include "globals.h"
 #include "operator.h"
 #include "state.h"
+#include "../utils/hash.h"
 
 #include <cassert>
 #include <vector>
+
 using namespace std;
 
-#include <ext/hash_map>
-using namespace __gnu_cxx;
 
 // construction and destruction
 RelaxationHeuristic::RelaxationHeuristic(const Options &opts)
@@ -144,10 +144,9 @@ void RelaxationHeuristic::simplify() {
 
     cout << "Simplifying " << unary_operators.size() << " unary operators..." << flush;
 
-    typedef pair<vector<Proposition *>, Proposition *> HashKey;
-    typedef hash_map<HashKey, int, hash_unary_operator> HashMap;
+    using HashKey = pair<vector<Proposition *>, Proposition *>;
+    using HashMap = utils::HashMap<HashKey, int>;
     HashMap unary_operator_index;
-    unary_operator_index.resize(unary_operators.size() * 2);
 
     for (size_t i = 0; i < unary_operators.size(); ++i) {
         UnaryOperator &op = unary_operators[i];

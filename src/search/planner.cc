@@ -14,7 +14,7 @@ int main(int argc, const char **argv) {
 
     if (argc < 2) {
         cout << OptionParser::usage(argv[0]) << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
     if (string(argv[1]).compare("--help") != 0){
@@ -23,7 +23,7 @@ int main(int argc, const char **argv) {
 	} catch (ArgError &error) {
 	    cerr << error << endl;
 	    OptionParser::usage(argv[0]);
-	    exit_with(utils::ExitCode::INPUT_ERROR);
+	    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 	}
         read_everything(cin);
     }
@@ -39,10 +39,10 @@ int main(int argc, const char **argv) {
     } catch (ArgError &error) {
         cerr << error << endl;
         OptionParser::usage(argv[0]);
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     } catch (ParseError &error) {
         cerr << error << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
     utils::Timer search_timer;
@@ -57,8 +57,8 @@ int main(int argc, const char **argv) {
     cout << "Total time: " << utils::g_timer << endl;
 
     if (engine->found_solution()) {
-        exit_with(utils::ExitCode::PLAN_FOUND);
+        exit_with(utils::ExitCode::SUCCESS);
     } else {
-        exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+        exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
