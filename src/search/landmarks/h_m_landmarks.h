@@ -74,8 +74,7 @@ public:
 // should be used together in a tuple?
     bool interesting(int var1, int val1, int var2, int val2);
 private:
-//  typedef std::set<std::pair<int,int> > TriggerSet;
-    typedef std::unordered_map<int, std::set<int> > TriggerSet;
+    using TriggerSet = utils::HashMap<int, std::set<int> >;
 
     virtual void generate_landmarks();
 
@@ -138,7 +137,7 @@ private:
     void get_m_sets(int m, std::vector<FluentSet> &subsets, const FluentSet &superset);
 
     void get_m_sets(int m, std::vector<FluentSet> &subsets,
-                    const GlobalState &s);
+                    const State &s);
 
     void get_split_m_sets(int m, std::vector<FluentSet> &subsets,
                           const FluentSet &superset1, const FluentSet &superset2);

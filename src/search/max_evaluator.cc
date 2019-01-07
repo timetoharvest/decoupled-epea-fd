@@ -17,9 +17,9 @@ MaxEvaluator::~MaxEvaluator() {
 
 int MaxEvaluator::combine_values(const vector<int> &values) {
     int result = 0;
-    for (int value : values) {
-        assert(value >= 0);
-        result = max(result, value);
+    for (size_t i = 0; i < values.size(); ++i) {
+        assert(values[i] >= 0);
+        result = max(result, values[i]);
     }
     return result;
 }

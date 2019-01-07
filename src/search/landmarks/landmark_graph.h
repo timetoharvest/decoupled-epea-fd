@@ -1,19 +1,17 @@
 #ifndef LANDMARKS_LANDMARK_GRAPH_H
 #define LANDMARKS_LANDMARK_GRAPH_H
 
-#include <cassert>
-#include <list>
-#include <map>
-#include <set>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
 #include "exploration.h"
 #include "landmark_types.h"
-#include "../global_operator.h"
+#include "../operator.h"
 #include "../option_parser.h"
-#include "../utilities_hash.h"
+#include "../utils/hash.h"
+
+#include <vector>
+#include <set>
+#include <map>
+#include <list>
+#include <cassert>
 
 enum edge_type {
     /* NOTE: The code relies on the fact that larger numbers are
@@ -45,8 +43,8 @@ public:
     std::vector<int> vals;
     bool disjunctive;
     bool conjunctive;
-    std::unordered_map<LandmarkNode *, edge_type> parents;
-    std::unordered_map<LandmarkNode *, edge_type> children;
+    utils::HashMap<LandmarkNode *, edge_type> parents;
+    utils::HashMap<LandmarkNode *, edge_type> children;
     bool in_goal;
     int min_cost; // minimal cost of achieving operators
     double shared_cost;
@@ -54,7 +52,7 @@ public:
     landmark_status status;
     bool is_derived;
 
-    std::unordered_set<std::pair<int, int> > forward_orders;
+    utils::HashSet<std::pair<int, int> > forward_orders;
     std::set<int> first_achievers;
     std::set<int> possible_achievers;
 
@@ -71,7 +69,7 @@ public:
         return in_goal;
     }
 
-    bool is_true_in_state(const GlobalState &state) const {
+    bool is_true_in_state(const State &state) const {
         if (disjunctive) {
             for (size_t i = 0; i < vars.size(); ++i) {
                 if (state[vars[i]] == vals[i]) {
@@ -119,7 +117,7 @@ struct LandmarkNodeComparer {
 };
 
 
-typedef std::unordered_set<LandmarkNode *> LandmarkSet;
+using LandmarkSet = utils::HashSet<LandmarkNode *>;
 
 class LandmarkGraph {
 public:
@@ -146,7 +144,7 @@ public:
     inline const std::set<LandmarkNode *> &get_nodes() const {
         return nodes;
     }
-    inline const GlobalOperator &get_operator_for_lookup_index(int op_no) const {
+    inline const Operator &get_operator_for_lookup_index(int op_no) const {
         int num_ops = g_operators.size();
         if (op_no < num_ops)
             return g_operators[op_no];
@@ -228,8 +226,8 @@ private:
     int reached_cost;
     int needed_cost;
     int landmarks_cost;
-    std::unordered_map<std::pair<int, int>, LandmarkNode *> simple_lms_to_nodes;
-    std::unordered_map<std::pair<int, int>, LandmarkNode *> disj_lms_to_nodes;
+    utils::HashMap<std::pair<int, int>, LandmarkNode *> simple_lms_to_nodes;
+    utils::HashMap<std::pair<int, int>, LandmarkNode *> disj_lms_to_nodes;
     std::set<LandmarkNode *> nodes;
     std::vector<LandmarkNode *> ordered_nodes;
     std::vector<std::vector<std::vector<int> > > operators_eff_lookup;

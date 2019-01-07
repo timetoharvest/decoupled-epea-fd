@@ -1,0 +1,202 @@
+#include "operator.h"
+
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
+#include "factoring.h"
+#include "state_registry.h"
+
+#include <iostream>
+
+using namespace std;
+
+Condition::Condition(istream &in) {
+    in >> var >> val;
+}
+
+bool Condition::is_applicable(const State &state) const {
+    assert(!g_factoring || g_belongs_to_factor[var] == LeafFactorID::CENTER);
+    return state[var] == val;
+}
+
+bool Condition::is_applicable(const LeafState &state) const {
+    assert(g_belongs_to_factor[var] == (int) state.get_id().get_factor());
+    return state[var] == val;
+}
+
+void Condition::dump() const {
+    cout << g_fact_names[var][val];
+}
+
+void Effect::dump() const {
+    cout << " => " << g_fact_names[var][val];
+    if (!conditions.empty()) {
+        cout << " if";
+        for (size_t i = 0; i < conditions.size(); ++i) {
+            cout << " ";
+            conditions[i].dump();
+        }
+    }
+}
+
+
+void Operator::read_pre_post(istream &in) {
+    int cond_count, var, pre, post;
+    in >> cond_count;
+    vector<Condition> conditions;
+    conditions.reserve(cond_count);
+    for (int i = 0; i < cond_count; ++i)
+        conditions.push_back(Condition(in));
+    in >> var >> pre >> post;
+    if (pre != -1)
+        preconditions.push_back(Condition(var, pre));
+    effects.push_back(Effect(var, post, conditions));
+}
+
+Operator::Operator(istream &in, bool axiom) {
+    marked = false;
+    dead = false;
+
+    is_an_axiom = axiom;
+    if (!is_an_axiom) {
+        check_magic(in, "begin_operator");
+        in >> ws;
+        getline(in, name);
+        int count;
+        in >> count;
+        for (int i = 0; i < count; ++i)
+            preconditions.push_back(Condition(in));
+        in >> count;
+        for (int i = 0; i < count; ++i)
+            read_pre_post(in);
+
+        int op_cost;
+        in >> op_cost;
+        cost = g_use_metric ? op_cost : 1;
+
+        g_min_action_cost = min(g_min_action_cost, cost);
+        g_max_action_cost = max(g_max_action_cost, cost);
+
+        check_magic(in, "end_operator");
+    } else {
+        name = "<axiom>";
+        cost = 0;
+        check_magic(in, "begin_rule");
+        read_pre_post(in);
+        check_magic(in, "end_rule");
+    }
+}
+
+bool Operator::is_applicable(const State &state) const {
+    if (g_factoring){    // not really efficient, but how to do it better?
+        if (!is_center_applicable(state)){
+            return false;
+        }
+        if (g_factoring->get_profile() == FORK && get_affected_factor() == LeafFactorID::CENTER){
+            // in fork topology, center actions don't have leaf preconditions
+            return true;
+        }
+        const CompliantPathGraph *price_tag = CPGStorage::storage->get_cpg(state);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (has_precondition_on(factor)){
+                bool applicable = false;
+                size_t number_states = price_tag->get_number_states(factor);
+                LeafStateHash id(0);
+                while (number_states > 0){
+                    if (price_tag->has_leaf_state(id, factor)){
+                        --number_states;
+                        if (is_applicable(id, factor)){
+                            applicable = true;
+                            break;
+                        }
+                    }
+                    ++id;
+                }
+                if (!applicable){
+                    return false;
+                }
+            }
+        }
+    } else {
+        for (size_t i = 0; i < preconditions.size(); ++i){
+            if (!preconditions[i].is_applicable(state)){
+                return false;
+            }
+        }
+    }        
+    return true;
+}
+
+bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
+    OpsLeafProps<Condition> preconditions = get_preconditions(factor);
+    if (preconditions.empty()){
+        return true;
+    }
+    LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+    for (const Condition &cond : preconditions){
+        if (!cond.is_applicable(state)){
+            return false;
+        }
+    }
+    return true;
+}
+
+bool Operator::is_center_applicable(const State &state) const {
+    OpsLeafProps<Condition> center_preconds = get_preconditions(LeafFactorID::CENTER);
+    for (const Condition &cond : center_preconds){
+        if (!cond.is_applicable(state)){
+            return false;
+        }
+    }
+    return true;
+}
+
+void Operator::dump() const {
+    cout << name << ":";
+    for (size_t i = 0; i < preconditions.size(); ++i) {
+        cout << " [";
+        preconditions[i].dump();
+        cout << "]";
+    }
+    for (size_t i = 0; i < effects.size(); ++i) {
+        cout << " [";
+        effects[i].dump();
+        cout << "]";
+    }
+    cout << endl;
+    if (g_factoring){
+        factor_info->dump();
+    }
+}
+
+void Operator::set_affected_factor(LeafFactorID affected_factor) {
+    std::sort(preconditions.begin(), preconditions.end(),
+            [](const Condition &a, const Condition &b) {
+        if (g_belongs_to_factor[a.var] == LeafFactorID::CENTER){
+            if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
+                return a.var < b.var;
+            }
+            return true;
+        } else if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
+            return false;
+        } else if (g_belongs_to_factor[a.var] != g_belongs_to_factor[b.var]){
+            return g_belongs_to_factor[a.var] < g_belongs_to_factor[b.var];
+        }
+        return a.var < b.var;
+    });
+    std::sort(effects.begin(), effects.end(),
+            [](const Effect &a, const Effect &b) {
+        if (g_belongs_to_factor[a.var] == LeafFactorID::CENTER){
+            if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
+                return a.var < b.var;
+            }
+            return true;
+        } else if (g_belongs_to_factor[b.var] == LeafFactorID::CENTER){
+            return false;
+        } else if (g_belongs_to_factor[a.var] != g_belongs_to_factor[b.var]){
+            return g_belongs_to_factor[a.var] < g_belongs_to_factor[b.var];
+        }
+        return a.var < b.var;
+    });
+
+    factor_info = FactorInfo::create(this, affected_factor);
+}

@@ -1,7 +1,8 @@
 #ifndef OPTION_PARSER_UTIL_H
 #define OPTION_PARSER_UTIL_H
 
-#include "utilities.h"
+#include "utils/system.h"
+
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -15,9 +16,9 @@
 #include <boost/any.hpp>
 
 
+class Factoring;
 class MergeStrategy;
 class ShrinkStrategy;
-class Labels;
 class LandmarkGraph;
 class Heuristic;
 class ScalarEvaluator;
@@ -26,7 +27,7 @@ class SearchEngine;
 class OptionParser;
 template<class Entry>
 class OpenList;
-class AbstractTask;
+class Pruning;
 
 
 struct ParseNode {
@@ -82,35 +83,16 @@ struct ParseError {
 };
 
 
-struct Bounds {
-    std::string min;
-    std::string max;
-
-public:
-    Bounds(std::string min, std::string max)
-        : min(min), max(max) {}
-    ~Bounds() = default;
-
-    bool has_bound() const {
-        return !min.empty() || !max.empty();
-    }
-
-    static Bounds unlimited() {
-        return Bounds("", "");
-    }
-
-    friend std::ostream &operator<<(std::ostream &out, const Bounds &bounds);
-};
-
-
 //a registry<T> maps a string to a T-factory
 template <class T>
 class Registry {
 public:
     typedef T (*Factory)(OptionParser &);
     static Registry<T> *instance() {
-        static Registry<T> instance_;
-        return &instance_;
+        if (!instance_) {
+            instance_ = new Registry<T>();
+        }
+        return instance_;
     }
 
     void register_object(std::string k, Factory f) {
@@ -118,26 +100,33 @@ public:
         registered[k] = f;
     }
 
-    bool contains(const std::string &k) {
+    bool contains(std::string k) {
         return registered.find(k) != registered.end();
     }
 
-    Factory get(const std::string &k) {
+    Factory get(std::string k) {
         return registered[k];
     }
 
     std::vector<std::string> get_keys() {
         std::vector<std::string> keys;
-        for (auto it : registered) {
-            keys.push_back(it.first);
+        for (typename std::map<std::string, Factory>::iterator it =
+                 registered.begin();
+             it != registered.end(); ++it) {
+            keys.push_back(it->first);
         }
         return keys;
     }
 
 private:
-    Registry() = default;
+    Registry() {}
+    static Registry<T> *instance_;
     std::map<std::string, Factory> registered;
 };
+
+template <class T>
+Registry<T> *Registry<T>::instance_ = 0;
+
 
 
 
@@ -147,8 +136,10 @@ template <class T>
 class Predefinitions {
 public:
     static Predefinitions<T> *instance() {
-        static Predefinitions<T> instance_;
-        return &instance_;
+        if (!instance_) {
+            instance_ = new Predefinitions<T>();
+        }
+        return instance_;
     }
 
     void predefine(std::string k, T obj) {
@@ -156,18 +147,24 @@ public:
         predefined[k] = obj;
     }
 
-    bool contains(const std::string &k) {
+    bool contains(std::string k) {
         return predefined.find(k) != predefined.end();
     }
 
-    T get(const std::string &k) {
+    T get(std::string k) {
         return predefined[k];
     }
 
 private:
-    Predefinitions<T>() = default;
+    Predefinitions<T>() {
+    }
+    static Predefinitions<T> *instance_;
     std::map<std::string, T> predefined;
 };
+
+template <class T>
+Predefinitions<T> *Predefinitions<T>::instance_ = 0;
+
 
 
 class Synergy {
@@ -214,6 +211,13 @@ struct TypeNamer<std::string> {
 };
 
 template <>
+struct TypeNamer<Factoring *> {
+    static std::string name() {
+        return "Factoring";
+    }
+};
+
+template <>
 struct TypeNamer<Heuristic *> {
     static std::string name() {
         return "Heuristic";
@@ -249,6 +253,13 @@ struct TypeNamer<ParseTree> {
 };
 
 template <>
+struct TypeNamer<Pruning *> {
+    static std::string name() {
+        return "Pruning";
+    }
+};
+
+template <>
 struct TypeNamer<Synergy *> {
     static std::string name() {
         return "Synergy";
@@ -256,30 +267,16 @@ struct TypeNamer<Synergy *> {
 };
 
 template <>
-struct TypeNamer<std::shared_ptr<MergeStrategy> > {
+struct TypeNamer<MergeStrategy *> {
     static std::string name() {
         return "MergeStrategy";
     }
 };
 
 template <>
-struct TypeNamer<std::shared_ptr<ShrinkStrategy> > {
+struct TypeNamer<ShrinkStrategy *> {
     static std::string name() {
         return "ShrinkStrategy";
-    }
-};
-
-template <>
-struct TypeNamer<std::shared_ptr<Labels> > {
-    static std::string name() {
-        return "Labels";
-    }
-};
-
-template <>
-struct TypeNamer<std::shared_ptr<AbstractTask> > {
-    static std::string name() {
-        return "AbstractTask";
     }
 };
 
@@ -386,8 +383,7 @@ tree<T> subtree(
 class Options {
 public:
     Options(bool hm = false)
-        : unparsed_config("<missing>"),
-          help_mode(hm) {
+        : help_mode(hm) {
     }
 
     void set_help_mode(bool hm) {
@@ -406,28 +402,21 @@ public:
         std::map<std::string, boost::any>::const_iterator it;
         it = storage.find(key);
         if (it == storage.end()) {
-            ABORT("Attempt to retrieve nonexisting object of name " +
-                  key + " (type: " + TypeNamer<T>::name() +
-                  ") from options.");
+            std::cout << "attempt to retrieve nonexisting object of name "
+                      << key << " (type: " << TypeNamer<T>::name() << ")"
+                      << " from Options. Aborting." << std::endl;
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
         try {
             T result = boost::any_cast<T>(it->second);
             return result;
-        } catch (const boost::bad_any_cast &) {
+        } catch (const boost::bad_any_cast &bac) {
             std::cout << "Invalid conversion while retrieving config options!"
                       << std::endl
                       << key << " is not of type " << TypeNamer<T>::name()
                       << std::endl << "exiting" << std::endl;
-            exit_with(EXIT_CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
-    }
-
-    template <class T>
-    T get(std::string key, const T &default_value) const {
-        if (storage.count(key))
-            return get<T>(key);
-        else
-            return default_value;
     }
 
     template <class T>
@@ -439,7 +428,7 @@ public:
                           << std::endl
                           << "List " << key << " is empty"
                           << std::endl;
-                exit_with(EXIT_INPUT_ERROR);
+                exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
             }
         }
     }
@@ -456,36 +445,35 @@ public:
     bool contains(std::string key) const {
         return storage.find(key) != storage.end();
     }
-
-    std::string get_unparsed_config() const {
-        return unparsed_config;
-    }
-
-    void set_unparsed_config(const std::string &config) {
-        unparsed_config = config;
-    }
 private:
-    std::string unparsed_config;
     bool help_mode;
+};
+
+//TODO: get rid of OptionFlags, instead use default_value = "None" ?
+struct OptionFlags {
+    explicit OptionFlags(bool mand = true)
+        : mandatory(mand) {
+    }
+    bool mandatory;
 };
 
 typedef std::vector<std::pair<std::string, std::string> > ValueExplanations;
 struct ArgumentInfo {
     ArgumentInfo(
         std::string k, std::string h, std::string t_n, std::string def_val,
-        const Bounds &bounds, ValueExplanations val_expl)
+        bool mand, ValueExplanations val_expl)
         : kwd(k),
           help(h),
           type_name(t_n),
           default_value(def_val),
-          bounds(bounds),
+          mandatory(mand),
           value_explanations(val_expl) {
     }
     std::string kwd;
     std::string help;
     std::string type_name;
     std::string default_value;
-    Bounds bounds;
+    bool mandatory;
     std::vector<std::pair<std::string, std::string> > value_explanations;
 };
 
@@ -535,8 +523,10 @@ struct DocStruct {
 class DocStore {
 public:
     static DocStore *instance() {
-        static DocStore instance_;
-        return &instance_;
+        if (!instance_) {
+            instance_ = new DocStore();
+        }
+        return instance_;
     }
 
     void register_object(std::string k, std::string type);
@@ -546,7 +536,7 @@ public:
                  std::string help,
                  std::string type,
                  std::string default_value,
-                 Bounds bounds,
+                 bool mandatory,
                  ValueExplanations value_explanations = ValueExplanations());
     void add_value_explanations(std::string k,
                                 std::string arg_name,
@@ -567,7 +557,8 @@ public:
     std::vector<std::string> get_types();
 
 private:
-    DocStore() = default;
+    DocStore() {}
+    static DocStore *instance_;
     std::map<std::string, DocStruct> registered;
 };
 

@@ -1,28 +1,26 @@
-#ifndef MERGE_AND_SHRINK_MERGE_STRATEGY_H
-#define MERGE_AND_SHRINK_MERGE_STRATEGY_H
+#ifndef MERGE_AND_SHRINK_SHRINK_MERGE_STRATEGY_H
+#define MERGE_AND_SHRINK_SHRINK_MERGE_STRATEGY_H
 
-#include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
-class AbstractTask;
 class TransitionSystem;
 
 class MergeStrategy {
-    const int UNINITIALIZED = -1;
 protected:
     int remaining_merges;
-    bool initialized() const;
     virtual void dump_strategy_specific_options() const = 0;
 public:
     MergeStrategy();
-    virtual ~MergeStrategy() = default;
-    virtual void initialize(const std::shared_ptr<AbstractTask> task);
-    bool done() const;
+    virtual ~MergeStrategy() {}
+
     void dump_options() const;
 
-    // Implementations of get_next have to decrease remaining_merges by one
+    bool done() const {
+        return remaining_merges == 0;
+    }
+    // implementations of get_next should decrease remaining_merges by one
+    // everytime they return a pair of transition systems which are merged next.
     virtual std::pair<int, int> get_next(const std::vector<TransitionSystem *> &all_transition_systems) = 0;
     virtual std::string name() const = 0;
 };

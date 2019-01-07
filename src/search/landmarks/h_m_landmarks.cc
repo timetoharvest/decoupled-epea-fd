@@ -1,6 +1,6 @@
 #include "h_m_landmarks.h"
+
 #include "../plugin.h"
-#include "../exact_timer.h"
 
 
 std::ostream & operator<<(std::ostream &os, const Fluent &p) {
@@ -303,7 +303,7 @@ void HMLandmarks::get_split_m_sets(
 // get subsets of state with size <= m
 void HMLandmarks::get_m_sets(int m,
                              std::vector<FluentSet> &subsets,
-                             const GlobalState &s) {
+                             const State &s) {
     FluentSet state_fluents;
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         state_fluents.push_back(std::make_pair(i, s[i]));
@@ -318,9 +318,9 @@ void HMLandmarks::print_proposition(const pair<int, int> &fluent) const {
 }
 
 void get_operator_precondition(int op_index, FluentSet &pc) {
-    GlobalOperator &op = g_operators[op_index];
+    Operator &op = g_operators[op_index];
 
-    const std::vector<GlobalCondition> &preconditions = op.get_preconditions();
+    const std::vector<Condition> &preconditions = op.get_preconditions();
     for (size_t i = 0; i < preconditions.size(); ++i)
         pc.push_back(make_pair(preconditions[i].var, preconditions[i].val));
 
@@ -330,10 +330,10 @@ void get_operator_precondition(int op_index, FluentSet &pc) {
 // get facts that are always true after the operator application
 // (effects plus prevail conditions)
 void get_operator_postcondition(int op_index, FluentSet &post) {
-    GlobalOperator &op = g_operators[op_index];
+    Operator &op = g_operators[op_index];
 
-    const std::vector<GlobalCondition> &preconditions = op.get_preconditions();
-    const std::vector<GlobalEffect> &effects = op.get_effects();
+    const std::vector<Condition> &preconditions = op.get_preconditions();
+    const std::vector<Effect> &effects = op.get_effects();
     std::vector<bool> has_effect_on_var(g_variable_domain.size(), false);
 
     for (size_t i = 0; i < effects.size(); ++i) {
@@ -586,7 +586,7 @@ HMLandmarks::HMLandmarks(const Options &opts)
     std::cout << "H_m_Landmarks(" << m_ << ")" << std::endl;
     if (!g_axioms.empty()) {
         cerr << "H_m_Landmarks do not support axioms" << endl;
-        exit_with(EXIT_UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     // need this to be able to print propositions for debugging
     // already called in global.cc
@@ -682,10 +682,10 @@ void HMLandmarks::calc_achievers() {
 }
 
 void HMLandmarks::free_unneeded_memory() {
-    release_vector_memory(h_m_table_);
-    release_vector_memory(pm_ops_);
-    release_vector_memory(interesting_);
-    release_vector_memory(unsat_pc_count_);
+    std::vector<HMEntry>().swap(h_m_table_);
+    std::vector<PMOp>().swap(pm_ops_);
+    std::vector<std::vector<bool> >().swap(interesting_);
+    std::vector<std::pair<int, std::vector<int> > >().swap(unsat_pc_count_);
 
     set_indices_.clear();
     lm_node_table_.clear();

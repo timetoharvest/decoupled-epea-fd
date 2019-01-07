@@ -1,76 +1,94 @@
 
-//  (C) Copyright Steve Cleary, Beman Dawes, Howard Hinnant & John Maddock 2000.
-//  Use, modification and distribution are subject to the Boost Software License,
-//  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
-//  http://www.boost.org/LICENSE_1_0.txt).
+// (C) Copyright Steve Cleary, Beman Dawes, Howard Hinnant & John Maddock 2000.
+// Permission to copy, use, modify, sell and distribute this software is 
+// granted provided this copyright notice appears in all copies. This software 
+// is provided "as is" without express or implied warranty, and with no claim 
+// as to its suitability for any purpose.
 //
-//  See http://www.boost.org/libs/type_traits for most recent version including documentation.
+// See http://www.boost.org for most recent version including documentation.
 
 #ifndef BOOST_TT_CONFIG_HPP_INCLUDED
 #define BOOST_TT_CONFIG_HPP_INCLUDED
 
 #ifndef BOOST_CONFIG_HPP
-#include <boost/config.hpp>
+#include "boost/config.hpp"
 #endif
 
-#include <boost/detail/workaround.hpp>
+//
+// Helper macros for builtin compiler support.
+// If your compiler has builtin support for any of the following
+// traits concepts, then redefine the appropriate macros to pick
+// up on the compiler support:
+//
+// (these should largely ignore cv-qualifiers)
+// BOOST_IS_CLASS(T) should evaluate to true if T is a class or struct type
+// BOOST_IS_ENUM(T) should evaluate to true if T is an enumerator type
+// BOOST_IS_UNION(T) should evaluate to true if T is a union type
+// BOOST_IS_POD(T) should evaluate to true if T is a POD type
+// BOOST_IS_EMPTY(T) should evaluate to true if T is an empty struct or union
+// BOOST_HAS_TRIVIAL_CONSTRUCTOR(T) should evaluate to true if "T x;" has no effect
+// BOOST_HAS_TRIVIAL_COPY(T) should evaluate to true if T(t) <==> memcpy
+// BOOST_HAS_TRIVIAL_ASSIGN(T) should evaluate to true if t = u <==> memcpy
+// BOOST_HAS_TRIVIAL_DESTRUCTOR(T) should evaluate to true if ~T() has no effect
+
+#ifdef BOOST_HAS_SGI_TYPE_TRAITS
+#   include "boost/type_traits/is_same.hpp"
+#   include <type_traits.h>
+#   define BOOST_IS_POD(T) ::boost::is_same< typename ::__type_traits<T>::is_POD_type, ::__true_type>::value
+#   define BOOST_HAS_TRIVIAL_CONSTRUCTOR(T) ::boost::is_same< typename ::__type_traits<T>::has_trivial_default_constructor, ::__true_type>::value
+#   define BOOST_HAS_TRIVIAL_COPY(T) ::boost::is_same< typename ::__type_traits<T>::has_trivial_copy_constructor, ::__true_type>::value
+#   define BOOST_HAS_TRIVIAL_ASSIGN(T) ::boost::is_same< typename ::__type_traits<T>::has_trivial_assignment_operator, ::__true_type>::value
+#   define BOOST_HAS_TRIVIAL_DESTRUCTOR(T) ::boost::is_same< typename ::__type_traits<T>::has_trivial_destructor, ::__true_type>::value
+#endif
+
+#ifndef BOOST_IS_CLASS
+#   define BOOST_IS_CLASS(T) false
+#endif
+
+#ifndef BOOST_IS_ENUM
+#   define BOOST_IS_ENUM(T) false
+#endif
+
+#ifndef BOOST_IS_UNION
+#   define BOOST_IS_UNION(T) false
+#endif
+
+#ifndef BOOST_IS_POD
+#   define BOOST_IS_POD(T) false
+#endif
+
+#ifndef BOOST_IS_EMPTY
+#   define BOOST_IS_EMPTY(T) false
+#endif
+
+#ifndef BOOST_HAS_TRIVIAL_CONSTRUCTOR
+#   define BOOST_HAS_TRIVIAL_CONSTRUCTOR(T) false
+#endif
+
+#ifndef BOOST_HAS_TRIVIAL_COPY
+#   define BOOST_HAS_TRIVIAL_COPY(T) false
+#endif
+
+#ifndef BOOST_HAS_TRIVIAL_ASSIGN
+#   define BOOST_HAS_TRIVIAL_ASSIGN(T) false
+#endif
+
+#ifndef BOOST_HAS_TRIVIAL_DESTRUCTOR
+#   define BOOST_HAS_TRIVIAL_DESTRUCTOR(T) false
+#endif
 
 //
 // whenever we have a conversion function with elipses
 // it needs to be declared __cdecl to suppress compiler
-// warnings from MS and Borland compilers (this *must*
-// appear before we include is_same.hpp below):
-#if defined(BOOST_MSVC) || (defined(__BORLANDC__) && !defined(BOOST_DISABLE_WIN32))
+// warnings from MS and Borland compilers:
+#if defined(BOOST_MSVC) || defined(__BORLANDC__)
 #   define BOOST_TT_DECL __cdecl
 #else
 #   define BOOST_TT_DECL /**/
 #endif
 
-# if (BOOST_WORKAROUND(__MWERKS__, < 0x3000)                         \
-    || BOOST_WORKAROUND(BOOST_MSVC, <= 1301)                        \
-    || !defined(__EDG_VERSION__) && BOOST_WORKAROUND(__GNUC__, < 3) \
-    || BOOST_WORKAROUND(__IBMCPP__, < 600 )                         \
-    || BOOST_WORKAROUND(__BORLANDC__, < 0x5A0)                      \
-    || defined(__ghs)                                               \
-    || BOOST_WORKAROUND(__HP_aCC, < 60700)           \
-    || BOOST_WORKAROUND(MPW_CPLUS, BOOST_TESTED_AT(0x890))          \
-    || BOOST_WORKAROUND(__SUNPRO_CC, BOOST_TESTED_AT(0x580)))       \
-    && defined(BOOST_NO_IS_ABSTRACT)
-
-#   define BOOST_TT_NO_CONFORMING_IS_CLASS_IMPLEMENTATION 1
-
-#endif
-
-#ifndef BOOST_TT_NO_CONFORMING_IS_CLASS_IMPLEMENTATION
-# define BOOST_TT_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION 1
-#endif
-
-//
-// Define BOOST_TT_NO_ELLIPSIS_IN_FUNC_TESTING 
-// when we can't test for function types with elipsis:
-//
-#if BOOST_WORKAROUND(__GNUC__, < 3)
-#  define BOOST_TT_NO_ELLIPSIS_IN_FUNC_TESTING
-#endif
-
-//
-// define BOOST_TT_TEST_MS_FUNC_SIGS
-// when we want to test __stdcall etc function types with is_function etc
-// (Note, does not work with Borland, even though it does support __stdcall etc):
-//
-#if defined(_MSC_EXTENSIONS) && !defined(__BORLANDC__)
-#  define BOOST_TT_TEST_MS_FUNC_SIGS
-#endif
-
-//
-// define BOOST_TT_NO_CV_FUNC_TEST
-// if tests for cv-qualified member functions don't 
-// work in is_member_function_pointer
-//
-#if BOOST_WORKAROUND(__MWERKS__, < 0x3000) || BOOST_WORKAROUND(__IBMCPP__, <= 600)
-#  define BOOST_TT_NO_CV_FUNC_TEST
+# if (defined(__MWERKS__) && __MWERKS__ >= 0x3000) || BOOST_MSVC > 1301 || defined(BOOST_NO_COMPILER_CONFIG)
+#   define BOOST_TT_HAS_CONFORMING_IS_CLASS_IMPLEMENTATION
 #endif
 
 #endif // BOOST_TT_CONFIG_HPP_INCLUDED
-
-

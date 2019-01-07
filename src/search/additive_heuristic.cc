@@ -1,15 +1,17 @@
 #include "additive_heuristic.h"
 
-#include "global_state.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
+#include "operator.h"
 #include "option_parser.h"
+#include "per_state_information.h"
 #include "plugin.h"
-#include "task_tools.h"
+#include "state.h"
 
 #include <cassert>
 #include <vector>
+
 using namespace std;
-
-
 
 
 // construction and destruction
@@ -62,10 +64,36 @@ void AdditiveHeuristic::setup_exploration_queue() {
     }
 }
 
+void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        int number_states = tag->get_number_states(factor);
+        LeafStateHash id(0);
+        while (number_states > 0){
+            if (tag->has_leaf_state(id, factor)){
+		--number_states;
+		int base_cost = 0;
+		if (search_type == STAR){
+		    base_cost = tag->get_cost_of_state(id, factor);
+		}
+		LeafState f = g_state_registry->lookup_leaf_state(id, factor);
+		for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+		    int var = g_leaves[factor][v];
+		    Proposition *effect = &propositions[var][f[var]];
+		    enqueue_if_necessary(effect, base_cost, 0);
+		}
+            }
+            ++id;
+        }
+    }
+}
+
 void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
-    for (FactProxy fact : state) {
-        Proposition *init_prop = get_proposition(fact);
-        enqueue_if_necessary(init_prop, 0, 0);
+    for (size_t var = 0; var < propositions.size(); ++var) {
+        if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
+            Proposition *init_prop = &propositions[var][state[var]];
+            enqueue_if_necessary(init_prop, 0, 0);
+        }
     }
 }
 
@@ -104,23 +132,23 @@ void AdditiveHeuristic::mark_preferred_operators(
         if (unary_op) { // We have not yet chained back to a start node.
             for (size_t i = 0; i < unary_op->precondition.size(); ++i)
                 mark_preferred_operators(state, unary_op->precondition[i]);
-            int operator_no = unary_op->operator_no;
-            if (unary_op->cost == unary_op->base_cost && operator_no != -1) {
+            OperatorID operator_no = unary_op->operator_no;
+            if (unary_op->cost == unary_op->base_cost && operator_no != OperatorID::no_operator) {
                 // Necessary condition for this being a preferred
                 // operator, which we use as a quick test before the
                 // more expensive applicability test.
                 // If we had no 0-cost operators and axioms to worry
                 // about, this would also be a sufficient condition.
-                OperatorProxy op = task_proxy.get_operators()[operator_no];
-                if (is_applicable(op, state))
-                    set_preferred(op);
+                const Operator &op = g_operators[operator_no];
+                if ((!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER) && op.is_applicable(state))
+                    // don't mark leaf ops as preferred
+                    set_preferred(operator_no);
             }
         }
     }
 }
 
 int AdditiveHeuristic::compute_add_and_ff(const State &state) {
-    setup_exploration_queue();
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
@@ -134,8 +162,13 @@ int AdditiveHeuristic::compute_add_and_ff(const State &state) {
     return total_cost;
 }
 
-int AdditiveHeuristic::compute_heuristic(const GlobalState &global_state) {
-    State state = convert_global_state(global_state);
+int AdditiveHeuristic::compute_heuristic(const State &state) {
+    setup_exploration_queue();
+    
+    if (search_type != STD){
+        setup_exploration_queue_decoupled_leaf_states(state);
+    }
+    
     int h = compute_add_and_ff(state);
     if (h != DEAD_END) {
         for (size_t i = 0; i < goal_propositions.size(); ++i)

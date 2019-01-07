@@ -17,12 +17,12 @@ public:
     LandmarkStatusManager(LandmarkGraph &graph);
     virtual ~LandmarkStatusManager();
 
-    std::vector<bool> &get_reached_landmarks(const GlobalState &state);
+    std::vector<bool> &get_reached_landmarks(const State &state);
 
-    bool update_lm_status(const GlobalState &state);
+    bool update_lm_status(const State &state);
 
     void set_landmarks_for_initial_state();
-    bool update_reached_lms(const GlobalState &parent_state, const GlobalOperator &op, const GlobalState &state);
+    bool update_reached_lms(const State &parent_state, const Operator &op, const State &state);
 };
 
 #endif

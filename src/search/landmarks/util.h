@@ -1,21 +1,21 @@
 #ifndef LANDMARKS_UTIL_H
 #define LANDMARKS_UTIL_H
 
-#include <unordered_map>
+#include "../utils/hash.h"
+
 #include <vector>
 
-struct GlobalCondition;
-class GlobalOperator;
+struct Condition;
+class Operator;
 class LandmarkNode;
 
-bool _possibly_fires(const std::vector<GlobalCondition> &conditions,
+bool _possibly_fires(const std::vector<Condition> &conditions,
                      const std::vector<std::vector<int> > &lvl_var);
 
-std::unordered_map<int, int> _intersect(
-    const std::unordered_map<int, int> &a,
-    const std::unordered_map<int, int> &b);
+utils::HashMap<int, int> _intersect(const utils::HashMap<int, int> &a,
+                                    const utils::HashMap<int, int> &b);
 
-bool _possibly_reaches_lm(const GlobalOperator &o,
+bool _possibly_reaches_lm(const Operator &o,
                           const std::vector<std::vector<int> > &lvl_var,
                           const LandmarkNode *lmp);
 

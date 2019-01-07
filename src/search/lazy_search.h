@@ -1,8 +1,7 @@
 #ifndef LAZY_SEARCH_H
 #define LAZY_SEARCH_H
 
-#include "evaluation_context.h"
-#include "global_state.h"
+#include "state.h"
 #include "scalar_evaluator.h"
 #include "search_engine.h"
 #include "search_progress.h"
@@ -12,11 +11,11 @@
 
 #include <vector>
 
-class GlobalOperator;
+class Operator;
 class Heuristic;
 class Options;
 
-typedef std::pair<StateID, const GlobalOperator *> OpenListEntryLazy;
+typedef std::pair<StateID, OperatorID> OpenListEntryLazy;
 
 class LazySearch : public SearchEngine {
 protected:
@@ -31,33 +30,28 @@ protected:
     std::vector<Heuristic *> preferred_operator_heuristics;
     std::vector<Heuristic *> estimate_heuristics;
 
-    GlobalState current_state;
+    State current_state;
     StateID current_predecessor_id;
-    const GlobalOperator *current_operator;
+    OperatorID current_operator;
     int current_g;
     int current_real_g;
-    EvaluationContext current_eval_context;
 
-    virtual void initialize() override;
-    virtual SearchStatus step() override;
+    virtual void initialize();
+    virtual SearchStatus step();
 
     void generate_successors();
     SearchStatus fetch_next_state();
 
     void reward_progress();
 
-    void get_successor_operators(std::vector<const GlobalOperator *> &ops);
-
-    // TODO: Move into SearchEngine?
-    void print_checkpoint_line(int g) const;
-
+    void get_successor_operators(std::vector<OperatorID> &ops);
 public:
-    explicit LazySearch(const Options &opts);
-    virtual ~LazySearch() = default;
 
+    LazySearch(const Options &opts);
+    virtual ~LazySearch();
     void set_pref_operator_heuristics(std::vector<Heuristic *> &heur);
 
-    virtual void print_statistics() const override;
+    virtual void statistics() const;
 };
 
 #endif

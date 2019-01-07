@@ -2,71 +2,59 @@
 
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../utilities.h"
+#include "../utils/system.h"
 
 #include <cassert>
-#include <iostream>
+#include <cstdlib>
 
 using namespace std;
 
 MergeLinear::MergeLinear(const Options &opts)
     : MergeStrategy(),
-      variable_order_type(VariableOrderType(opts.get_enum("variable_order"))),
+      order(variable_order_finder::VariableOrderType(opts.get_enum("variable_order"))),
       need_first_index(true) {
 }
 
-void MergeLinear::initialize(const shared_ptr<AbstractTask> task) {
-    MergeStrategy::initialize(task);
-    variable_order_finder = make_unique_ptr<VariableOrderFinder>(
-        task, variable_order_type);
-}
-
-pair<int, int> MergeLinear::get_next(const vector<TransitionSystem *> &all_transition_systems) {
-    assert(initialized());
-    assert(!done());
-    assert(!variable_order_finder->done());
+pair<int, int> MergeLinear::get_next(const std::vector<TransitionSystem *> &all_transition_systems) {
+    assert(!done() && !order.done());
 
     int first;
     if (need_first_index) {
         need_first_index = false;
-        first = variable_order_finder->next();
+        first = order.next();
         cout << "First variable: " << first << endl;
     } else {
         // The most recent composite transition system is appended at the end of
         // all_transition_systems in merge_and_shrink.cc
         first = all_transition_systems.size() - 1;
     }
-    int second = variable_order_finder->next();
+    int second = order.next();
     cout << "Next variable: " << second << endl;
     assert(all_transition_systems[first]);
     assert(all_transition_systems[second]);
     --remaining_merges;
-    if (done() && !variable_order_finder->done()) {
+    if (done() && !order.done()) {
         cerr << "Variable order finder not done, but no merges remaining" << endl;
-        exit_with(EXIT_CRITICAL_ERROR);
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
     return make_pair(first, second);
 }
 
 void MergeLinear::dump_strategy_specific_options() const {
-    variable_order_finder->dump();
+    cout << "Linear merge strategy: ";
+    variable_order_finder::dump_variable_order_type(order.variable_order_type);
 }
 
 string MergeLinear::name() const {
     return "linear";
 }
 
-static shared_ptr<MergeStrategy>_parse(OptionParser &parser) {
-    parser.document_synopsis(
-        "Linear merge strategies",
-        "This merge strategy implements several linear merge orders, which "
-        "are described in the paper:\n\n"
-        " * Malte Helmert, Patrik Haslum and Joerg Hoffmann.<<BR>>\n"
-        " [Flexible Abstraction Heuristics for Optimal Sequential Planning "
-        "http://ai.cs.unibas.ch/papers/helmert-et-al-icaps2007.pdf]<<BR>>\n "
-        "In //Proceedings of the Seventeenth International Conference on "
-        "Automated Planning and Scheduling (ICAPS 2007)//, pp. 176-183. 2007.");
+static MergeStrategy *_parse(OptionParser &parser) {
     vector<string> merge_strategies;
+    //TODO: it's a bit dangerous that the merge strategies here
+    // have to be specified exactly in the same order
+    // as in the enum definition. Try to find a way around this,
+    // or at least raise an error when the order is wrong.
     merge_strategies.push_back("CG_GOAL_LEVEL");
     merge_strategies.push_back("CG_GOAL_RANDOM");
     merge_strategies.push_back("GOAL_CG_LEVEL");
@@ -79,9 +67,9 @@ static shared_ptr<MergeStrategy>_parse(OptionParser &parser) {
 
     Options opts = parser.parse();
     if (parser.dry_run())
-        return nullptr;
+        return 0;
     else
-        return make_shared<MergeLinear>(opts);
+        return new MergeLinear(opts);
 }
 
-static PluginShared<MergeStrategy> _plugin("merge_linear", _parse);
+static Plugin<MergeStrategy> _plugin("merge_linear", _parse);

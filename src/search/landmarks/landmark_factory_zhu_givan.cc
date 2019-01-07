@@ -1,16 +1,17 @@
 #include "landmark_factory_zhu_givan.h"
 #include "landmark_graph.h"
-#include "../global_operator.h"
-#include "../global_state.h"
+#include "../operator.h"
+#include "../state.h"
 #include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 
 #include <iostream>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <vector>
+#include <utility>
+
+using namespace std;
+
 
 LandmarkFactoryZhuGivan::LandmarkFactoryZhuGivan(const Options &opts)
     : LandmarkFactory(opts) {
@@ -85,10 +86,10 @@ LandmarkFactoryZhuGivan::proposition_layer LandmarkFactoryZhuGivan::build_relaxe
     assert(!triggers.empty());
 
     proposition_layer current_prop_layer;
-    unordered_set<int> triggered(g_operators.size() + g_axioms.size());
+    utils::HashSet<int> triggered;
 
     // set initial layer
-    const GlobalState &initial_state = g_initial_state();
+    const State &initial_state = g_initial_state();
     current_prop_layer.resize(g_variable_domain.size());
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         current_prop_layer[i].resize(g_variable_domain[i]);
@@ -108,10 +109,11 @@ LandmarkFactoryZhuGivan::proposition_layer LandmarkFactoryZhuGivan::build_relaxe
     bool changes = true;
     while (changes) {
         proposition_layer next_prop_layer(current_prop_layer);
-        unordered_set<int> next_triggered;
+        utils::HashSet<int> next_triggered;
         changes = false;
-        for (int op_index : triggered) {
-            const GlobalOperator &op = lm_graph->get_operator_for_lookup_index(op_index);
+        for (utils::HashSet<int>::const_iterator it = triggered.begin(); it
+             != triggered.end(); ++it) {
+            const Operator &op = lm_graph->get_operator_for_lookup_index(*it);
             if (operator_applicable(op, current_prop_layer)) {
                 lm_set changed = apply_operator_and_propagate_labels(op,
                                                                      current_prop_layer, next_prop_layer);
@@ -132,10 +134,10 @@ LandmarkFactoryZhuGivan::proposition_layer LandmarkFactoryZhuGivan::build_relaxe
     return current_prop_layer;
 }
 
-bool LandmarkFactoryZhuGivan::operator_applicable(const GlobalOperator &op,
+bool LandmarkFactoryZhuGivan::operator_applicable(const Operator &op,
                                                   const proposition_layer &state) const {
     // test preconditions
-    const vector<GlobalCondition> &preconditions = op.get_preconditions();
+    const vector<Condition> &preconditions = op.get_preconditions();
     for (size_t i = 0; i < preconditions.size(); ++i)
         if (!state[preconditions[i].var][preconditions[i].val].reached())
             return false;
@@ -143,7 +145,7 @@ bool LandmarkFactoryZhuGivan::operator_applicable(const GlobalOperator &op,
 }
 
 bool LandmarkFactoryZhuGivan::operator_cond_effect_fires(
-    const vector<GlobalCondition> &cond, const proposition_layer &state) const {
+    const vector<Condition> &cond, const proposition_layer &state) const {
     for (size_t i = 0; i < cond.size(); ++i)
         if (!state[cond[i].var][cond[i].val].reached())
             return false;
@@ -173,13 +175,13 @@ static lm_set _intersection(const lm_set &a, const lm_set &b) {
     return result;
 }
 
-lm_set LandmarkFactoryZhuGivan::union_of_precondition_labels(const GlobalOperator &op,
+lm_set LandmarkFactoryZhuGivan::union_of_precondition_labels(const Operator &op,
                                                              const proposition_layer &current) const {
     lm_set result;
 
     // TODO This looks like an O(n^2) algorithm where O(n log n) would do, a
     // bit like the Python string concatenation anti-pattern.
-    const vector<GlobalCondition> &preconditions = op.get_preconditions();
+    const vector<Condition> &preconditions = op.get_preconditions();
     for (size_t i = 0; i < preconditions.size(); ++i)
         result =
             _union(result,
@@ -189,7 +191,7 @@ lm_set LandmarkFactoryZhuGivan::union_of_precondition_labels(const GlobalOperato
 }
 
 lm_set LandmarkFactoryZhuGivan::union_of_condition_labels(
-    const vector<GlobalCondition> &cond, const proposition_layer &current) const {
+    const vector<Condition> &cond, const proposition_layer &current) const {
     lm_set result;
     for (size_t i = 0; i < cond.size(); ++i)
         result = _union(result, current[cond[i].var][cond[i].val].labels);
@@ -222,14 +224,14 @@ static bool _propagate_labels(lm_set &labels, const lm_set &new_labels,
 }
 
 lm_set LandmarkFactoryZhuGivan::apply_operator_and_propagate_labels(
-    const GlobalOperator &op, const proposition_layer &current,
+    const Operator &op, const proposition_layer &current,
     proposition_layer &next) const {
     assert(operator_applicable(op, current));
 
     lm_set result;
     lm_set precond_label_union = union_of_precondition_labels(op, current);
 
-    const vector<GlobalEffect> &effects = op.get_effects();
+    const vector<Effect> &effects = op.get_effects();
     for (size_t i = 0; i < effects.size(); ++i) {
         const int var = effects[i].var;
         const int post = effects[i].val;
@@ -265,14 +267,14 @@ void LandmarkFactoryZhuGivan::compute_triggers() {
         // collect possible triggers first
         lm_set t;
 
-        const GlobalOperator &op = lm_graph->get_operator_for_lookup_index(i);
-        const vector<GlobalCondition> &preconditions = op.get_preconditions();
+        const Operator &op = lm_graph->get_operator_for_lookup_index(i);
+        const vector<Condition> &preconditions = op.get_preconditions();
         for (size_t j = 0; j < preconditions.size(); ++j)
             t.insert(make_pair(preconditions[j].var, preconditions[j].val));
 
-        const vector<GlobalEffect> &effects = op.get_effects();
+        const vector<Effect> &effects = op.get_effects();
         for (size_t j = 0; j < effects.size(); ++j) {
-            const vector<GlobalCondition> &cond = effects[j].conditions;
+            const vector<Condition> &cond = effects[j].conditions;
             for (size_t k = 0; k < cond.size(); ++k)
                 t.insert(make_pair(cond[k].var, cond[k].val));
         }

@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-import multiprocessing
 import os
 import subprocess
 import sys
@@ -11,9 +10,8 @@ import configs
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(DIR))
-BENCHMARKS_DIR = os.path.join(REPO, "benchmarks")
-SRC_DIR = os.path.join(REPO, "src")
-FAST_DOWNWARD = os.path.join(SRC_DIR, "fast-downward.py")
+BENCHMARKS_DIR = os.path.join(REPO, "misc", "tests", "benchmarks")
+FAST_DOWNWARD = os.path.join(REPO, "fast-downward.py")
 
 TASKS = [os.path.join(BENCHMARKS_DIR, path) for path in [
     "miconic/s1-0.pddl",
@@ -24,9 +22,6 @@ CONFIGS.update(configs.default_configs_optimal(core=True, ipc=True, extended=Tru
 CONFIGS.update(configs.default_configs_satisficing(core=True, ipc=True, extended=True))
 CONFIGS.update(configs.task_transformation_test_configs())
 CONFIGS.update(configs.regression_test_configs())
-
-if "astar_selmax_lmcut_lmcount" in CONFIGS:
-    del CONFIGS["astar_selmax_lmcut_lmcount"]
 
 if os.name == "nt":
     # No support for portfolios on Windows
@@ -54,17 +49,16 @@ def run_plan_script(task, nick, config, debug):
 
 
 def cleanup():
-    subprocess.check_call([sys.executable, os.path.join(SRC_DIR, "cleanup.py")])
+    subprocess.check_call([sys.executable, FAST_DOWNWARD, "--cleanup"])
 
 
 def main():
-    # We cannot call bash scripts on Windows. After we switched to cmake,
-    # we want to replace build_all by a python script.
+    # On Windows, ./build.py has to be called from the correct environment.
+    # Since we want this script to work even when we are in a regular
+    # shell, we do not build on Windows. If the planner is not yet built,
+    # the driver script will complain about this.
     if os.name == "posix":
-        jobs = multiprocessing.cpu_count()
-        cmd = ["./build_all", "-j{}".format(jobs)]
-        subprocess.check_call(cmd, cwd=SRC_DIR)
-        subprocess.check_call(cmd + ["debug"], cwd=SRC_DIR)
+        subprocess.check_call(["./build.py", "release32", "debug32"], cwd=REPO)
     for task in TASKS:
         for nick, config in CONFIGS.items():
             for debug in [False, True]:

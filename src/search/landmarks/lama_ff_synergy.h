@@ -2,53 +2,96 @@
 #define LANDMARKS_LAMA_FF_SYNERGY_H
 
 #include "../heuristic.h"
-
-#include <memory>
-
-class Exploration;
-class LandmarkCountHeuristic;
-
-class FFSlaveHeuristic;
-class LamaMasterHeuristic;
-
-/*
-  TODO: The synergy class stores EvaluationResult objects for "the
-  current state", a concept we want to move away with.
-
-  A different and perhaps better implementation would get rid of the
-  lama_result and ff_result members of LamaFFSynergy and instead only
-  use the EvaluationContext. But this would require either extending
-  the interface of EvaluationContext or perform some more significant
-  restructuring of the landmark code. We have wanted to do the latter
-  for a while, so it perhaps make sense to defer a change of the
-  synergy implementation until this point.
-*/
+#include "exploration.h"
+#include "landmark_count_heuristic.h"
 
 class LamaFFSynergy {
-    friend class LamaMasterHeuristic;
-    friend class FFSlaveHeuristic;
+    class HeuristicProxy : public Heuristic {
+protected:
+        LamaFFSynergy *synergy;
+        bool is_first_proxy;
 
-    std::unique_ptr<LamaMasterHeuristic> lama_master_heuristic;
-    std::unique_ptr<FFSlaveHeuristic> ff_slave_heuristic;
-
-    std::unique_ptr<LandmarkCountHeuristic> lama_heuristic;
-    Exploration *exploration;
-
-    EvaluationResult lama_result;
-    EvaluationResult ff_result;
-
-    bool lama_reach_state(
-        const GlobalState &parent_state, const GlobalOperator &op,
-        const GlobalState &state);
-
-    void compute_heuristics(EvaluationContext &eval_context);
-
+        virtual void initialize();
+        virtual int get_heuristic_value() = 0;
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) = 0;
 public:
-    explicit LamaFFSynergy(const Options &opts);
-    ~LamaFFSynergy() = default;
+        HeuristicProxy(LamaFFSynergy *synergy_);
+        virtual ~HeuristicProxy() {}
 
-    Heuristic *get_lama_heuristic_proxy() const;
-    Heuristic *get_ff_heuristic_proxy() const;
+        virtual int compute_heuristic(const State &state) {
+            if (is_first_proxy)
+                synergy->compute_heuristics(state);
+            return get_heuristic_value();
+        }
+    };
+
+    class FFHeuristicProxy : public HeuristicProxy {
+        virtual int get_heuristic_value() {
+            return synergy->ff_heuristic_value;
+        }
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) {
+            synergy->get_ff_preferred_operators(result);
+        }
+public:
+        FFHeuristicProxy(LamaFFSynergy *synergy_) : HeuristicProxy(synergy_) {}
+    };
+
+    class LamaHeuristicProxy : public HeuristicProxy {
+        virtual int get_heuristic_value() {
+            return synergy->lama_heuristic_value;
+        }
+        virtual void get_preferred_operators(std::vector<OperatorID> &result) {
+            synergy->get_lama_preferred_operators(result);
+        }
+public:
+        LamaHeuristicProxy(LamaFFSynergy *synergy_) : HeuristicProxy(synergy_) {}
+        virtual bool reach_state(const State &parent_state, const Operator &op,
+                                 const State &state) {
+            return synergy->lama_reach_state(parent_state, op, state);
+        }
+    };
+
+    friend class HeuristicProxy;
+    friend class LamaHeuristicProxy;
+    friend class FFHeuristicProxy;
+
+    LamaHeuristicProxy lama_heuristic_proxy;
+    FFHeuristicProxy ff_heuristic_proxy;
+    LandmarkCountHeuristic *lama_heuristic;
+    Exploration *exploration;
+    bool lm_pref;
+    bool lm_admissible;
+    bool lm_optimal;
+    bool use_action_landmarks;
+    std::vector<OperatorID> lama_preferred_operators;
+    std::vector<OperatorID> ff_preferred_operators;
+    bool initialized;
+
+    void initialize() {
+        // Value change only serves to determine first proxy.
+        initialized = true;
+    }
+
+    bool lama_reach_state(const State &parent_state, const Operator &op,
+                          const State &state);
+
+    void compute_heuristics(const State &);
+    void get_lama_preferred_operators(std::vector<OperatorID> &result);
+    void get_ff_preferred_operators(std::vector<OperatorID> &result);
+public:
+    LamaFFSynergy(const Options &opts);
+    ~LamaFFSynergy() {}
+
+    int lama_heuristic_value;
+    int ff_heuristic_value;
+
+    Heuristic *get_ff_heuristic_proxy() {
+        return &ff_heuristic_proxy;
+    }
+
+    Heuristic *get_lama_heuristic_proxy() {
+        return &lama_heuristic_proxy;
+    }
 };
 
 #endif

@@ -1,20 +1,17 @@
-#include "globals.h"
 #include "option_parser.h"
+
 #include "ext/tree_util.hh"
+#include "factoring.h"
 #include "plugin.h"
-#include "rng.h"
 
 #include <algorithm>
 #include <iostream>
-#include <stdexcept>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 using namespace std;
-
-
-const string OptionParser::NONE = "<none>";
 
 
 ArgError::ArgError(std::string msg_) : msg(msg_) {
@@ -44,6 +41,8 @@ void OptionParser::warning(string msg) {
 Functions for printing help:
 */
 
+DocStore *DocStore::instance_ = 0;
+
 void OptionParser::set_help_mode(bool m) {
     dry_run_ = dry_run_ && m;
     help_mode_ = m;
@@ -64,15 +63,13 @@ static void get_help(string k) {
     pt.insert(pt.begin(), ParseNode(k));
     get_help_templ<SearchEngine *>(pt);
     get_help_templ<Heuristic *>(pt);
-    get_help_templ<shared_ptr<AbstractTask> >(pt);
     get_help_templ<ScalarEvaluator *>(pt);
     get_help_templ<Synergy *>(pt);
     get_help_templ<LandmarkGraph *>(pt);
     Plugin<OpenList<int> >::register_open_lists();
     get_help_templ<OpenList<int> *>(pt);
-    get_help_templ<shared_ptr<MergeStrategy> >(pt);
-    get_help_templ<shared_ptr<ShrinkStrategy> >(pt);
-    get_help_templ<shared_ptr<Labels> >(pt);
+    get_help_templ<MergeStrategy *>(pt);
+    get_help_templ<ShrinkStrategy *>(pt);
 }
 
 template <class T>
@@ -90,15 +87,13 @@ static void get_full_help_templ() {
 static void get_full_help() {
     get_full_help_templ<SearchEngine *>();
     get_full_help_templ<Heuristic *>();
-    get_full_help_templ<shared_ptr<AbstractTask> >();
     get_full_help_templ<ScalarEvaluator *>();
     get_full_help_templ<Synergy *>();
     get_full_help_templ<LandmarkGraph *>();
     Plugin<OpenList<int> >::register_open_lists();
     get_full_help_templ<OpenList<int> *>();
-    get_full_help_templ<shared_ptr<MergeStrategy> >();
-    get_full_help_templ<shared_ptr<ShrinkStrategy> >();
-    get_full_help_templ<shared_ptr<Labels> >();
+    get_full_help_templ<MergeStrategy *>();
+    get_full_help_templ<ShrinkStrategy *>();
 }
 
 
@@ -137,7 +132,7 @@ static void predefine_heuristic(std::string s, bool dry_run) {
     std::string rs = s.substr(split + 1);
     OptionParser op(rs, dry_run);
     if (definees.size() == 1) { //normal predefinition
-        Predefinitions<Heuristic *>::instance()->predefine(
+        Predefinitions<Heuristic * >::instance()->predefine(
             definees[0], op.start_parsing<Heuristic *>());
     } else if (definees.size() > 1) { //synergy
         if (!dry_run) {
@@ -148,9 +143,9 @@ static void predefine_heuristic(std::string s, bool dry_run) {
                     definees[i], heur[i]);
             }
         } else {
-            for (const string &definee : definees) {
+            for (size_t i = 0; i < definees.size(); ++i) {
                 Predefinitions<Heuristic *>::instance()->predefine(
-                    definee, nullptr);
+                    definees[i], 0);
             }
         }
     } else {
@@ -180,52 +175,6 @@ static void predefine_lmgraph(std::string s, bool dry_run) {
 Parse command line options
 */
 
-template<class T>
-void _check_bounds(
-    OptionParser &parser, const string &key, T value,
-    T lower_bound, T upper_bound) {
-    if (lower_bound > upper_bound)
-        ABORT("lower bound is greater than upper bound for " + key);
-    if (value < lower_bound || value > upper_bound) {
-        stringstream stream;
-        stream << key << " (" << value << ") must be in range ["
-               << lower_bound << ", " << upper_bound << "]";
-        parser.error(stream.str());
-    }
-}
-
-template<>
-void OptionParser::check_bounds<int>(
-    const string &key, const int &value, const Bounds &bounds) {
-    int lower_bound = numeric_limits<int>::lowest();
-    int upper_bound = numeric_limits<int>::max();
-    if (!bounds.min.empty()) {
-        OptionParser bound_parser(bounds.min, dry_run());
-        lower_bound = TokenParser<int>::parse(bound_parser);
-    }
-    if (!bounds.max.empty()) {
-        OptionParser bound_parser(bounds.max, dry_run());
-        upper_bound = TokenParser<int>::parse(bound_parser);
-    }
-    _check_bounds(*this, key, value, lower_bound, upper_bound);
-}
-
-template<>
-void OptionParser::check_bounds<double>(
-    const string &key, const double &value, const Bounds &bounds) {
-    double lower_bound = -numeric_limits<double>::infinity();
-    double upper_bound = numeric_limits<double>::infinity();
-    if (!bounds.min.empty()) {
-        OptionParser bound_parser(bounds.min, dry_run());
-        lower_bound = TokenParser<double>::parse(bound_parser);
-    }
-    if (!bounds.max.empty()) {
-        OptionParser bound_parser(bounds.max, dry_run());
-        upper_bound = TokenParser<double>::parse(bound_parser);
-    }
-    _check_bounds(*this, key, value, lower_bound, upper_bound);
-}
-
 SearchEngine *OptionParser::parse_cmd_line(
     int argc, const char **argv, bool dry_run, bool is_unit_cost) {
     vector<string> args;
@@ -245,22 +194,26 @@ SearchEngine *OptionParser::parse_cmd_line(
     return parse_cmd_line_aux(args, dry_run);
 }
 
+void OptionParser::parse_decoupled_search(int argc, const char** argv) {
+    for (int i = 0; i < argc; i++){
+        string arg = argv[i];
+        if (arg.compare("--decoupling") == 0){
+            if (i == argc - 1){
+                throw ArgError("missing argument after --decoupling");
+            }
 
-int OptionParser::parse_int_arg(const string &name, const string &value) {
-    try {
-        return stoi(value);
-    } catch (invalid_argument &) {
-        throw ArgError("argument for " + name + " must be an integer");
-    } catch (out_of_range &) {
-        throw ArgError("argument for " + name + " is out of range");
+            OptionParser dry(argv[i+1], true); // dry run
+            dry.start_parsing<Factoring *>();
+
+            OptionParser p(argv[i+1], false);
+            g_factoring = unique_ptr<Factoring>(p.start_parsing<Factoring *>());
+        }
     }
 }
 
-
 SearchEngine *OptionParser::parse_cmd_line_aux(
-    const vector<string> &args, bool dry_run) {
+        const vector<string> &args, bool dry_run) {
     SearchEngine *engine(0);
-    // TODO: Remove code duplication.
     for (size_t i = 0; i < args.size(); ++i) {
         string arg = args[i];
         bool is_last = (i == args.size() - 1);
@@ -280,13 +233,6 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             ++i;
             OptionParser p(args[i], dry_run);
             engine = p.start_parsing<SearchEngine *>();
-        } else if (arg.compare("--random-seed") == 0) {
-            if (is_last)
-                throw ArgError("missing argument after --random-seed");
-            ++i;
-            int seed = parse_int_arg(arg, args[i]);
-            g_rng.seed(seed);
-            cout << "random seed: " << seed << endl;
         } else if ((arg.compare("--help") == 0) && dry_run) {
             cout << "Help:" << endl;
             bool txt2tags = false;
@@ -317,18 +263,25 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             cout << "Help output finished." << endl;
             exit(0);
         } else if (arg.compare("--internal-plan-file") == 0) {
-            if (is_last)
+            if (is_last){
                 throw ArgError("missing argument after --internal-plan-file");
+            }
             ++i;
             g_plan_filename = args[i];
-        } else if (arg.compare("--internal-previous-portfolio-plans") == 0) {
-            if (is_last)
+        } else if (arg == "--internal-previous-portfolio-plans") {
+            if (is_last){
                 throw ArgError("missing argument after --internal-previous-portfolio-plans");
+            }
             ++i;
             g_is_part_of_anytime_portfolio = true;
-            g_num_previously_generated_plans = parse_int_arg(arg, args[i]);
-            if (g_num_previously_generated_plans < 0)
+            g_num_previously_generated_plans = atoi(args[i].c_str());
+            if (g_num_previously_generated_plans < 0){
                 throw ArgError("argument for --internal-previous-portfolio-plans must be positive");
+            }
+        } else if (arg.compare("--decoupling") == 0) {
+            // decoupled search settings have to be read in separately in parse_factored_search()
+            // because factoring needs to be done within the read_everything function
+            ++i;
         } else {
             throw ArgError("unknown option " + arg);
         }
@@ -445,7 +398,6 @@ OptionParser::OptionParser(const string config, bool dr)
       dry_run_(dr),
       help_mode_(false),
       next_unparsed_argument(first_child_of_root(parse_tree)) {
-    set_unparsed_config();
 }
 
 
@@ -455,16 +407,10 @@ OptionParser::OptionParser(ParseTree pt, bool dr)
       dry_run_(dr),
       help_mode_(false),
       next_unparsed_argument(first_child_of_root(parse_tree)) {
-    set_unparsed_config();
 }
 
-void OptionParser::set_unparsed_config() {
-    ostringstream stream;
-    kptree::print_tree_bracketed<ParseNode>(parse_tree, stream);
-    unparsed_config = stream.str();
-}
 
-static string str_to_lower(string s) {
+string str_to_lower(string s) {
     transform(s.begin(), s.end(), s.begin(), ::tolower);
     return s;
 }
@@ -472,7 +418,8 @@ static string str_to_lower(string s) {
 void OptionParser::add_enum_option(string k,
                                    vector<string > enumeration,
                                    string h, string def_val,
-                                   vector<string> enum_docs) {
+                                   vector<string> enum_docs,
+                                   const OptionFlags &flags) {
     if (help_mode_) {
         ValueExplanations value_explanations;
         string enum_descr = "{";
@@ -490,17 +437,16 @@ void OptionParser::add_enum_option(string k,
 
         DocStore::instance()->add_arg(parse_tree.begin()->value,
                                       k, h,
-                                      enum_descr, def_val,
-                                      Bounds::unlimited(),
+                                      enum_descr, def_val, flags.mandatory,
                                       value_explanations);
         return;
     }
 
     //enum arguments can be given by name or by number:
     //first parse the corresponding string like a normal argument...
-    add_option<string>(k, h, def_val);
+    add_option<string>(k, h, def_val, flags);
 
-    if (!opts.contains(k))
+    if (!flags.mandatory && !opts.contains(k))
         return;
 
     string name = str_to_lower(opts.get<string>(k));
@@ -555,13 +501,7 @@ Options OptionParser::parse() {
         }
         last_key = pti->key;
     }
-    opts.set_unparsed_config(unparsed_config);
     return opts;
-}
-
-bool OptionParser::is_valid_option(const std::string &k) const {
-    assert(!help_mode());
-    return find(valid_keys.begin(), valid_keys.end(), k) != valid_keys.end();
 }
 
 void OptionParser::document_values(string argument,
@@ -605,6 +545,10 @@ bool OptionParser::help_mode() const {
     return help_mode_;
 }
 
-const ParseTree *OptionParser::get_parse_tree() {
+void OptionParser::set_parse_tree(const ParseTree &pt) {
+    parse_tree = pt;
+}
+
+ParseTree *OptionParser::get_parse_tree() {
     return &parse_tree;
 }

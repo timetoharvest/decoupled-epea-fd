@@ -1,17 +1,14 @@
-//  (C) Copyright John Maddock 2001 - 2003. 
-//  (C) Copyright Jens Maurer 2001. 
-//  (C) Copyright David Abrahams 2003. 
-//  (C) Copyright Boris Gubenko 2007. 
-//  Use, modification and distribution are subject to the 
-//  Boost Software License, Version 1.0. (See accompanying file 
-//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//  (C) Copyright Boost.org 2001. Permission to copy, use, modify, sell and
+//  distribute this software is granted provided this copyright notice appears
+//  in all copies. This software is provided "as is" without express or implied
+//  warranty, and with no claim as to its suitability for any purpose.
 
 //  See http://www.boost.org for most recent version.
 
 //  Rogue Wave std lib:
 
 #if !defined(__STD_RWCOMPILER_H__) && !defined(_RWSTD_VER)
-#  include <boost/config/no_tr1/utility.hpp>
+#  include <utility>
 #  if !defined(__STD_RWCOMPILER_H__) && !defined(_RWSTD_VER)
 #     error This is not the Rogue Wave standard library
 #  endif
@@ -29,14 +26,8 @@
 
 #ifndef _RWSTD_VER
 #  define BOOST_STDLIB "Rogue Wave standard library version (Unknown version)"
-#elif _RWSTD_VER < 0x04010200
- #  define BOOST_STDLIB "Rogue Wave standard library version " BOOST_STRINGIZE(_RWSTD_VER)
 #else
-#  ifdef _RWSTD_VER_STR
-#    define BOOST_STDLIB "Apache STDCXX standard library version " _RWSTD_VER_STR
-#  else
-#    define BOOST_STDLIB "Apache STDCXX standard library version " BOOST_STRINGIZE(_RWSTD_VER)
-#  endif
+#  define BOOST_STDLIB "Rogue Wave standard library version " BOOST_STRINGIZE(_RWSTD_VER)
 #endif
 
 //
@@ -47,12 +38,6 @@
 #if BOOST_RWSTD_VER < 0x020200
 #  define BOOST_NO_LIMITS_COMPILE_TIME_CONSTANTS
 #endif
-
-// Sun CC 5.5 patch 113817-07 adds long long specialization, but does not change the
-// library version number (http://sunsolve6.sun.com/search/document.do?assetkey=1-21-113817):
-#if BOOST_RWSTD_VER <= 0x020101 && (!defined(__SUNPRO_CC) || (__SUNPRO_CC < 0x550))
-#  define BOOST_NO_LONG_LONG_NUMERIC_LIMITS
-# endif
 
 //
 // Borland version of numeric_limits lacks __int64 specialisation:
@@ -126,56 +111,4 @@
 #  define BOOST_NO_STD_OUTPUT_ITERATOR_ASSIGN
 #endif
 
-//
-// Disable BOOST_HAS_LONG_LONG when the library has no support for it.
-//
-#if !defined(_RWSTD_LONG_LONG) && defined(BOOST_HAS_LONG_LONG)
-#  undef BOOST_HAS_LONG_LONG
-#endif
-
-//
-// check that on HP-UX, the proper RW library is used
-//
-#if defined(__HP_aCC) && !defined(_HP_NAMESPACE_STD)
-#  error "Boost requires Standard RW library. Please compile and link with -AA"
-#endif
-
-//
-// Define macros specific to RW V2.2 on HP-UX
-//
-#if defined(__HP_aCC) && (BOOST_RWSTD_VER == 0x02020100)
-#  ifndef __HP_TC1_MAKE_PAIR
-#    define __HP_TC1_MAKE_PAIR
-#  endif
-#  ifndef _HP_INSTANTIATE_STD2_VL
-#    define _HP_INSTANTIATE_STD2_VL
-#  endif
-#endif
-
-//  C++0x headers not yet implemented
-//
-#  define BOOST_NO_0X_HDR_ARRAY
-#  define BOOST_NO_0X_HDR_CHRONO
-#  define BOOST_NO_0X_HDR_CODECVT
-#  define BOOST_NO_0X_HDR_CONCEPTS
-#  define BOOST_NO_0X_HDR_CONDITION_VARIABLE
-#  define BOOST_NO_0X_HDR_CONTAINER_CONCEPTS
-#  define BOOST_NO_0X_HDR_FORWARD_LIST
-#  define BOOST_NO_0X_HDR_FUTURE
-#  define BOOST_NO_0X_HDR_INITIALIZER_LIST
-#  define BOOST_NO_0X_HDR_ITERATOR_CONCEPTS
-#  define BOOST_NO_0X_HDR_MEMORY_CONCEPTS
-#  define BOOST_NO_0X_HDR_MUTEX
-#  define BOOST_NO_0X_HDR_RANDOM
-#  define BOOST_NO_0X_HDR_RATIO
-#  define BOOST_NO_0X_HDR_REGEX
-#  define BOOST_NO_0X_HDR_SYSTEM_ERROR
-#  define BOOST_NO_0X_HDR_THREAD
-#  define BOOST_NO_0X_HDR_TUPLE
-#  define BOOST_NO_0X_HDR_TYPE_TRAITS
-#  define BOOST_NO_0X_HDR_TYPEINDEX
-#  define BOOST_NO_STD_UNORDERED        // deprecated; see following
-#  define BOOST_NO_0X_HDR_UNORDERED_MAP
-#  define BOOST_NO_0X_HDR_UNORDERED_SET
-#  define BOOST_NO_NUMERIC_LIMITS_LOWEST
 

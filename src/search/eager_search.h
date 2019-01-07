@@ -1,44 +1,61 @@
 #ifndef EAGER_SEARCH_H
 #define EAGER_SEARCH_H
 
+#include "evaluator.h"
+#include "state.h"
 #include "search_engine.h"
+#include "search_progress.h"
+#include "search_space.h"
 
 #include "open_lists/open_list.h"
 
 #include <vector>
 
-class GlobalOperator;
+
 class Heuristic;
+class Operator;
 class Options;
+class PruningMethod;
 class ScalarEvaluator;
 
+
 class EagerSearch : public SearchEngine {
-    const bool reopen_closed_nodes;
-    const bool use_multi_path_dependence;
+    // Search Behavior parameters
+    bool reopen_closed_nodes; // whether to reopen closed nodes upon finding lower g paths
+    bool do_pathmax; // whether to use pathmax correction
+    bool use_multi_path_dependence;
 
     OpenList<StateID> *open_list;
     ScalarEvaluator *f_evaluator;
+    // used for upper bound pruning in anytime decoupled search
+    Heuristic *pruning_heuristic;
+    
+    std::unique_ptr<PruningMethod> pruning_method;
+    
+    bool insert_state(const SearchNode &succ_node);
+
+protected:
+    SearchStatus step();
+    std::pair<SearchNode, bool> fetch_next_node();
+    void update_jump_statistic(const SearchNode &node);
+    void print_heuristic_values(const std::vector<int> &values) const;
+    void reward_progress();
 
     std::vector<Heuristic *> heuristics;
     std::vector<Heuristic *> preferred_operator_heuristics;
+    std::vector<Heuristic *> estimate_heuristics;
+    // TODO: in the long term this
+    // should disappear into the open list
 
-    std::pair<SearchNode, bool> fetch_next_node();
-    void start_f_value_statistics(EvaluationContext &eval_context);
-    void update_f_value_statistics(const SearchNode &node);
-    void reward_progress();
-    void print_checkpoint_line(int g) const;
-
-protected:
-    virtual void initialize() override;
-    virtual SearchStatus step() override;
+    virtual void initialize();
 
 public:
-    explicit EagerSearch(const Options &opts);
-    virtual ~EagerSearch() = default;
+    EagerSearch(const Options &opts);
+    ~EagerSearch() = default;
+    
+    void statistics() const;
 
-    virtual void print_statistics() const override;
-
-    void dump_search_space() const;
+    void dump_search_space();
 };
 
 #endif

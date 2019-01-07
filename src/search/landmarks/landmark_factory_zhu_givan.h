@@ -6,7 +6,6 @@
 #include "landmark_types.h"
 #include "../globals.h"
 
-#include <vector>
 
 class LandmarkFactoryZhuGivan : public LandmarkFactory {
 private:
@@ -32,26 +31,26 @@ public:
     // Note: must include operators that only have conditional effects
     std::vector<int> operators_without_preconditions;
 
-    bool operator_applicable(const GlobalOperator &, const proposition_layer &) const;
+    bool operator_applicable(const Operator &, const proposition_layer &) const;
 
-    bool operator_cond_effect_fires(const std::vector<GlobalCondition> &cond,
+    bool operator_cond_effect_fires(const std::vector<Condition> &cond,
                                     const proposition_layer &layer) const;
 
     // Apply operator and propagate labels to next layer. Returns set of
     // propositions that:
     // (a) have just been reached OR (b) had their labels changed in next
     // proposition layer
-    lm_set apply_operator_and_propagate_labels(const GlobalOperator &,
+    lm_set apply_operator_and_propagate_labels(const Operator &,
                                                const proposition_layer &current, proposition_layer &next) const;
 
     // Calculate the union of precondition labels of op, using the
     // labels from current
-    lm_set union_of_precondition_labels(const GlobalOperator &op,
+    lm_set union_of_precondition_labels(const Operator &op,
                                         const proposition_layer &current) const;
 
     // Calculate the union of precondition labels of a conditional effect,
     // using the labels from current
-    lm_set union_of_condition_labels(const std::vector<GlobalCondition> &cond,
+    lm_set union_of_condition_labels(const std::vector<Condition> &cond,
                                      const proposition_layer &current) const;
 
     // Relaxed exploration, returns the last proposition layer

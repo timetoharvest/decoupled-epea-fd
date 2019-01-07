@@ -1,8 +1,7 @@
 #include "iterated_search.h"
-
 #include "plugin.h"
-
 #include "ext/tree_util.hh"
+#include <limits>
 
 IteratedSearch::IteratedSearch(const Options &opts)
     : SearchEngine(opts),
@@ -10,14 +9,17 @@ IteratedSearch::IteratedSearch(const Options &opts)
       pass_bound(opts.get<bool>("pass_bound")),
       repeat_last_phase(opts.get<bool>("repeat_last")),
       continue_on_fail(opts.get<bool>("continue_on_fail")),
-      continue_on_solve(opts.get<bool>("continue_on_solve")),
-      phase(0),
-      last_phase_found_solution(false),
-      best_bound(bound),
-      iterated_found_solution(false) {
+      continue_on_solve(opts.get<bool>("continue_on_solve")) {
+    last_phase_found_solution = false;
+    best_bound = bound;
+    iterated_found_solution = false;
+}
+
+IteratedSearch::~IteratedSearch() {
 }
 
 void IteratedSearch::initialize() {
+    phase = 0;
 }
 
 SearchEngine *IteratedSearch::get_search_engine(
@@ -45,7 +47,7 @@ SearchEngine *IteratedSearch::create_phase(int p) {
         if (repeat_last_phase && last_phase_found_solution) {
             return get_search_engine(engine_configs.size() - 1);
         } else {
-            return nullptr;
+            return NULL;
         }
     }
 
@@ -54,7 +56,7 @@ SearchEngine *IteratedSearch::create_phase(int p) {
 
 SearchStatus IteratedSearch::step() {
     current_search = create_phase(phase);
-    if (!current_search) {
+    if (current_search == NULL) {
         return found_solution() ? SOLVED : FAILED;
     }
     if (pass_bound) {
@@ -77,15 +79,19 @@ SearchStatus IteratedSearch::step() {
             set_plan(found_plan);
         }
     }
-    current_search->print_statistics();
-
-    const SearchStatistics &current_stats = current_search->get_statistics();
-    statistics.inc_expanded(current_stats.get_expanded());
-    statistics.inc_evaluated_states(current_stats.get_evaluated_states());
-    statistics.inc_evaluations(current_stats.get_evaluations());
-    statistics.inc_generated(current_stats.get_generated());
-    statistics.inc_generated_ops(current_stats.get_generated_ops());
-    statistics.inc_reopened(current_stats.get_reopened());
+    current_search->statistics();
+    search_progress.inc_expanded(
+        current_search->get_search_progress().get_expanded());
+    search_progress.inc_evaluated_states(
+        current_search->get_search_progress().get_evaluated_states());
+    search_progress.inc_evaluations(
+        current_search->get_search_progress().get_evaluations());
+    search_progress.inc_generated(
+        current_search->get_search_progress().get_generated());
+    search_progress.inc_generated_ops(
+        current_search->get_search_progress().get_generated_ops());
+    search_progress.inc_reopened(
+        current_search->get_search_progress().get_reopened());
 
     return step_return_value();
 }
@@ -113,13 +119,13 @@ SearchStatus IteratedSearch::step_return_value() {
     }
 }
 
-void IteratedSearch::print_statistics() const {
+void IteratedSearch::statistics() const {
     cout << "Cumulative statistics:" << endl;
-    statistics.print_detailed_statistics();
+    search_progress.print_statistics();
 }
 
 void IteratedSearch::save_plan_if_necessary() const {
-    // We don't need to save here, as we automatically save after
+    // Don't need to save here, as we automatically save after
     // each successful search iteration.
 }
 
@@ -133,15 +139,15 @@ static SearchEngine *_parse(OptionParser &parser) {
         "Adding heuristic caching is [issue108 http://issues.fast-downward.org/issue108].");
     parser.document_note(
         "Note 2",
-        "The configuration\n```\n"
-        "--search \"iterated([lazy_wastar(merge_and_shrink(),w=10), "
+        "Running this\n```\n"
+        "./downward --search \"iterated([lazy_wastar(merge_and_shrink(),w=10), "
         "lazy_wastar(merge_and_shrink(),w=5), lazy_wastar(merge_and_shrink(),w=3), "
         "lazy_wastar(merge_and_shrink(),w=2), lazy_wastar(merge_and_shrink(),w=1)])\"\n"
         "```\nwould perform the preprocessing phase of the merge and shrink heuristic "
         "5 times (once before each iteration).\n\n"
         "To avoid this, use heuristic predefinition, which avoids duplicate "
         "preprocessing, as follows:\n```\n"
-        "--heuristic \"h=merge_and_shrink()\" --search "
+        "./downward --heuristic \"h=merge_and_shrink()\" --search "
         "\"iterated([lazy_wastar(h,w=10), lazy_wastar(h,w=5), lazy_wastar(h,w=3), "
         "lazy_wastar(h,w=2), lazy_wastar(h,w=1)])\"\n"
         "```");
@@ -173,16 +179,19 @@ static SearchEngine *_parse(OptionParser &parser) {
     opts.verify_list_non_empty<ParseTree>("engine_configs");
 
     if (parser.help_mode()) {
-        return nullptr;
+        return 0;
     } else if (parser.dry_run()) {
         //check if the supplied search engines can be parsed
-        for (const ParseTree &config : opts.get_list<ParseTree>("engine_configs")) {
-            OptionParser test_parser(config, true);
+        vector<ParseTree> configs = opts.get_list<ParseTree>("engine_configs");
+        for (size_t i = 0; i < configs.size(); ++i) {
+            OptionParser test_parser(configs[i], true);
             test_parser.start_parsing<SearchEngine *>();
         }
-        return nullptr;
+        return 0;
     } else {
-        return new IteratedSearch(opts);
+        IteratedSearch *engine = new IteratedSearch(opts);
+
+        return engine;
     }
 }
 

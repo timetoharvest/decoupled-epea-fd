@@ -1,8 +1,9 @@
 #ifndef LM_CUT_HEURISTIC_H
 #define LM_CUT_HEURISTIC_H
 
+#include "globals.h"
 #include "heuristic.h"
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 
 #include <algorithm>
 #include <cassert>
@@ -10,8 +11,8 @@
 
 // TODO: Fix duplication with the other relaxation heuristics.
 
-class GlobalState;
-class OperatorProxy;
+class Operator;
+class State;
 struct RelaxedProposition;
 struct RelaxedOperator;
 
@@ -57,8 +58,8 @@ const int COST_MULTIPLIER = 1;
  */
 
 struct RelaxedOperator {
-    int original_op_id;
-    std::vector<RelaxedProposition *> preconditions;
+    const Operator *op;
+    std::vector<RelaxedProposition *> precondition;
     std::vector<RelaxedProposition *> effects;
     int base_cost; // 0 for axioms, 1 for regular operators
 
@@ -66,10 +67,10 @@ struct RelaxedOperator {
     int unsatisfied_preconditions;
     int h_max_supporter_cost; // h_max_cost of h_max_supporter
     RelaxedProposition *h_max_supporter;
-    RelaxedOperator(std::vector<RelaxedProposition *> && pre,
-                    std::vector<RelaxedProposition *> && eff,
-                    int op_id, int base)
-        : original_op_id(op_id), preconditions(pre), effects(eff), base_cost(base) {
+    RelaxedOperator(const std::vector<RelaxedProposition *> &pre,
+                    const std::vector<RelaxedProposition *> &eff,
+                    const Operator *the_op, int base)
+        : op(the_op), precondition(pre), effects(eff), base_cost(base) {
     }
 
     inline void update_h_max_supporter();
@@ -98,6 +99,9 @@ struct RelaxedProposition {
        depths). See if the init h values degrade compared to Python
        without explicit depth tie-breaking, then decide.
     */
+
+    RelaxedProposition() : status(), h_max_cost() {
+    }
 };
 
 class LandmarkCutHeuristic : public Heuristic {
@@ -106,15 +110,20 @@ class LandmarkCutHeuristic : public Heuristic {
     RelaxedProposition artificial_precondition;
     RelaxedProposition artificial_goal;
     int num_propositions;
-    AdaptiveQueue<RelaxedProposition *> priority_queue;
+    priority_queues::AdaptiveQueue<RelaxedProposition *> priority_queue;
+    // needed for decoupled search
+    std::vector<std::vector<RelaxedOperator> > relaxed_leaf_operators;
+    std::vector<std::vector<size_t> > number_center_effs;
+    size_t num_art_center_pre_pre;
+    size_t num_art_center_goal_eff;
+    
 
     virtual void initialize();
-    virtual int compute_heuristic(const GlobalState &state);
-    void build_relaxed_operator(const OperatorProxy &op);
-    void add_relaxed_operator(std::vector<RelaxedProposition *> && precondition,
-                              std::vector<RelaxedProposition *> && effects,
-                              int op_id, int base_cost);
-    RelaxedProposition *get_proposition(const FactProxy &fact);
+    virtual int compute_heuristic(const State &state);
+    void build_relaxed_operator(const Operator &op);
+    void add_relaxed_operator(const std::vector<RelaxedProposition *> &precondition,
+                              const std::vector<RelaxedProposition *> &effects,
+                              const Operator *op, int base_cost);
     void setup_exploration_queue();
     void setup_exploration_queue_state(const State &state);
     void first_exploration(const State &state);
@@ -133,6 +142,8 @@ class LandmarkCutHeuristic : public Heuristic {
 
     void mark_goal_plateau(RelaxedProposition *subgoal);
     void validate_h_max() const;
+    // needed for decoupled search
+    void dereference_ops();
 public:
     LandmarkCutHeuristic(const Options &opts);
     virtual ~LandmarkCutHeuristic();
@@ -140,9 +151,9 @@ public:
 
 inline void RelaxedOperator::update_h_max_supporter() {
     assert(!unsatisfied_preconditions);
-    for (size_t i = 0; i < preconditions.size(); ++i)
-        if (preconditions[i]->h_max_cost > h_max_supporter->h_max_cost)
-            h_max_supporter = preconditions[i];
+    for (size_t i = 0; i < precondition.size(); ++i)
+        if (precondition[i]->h_max_cost > h_max_supporter->h_max_cost)
+            h_max_supporter = precondition[i];
     h_max_supporter_cost = h_max_supporter->h_max_cost;
 }
 

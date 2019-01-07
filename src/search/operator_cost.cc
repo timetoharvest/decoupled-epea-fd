@@ -1,35 +1,30 @@
 #include "operator_cost.h"
 
-#include "global_operator.h"
 #include "globals.h"
+#include "operator.h"
 #include "option_parser.h"
-#include "utilities.h"
+#include "utils/system.h"
 
-#include <cstdlib>
 #include <vector>
+
 using namespace std;
 
-int get_adjusted_action_cost(int cost, OperatorCost cost_type) {
+int get_adjusted_action_cost(const Operator &op, OperatorCost cost_type) {
+    if (op.is_axiom())
+        return 0;
     switch (cost_type) {
     case NORMAL:
-        return cost;
+        return op.get_cost();
     case ONE:
         return 1;
     case PLUSONE:
         if (is_unit_cost())
             return 1;
         else
-            return cost + 1;
+            return op.get_cost() + 1;
     default:
         ABORT("Unknown cost type");
     }
-}
-
-int get_adjusted_action_cost(const GlobalOperator &op, OperatorCost cost_type) {
-    if (op.is_axiom())
-        return 0;
-    else
-        return get_adjusted_action_cost(op.get_cost(), cost_type);
 }
 
 void add_cost_type_option_to_parser(OptionParser &parser) {

@@ -34,7 +34,7 @@ void HMHeuristic::initialize() {
 }
 
 
-int HMHeuristic::compute_heuristic(const GlobalState &state) {
+int HMHeuristic::compute_heuristic(const State &state) {
     if (test_goal(state)) {
         return 0;
     } else {
@@ -72,7 +72,7 @@ void HMHeuristic::update_hm_table() {
         was_updated = false;
 
         for (size_t op_id = 0; op_id < g_operators.size(); ++op_id) {
-            const GlobalOperator &op = g_operators[op_id];
+            const Operator &op = g_operators[op_id];
             Tuple pre;
             get_operator_pre(op, pre);
 
@@ -96,7 +96,7 @@ void HMHeuristic::update_hm_table() {
 }
 
 
-void HMHeuristic::extend_tuple(Tuple &t, const GlobalOperator &op) {
+void HMHeuristic::extend_tuple(Tuple &t, const Operator &op) {
     map<Tuple, int>::const_iterator it;
     for (it = hm_table.begin(); it != hm_table.end(); ++it) {
         pair<Tuple, int> hm_ent = *it;
@@ -191,14 +191,14 @@ int HMHeuristic::check_tuple_in_tuple(
 }
 
 
-void HMHeuristic::state_to_tuple(const GlobalState &state, Tuple &t) const {
+void HMHeuristic::state_to_tuple(const State &state, Tuple &t) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i)
         t.push_back(make_pair(i, state[i]));
 }
 
 
 int HMHeuristic::get_operator_pre_value(
-    const GlobalOperator &op, int var) const {
+    const Operator &op, int var) const {
     for (size_t i = 0; i < op.get_preconditions().size(); ++i) {
         if (op.get_preconditions()[i].var == var)
             return op.get_preconditions()[i].val;
@@ -207,7 +207,7 @@ int HMHeuristic::get_operator_pre_value(
 }
 
 
-void HMHeuristic::get_operator_pre(const GlobalOperator &op, Tuple &t) const {
+void HMHeuristic::get_operator_pre(const Operator &op, Tuple &t) const {
     for (size_t i = 0; i < op.get_preconditions().size(); ++i)
         t.push_back(make_pair(op.get_preconditions()[i].var,
                               op.get_preconditions()[i].val));
@@ -215,7 +215,7 @@ void HMHeuristic::get_operator_pre(const GlobalOperator &op, Tuple &t) const {
 }
 
 
-void HMHeuristic::get_operator_eff(const GlobalOperator &op, Tuple &t) const {
+void HMHeuristic::get_operator_eff(const Operator &op, Tuple &t) const {
     for (size_t i = 0; i < op.get_effects().size(); ++i)
         t.push_back(make_pair(op.get_effects()[i].var,
                               op.get_effects()[i].val));
@@ -223,7 +223,7 @@ void HMHeuristic::get_operator_eff(const GlobalOperator &op, Tuple &t) const {
 }
 
 
-bool HMHeuristic::is_pre_of(const GlobalOperator &op, int var) const {
+bool HMHeuristic::is_pre_of(const Operator &op, int var) const {
     // TODO if preconditions will be always sorted we should use a log-n
     // search instead
     for (size_t j = 0; j < op.get_preconditions().size(); ++j) {
@@ -235,7 +235,7 @@ bool HMHeuristic::is_pre_of(const GlobalOperator &op, int var) const {
 }
 
 
-bool HMHeuristic::is_effect_of(const GlobalOperator &op, int var) const {
+bool HMHeuristic::is_effect_of(const Operator &op, int var) const {
     for (size_t j = 0; j < op.get_effects().size(); ++j) {
         if (op.get_effects()[j].var == var) {
             return true;
@@ -246,7 +246,7 @@ bool HMHeuristic::is_effect_of(const GlobalOperator &op, int var) const {
 
 
 bool HMHeuristic::contradict_effect_of(
-    const GlobalOperator &op, int var, int val) const {
+    const Operator &op, int var, int val) const {
     for (size_t j = 0; j < op.get_effects().size(); ++j) {
         if (op.get_effects()[j].var == var && op.get_effects()[j].val != val) {
             return true;
@@ -318,6 +318,7 @@ void HMHeuristic::dump_tuple(Tuple &tup) const {
     cout << tup[0].first << "=" << tup[0].second;
     for (size_t i = 1; i < tup.size(); ++i)
         cout << "," << tup[i].first << "=" << tup[i].second;
+
 }
 
 
@@ -338,7 +339,7 @@ static Heuristic *_parse(OptionParser &parser) {
                              "effects or axioms");
     parser.document_property("preferred operators", "no");
 
-    parser.add_option<int>("m", "subset size", "2", Bounds("1", "infinity"));
+    parser.add_option<int>("m", "subset size", "2");
     Heuristic::add_options_to_parser(parser);
     Options opts = parser.parse();
     if (parser.dry_run())

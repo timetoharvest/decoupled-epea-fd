@@ -1,19 +1,32 @@
 #include "state_registry.h"
 
 #include "axioms.h"
-#include "global_operator.h"
-#include "per_state_information.h"
+#include "compliant_paths/cpg_storage.h"
+#include "factoring.h"
+#include "operator.h"
+#include "search_engine.h"
+
+#include <limits>
+#include <stdint.h>
 
 using namespace std;
 
 StateRegistry::StateRegistry()
     : state_data_pool(g_state_packer->get_num_bins()),
+      leaf_state_data_pool(vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* >
+                                (g_leaves.size(), 0)),
       registered_states(0,
-                        StateIDSemanticHash(state_data_pool),
-                        StateIDSemanticEqual(state_data_pool)),
+                        StateIDSemanticHash(state_data_pool, g_state_packer->get_num_bins()),
+                        StateIDSemanticEqual(state_data_pool, g_state_packer->get_num_bins())),
+      registered_leaf_states(vector<LeafStateIDSet>(g_leaves.size(),
+                             LeafStateIDSet(0, LeafStateIDSemanticHash(leaf_state_data_pool),
+                                                LeafStateIDSemanticEqual(leaf_state_data_pool)))),
       cached_initial_state(0) {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        leaf_state_data_pool[factor] = new segmented_vector::SegmentedArrayVector<PackedStateBin>
+                                    (g_leaf_factor_packers[factor]->get_num_bins());
+    }
 }
-
 
 StateRegistry::~StateRegistry() {
     for (set<PerStateInformationBase *>::iterator it = subscribers.begin();
@@ -21,6 +34,11 @@ StateRegistry::~StateRegistry() {
         (*it)->remove_state_registry(this);
     }
     delete cached_initial_state;
+    if (g_factoring){
+        for (size_t i = 0; i < g_leaves.size(); i++){
+            delete leaf_state_data_pool[i];
+        }
+    }
 }
 
 StateID StateRegistry::insert_id_or_pop_state() {
@@ -40,24 +58,97 @@ StateID StateRegistry::insert_id_or_pop_state() {
     return *result.first;
 }
 
-GlobalState StateRegistry::lookup_state(StateID id) const {
-    return GlobalState(state_data_pool[id.value], *this, id);
+LeafStateHash StateRegistry::insert_id_or_pop_leaf_state(LeafFactorID factor) {
+    /*
+      Attempt to insert a LeafStateID for the last state of leaf_factor_data_pool
+      if none is present yet. If this fails (another entry for this state
+      is present), we have to remove the duplicate entry from the
+      state data pool.
+    */
+    LeafStateID id(LeafStateHash(leaf_state_data_pool[factor]->size() - 1), factor);
+    assert(id.value != LeafStateHash::MAX);
+    pair<LeafStateIDSet::iterator, bool> result = registered_leaf_states[factor].insert(id);
+    if (!result.second) {
+        // is known leaf state
+        leaf_state_data_pool[factor]->pop_back();
+    } else {
+        CompliantPathGraph::store_is_leaf_goal_state(lookup_leaf_state(result.first->value, factor));
+    }
+    assert(registered_leaf_states[factor].size() == leaf_state_data_pool[factor]->size());
+    return result.first->value;
 }
 
-const GlobalState &StateRegistry::get_initial_state() {
+State StateRegistry::lookup_state(StateID id) const {
+    return State(state_data_pool[id.value], *this, id);
+}
+
+LeafState StateRegistry::lookup_leaf_state(LeafStateHash id, LeafFactorID factor) const {
+    return LeafState((*leaf_state_data_pool[factor])[id], LeafStateID(id, factor));
+}
+
+const State &StateRegistry::get_initial_state() {
     if (cached_initial_state == 0) {
-        PackedStateBin *buffer = new PackedStateBin[g_state_packer->get_num_bins()];
-        // Avoid garbage values in half-full bins.
-        fill_n(buffer, g_state_packer->get_num_bins(), 0);
-        for (size_t i = 0; i < g_initial_state_data.size(); ++i) {
-            g_state_packer->set(buffer, i, g_initial_state_data[i]);
+        
+        PackedStateBin *center_buffer = new PackedStateBin[g_state_packer->get_num_bins()];
+        vector<PackedStateBin*> leaf_buffers;
+        
+        if (g_factoring){
+            leaf_buffers.resize(g_leaves.size());
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                leaf_buffers[factor] = new PackedStateBin[g_leaf_factor_packers[factor]->get_num_bins()];
+            }
         }
-        g_axiom_evaluator->evaluate(buffer);
-        state_data_pool.push_back(buffer);
+        
+        for (size_t var = 0; var < g_initial_state_data.size(); ++var) {
+            int index = var;
+            if (g_factoring){
+                index = g_new_index[var];
+                
+                LeafFactorID factor = g_belongs_to_factor[var];
+                if (factor != LeafFactorID::CENTER){
+                    g_leaf_factor_packers[factor]->set(leaf_buffers[factor], index, g_initial_state_data[var]);
+                    continue;
+                }
+            }
+            g_state_packer->set(center_buffer, index, g_initial_state_data[var]);
+        }
+        
+        if (g_factoring){
+            g_state_packer->set(center_buffer, g_center.size(), 0);
+        } else {
+            g_axiom_evaluator->evaluate(center_buffer);
+        }
+        
+        state_data_pool.push_back(center_buffer);
         // buffer is copied by push_back
-        delete[] buffer;
+        delete[] center_buffer;
         StateID id = insert_id_or_pop_state();
-        cached_initial_state = new GlobalState(lookup_state(id));
+        cached_initial_state = new State(lookup_state(id));
+        
+        if (g_factoring){
+            
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                leaf_state_data_pool[factor]->push_back(leaf_buffers[factor]);
+                // buffer is copied by push_back
+                delete[] leaf_buffers[factor];
+                insert_id_or_pop_leaf_state(factor);
+            }
+            
+            CPGStorage::initialize();
+            
+            CompliantPathGraph::build_leaf_state_spaces();
+            
+            unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
+            
+            init_state_cpg->store_new_graph(*cached_initial_state);
+            
+            state_duplicate_counter[0] = 0;
+        }
+        
+#ifdef DEBUG_SEARCH
+        cout << "dump init state StateRegistry" << endl;
+        cached_initial_state->dump_pddl();
+#endif
     }
     return *cached_initial_state;
 }
@@ -65,24 +156,178 @@ const GlobalState &StateRegistry::get_initial_state() {
 //TODO it would be nice to move the actual state creation (and operator application)
 //     out of the StateRegistry. This could for example be done by global functions
 //     operating on state buffers (PackedStateBin *).
-GlobalState StateRegistry::get_successor_state(const GlobalState &predecessor, const GlobalOperator &op) {
+State StateRegistry::get_successor_state(const State &predecessor, const Operator &op) {
+    g_inc_g_by = 0;
+    
+    assert(!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER);
+    assert(op.is_applicable(predecessor));
+        
     assert(!op.is_axiom());
+    
     state_data_pool.push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    for (size_t i = 0; i < op.get_effects().size(); ++i) {
-        const GlobalEffect &effect = op.get_effects()[i];
-        if (effect.does_fire(predecessor))
-            g_state_packer->set(buffer, effect.var, effect.val);
+
+#ifdef DEBUG_SEARCH
+    cout << "################ applying " << op.get_name() << " in state " << predecessor.get_id() << endl;
+    predecessor.dump_pddl();
+    const PriceTag &r = g_price_tags[predecessor];
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        cout << "#states in leaf factor " << factor << ": " << r.get_number_states(factor) << endl;
+        for (LeafStateHash id(0); id < size(factor); ++id){
+            if (r.has_leaf_state(id, factor)){
+                lookup_leaf_state(id, factor).dump_pddl();
+            }
+        }
     }
-    g_axiom_evaluator->evaluate(buffer);
+#endif
+
+    if (!g_factoring) {
+        for (size_t i = 0; i < op.get_effects().size(); ++i) {
+            const Effect &effect = op.get_effects()[i];
+            if (effect.does_fire(predecessor)){
+                g_state_packer->set(buffer, effect.var, effect.val);
+            }
+        }
+        g_axiom_evaluator->evaluate(buffer);
+    } else {
+        OpsLeafProps<Effect> effects = op.get_effects(LeafFactorID::CENTER);
+        for (size_t i = 0; i < effects.size(); ++i){
+            // no need to check does_fire here, because no conditional effects allowed (yet)
+            g_state_packer->set(buffer, g_new_index[effects[i].var], effects[i].val);
+        }
+        g_state_packer->set(buffer, g_center.size(), 0);
+    }
+
     StateID id = insert_id_or_pop_state();
+    
+    if (g_factoring){
+        State s = lookup_state(id);
+        
+        int old_dup_counter = -1;
+        DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
+        if (pos != state_duplicate_counter.end()){
+            old_dup_counter = pos->second;
+        }
+        
+        PruningOptions::reset_ignore_current_state();
+        
+        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(predecessor, &op);
+        new_cpg->update(s);
+        
+        if (old_dup_counter == -1){ // is new center state
+            new_cpg->store_new_graph(s);
+            state_duplicate_counter[id.hash()] = 0;
+        } else {
+            int new_dup_counter = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
+            assert((size_t) new_dup_counter < MAX_DUPLICATE_COUNTER);
+            
+            state_data_pool.push_back(s.get_packed_buffer());
+            buffer = state_data_pool[state_data_pool.size() - 1];
+            g_state_packer->set(buffer, g_center.size(), new_dup_counter);
+            
+            size_t base_state_id = id.hash();
+            
+            id = insert_id_or_pop_state();
+            s = lookup_state(id);
+            
+            if (new_dup_counter > old_dup_counter){    // is a new decoupled state
+                new_cpg->store_new_graph(s);
+                state_duplicate_counter[base_state_id] = new_dup_counter;
+            }
+        }
+        
+        new_cpg->discard_new_graph();
+        
+#ifdef DEBUG_SEARCH
+        cout << "created state " << id << endl;
+        s.dump_pddl();
+        const PriceTag &r = g_price_tags[s];
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            cout << "#states in leaf factor " << factor << ": " << r.get_number_states(factor) << endl;
+            for (LeafStateHash id(0); id < size(factor); ++id){
+                if (r.has_leaf_state(id, factor)){
+                    lookup_leaf_state(id, factor).dump_pddl();
+                }
+            }
+        }
+#endif
+        return s;
+    }
     return lookup_state(id);
+}
+
+State StateRegistry::get_center_state(const State &base_state, int dup_counter) {
+    assert(dup_counter >= 0);
+    assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
+    
+    state_data_pool.push_back(base_state.get_packed_buffer());
+    PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
+    
+    g_state_packer->set(buffer, g_center.size(), dup_counter);
+    
+    StateID id = insert_id_or_pop_state();
+    
+    return lookup_state(id);
+}
+
+LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op) {     
+    assert(!op.is_axiom());
+
+    LeafFactorID factor = predecessor.get_id().get_factor();
+    
+    leaf_state_data_pool[factor]->push_back(predecessor.get_packed_buffer());
+    PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
+
+    OpsLeafProps<Effect> effects = op.get_effects(factor);
+    for (size_t i = 0; i < effects.size(); ++i){
+        // no need to check does_fire here, because no conditional effects allowed (yet)
+        g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[i].var], effects[i].val);
+    }
+    
+    // not supported (yet)
+    // g_axiom_evaluator->evaluate(buffer);
+    
+    return insert_id_or_pop_leaf_state(factor);
+}
+
+size_t StateRegistry::get_max_number_duplicates() const {
+    int m = 0;
+    for (DupCounterTable::const_iterator it = state_duplicate_counter.begin(); it != state_duplicate_counter.end(); ++it){
+        m = max(m, (int) it->second);
+    }
+    return m;
+}
+
+void StateRegistry::output_decoupled_state_space_size() const {
+    size_t dec_size_1 = g_center.size() * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
+    size_t dec_size_2 = g_center.size() * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    size_t dec_size_3 = g_center.size() * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
+    size_t dec_size_4 = g_center.size() * size();  // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        dec_size_4 += size(factor) * g_leaves[factor].size();
+    }
+    
+    for (size_t i = 0; i < size(); ++i){
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            size_t number_states = cpg->get_number_states(factor);
+            dec_size_1 += g_leaves[factor].size() * number_states;
+            dec_size_2 += number_states;
+            dec_size_3 += size(factor);
+            dec_size_4 += number_states;
+        }
+    }
+    cout << "decoupled state space size [1] " << dec_size_1 << endl;
+    cout << "decoupled state space size [2] " << dec_size_2 << endl;
+    cout << "decoupled state space size [3] " << dec_size_3 << endl;
+    cout << "decoupled state space size [4] " << dec_size_4 << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
     subscribers.insert(psi);
 }
 
-void StateRegistry::unsubscribe(PerStateInformationBase *const psi) const {
+void StateRegistry::unsubscribe(PerStateInformationBase *psi) const {
     subscribers.erase(psi);
 }

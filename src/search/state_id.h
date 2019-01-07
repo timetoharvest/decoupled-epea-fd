@@ -9,12 +9,12 @@
 class StateID {
     friend class StateRegistry;
     friend std::ostream &operator<<(std::ostream &os, StateID id);
-    template<typename>
+    template<class T>
     friend class PerStateInformation;
 
-    int value;
-    explicit StateID(int value_)
-        : value(value_) {
+    size_t value;
+    explicit StateID(size_t value)
+        : value(value) {
     }
 
     // No implementation to prevent default construction
@@ -39,14 +39,5 @@ public:
 };
 
 std::ostream &operator<<(std::ostream &os, StateID id);
-
-namespace std {
-template<>
-struct hash<StateID> {
-    size_t operator()(StateID id) const {
-        return id.hash();
-    }
-};
-}
 
 #endif

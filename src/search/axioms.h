@@ -1,7 +1,7 @@
 #ifndef AXIOMS_H
 #define AXIOMS_H
 
-#include "global_state.h"
+#include "state.h"
 
 #include <vector>
 

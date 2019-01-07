@@ -1,12 +1,10 @@
 #include "weighted_evaluator.h"
 
-#include "evaluation_context.h"
-#include "evaluation_result.h"
-#include "option_parser.h"
-#include "plugin.h"
-
 #include <cstdlib>
 #include <sstream>
+
+#include "option_parser.h"
+#include "plugin.h"
 
 WeightedEvaluator::WeightedEvaluator(const Options &opts)
     : evaluator(opts.get<ScalarEvaluator *>("eval")),
@@ -21,21 +19,22 @@ WeightedEvaluator::WeightedEvaluator(ScalarEvaluator *eval, int weight)
 WeightedEvaluator::~WeightedEvaluator() {
 }
 
-bool WeightedEvaluator::dead_ends_are_reliable() const {
-    return evaluator->dead_ends_are_reliable();
+void WeightedEvaluator::evaluate(int g, bool preferred) {
+    evaluator->evaluate(g, preferred);
+    value = w * evaluator->get_value();
+    // TODO: catch overflow?
 }
 
-EvaluationResult WeightedEvaluator::compute_result(
-    EvaluationContext &eval_context) {
-    // Note that this produces no preferred operators.
-    EvaluationResult result;
-    int h_val = eval_context.get_heuristic_value_or_infinity(evaluator);
-    if (h_val != EvaluationResult::INFINITE) {
-        // TODO: Check for overflow?
-        h_val *= w;
-    }
-    result.set_h_value(h_val);
-    return result;
+bool WeightedEvaluator::is_dead_end() const {
+    return evaluator->is_dead_end();
+}
+
+bool WeightedEvaluator::dead_end_is_reliable() const {
+    return evaluator->dead_end_is_reliable();
+}
+
+int WeightedEvaluator::get_value() const {
+    return value;
 }
 
 void WeightedEvaluator::get_involved_heuristics(std::set<Heuristic *> &hset) {

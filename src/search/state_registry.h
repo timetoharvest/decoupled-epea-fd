@@ -1,21 +1,23 @@
 #ifndef STATE_REGISTRY_H
 #define STATE_REGISTRY_H
 
-#include "global_state.h"
+#include "algorithms/segmented_vector.h"
+#include "algorithms/int_packer.h"
 #include "globals.h"
-#include "int_packer.h"
-#include "segmented_vector.h"
+#include "leaf_state.h"
+#include "leaf_state_id.h"
+#include "state.h"
 #include "state_id.h"
-#include "utilities.h"
-#include "utilities_hash.h"
+#include "utils/hash.h"
 
 #include <set>
 #include <unordered_set>
+#include <unordered_map>
 
 /*
   Overview of classes relevant to storing and working with registered states.
 
-  GlobalState
+  State
     This class is used for manipulating states.
     It contains the (uncompressed) variable values for fast access by the heuristic.
     A State is always registered in a StateRegistry and has a valid ID.
@@ -27,7 +29,7 @@
   StateID
     StateIDs identify states within a state registry.
     If the registry is known, the ID is sufficient to look up the state, which
-    is why ids are intended for long term storage (e.g. in open lists).
+    is why IDs are intended for long term storage (e.g. in open lists).
     Internally, a StateID is just an integer, so it is cheap to store and copy.
 
   PackedStateBin (currently the same as unsigned int)
@@ -53,7 +55,7 @@
 
   PerStateInformation<T>
     Associates a value of type T with every state in a given StateRegistry.
-    Can be thought of as a very compactly implemented map from GlobalState to T.
+    Can be thought of as a very compactly implemented map from State to T.
     References stay valid forever. Memory usage is essentially the same as a
     vector<T> whose size is the number of states in the registry.
 
@@ -100,27 +102,80 @@
 class PerStateInformationBase;
 
 class StateRegistry {
+
     struct StateIDSemanticHash {
-        const SegmentedArrayVector<PackedStateBin> &state_data_pool;
-        StateIDSemanticHash(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
-            : state_data_pool(state_data_pool_) {
+        const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
+        int state_size;
+        StateIDSemanticHash(
+            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+            int state_size)
+            : state_data_pool(state_data_pool),
+              state_size(state_size) {
         }
+
         size_t operator()(StateID id) const {
-            return ::hash_sequence(state_data_pool[id.value], g_state_packer->get_num_bins());
+            const PackedStateBin *data = state_data_pool[id.value];
+            utils::HashState hash_state;
+            for (int i = 0; i < state_size; ++i) {
+                hash_state.feed(data[i]);
+            }
+            return hash_state.get_hash64();
         }
     };
 
     struct StateIDSemanticEqual {
-        const SegmentedArrayVector<PackedStateBin> &state_data_pool;
-        StateIDSemanticEqual(const SegmentedArrayVector<PackedStateBin> &state_data_pool_)
-            : state_data_pool(state_data_pool_) {
+        const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
+        int state_size;
+        StateIDSemanticEqual(
+            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+            int state_size)
+            : state_data_pool(state_data_pool),
+              state_size(state_size) {
         }
 
         bool operator()(StateID lhs, StateID rhs) const {
-            size_t size = g_state_packer->get_num_bins();
             const PackedStateBin *lhs_data = state_data_pool[lhs.value];
             const PackedStateBin *rhs_data = state_data_pool[rhs.value];
-            return std::equal(lhs_data, lhs_data + size, rhs_data);
+            return std::equal(lhs_data, lhs_data + state_size, rhs_data);
+        }
+    };
+    
+    struct LeafStateIDSemanticHash {
+        const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        std::vector<int> state_sizes;
+        LeafStateIDSemanticHash(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+            : data_pool(state_data_pool_) {
+            state_sizes.resize(g_leaves.size());
+            for (size_t i = 0; i < g_leaves.size(); ++i){
+                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            }
+        }
+        size_t operator() (const LeafStateID &id) const {
+            const PackedStateBin *data = (*data_pool[id.factor])[id.value];
+            utils::HashState hash_state;
+            for (int i = 0; i < state_sizes[id.factor]; ++i) {
+                hash_state.feed(data[i]);
+            }
+            return hash_state.get_hash64();
+        }
+    };
+
+    struct LeafStateIDSemanticEqual {
+        const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
+        std::vector<int> state_sizes;
+        LeafStateIDSemanticEqual(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
+            : data_pool(state_data_pool_) {
+            state_sizes.resize(g_leaves.size());
+            for (size_t i = 0; i < g_leaves.size(); ++i){
+                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            }
+        }
+
+        bool operator() (const LeafStateID &lhs, const LeafStateID &rhs) const {
+            assert(lhs.factor == rhs.factor);
+            const PackedStateBin *lhs_data = (*data_pool[lhs.factor])[lhs.value];
+            const PackedStateBin *rhs_data = (*data_pool[rhs.factor])[rhs.value];
+            return std::equal(lhs_data, lhs_data + state_sizes[lhs.factor], rhs_data);
         }
     };
 
@@ -129,15 +184,38 @@ class StateRegistry {
       this registry and find their IDs. States are compared/hashed semantically,
       i.e. the actual state data is compared, not the memory location.
     */
-    typedef std::unordered_set<StateID,
-                               StateIDSemanticHash,
-                               StateIDSemanticEqual> StateIDSet;
 
-    SegmentedArrayVector<PackedStateBin> state_data_pool;
+    using StateIDSet = std::unordered_set<StateID, StateIDSemanticHash, StateIDSemanticEqual>;
+
+    using LeafStateIDSet = std::unordered_set<LeafStateID,
+                                              LeafStateIDSemanticHash,
+                                              LeafStateIDSemanticEqual>;
+                            
+    using DupCounterTable = std::unordered_map<size_t, size_t>;
+                            
+
+    segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
+    
+    std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > leaf_state_data_pool;
+
     StateIDSet registered_states;
-    GlobalState *cached_initial_state;
+    
+    std::vector<LeafStateIDSet> registered_leaf_states;
+    
+    State *cached_initial_state;
+    
+    /*
+      maps the StateID of the base state to the number of different decoupled
+      states that have the same center
+    */
+    DupCounterTable state_duplicate_counter;
+
     mutable std::set<PerStateInformationBase *> subscribers;
+    
     StateID insert_id_or_pop_state();
+    
+    LeafStateHash insert_id_or_pop_leaf_state(LeafFactorID factor);
+    
 public:
     StateRegistry();
     ~StateRegistry();
@@ -146,20 +224,33 @@ public:
       Returns the state that was registered at the given ID. The ID must refer
       to a state in this registry. Do not mix IDs from from different registries.
     */
-    GlobalState lookup_state(StateID id) const;
+    State lookup_state(StateID id) const;
+    
+    /*
+      Returns the redFact that was registered at the given ID. The ID must refer
+      to a redFact in this registry. Do not mix IDs from from different registries.
+    */
+    LeafState lookup_leaf_state(LeafStateHash id, LeafFactorID factor) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not
       done before. The result is cached internally so subsequent calls are cheap.
     */
-    const GlobalState &get_initial_state();
+    const State &get_initial_state();
 
     /*
       Returns the state that results from applying op to predecessor and
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
     */
-    GlobalState get_successor_state(const GlobalState &predecessor, const GlobalOperator &op);
+    State get_successor_state(const State &predecessor, const Operator &op);
+    /*
+      returns the state resulting from setting the last variable (dup counter)
+      to dup_counter
+    */
+    State get_center_state(const State &predecessor, int dup_counter);
+    
+    LeafStateHash get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op);
 
     /*
       Returns the number of states registered so far.
@@ -167,6 +258,17 @@ public:
     size_t size() const {
         return registered_states.size();
     }
+    
+    /*
+     * Returns the number of states registered for the specified leaf factor
+     */
+    size_t size(LeafFactorID factor) const {
+	return registered_leaf_states[factor].size();
+    }
+    
+    size_t get_max_number_duplicates() const;
+    
+    void output_decoupled_state_space_size() const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is

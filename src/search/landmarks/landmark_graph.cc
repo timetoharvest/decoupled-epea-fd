@@ -1,8 +1,8 @@
 #include "landmark_graph.h"
 
-#include "../exact_timer.h"
-#include "../global_operator.h"
-#include "../global_state.h"
+#include "../utils/timer.h"
+#include "../operator.h"
+#include "../state.h"
 #include "../globals.h"
 
 #include <cassert>
@@ -37,8 +37,8 @@ void LandmarkGraph::generate_operators_lookups() {
         operators_eff_lookup[i].resize(g_variable_domain[i]);
     }
     for (size_t i = 0; i < g_operators.size() + g_axioms.size(); ++i) {
-        const GlobalOperator &op = get_operator_for_lookup_index(i);
-        const vector<GlobalEffect> &effects = op.get_effects();
+        const Operator &op = get_operator_for_lookup_index(i);
+        const vector<Effect> &effects = op.get_effects();
         for (size_t j = 0; j < effects.size(); ++j) {
             operators_eff_lookup[effects[j].var][effects[j].val].push_back(i);
         }
@@ -50,11 +50,13 @@ LandmarkNode *LandmarkGraph::get_landmark(const pair<int, int> &prop) const {
      landmark exists.
      */
     LandmarkNode *node_p = 0;
-    auto it = simple_lms_to_nodes.find(prop);
+    utils::HashMap<pair<int, int>, LandmarkNode *>::const_iterator it =
+        simple_lms_to_nodes.find(prop);
     if (it != simple_lms_to_nodes.end())
         node_p = it->second;
     else {
-        auto it2 = disj_lms_to_nodes.find(prop);
+        utils::HashMap<pair<int, int>, LandmarkNode *>::const_iterator
+            it2 = disj_lms_to_nodes.find(prop);
         if (it2 != disj_lms_to_nodes.end())
             node_p = it2->second;
     }
@@ -97,7 +99,8 @@ void LandmarkGraph::count_costs() {
 }
 
 bool LandmarkGraph::simple_landmark_exists(const pair<int, int> &lm) const {
-    auto it = simple_lms_to_nodes.find(lm);
+    utils::HashMap<pair<int, int>, LandmarkNode *>::const_iterator it =
+        simple_lms_to_nodes.find(lm);
     assert(it == simple_lms_to_nodes.end() || !it->second->disjunctive);
     return it != simple_lms_to_nodes.end();
 }
@@ -112,8 +115,11 @@ bool LandmarkGraph::landmark_exists(const pair<int, int> &lm) const {
 
 bool LandmarkGraph::disj_landmark_exists(const set<pair<int, int> > &lm) const {
     // Test whether ONE of the facts in lm is present in some disj. LM
-    for (const auto &prop : lm) {
-        if (disj_lms_to_nodes.count(prop) == 1)
+    for (set<pair<int, int> >::const_iterator it = lm.begin(); it != lm.end(); ++it) {
+        const pair<int, int> &prop = *it;
+        utils::HashMap<pair<int, int>, LandmarkNode *>::const_iterator
+            it2 = disj_lms_to_nodes.find(prop);
+        if (it2 != disj_lms_to_nodes.end())
             return true;
     }
     return false;
@@ -122,8 +128,10 @@ bool LandmarkGraph::disj_landmark_exists(const set<pair<int, int> > &lm) const {
 bool LandmarkGraph::exact_same_disj_landmark_exists(const set<pair<int, int> > &lm) const {
     // Test whether a disj. LM exists which consists EXACTLY of those facts in lm
     LandmarkNode *lmn = NULL;
-    for (const auto &prop : lm) {
-        auto it2 = disj_lms_to_nodes.find(prop);
+    for (set<pair<int, int> >::const_iterator it = lm.begin(); it != lm.end(); ++it) {
+        const pair<int, int> &prop = *it;
+        utils::HashMap<pair<int, int>, LandmarkNode *>::const_iterator
+            it2 = disj_lms_to_nodes.find(prop);
         if (it2 == disj_lms_to_nodes.end())
             return false;
         else {
@@ -182,15 +190,17 @@ LandmarkNode &LandmarkGraph::landmark_add_conjunctive(const set<pair<int, int> >
 }
 
 void LandmarkGraph::rm_landmark_node(LandmarkNode *node) {
-    for (const auto &parent : node->parents) {
-        LandmarkNode &parent_node = *(parent.first);
-        parent_node.children.erase(node);
-        assert(parent_node.children.find(node) == parent_node.children.end());
+    for (utils::HashMap<LandmarkNode *, edge_type>::iterator it =
+             node->parents.begin(); it != node->parents.end(); ++it) {
+        LandmarkNode &parent = *(it->first);
+        parent.children.erase(node);
+        assert(parent.children.find(node) == parent.children.end());
     }
-    for (const auto &child : node->children) {
-        LandmarkNode &child_node = *(child.first);
-        child_node.parents.erase(node);
-        assert(child_node.parents.find(node) == child_node.parents.end());
+    for (utils::HashMap<LandmarkNode *, edge_type>::iterator it =
+             node->children.begin(); it != node->children.end(); ++it) {
+        LandmarkNode &child = *(it->first);
+        child.parents.erase(node);
+        assert(child.parents.find(node) == child.parents.end());
     }
     if (node->disjunctive) {
         for (size_t i = 0; i < node->vars.size(); ++i) {
@@ -255,11 +265,15 @@ void LandmarkGraph::dump() const {
     cout << "Landmark graph: " << endl;
     set<LandmarkNode *, LandmarkNodeComparer> nodes2(nodes.begin(), nodes.end());
 
-    for (const LandmarkNode *node_p : nodes2) {
+    for (set<LandmarkNode *, LandmarkNodeComparer>::const_iterator it = nodes2.begin(); it
+         != nodes2.end(); ++it) {
+        LandmarkNode *node_p = *it;
         dump_node(node_p);
-        for (const auto &parent : node_p->parents) {
-            const LandmarkNode *parent_node = parent.first;
-            const edge_type &edge = parent.second;
+        for (utils::HashMap<LandmarkNode *, edge_type>::const_iterator
+             parent_it = node_p->parents.begin(); parent_it
+             != node_p->parents.end(); ++parent_it) {
+            const edge_type &edge = parent_it->second;
+            const LandmarkNode *parent_p = parent_it->first;
             cout << "\t\t<-_";
             switch (edge) {
             case necessary:
@@ -278,11 +292,13 @@ void LandmarkGraph::dump() const {
                 cout << "o_r ";
                 break;
             }
-            dump_node(parent_node);
+            dump_node(parent_p);
         }
-        for (const auto &child : node_p->children) {
-            const LandmarkNode *child_node = child.first;
-            const edge_type &edge = child.second;
+        for (utils::HashMap<LandmarkNode *, edge_type>::const_iterator
+             child_it = node_p->children.begin(); child_it
+             != node_p->children.end(); ++child_it) {
+            const edge_type &edge = child_it->second;
+            const LandmarkNode *child_p = child_it->first;
             cout << "\t\t->_";
             switch (edge) {
             case necessary:
@@ -301,7 +317,7 @@ void LandmarkGraph::dump() const {
                 cout << "o_r ";
                 break;
             }
-            dump_node(child_node);
+            dump_node(child_p);
         }
         cout << endl;
     }

@@ -1,30 +1,23 @@
 This directory archives Fast Downward experiments.
 
-Experiments using lab
-=====================
-All experiments use their own common_setup.py module that simplifies
-the creation of experiments. We recommend using common_setup.py from
-issue546 for new experiments since it is the most polished version and
-provides the greatest flexibility.
+Experiments using Downward Lab
+==============================
 
-Previously, most experiments imported lab's downward/configs.py module.
-To make experiments more self-contained, the module has been deprecated
-and we recommend either copying config.py into the experiment
-directory (see issue77 for an example) or manually specifying the
-configurations (see issue511).
+All experiments use their own common_setup.py module that simplifies the
+creation of experiments. We recommend using common_setup.py (and related
+*.py files) from issue839 for new experiments since it is the most
+recent version.
 
 Below we list some experiments that show how certain tasks can be
-performed:
+performed. Some of them use Downward Lab's deprecated
+DownwardExperiment:
 
 * Test changes that affect the whole planner:
-  * issue422/issue422.py shows the general setup but tests only LM-cut.
-    Use "from downward.configs import default_configs_optimal" and set
-    the parameter suite to default_configs_optimal. For satisficing
-    configs use default_configs_satisficing and
-    suite_satisficing_with_ipc11.
+  * issue481/v1-*.py show the general setup. You will need different
+    experiments for satisficing, optimal and anytime configurations.
 
 * Add a custom log parser:
-  * issue439/regressions.py
+  * issue735/v1.py
 
 * Compare all attributes for tasks where we lose coverage:
   * issue439/regressions.py
@@ -44,8 +37,19 @@ performed:
 * RelativeScatterPlotReport:
   * issue77/issue77-v7-opt.py
 
-* M&S: configs and additional parsing:
-  * issue548/base-v2.py and issue548/ms-parser.py
+* M&S: configs and additional parsing and a check for availability of matplotlib
+  * issue849/v1.py and issue849/ms-parser.py
+
+* Run experiment in debug mode (with assertions):
+  * issue650/v2.py
+
+* Translator:
+  * issue671/v1.py runs simple configs on the entire set of suites and
+    reports also translator-specific attributes
+
+* Translator-only experiments:
+  * issue733/v1.py compares translator time and memory under Python 2 and 3
+  * issue869/base-translate-all.py translates all benchmarks
 
 
 Microbenchmarks
@@ -55,11 +59,8 @@ Some experiments don't run the whole planner or planner components, but
 just contain small microbenchmarks for particular functionality. These
 may be a good starting point for similar microbenchmarks. Examples:
 
-* Benchmarking of random number generation (self-contained):
+* Benchmarking of random number generation:
   * issue269/rng-microbenchmark
-
-* Benchmarking of range-based for loops (uses planner code):
-  * issue510/iterator-microbenchmark
 
 If you add your own microbenchmark, it is recommended to start from a
 copy of an existing example and follow the naming convention

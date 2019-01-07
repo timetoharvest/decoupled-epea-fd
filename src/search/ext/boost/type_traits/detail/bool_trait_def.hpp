@@ -1,72 +1,38 @@
-
-// NO INCLUDE GUARDS, THE HEADER IS INTENDED FOR MULTIPLE INCLUSION
-
-// Copyright Aleksey Gurtovoy 2002-2004
+//-----------------------------------------------------------------------------
+// boost/type_traits/detail/bool_trait_def.hpp header file
+// See http://www.boost.org for updates, documentation, and revision history.
+//-----------------------------------------------------------------------------
 //
-// Distributed under the Boost Software License, Version 1.0. 
-// (See accompanying file LICENSE_1_0.txt or copy at 
-// http://www.boost.org/LICENSE_1_0.txt)
-
-// $Source$
-// $Date: 2006-07-12 07:10:22 -0400 (Wed, 12 Jul 2006) $
-// $Revision: 34511 $
-
-#include <boost/type_traits/detail/template_arity_spec.hpp>
-#include <boost/type_traits/integral_constant.hpp>
-#include <boost/mpl/bool.hpp>
-#include <boost/mpl/aux_/lambda_support.hpp>
-#include <boost/config.hpp>
-
+// Copyright (c) 2002
+// Aleksey Gurtovoy
 //
-// Unfortunately some libraries have started using this header without
-// cleaning up afterwards: so we'd better undef the macros just in case 
-// they've been defined already....
-//
-#ifdef BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL
-#undef BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL
-#undef BOOST_TT_AUX_BOOL_C_BASE
-#undef BOOST_TT_AUX_BOOL_TRAIT_DEF1
-#undef BOOST_TT_AUX_BOOL_TRAIT_DEF2
-#undef BOOST_TT_AUX_BOOL_TRAIT_SPEC1
-#undef BOOST_TT_AUX_BOOL_TRAIT_SPEC2
-#undef BOOST_TT_AUX_BOOL_TRAIT_IMPL_SPEC1
-#undef BOOST_TT_AUX_BOOL_TRAIT_IMPL_SPEC2
-#undef BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC1_1
-#undef BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC1_2
-#undef BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC2_1
-#undef BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC2_2
-#undef BOOST_TT_AUX_BOOL_TRAIT_IMPL_PARTIAL_SPEC2_1
-#undef BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1
-#endif
+// Permission to use, copy, modify, distribute and sell this software
+// and its documentation for any purpose is hereby granted without fee, 
+// provided that the above copyright notice appears in all copies and 
+// that both the copyright notice and this permission notice appear in 
+// supporting documentation. No representations are made about the 
+// suitability of this software for any purpose. It is provided "as is" 
+// without express or implied warranty.
 
-#if defined(__SUNPRO_CC) && (__SUNPRO_CC < 0x570)
+// no include guards, the header is intended for multiple inclusion!
+
+#include "boost/type_traits/detail/template_arity_spec.hpp"
+#include "boost/mpl/bool_c.hpp"
+#include "boost/mpl/aux_/lambda_support.hpp"
+#include "boost/config.hpp"
+
+#if !defined(BOOST_MSVC) || BOOST_MSVC > 1200
+#   define BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) /**/
+#else
 #   define BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-    typedef ::boost::integral_constant<bool,C> type; \
-    enum { value = type::value }; \
-    /**/
-#   define BOOST_TT_AUX_BOOL_C_BASE(C)
-
-#elif defined(BOOST_MSVC) && BOOST_MSVC < 1300
-
-#   define BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-    typedef ::boost::integral_constant<bool,C> base_; \
+    typedef mpl::bool_c< C > base_; \
     using base_::value; \
     /**/
-
 #endif
-
-#ifndef BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL
-#   define BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) /**/
-#endif
-
-#ifndef BOOST_TT_AUX_BOOL_C_BASE
-#   define BOOST_TT_AUX_BOOL_C_BASE(C) : ::boost::integral_constant<bool,C>
-#endif 
-
 
 #define BOOST_TT_AUX_BOOL_TRAIT_DEF1(trait,T,C) \
 template< typename T > struct trait \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
     BOOST_MPL_AUX_LAMBDA_SUPPORT(1,trait,(T)) \
@@ -75,10 +41,9 @@ template< typename T > struct trait \
 BOOST_TT_AUX_TEMPLATE_ARITY_SPEC(1,trait) \
 /**/
 
-
 #define BOOST_TT_AUX_BOOL_TRAIT_DEF2(trait,T1,T2,C) \
 template< typename T1, typename T2 > struct trait \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
     BOOST_MPL_AUX_LAMBDA_SUPPORT(2,trait,(T1,T2)) \
@@ -88,74 +53,53 @@ BOOST_TT_AUX_TEMPLATE_ARITY_SPEC(2,trait) \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_SPEC1(trait,sp,C) \
-template<> struct trait< sp > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template<> struct trait<sp> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-    BOOST_MPL_AUX_LAMBDA_SUPPORT_SPEC(1,trait,(sp)) \
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(1,trait,(sp)) \
 }; \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_SPEC2(trait,sp1,sp2,C) \
-template<> struct trait< sp1,sp2 > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template<> struct trait<sp1,sp2> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-    BOOST_MPL_AUX_LAMBDA_SUPPORT_SPEC(2,trait,(sp1,sp2)) \
-}; \
-/**/
-
-#define BOOST_TT_AUX_BOOL_TRAIT_IMPL_SPEC1(trait,sp,C) \
-template<> struct trait##_impl< sp > \
-{ \
-    BOOST_STATIC_CONSTANT(bool, value = (C)); \
-}; \
-/**/
-
-#define BOOST_TT_AUX_BOOL_TRAIT_IMPL_SPEC2(trait,sp1,sp2,C) \
-template<> struct trait##_impl< sp1,sp2 > \
-{ \
-    BOOST_STATIC_CONSTANT(bool, value = (C)); \
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(2,trait,(sp1,sp2)) \
 }; \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC1_1(param,trait,sp,C) \
-template< param > struct trait< sp > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template< param > struct trait<sp> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
 }; \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC1_2(param1,param2,trait,sp,C) \
-template< param1, param2 > struct trait< sp > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template< param1, param2 > struct trait<sp> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
 }; \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC2_1(param,trait,sp1,sp2,C) \
-template< param > struct trait< sp1,sp2 > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template< param > struct trait<sp1,sp2> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-    BOOST_MPL_AUX_LAMBDA_SUPPORT_SPEC(2,trait,(sp1,sp2)) \
+    BOOST_MPL_AUX_LAMBDA_SUPPORT(2,trait,(sp1,sp2)) \
 }; \
 /**/
 
 #define BOOST_TT_AUX_BOOL_TRAIT_PARTIAL_SPEC2_2(param1,param2,trait,sp1,sp2,C) \
-template< param1, param2 > struct trait< sp1,sp2 > \
-    BOOST_TT_AUX_BOOL_C_BASE(C) \
+template< param1, param2 > struct trait<sp1,sp2> \
+    : mpl::bool_c< C > \
 { \
     BOOST_TT_AUX_BOOL_TRAIT_VALUE_DECL(C) \
-}; \
-/**/
-
-#define BOOST_TT_AUX_BOOL_TRAIT_IMPL_PARTIAL_SPEC2_1(param,trait,sp1,sp2,C) \
-template< param > struct trait##_impl< sp1,sp2 > \
-{ \
-    BOOST_STATIC_CONSTANT(bool, value = (C)); \
 }; \
 /**/
 

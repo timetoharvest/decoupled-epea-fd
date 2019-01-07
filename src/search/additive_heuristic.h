@@ -1,13 +1,9 @@
 #ifndef ADDITIVE_HEURISTIC_H
 #define ADDITIVE_HEURISTIC_H
 
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 #include "relaxation_heuristic.h"
-
 #include <cassert>
-
-class State;
-
 
 class AdditiveHeuristic : public RelaxationHeuristic {
     /* Costs larger than MAX_COST_VALUE are clamped to max_value. The
@@ -19,23 +15,13 @@ class AdditiveHeuristic : public RelaxationHeuristic {
      */
     static const int MAX_COST_VALUE = 100000000;
 
-    AdaptiveQueue<Proposition *> queue;
+    priority_queues::AdaptiveQueue<Proposition *> queue;
     bool did_write_overflow_warning;
 
-    void setup_exploration_queue();
+    void setup_exploration_queue_decoupled_leaf_states(const State &state);
     void setup_exploration_queue_state(const State &state);
     void relaxed_exploration();
     void mark_preferred_operators(const State &state, Proposition *goal);
-
-    void enqueue_if_necessary(Proposition *prop, int cost, UnaryOperator *op) {
-        assert(cost >= 0);
-        if (prop->cost == -1 || prop->cost > cost) {
-            prop->cost = cost;
-            prop->reached_by = op;
-            queue.push(cost, prop);
-        }
-        assert(prop->cost != -1 && prop->cost <= cost);
-    }
 
     void increase_cost(int &cost, int amount) {
         assert(cost >= 0);
@@ -50,7 +36,19 @@ class AdditiveHeuristic : public RelaxationHeuristic {
     void write_overflow_warning();
 protected:
     virtual void initialize();
-    virtual int compute_heuristic(const GlobalState &global_state);
+    virtual int compute_heuristic(const State &state);
+    
+    void enqueue_if_necessary(Proposition *prop, int cost, UnaryOperator *op) {
+        assert(cost >= 0);
+        if (prop->cost == -1 || prop->cost > cost) {
+            prop->cost = cost;
+            prop->reached_by = op;
+            queue.push(cost, prop);
+        }
+        assert(prop->cost != -1 && prop->cost <= cost);
+    }
+    
+    void setup_exploration_queue();
 
     // Common part of h^add and h^ff computation.
     int compute_add_and_ff(const State &state);

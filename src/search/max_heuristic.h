@@ -1,15 +1,15 @@
 #ifndef MAX_HEURISTIC_H
 #define MAX_HEURISTIC_H
 
-#include "priority_queue.h"
+#include "algorithms/priority_queues.h"
 #include "relaxation_heuristic.h"
 #include <cassert>
 
 class HSPMaxHeuristic : public RelaxationHeuristic {
-    AdaptiveQueue<Proposition *> queue;
+    priority_queues::AdaptiveQueue<Proposition *> queue;
 
     void setup_exploration_queue();
-    void setup_exploration_queue_state(const GlobalState &state);
+    void setup_exploration_queue_state(const State &state);
     void relaxed_exploration();
 
     void enqueue_if_necessary(Proposition *prop, int cost) {
@@ -22,7 +22,7 @@ class HSPMaxHeuristic : public RelaxationHeuristic {
     }
 protected:
     virtual void initialize();
-    virtual int compute_heuristic(const GlobalState &state);
+    virtual int compute_heuristic(const State &state);
 public:
     HSPMaxHeuristic(const Options &options);
     ~HSPMaxHeuristic();

@@ -1,6 +1,19 @@
 #ifndef OPTION_PARSER_H
 #define OPTION_PARSER_H
 
+#include "globals.h"
+#include "heuristic.h"
+#include "option_parser_util.h"
+
+#include <algorithm>
+#include <iostream>
+#include <limits>
+#include <memory>
+#include <map>
+#include <sstream>
+#include <string>
+#include <vector>
+
 /*
 How to add support for a new type NT to the option parser:
 In this file, tell the parser how to parse NT:
@@ -27,27 +40,17 @@ If NT shall be predefinable:
   should add an explanation to OptionParser::usage().
 */
 
-#include "heuristic.h"
-#include "option_parser_util.h"
 
-#include <algorithm>
-#include <iostream>
-#include <limits>
-#include <map>
-#include <memory>
-#include <sstream>
-#include <string>
-#include <vector>
-
-class AbstractTask;
+class Factoring;
+class OptionParser;
 class LandmarkGraph;
 class MergeStrategy;
 template<class Entry>
 class OpenList;
-class OptionParser;
+class PruningMethod;
+class PruningOptions;
 class SearchEngine;
 class ShrinkStrategy;
-class Labels;
 
 /*
 The TokenParser<T> wraps functions to parse supported types T.
@@ -62,7 +65,7 @@ public:
 };
 
 
-// int needs a specialization to allow "infinity".
+//int needs a specialization to allow "infinity" (=numeric_limits<int>::max())
 template <>
 class TokenParser<int> {
 public:
@@ -121,27 +124,27 @@ public:
 };
 
 template <>
-class TokenParser<std::shared_ptr<MergeStrategy> > {
+class TokenParser<MergeStrategy *> {
 public:
-    static inline std::shared_ptr<MergeStrategy>parse(OptionParser &p);
+    static inline MergeStrategy *parse(OptionParser &p);
 };
 
 template <>
-class TokenParser<std::shared_ptr<ShrinkStrategy> > {
+class TokenParser<Factoring *> {
 public:
-    static inline std::shared_ptr<ShrinkStrategy>parse(OptionParser &p);
+    static inline Factoring *parse(OptionParser &p);
 };
 
 template <>
-class TokenParser<std::shared_ptr<Labels> > {
+class TokenParser<PruningOptions *> {
 public:
-    static inline std::shared_ptr<Labels>parse(OptionParser &p);
+    static inline PruningOptions *parse(OptionParser &p);
 };
 
 template <>
-class TokenParser<std::shared_ptr<AbstractTask> > {
+class TokenParser<ShrinkStrategy *> {
 public:
-    static inline std::shared_ptr<AbstractTask> parse(OptionParser &p);
+    static inline ShrinkStrategy *parse(OptionParser &p);
 };
 
 template <class T>
@@ -150,6 +153,11 @@ public:
     static inline std::vector<T> parse(OptionParser &p);
 };
 
+template <>
+class TokenParser<PruningMethod *> {
+public:
+    static inline PruningMethod *parse(OptionParser &p);
+};
 
 
 /*The OptionParser stores a parse tree, and a Options.
@@ -157,21 +165,18 @@ By calling addArgument, the parse tree is partially parsed,
 and the result is added to the Options.
  */
 class OptionParser {
-    static int parse_int_arg(const std::string &name, const std::string &value);
     static SearchEngine *parse_cmd_line_aux(
         const std::vector<std::string> &args, bool dry_run);
+    
 public:
-    OptionParser(const OptionParser &other) = delete;
-    OptionParser &operator=(const OptionParser &other) = delete;
     OptionParser(std::string config, bool dr);
     OptionParser(ParseTree pt, bool dr);
-    ~OptionParser() = default;
-
-    static const std::string NONE;
 
     //this is where input from the commandline goes:
     static SearchEngine *parse_cmd_line(
         int argc, const char **argv, bool dr, bool is_unit_cost);
+    
+    static void parse_decoupled_search(int argc, const char **argv);
 
     static std::string usage(std::string progname);
 
@@ -180,26 +185,22 @@ public:
     template <class T>
     T start_parsing();
 
-    template<class T>
-    void check_bounds(
-        const std::string &key, const T &value, const Bounds &bounds);
-
-    /* Add option with default value. Use def_val=NONE for optional
-       parameters without default values. */
+    //add option with default value
+    //call with mandatory = false to specify an optional parameter without default value
     template <class T>
     void add_option(
         std::string k, std::string h = "", std::string def_val = "",
-        Bounds bounds = Bounds::unlimited());
+        const OptionFlags &flags = OptionFlags());
 
     void add_enum_option(std::string k,
                          std::vector<std::string > enumeration,
                          std::string h = "", std::string def_val = "",
-                         std::vector<std::string> enum_doc = std::vector<std::string>());
+                         std::vector<std::string> enum_doc = std::vector<std::string>(),
+                         const OptionFlags &flags = OptionFlags());
     template <class T>
     void add_list_option(std::string k,
-                         std::string h = "", std::string def_val = "");
-
-    bool is_valid_option(const std::string &k) const;
+                         std::string h = "", std::string def_val = "",
+                         const OptionFlags &flags = OptionFlags());
 
     void document_values(std::string argument,
                          ValueExplanations value_explanations) const;
@@ -214,7 +215,8 @@ public:
     void warning(std::string msg);
 
     Options parse(); //parse is not the best name for this function. It just does some checks and returns the parsed options Parsing happens before that. Change?
-    const ParseTree *get_parse_tree();
+    ParseTree *get_parse_tree();
+    void set_parse_tree(const ParseTree &pt);
     void set_help_mode(bool m);
 
     bool dry_run() const;
@@ -228,16 +230,13 @@ public:
     }
 
 private:
-    std::string unparsed_config;
     Options opts;
-    const ParseTree parse_tree;
+    ParseTree parse_tree;
     bool dry_run_;
     bool help_mode_;
 
     ParseTree::sibling_iterator next_unparsed_argument;
     std::vector<std::string> valid_keys;
-
-    void set_unparsed_config();
 };
 
 //Definitions of OptionParsers template functions:
@@ -251,27 +250,15 @@ T OptionParser::start_parsing() {
     return TokenParser<T>::parse(*this);
 }
 
-template<class T>
-void OptionParser::check_bounds(
-    const std::string &, const T &, const Bounds &) {
-}
-
-template<>
-void OptionParser::check_bounds<int>(
-    const std::string &key, const int &value, const Bounds &bounds);
-
-template<>
-void OptionParser::check_bounds<double>(
-    const std::string &key, const double &value, const Bounds &bounds);
-
 template <class T>
 void OptionParser::add_option(
-    std::string k, std::string h, std::string default_value, Bounds bounds) {
+    std::string k,
+    std::string h, std::string default_value, const OptionFlags &flags) {
     if (help_mode()) {
         DocStore::instance()->add_arg(parse_tree.begin()->value,
                                       k, h,
                                       TypeNamer<T>::name(), default_value,
-                                      bounds);
+                                      flags.mandatory);
         return;
     }
     valid_keys.push_back(k);
@@ -280,9 +267,11 @@ void OptionParser::add_option(
     //scenario where we have already handled all arguments
     if (arg == parse_tree.end(parse_tree.begin())) {
         if (default_value.empty()) {
-            error("missing option: " + k);
-        } else if (default_value == NONE) {
-            return;
+            if (flags.mandatory) {
+                error("missing option: " + k);
+            } else {
+                return;
+            }
         } else {
             use_default = true;
         }
@@ -296,21 +285,22 @@ void OptionParser::add_option(
             }
             if (arg == parse_tree.end(parse_tree.begin())) {
                 if (default_value.empty()) {
-                    error("missing option: " + k);
-                } else if (default_value == NONE) {
-                    return;
+                    if (flags.mandatory) {
+                        error("missing option: " + k);
+                    } else {
+                        return;
+                    }
                 } else {
                     use_default = true;
                 }
             }
         }
     }
-    std::unique_ptr<OptionParser> subparser(
-        use_default ?
-        new OptionParser(default_value, dry_run()) :
-        new OptionParser(subtree(parse_tree, arg), dry_run()));
-    T result = TokenParser<T>::parse(*subparser);
-    check_bounds<T>(k, result, bounds);
+    OptionParser subparser =
+        (use_default ?
+         OptionParser(default_value, dry_run()) :
+         OptionParser(subtree(parse_tree, arg), dry_run()));
+    T result = TokenParser<T>::parse(subparser);
     opts.set<T>(k, result);
     //if we have not reached the keyword parameters yet
     //and did not use the default value,
@@ -322,8 +312,8 @@ void OptionParser::add_option(
 
 template <class T>
 void OptionParser::add_list_option(
-    std::string k, std::string h, std::string def_val) {
-    add_option<std::vector<T> >(k, h, def_val);
+    std::string k, std::string h, std::string def_val, const OptionFlags &flags) {
+    add_option<std::vector<T> >(k, h, def_val, flags);
 }
 
 //Definitions of TokenParser<T>:
@@ -377,17 +367,6 @@ static T *lookup_in_registry(OptionParser &p) {
     return 0;
 }
 
-// TODO: This function will replace lookup_in_registry() once we no longer need to support raw pointers.
-template <class T>
-static std::shared_ptr<T> lookup_in_registry_shared(OptionParser &p) {
-    ParseTree::iterator pt = p.get_parse_tree()->begin();
-    if (Registry<std::shared_ptr<T> >::instance()->contains(pt->value)) {
-        return Registry<std::shared_ptr<T> >::instance()->get(pt->value) (p);
-    }
-    p.error(TypeNamer<std::shared_ptr<T> >::name() + " " + pt->value + " not found");
-    return 0;
-}
-
 template <class T>
 static T *lookup_in_predefinitions(OptionParser &p, bool &found) {
     ParseTree::iterator pt = p.get_parse_tree()->begin();
@@ -398,6 +377,7 @@ static T *lookup_in_predefinitions(OptionParser &p, bool &found) {
     found = false;
     return 0;
 }
+
 
 template <class Entry>
 OpenList<Entry > *TokenParser<OpenList<Entry > *>::parse(OptionParser &p) {
@@ -437,30 +417,37 @@ ScalarEvaluator *TokenParser<ScalarEvaluator *>::parse(OptionParser &p) {
     return 0;
 }
 
-
 SearchEngine *TokenParser<SearchEngine *>::parse(OptionParser &p) {
     return lookup_in_registry<SearchEngine>(p);
 }
 
-std::shared_ptr<MergeStrategy>TokenParser<std::shared_ptr<MergeStrategy> >::parse(OptionParser &p) {
-    return lookup_in_registry_shared<MergeStrategy>(p);
+PruningMethod *TokenParser<PruningMethod *>::parse(OptionParser &p) {
+    ParseTree::iterator pt = p.get_parse_tree()->begin();
+    if (Registry<PruningMethod *>::instance()->contains(pt->value)) {
+        return Registry<PruningMethod *>::instance()->get(pt->value) (p);
+    }
+    p.error("POR method not found");
+    return 0;
 }
 
-std::shared_ptr<ShrinkStrategy>TokenParser<std::shared_ptr<ShrinkStrategy> >::parse(OptionParser &p) {
-    return lookup_in_registry_shared<ShrinkStrategy>(p);
+MergeStrategy *TokenParser<MergeStrategy *>::parse(OptionParser &p) {
+    return lookup_in_registry<MergeStrategy>(p);
 }
 
-std::shared_ptr<Labels>TokenParser<std::shared_ptr<Labels> >::parse(OptionParser &p) {
-    return lookup_in_registry_shared<Labels>(p);
+ShrinkStrategy *TokenParser<ShrinkStrategy *>::parse(OptionParser &p) {
+    return lookup_in_registry<ShrinkStrategy>(p);
 }
-
 
 Synergy *TokenParser<Synergy *>::parse(OptionParser &p) {
     return lookup_in_registry<Synergy>(p);
 }
 
-std::shared_ptr<AbstractTask> TokenParser<std::shared_ptr<AbstractTask> >::parse(OptionParser &p) {
-    return lookup_in_registry_shared<AbstractTask>(p);
+Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
+    return lookup_in_registry<Factoring>(p);
+}
+
+PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {
+    return lookup_in_registry<PruningOptions>(p);
 }
 
 ParseTree TokenParser<ParseTree>::parse(OptionParser &p) {

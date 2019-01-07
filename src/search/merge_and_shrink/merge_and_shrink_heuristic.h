@@ -3,36 +3,28 @@
 
 #include "../heuristic.h"
 
-#include <memory>
-
+class TransitionSystem;
 class Labels;
 class MergeStrategy;
 class ShrinkStrategy;
-class Timer;
-class TransitionSystem;
 
 class MergeAndShrinkHeuristic : public Heuristic {
-    std::shared_ptr<MergeStrategy> merge_strategy;
-    std::shared_ptr<ShrinkStrategy> shrink_strategy;
-    std::shared_ptr<Labels> labels;
-    long starting_peak_memory;
+    MergeStrategy *const merge_strategy;
+    ShrinkStrategy *const shrink_strategy;
+    const bool use_expensive_statistics;
+    Labels *labels;
 
-    /*
-      TODO: after splitting transition system into several parts, we may
-      want to change all transition system pointers into unique_ptr.
-    */
     TransitionSystem *final_transition_system;
-    void build_transition_system(const Timer &timer);
+    TransitionSystem *build_transition_system();
 
-    void report_peak_memory_delta(bool final = false) const;
     void dump_options() const;
     void warn_on_unusual_options() const;
 protected:
-    virtual void initialize() override;
-    virtual int compute_heuristic(const GlobalState &global_state) override;
+    virtual void initialize();
+    virtual int compute_heuristic(const State &state);
 public:
-    explicit MergeAndShrinkHeuristic(const Options &opts);
-    ~MergeAndShrinkHeuristic() = default;
+    MergeAndShrinkHeuristic(const Options &opts);
+    ~MergeAndShrinkHeuristic();
 };
 
 #endif

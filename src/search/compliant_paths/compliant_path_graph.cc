@@ -1,0 +1,566 @@
+#include "compliant_path_graph.h"
+
+#include "cpg_storage.h"
+#include "../factoring.h"
+#include "../leaf_state_id.h"
+#include "../operator.h"
+#include "pricing_function.h"
+#include "pruning_options.h"
+#include "reachability_function.h"
+#include "../search_space.h"
+#include "../state.h"
+#include "../state_id.h"
+#include "../state_registry.h"
+#include "../task_utils/successor_generator.h"
+#include "../utils/timer.h"
+
+
+using namespace std;
+
+unique_ptr<PruningOptions> CompliantPathGraph::pruning;
+
+const int CompliantPathGraph::INF = -1;
+    
+const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
+
+bool CompliantPathGraph::compute_leaf_backwards_graph = false;
+
+SearchSpace* CompliantPathGraph::search_space;
+
+OperatorCost CompliantPathGraph::cost_type;
+
+vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
+
+vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
+
+vector<LeafStateID> CompliantPathGraph::leaf_tags_to_cache;
+
+vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
+
+vector<vector<LeafStateHash> > CompliantPathGraph::leaf_goal_states;
+    
+vector<vector<vector<OperatorID> > > CompliantPathGraph::center_successors;
+
+unique_ptr<successor_generator::SuccessorGenerator> CompliantPathGraph::center_action_successor_generator;
+
+vector<unique_ptr<successor_generator::SuccessorGenerator> > CompliantPathGraph::leaf_successor_generators;
+    
+vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_successors;
+
+vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_predecessors;
+    
+vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
+    
+vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
+
+
+
+bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID factor) {
+    assert(is_a_leaf_goal_state.size() > factor && is_a_leaf_goal_state[factor].size() > id);
+    return is_a_leaf_goal_state[factor][id];
+}
+
+void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
+    if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
+        for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
+            size_t leaf_id = leaf_tags_to_cache[i].hash();
+            size_t factor = leaf_tags_to_cache[i].get_factor();
+            if (leaf_price_cache[factor].size() <= leaf_id){
+                leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
+            }
+            leaf_price_cache[factor][leaf_id] = state.get_id();
+        }
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
+    }
+}
+
+void CompliantPathGraph::discard_leaf_price_cache() {
+    if (g_factoring->get_profile() != PROFILE::FORK && !leaf_tags_to_cache.empty()){
+        vector<LeafStateID>().swap(leaf_tags_to_cache);
+    }
+}
+
+void CompliantPathGraph::initialize() {
+    leaf_state_successors.resize(g_leaves.size());    
+    center_successors.resize(g_leaves.size());    
+    is_a_leaf_goal_state.resize(g_leaves.size());
+    leaf_goal_states.resize(g_leaves.size());
+    
+    // initialize cache if at least one inv-fork leaf present
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (g_factoring->is_ifork_leaf(factor)){
+            leaf_price_cache = vector<vector<StateID> >(g_leaves.size());
+            break;
+        }
+    }
+}
+
+void CompliantPathGraph::build_leaf_successor_generators() {
+    if (g_factoring->get_profile() != PROFILE::FORK){
+        center_action_successor_generator = unique_ptr<successor_generator::SuccessorGenerator>(new successor_generator::SuccessorGenerator(LeafFactorID::CENTER, true));
+    }
+    leaf_successor_generators.reserve(g_leaves.size());
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        leaf_successor_generators.push_back(unique_ptr<successor_generator::SuccessorGenerator>(new successor_generator::SuccessorGenerator(factor)));
+    }
+}
+
+void CompliantPathGraph::set_cost_type(OperatorCost ct) {
+    cost_type = ct;
+    g_min_action_cost_per_factor.resize(g_leaves.size(), numeric_limits<int>::max());
+    for (const auto &op : g_operators){
+        LeafFactorID factor = op.get_affected_factor();
+        if (factor != LeafFactorID::CENTER){
+            g_min_action_cost_per_factor[factor] = min(g_min_action_cost_per_factor[factor], get_adjusted_action_cost(op, cost_type));
+        }
+    }
+}
+
+int CompliantPathGraph::check_dominance(const State &base_state,
+                                        int curr_number_duplicates,
+                                        const State &predecessor,
+                                        const Operator &op) {
+    
+    int g_value = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type);
+    
+#ifdef DEBUG_PRUNING
+    cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << g_value << endl;
+    dump();
+#endif
+    
+    vector<size_t> predecessors;
+    
+    if (PruningOptions::are_closed_nodes_reopened()){
+        StateID curr_id = predecessor.get_id();
+        while (curr_id.hash() != 0){
+            if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
+                predecessors.push_back(curr_id.hash());
+            }
+            curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
+        }
+        predecessors.push_back(0);
+    }
+    
+    int replaced_state_dup = -1;
+
+    for (int dup = 0; dup <= curr_number_duplicates; dup++){
+        // check the price tags of all equal center states
+        
+#ifdef DEBUG_PRUNING
+        cout << "current dup counter " << dup << endl;
+#endif
+
+        // get other state
+        const State s = g_state_registry->get_center_state(base_state, dup);
+        
+#ifdef DEBUG_PRUNING
+        cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
+        CPGStorage::storage->get_mutable_cpg(s)->dump();
+#endif
+
+        if (!PruningOptions::are_closed_nodes_reopened()){
+            // in greedy search, close nodes that are dominated by this one as cannot
+            // reach anything new from those that cannot be reached from this node
+            // if dominated => do not consider this state
+            // in this case, all dominated nodes are also dominated by the state
+            // that dominates this one
+
+            DOMINATION res = check_dominance(s); 
+            
+            if (res != NONE){
+                if (res == DOMINATES) {
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                } else {
+                    replaced_state_dup = dup;
+
+                    // otherwise, the path to an existing state dominating this one
+                    // will be updated, so that paths to leaf states that are not
+                    // reachable in this state cannot be constructed
+                    // this is only needed for eager search, where for duplicate states
+                    // reached on a cheaper path, the predecessor is updated
+                    PruningOptions::set_ignore_current_state();
+                }
+            }       
+            
+        } else {
+            
+            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+                
+                DOMINATION res = check_dominance(s);
+            
+                if (res == EQUAL || res == DOMINATED){
+                    int old_g = search_space->get_node(s).get_g();
+                    if (g_value + g_inc_g_by < old_g){
+                        // otherwise, that existing state would be reopened
+                        PruningOptions::set_ignore_current_state();
+                    }
+                    return dup;
+                } else if (res == DOMINATES){
+                    // set dominated nodes to closed
+                    SearchNode node = search_space->get_node(s);
+                    if (node.is_open()){
+                        node.close();
+                    }
+                }
+                
+            } else {
+            
+                // pruning for optimal search
+                
+                int old_g = search_space->get_node(s).get_g();
+            
+                if (g_value + g_inc_g_by < old_g){
+#ifdef DEBUG_PRUNING
+                    cout << "new g is lower: " << (g_value + g_inc_g_by) << " < " << old_g << endl;
+#endif
+                    // new state has a lower g-value and may only replace an
+                    // existing state if it dominates the existing one (nodes are closed instead of replaced)
+                    // => if the new one does not dominate the old state, need
+                    // to make it a new state, no duplicate
+                    
+                    DOMINATION res = check_dominance(s, DOMINATES);
+                    
+                    if (res == EQUAL){
+#ifdef DEBUG_PRUNING
+                        cout << "new state is equal to old one" << endl;
+#endif
+                        return dup;
+                    } else if (res == DOMINATES){
+#ifdef DEBUG_PRUNING
+                        cout << "new state dominates old one" << endl;
+#endif
+                        if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
+                            // must not close a dominated state that is on path to this state
+                            // it might have been reopened, so its successors may get lower g
+                            SearchNode node = search_space->get_node(s);
+                            if (node.is_open()){
+                                node.close();
+                            }
+                        }
+                    }
+                    
+                } else {
+#ifdef DEBUG_PRUNING
+                    cout << "old g is lower: " << (g_value + g_inc_g_by) << " > " << old_g << endl;
+#endif
+                    // new state has a higher/equal g-value than the existing one and can
+                    // be marked as duplicate if it is subsumed.
+                    // if it is not subsumed, it must be considered a new state
+
+                    DOMINATION res = check_dominance(s, DOMINATED);
+                    
+                    if (res == EQUAL || res == DOMINATED){
+                        // new state is dominated by existing one
+#ifdef DEBUG_PRUNING
+                        cout << "new state is equal to/dominated by old one" << endl;
+#endif
+                        return dup;
+                    }
+                }
+            }
+        }
+    }
+    if (replaced_state_dup != -1){
+        return replaced_state_dup;
+    } else {
+        return curr_number_duplicates + 1;
+    }
+}
+
+void CompliantPathGraph::build_leaf_state_spaces() {
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+    cout << "+++++++++++++++ STARTING RPG for calculation of minimal goal cost" << endl;
+#endif
+      
+    leaf_state_id_map.resize(g_leaves.size(), vector<int>(1, -1));
+    curr_leaf_state_max_id.resize(g_leaves.size(), 0);
+    
+    if (compute_leaf_backwards_graph){
+        leaf_state_predecessors.resize(g_leaves.size());
+        precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
+    }
+    
+    Prices goal_price_tag(0);
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        goal_price_tag.add_state(LeafStateHash(0), factor, 0);
+    }
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+
+        if (!precompute_leaf_state_spaces[factor]){
+            continue;
+        }
+        
+        if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
+            // skip fork-leaf factor without a goal
+            continue;
+        }
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+        cout << "       starting RPG for leaf factor " << factor << endl;
+        int number_states = goal_price_tag.get_number_states(factor);
+        size_t id = 0;
+        while (number_states > 0){
+            if (goal_price_tag.has_leaf_state(id, factor)){
+                --number_states;
+                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+            }
+            ++id;
+        }
+#endif
+        
+        vector<int> best_prices;
+        
+        bool change = true;
+        while (change) {
+
+            change = false;
+
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (!goal_price_tag.has_leaf_state(id, factor)){
+                    continue;
+                }
+                int cost = goal_price_tag.get_cost_of_state(id, factor);
+                if (id < best_prices.size()){
+                    if (cost > best_prices[id]
+                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
+                            && best_prices[id] != numeric_limits<int>::max())){
+                        continue;
+                    }
+                }
+                
+                const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
+                
+                if (id >= best_prices.size()){
+                    best_prices.resize(id + 1, numeric_limits<int>::max());
+                }
+                bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
+                best_prices[id] = cost;
+                
+                
+                vector<OperatorID> applicable_ops;
+                
+                if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
+                    if (first_time_seen){
+                        vector<OperatorID> center_ops;
+                        center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
+                        
+                        // store center ops whose preconditions are satisfied by predecessor
+                        if (id >= center_successors[factor].size()){
+                            center_successors[factor].resize(id+1);
+                        }
+                        center_successors[factor][id].reserve(center_ops.size());
+                        for (OperatorID op_id : center_ops){
+                            if (g_operators[op_id].has_precondition_on(factor)){
+                                center_successors[factor][id].push_back(op_id);
+                            }
+                        }
+                        center_successors[factor][id].swap(center_successors[factor][id]);
+                        if (!g_factoring->is_ifork_leaf(factor)){
+                            // no need to apply center ops if none of them changes this leaf factor
+                            applicable_ops.swap(center_ops);
+                        }
+                    } else if (!g_factoring->is_ifork_leaf(factor)){
+                        // no need to apply center ops if none of them changes this leaf factor
+                        applicable_ops.resize(center_successors[factor][id].size(), OperatorID::no_operator);
+                        for (size_t o = 0; o < center_successors[factor][id].size(); ++o){
+                            applicable_ops[o] = center_successors[factor][id][o];
+                        }
+                    }
+                }
+
+                if (first_time_seen){
+                    leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
+                } else {
+                    size_t old_size = applicable_ops.size();
+                    applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
+                    for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
+                        applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
+                    }
+                }
+                
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+                cout << "       generated " << applicable_ops.size() << " applicable operators" << endl;
+#endif
+                
+                if (id >= leaf_state_successors[factor].size()) {
+                    leaf_state_successors[factor].resize(id + 1);
+                }
+
+                // apply all applicable_ops to predecessor and store the outcome          
+                for (OperatorID op_id : applicable_ops){
+                    const Operator &op = g_operators[op_id];
+                    if (op.has_effect_on(factor)){
+                        bool is_center_op = op.get_affected_factor() == LeafFactorID::CENTER;
+                        
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+                        cout << "################ trying to apply " << op->get_name() << " in state " << predecessor.get_id() << endl;
+                        predecessor.dump_pddl();
+#endif
+                        LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+                        cout << "created leaf state " << lid << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
+                        g_state_registry->lookup_leaf_state(lid).dump_pddl();
+#endif
+                        int op_cost = 0;
+                        if (!is_center_op){
+                            op_cost = get_adjusted_action_cost(op, cost_type);
+                        }
+                        
+                        if (lid >= leaf_state_id_map[factor].size()){
+                            leaf_state_id_map[factor].resize(lid + 1, -1);
+                        }
+                        
+                        change |= goal_price_tag.add_state(lid, factor, cost + op_cost);
+                        
+                        // TODO once the irrelevance_pruning methods are added, it might make sense to do something about
+                        // that here, i.e. e.g. the goal states of fork leaves dont need successors
+                        
+                        // TODO eliminate self-loops in the leaf state space. this should be the case if lid == id
+                        
+                        if (compute_leaf_backwards_graph && first_time_seen){
+                            // this ensures that there is an entry leaf_state_predecessors[factor][lid]
+                            // even in case lid has been generated by a center action
+                            if (lid >= leaf_state_predecessors[factor].size()) {
+                                leaf_state_predecessors[factor].resize(lid + 1);
+                            }
+                        }
+                        
+                        if (!is_center_op && first_time_seen){
+                            leaf_state_successors[factor][id].push_back(make_pair(op_id, lid));
+                            if (compute_leaf_backwards_graph){
+                                leaf_state_predecessors[factor][lid].push_back(make_pair(op_id, id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+    cout << "   RPG for leaf factor " << factor << " finished" << endl;
+#endif
+    
+    }
+    
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+    cout << "+++++++++++++++ RPG  for calculation of minimal goal cost FINISHED" << endl;
+#endif
+    
+    pruning->init();
+   
+    size_t min_leaf_factor_size = numeric_limits<size_t>::max();
+    double avg_leaf_factor_size = 0;
+    size_t max_leaf_factor_size = 0;
+    size_t tmp;
+    bool built_all_state_spaces = true;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (precompute_leaf_state_spaces[factor]){
+            tmp = g_state_registry->size(factor);
+            min_leaf_factor_size = min(min_leaf_factor_size, tmp);
+            avg_leaf_factor_size += tmp;
+            max_leaf_factor_size = max(max_leaf_factor_size, tmp);
+        } else {
+            built_all_state_spaces = false;
+        }
+    }
+    if (min_leaf_factor_size != numeric_limits<size_t>::max()){
+        cout << "min reachable leaf factor size "  << min_leaf_factor_size << endl;
+    }
+    if (built_all_state_spaces){
+        cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_leaves.size()) << endl;
+        cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
+    }
+    
+    
+    g_min_goal_cost = vector<int>(g_leaves.size(), numeric_limits<int>::max());
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (!precompute_leaf_state_spaces[factor]){
+            cout << "min goal cost of factor " << factor << " not computed" << endl;
+            g_min_goal_cost[factor] = 0;
+            continue;
+        }
+        g_min_goal_cost[factor] = goal_price_tag.get_goal_cost(factor);
+        
+        if (g_min_goal_cost[factor] == INF){
+            if (!g_goals_per_factor[factor].empty()){
+                cout << "There is a goal that cannot be achieved in factor " << factor << endl;
+                for (size_t i = 0; i < g_goals_per_factor[factor].size(); i++){
+                    cout << g_fact_names[g_goals_per_factor[factor][i].first][g_goals_per_factor[factor][i].second] << endl;
+                }
+                cout << "Total time: " << utils::g_timer << endl;
+                exit_with(utils::ExitCode::SEARCH_UNSOLVABLE);
+            }
+            g_min_goal_cost[factor] = 0;
+        } else {
+            g_sum_min_goal_cost += g_min_goal_cost[factor];
+        }
+        if (g_goals_per_factor[factor].empty()){
+            cout << "factor " << factor << " does not have a goal" << endl;
+        } else {
+            cout << "min goal cost of factor " << factor << " : " << g_min_goal_cost[factor] << endl;
+        }
+    }
+    
+    bool all_built = true;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (precompute_leaf_state_spaces[factor]){
+            leaf_successor_generators[factor].reset();
+        } else {
+            all_built = false;
+        }
+    }
+    if (center_action_successor_generator && all_built){
+        center_action_successor_generator.reset();
+    }
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        leaf_state_id_map[factor] = vector<int>(g_state_registry->size(factor), -1);
+        curr_leaf_state_max_id[factor] = 0;
+    }
+    
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+    cout << "leaving calculate_min_goal_cost function" << endl;
+#endif
+}
+
+unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
+    if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+        return Reachable::get_init_state_cpg();
+    } else {
+        return Prices::get_init_state_cpg();
+    }
+}
+
+void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
+    LeafFactorID factor = state.get_id().get_factor();
+    if (!g_goals_per_factor[factor].empty()){
+        bool is_goal = true;
+        for (size_t g = 0; g < g_goals_per_factor[factor].size(); ++g){
+            int var = g_goals_per_factor[factor][g].first;
+            int val = g_goals_per_factor[factor][g].second;
+            if (state[var] != val){
+                is_goal = false;
+                break;
+            }
+        }
+        assert(is_a_leaf_goal_state[factor].size() == state.get_id().hash());
+        is_a_leaf_goal_state[factor].push_back(is_goal);
+        if (is_goal && compute_leaf_backwards_graph){
+            leaf_goal_states[factor].push_back(state.get_id().hash());
+        }
+    }
+}
+
+void CompliantPathGraph::discard_new_graph() const {
+    discard_leaf_price_cache();
+}
+

@@ -1,7 +1,7 @@
 #include "sum_evaluator.h"
 
-#include <cassert>
 #include <limits>
+#include <cassert>
 
 #include "option_parser.h"
 #include "plugin.h"
@@ -19,13 +19,15 @@ SumEvaluator::~SumEvaluator() {
 
 int SumEvaluator::combine_values(const vector<int> &values) {
     int result = 0;
-    for (int value : values) {
-        assert(value >= 0);
-        result += value;
+    for (size_t i = 0; i < values.size(); ++i) {
+        assert(values[i] >= 0);
+        result += values[i];
         assert(result >= 0); // Check against overflow.
     }
     return result;
 }
+
+
 
 static ScalarEvaluator *_parse(OptionParser &parser) {
     parser.document_synopsis("Sum evaluator",

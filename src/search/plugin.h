@@ -1,38 +1,25 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include "open_lists/alternation_open_list.h"
-#include "open_lists/bucket_open_list.h"
-#include "open_lists/pareto_open_list.h"
-#include "open_lists/standard_scalar_open_list.h"
-#include "open_lists/tiebreaking_open_list.h"
-
-#include <iostream>
-#include <map>
-#include <memory>
-#include <string>
 #include <vector>
+#include <string>
+#include <map>
+#include <iostream>
+#include "open_lists/standard_scalar_open_list.h"
+#include "open_lists/open_list_buckets.h"
+#include "open_lists/tiebreaking_open_list.h"
+#include "open_lists/alternation_open_list.h"
+#include "open_lists/pareto_open_list.h"
 
 template <class T>
 class Plugin {
+    Plugin(const Plugin<T> &copy);
 public:
     Plugin(const std::string &key, typename Registry<T *>::Factory factory) {
-        Registry<T *>::instance()->register_object(key, factory);
+        Registry<T *>::
+        instance()->register_object(key, factory);
     }
-    ~Plugin() = default;
-    Plugin(const Plugin<T> &other) = delete;
-};
-
-
-// TODO: This class will replace Plugin once we no longer need to support raw pointers.
-template <class T>
-class PluginShared {
-public:
-    PluginShared(const std::string &key, typename Registry<std::shared_ptr<T> >::Factory factory) {
-        Registry<std::shared_ptr<T> >::instance()->register_object(key, factory);
-    }
-    ~PluginShared() = default;
-    PluginShared(const PluginShared<T> &other) = delete;
+    ~Plugin() {}
 };
 
 template <class Entry>

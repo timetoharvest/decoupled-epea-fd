@@ -1,8 +1,11 @@
 #include "max_heuristic.h"
 
-#include "global_state.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
+#include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
+#include "state.h"
 
 #include <cassert>
 #include <vector>
@@ -54,15 +57,18 @@ void HSPMaxHeuristic::setup_exploration_queue() {
         op.unsatisfied_preconditions = op.precondition.size();
         op.cost = op.base_cost; // will be increased by precondition costs
 
-        if (op.unsatisfied_preconditions == 0)
+        if (op.unsatisfied_preconditions == 0) {
             enqueue_if_necessary(op.effect, op.base_cost);
+        }
     }
 }
 
-void HSPMaxHeuristic::setup_exploration_queue_state(const GlobalState &state) {
+void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-        Proposition *init_prop = &propositions[var][state[var]];
-        enqueue_if_necessary(init_prop, 0);
+	if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
+	    Proposition *init_prop = &propositions[var][state[var]];
+	    enqueue_if_necessary(init_prop, 0);
+	}
     }
 }
 
@@ -92,16 +98,43 @@ void HSPMaxHeuristic::relaxed_exploration() {
     }
 }
 
-int HSPMaxHeuristic::compute_heuristic(const GlobalState &state) {
+int HSPMaxHeuristic::compute_heuristic(const State &state) {
+
     setup_exploration_queue();
+
+    if (search_type != STD){
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+	for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+	    int number_states = tag->get_number_states(factor);
+            LeafStateHash id(0);
+	    while (number_states > 0){
+		if (tag->has_leaf_state(id, factor)){
+                    --number_states;
+                    int base_cost = 0;
+                    if (search_type == STAR){
+                        base_cost = tag->get_cost_of_state(id, factor);
+                    }
+                    const LeafState &f = g_state_registry->lookup_leaf_state(id, factor);
+                    for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+                        int var = g_leaves[factor][v];
+                        Proposition *effect = &propositions[var][f[var]];
+                        enqueue_if_necessary(effect, base_cost);
+                    }
+		}
+		++id;
+	    }
+	}
+    }
+
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
     int total_cost = 0;
     for (size_t i = 0; i < goal_propositions.size(); ++i) {
         int prop_cost = goal_propositions[i]->cost;
-        if (prop_cost == -1)
+        if (prop_cost == -1) {
             return DEAD_END;
+        }
         total_cost = max(total_cost, prop_cost);
     }
 

@@ -3,7 +3,9 @@
 
 from __future__ import print_function
 
+import os
 import sys
+import traceback
 
 def python_version_supported():
     major, minor = sys.version_info[:2]
@@ -25,9 +27,11 @@ import options
 import pddl
 import pddl_parser
 import sas_tasks
+import signal
 import simplify
 import timers
 import tools
+import variable_order
 
 # TODO: The translator may generate trivial derived variables which are always
 # true, for example if there ia a derived predicate in the input that only
@@ -40,6 +44,12 @@ import tools
 # non-derived).
 
 DEBUG = False
+
+
+## For a full list of exit codes, please see driver/returncodes.py. Here,
+## we only list codes that are used by the translator component of the planner.
+TRANSLATE_OUT_OF_MEMORY = 20
+TRANSLATE_OUT_OF_TIME = 21
 
 simplified_effect_condition_counter = 0
 added_implied_precondition_counter = 0
@@ -273,24 +283,23 @@ def build_sas_operator(name, condition, effects_by_variable, cost, ranges,
         implied_precondition = set()
         for fact in condition.items():
             implied_precondition.update(implied_facts[fact])
-
+    prevail_and_pre = dict(condition)
     pre_post = []
-    for var in effects_by_variable:
+    for var, effects_on_var in effects_by_variable.items():
         orig_pre = condition.get(var, -1)
-        for post, eff_conditions in effects_by_variable[var].items():
+        added_effect = False
+        for post, eff_conditions in effects_on_var.items():
             pre = orig_pre
             # if the effect does not change the variable value, we ignore it
             if pre == post:
                 continue
-            # otherwise the condition on var is not a prevail condition but a
-            # precondition, so we remove it from the prevail condition
-            condition.pop(var, -1)
             eff_condition_lists = [sorted(eff_cond.items())
                                    for eff_cond in eff_conditions]
             if ranges[var] == 2:
                 # Apply simplifications for binary variables.
                 if prune_stupid_effect_conditions(var, post,
-                                                  eff_condition_lists):
+                                                  eff_condition_lists,
+                                                  effects_on_var):
                     global simplified_effect_condition_counter
                     simplified_effect_condition_counter += 1
                 if (options.add_implied_preconditions and pre == -1 and
@@ -300,16 +309,32 @@ def build_sas_operator(name, condition, effects_by_variable, cost, ranges,
                     pre = 1 - post
             for eff_condition in eff_condition_lists:
                 # we do not need to represent a precondition as effect condition
-                if (var, pre) in eff_condition:
-                    eff_condition.remove((var, pre))
-                pre_post.append((var, pre, post, eff_condition))
+                # and we do not want to keep an effect whose condition contradicts
+                # a pre- or prevail condition
+                filtered_eff_condition = []
+                eff_condition_contradicts_precondition = False
+                for variable, value in eff_condition:
+                    if variable in prevail_and_pre:
+                        if prevail_and_pre[variable] != value:
+                            eff_condition_contradicts_precondition = True
+                            break
+                    else:
+                        filtered_eff_condition.append((variable, value))
+                if eff_condition_contradicts_precondition:
+                    continue
+                pre_post.append((var, pre, post, filtered_eff_condition))
+                added_effect = True
+        if added_effect:
+            # the condition on var is not a prevail condition but a
+            # precondition, so we remove it from the prevail condition
+            condition.pop(var, -1)
     if not pre_post:  # operator is noop
         return None
     prevail = list(condition.items())
     return sas_tasks.SASOperator(name, prevail, pre_post, cost)
 
 
-def prune_stupid_effect_conditions(var, val, conditions):
+def prune_stupid_effect_conditions(var, val, conditions, effects_on_var):
     ## (IF <conditions> THEN <var> := <val>) is a conditional effect.
     ## <var> is guaranteed to be a binary variable.
     ## <conditions> is in DNF representation (list of lists).
@@ -319,6 +344,8 @@ def prune_stupid_effect_conditions(var, val, conditions):
     ##    effect variable and dualval != val can be omitted.
     ##    (If var != dualval, then var == val because it is binary,
     ##    which means that in such situations the effect is a no-op.)
+    ##    The condition can only be omitted if there is no effect
+    ##    producing dualval (see issue736).
     ## 2. If conditions contains any empty list, it is equivalent
     ##    to True and we can remove all other disjuncts.
     ##
@@ -326,7 +353,10 @@ def prune_stupid_effect_conditions(var, val, conditions):
     if conditions == [[]]:
         return False  # Quick exit for common case.
     assert val in [0, 1]
-    dual_fact = (var, 1 - val)
+    dual_val = 1 - val
+    dual_fact = (var, dual_val)
+    if dual_val in effects_on_var:
+        return False
     simplified = False
     for condition in conditions:
         # Apply rule 1.
@@ -556,6 +586,12 @@ def pddl_to_sas(task):
             except simplify.TriviallySolvable:
                 return solvable_sas_task("Simplified to empty goal")
 
+    if options.reorder_variables or options.filter_unimportant_vars:
+        with timers.timing("Reordering and filtering variables", block=True):
+            variable_order.find_and_apply_variable_order(
+                sas_task, options.reorder_variables,
+                options.filter_unimportant_vars)
+
     return sas_task
 
 
@@ -643,7 +679,8 @@ def dump_statistics(sas_task):
 def main():
     timer = timers.Timer()
     with timers.timing("Parsing", True):
-        task = pddl_parser.open(task_filename=options.task, domain_filename=options.domain)
+        task = pddl_parser.open(
+            domain_filename=options.domain, task_filename=options.task)
 
     with timers.timing("Normalizing task"):
         normalize.normalize(task)
@@ -659,10 +696,37 @@ def main():
     dump_statistics(sas_task)
 
     with timers.timing("Writing output"):
-        with open("output.sas", "w") as output_file:
+        with open(options.sas_file, "w") as output_file:
             sas_task.output(output_file)
     print("Done! %s" % timer)
 
 
+def handle_sigxcpu(signum, stackframe):
+    print()
+    print("Translator hit the time limit")
+    # sys.exit() is not safe to be called from within signal handlers, but
+    # os._exit() is.
+    os._exit(TRANSLATE_OUT_OF_TIME)
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        signal.signal(signal.SIGXCPU, handle_sigxcpu)
+    except AttributeError:
+        print("Warning! SIGXCPU is not available on your platform. "
+            "This means that the planner cannot be gracefully terminated "
+            "when using a time limit, which, however, is probably "
+            "supported on your platform anyway.")
+    try:
+        # Reserve about 10 MB (in Python 2) of emergency memory.
+        # https://stackoverflow.com/questions/19469608/
+        emergency_memory = "x" * 10**7
+        main()
+    except MemoryError:
+        emergency_memory = ""
+        print()
+        print("Translator ran out of memory, traceback:")
+        print("=" * 79)
+        traceback.print_exc(file=sys.stdout)
+        print("=" * 79)
+        sys.exit(TRANSLATE_OUT_OF_MEMORY)
