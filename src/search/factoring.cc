@@ -481,7 +481,7 @@ void Factoring::print_factoring() const {
     }
     
     cout << "min leaf factor size: " << min_size << endl;
-    cout << "average leaf factor size: " << (avg_size / g_leaves.size()) << endl;
+    cout << "average leaf factor size: " << (uint64_t) (avg_size / g_leaves.size()) << endl;
     cout << "max leaf factor size: " << max_size << endl;
 
     // mobility and flexibility
