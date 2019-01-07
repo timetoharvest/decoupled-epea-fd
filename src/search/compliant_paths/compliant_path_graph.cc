@@ -345,6 +345,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                 bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
                 best_prices[id] = cost;
                 
+                if (id >= leaf_state_successors[factor].size()) {
+                    leaf_state_successors[factor].resize(id + 1);
+                }
+
                 if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
                     // the goal states of fork leaves don't need successors
                     continue;
@@ -391,10 +395,6 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                 cout << "       generated " << applicable_ops.size() << " applicable operators" << endl;
 #endif
-                
-                if (id >= leaf_state_successors[factor].size()) {
-                    leaf_state_successors[factor].resize(id + 1);
-                }
 
                 // apply all applicable_ops to predecessor and store the outcome
                 for (OperatorID op_id : applicable_ops){
@@ -618,10 +618,25 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
 
                 best_prices[id] = cost;
 
+                if (id >= leaf_state_successors[factor].size()) {
+                    leaf_state_successors[factor].resize(id + 1);
+                }
+                if (compute_leaf_backwards_graph) {
+                    // in case this state does not have a predecessor, e.g.,
+                    // being a permutation of the initial leaf state, not
+                    // increasing the size results in segfaults when doing
+                    // goal price propagation, because this accesses the
+                    // predecessors of all leaf states
+                    if (id >= leaf_state_predecessors[factor].size()) {
+                        leaf_state_predecessors[factor].resize(id + 1);
+                    }
+                }
+
                 if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
                     // the goal states of fork leaves don't need successors
                     continue;
                 }
+
 
                 vector<OperatorID> applicable_ops;
                 
@@ -656,20 +671,6 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
                     applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
-                    }
-                }
-
-                if (id >= leaf_state_successors[factor].size()) {
-                    leaf_state_successors[factor].resize(id + 1);
-                }
-                if (compute_leaf_backwards_graph) {
-                    // in case this state does not have a predecessor, e.g.,
-                    // being a permutation of the initial leaf state, not
-                    // increasing the size results in segfaults when doing
-                    // goal price propagation, because this accesses the
-                    // predecessors of all leaf states
-                    if (id >= leaf_state_predecessors[factor].size()) {
-                        leaf_state_predecessors[factor].resize(id + 1);
                     }
                 }
 
