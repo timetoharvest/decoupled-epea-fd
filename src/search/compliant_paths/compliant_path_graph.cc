@@ -331,7 +331,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 int cost = goal_price_tag.get_cost_of_state(id, factor);
                 if (id < best_prices.size()){
-                    if (cost > best_prices[id]
+                    if (cost >= best_prices[id]
                         || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
                             && best_prices[id] != numeric_limits<int>::max())){
                         continue;
@@ -592,7 +592,7 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
                 }
                 int cost = goal_price_tag.get_cost_of_state(id, factor);
                 if (id < best_prices.size()){
-                    if (cost > best_prices[id]
+                    if (cost >= best_prices[id]
                         || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
                             && best_prices[id] != numeric_limits<int>::max())){
                         continue;
