@@ -383,10 +383,10 @@ bool EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
     assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
     assert(accumulate(number_effective_states.begin(), number_effective_states.end(), 0) == accumulate(old_number_effective_states.begin(), old_number_effective_states.end(), 0));
 
-    //We do not need to check whether the prices changed
-    //because the return value is only relevant if
-    //if_less is true and in that case we checked this in
-    //per.produce_less(prices)
+    // We do not need to check whether the prices changed
+    // because the return value is only relevant if
+    // if_less is true and in that case we checked this in
+    // per.produce_less(prices)
     return true;
 }
 
