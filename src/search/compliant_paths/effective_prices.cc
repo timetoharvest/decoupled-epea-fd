@@ -67,7 +67,7 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
 }
 
 unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State&,
-                                                                                const Operator *) const {    
+                                                                                const Operator &) const {
     assert(g_factoring->get_profile() == FORK); // not supported, yet
 
     return clone();
@@ -85,7 +85,7 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION needed) {
+DOMINANCE EffectivePrices::check_dominance(const State& other, DOMINANCE needed) {
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
     
     bool sizes_equal = true;
@@ -104,11 +104,11 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
     }
     
     if (new_is_smaller && new_is_larger){
-        return NONE;
-    } else if (new_is_smaller && needed == DOMINATES){
-        return NONE;
-    } else if (new_is_larger && needed == DOMINATED){
-        return NONE;
+        return DOMINANCE::NONE;
+    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+        return DOMINANCE::NONE;
+    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+        return DOMINANCE::NONE;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -145,11 +145,11 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
                 dominates = false;
             }
             if (!dominated && !dominates){
-                return NONE;
-            } else if (!dominated && needed == DOMINATED){
-                return NONE;
-            } else if (!dominates && needed == DOMINATES){
-                return NONE;
+                return DOMINANCE::NONE;
+            } else if (!dominated && needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
+            } else if (!dominates && needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
             } else if (number_new_states == 0 && number_old_states > 0){
                 dominates = false;
                 break;
@@ -164,19 +164,19 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 bool EffectivePrices::has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const {
@@ -233,17 +233,15 @@ void EffectivePrices::goal_price_propagation() {
      
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
         
-//      cout << "Propagate: " << factor << endl;
-        
         vector<bool> closed(g_state_registry->size(factor), false);
 
-        //Alvaro: Given the size of leaf factors I think a bucketqueue
-        //should work better but requires some implementation
-        //effort. Probably worth it to reduce overhead
-        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue?
+        // Alvaro: Given the size of leaf factors I think a bucketqueue
+        // should work better but requires some implementation
+        // effort. Probably worth it to reduce overhead
+        // Alvaro: Use a heap_queue?
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
-            //cout << s << " is goal " << endl; 
             open.push(goal_cost[factor], s);
         }
 

@@ -66,7 +66,7 @@ LeafStateHash StateRegistry::insert_id_or_pop_leaf_state(LeafFactorID factor) {
       state data pool.
     */
     LeafStateID id(LeafStateHash(leaf_state_data_pool[factor]->size() - 1), factor);
-    assert(id.value != LeafStateHash::MAX);
+    assert(id.value < LeafStateHash::MAX);
     pair<LeafStateIDSet::iterator, bool> result = registered_leaf_states[factor].insert(id);
     if (!result.second) {
         // is known leaf state
@@ -126,7 +126,6 @@ const State &StateRegistry::get_initial_state() {
         cached_initial_state = new State(lookup_state(id));
         
         if (g_factoring){
-            
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 leaf_state_data_pool[factor]->push_back(leaf_buffers[factor]);
                 // buffer is copied by push_back
@@ -190,10 +189,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         }
         g_axiom_evaluator->evaluate(buffer);
     } else {
-        OpsLeafProps<Effect> effects = op.get_effects(LeafFactorID::CENTER);
-        for (size_t i = 0; i < effects.size(); ++i){
+        for (const Effect &eff : op.get_effects(LeafFactorID::CENTER)){
             // no need to check does_fire here, because no conditional effects allowed (yet)
-            g_state_packer->set(buffer, g_new_index[effects[i].var], effects[i].val);
+            g_state_packer->set(buffer, g_new_index[eff.var], eff.val);
         }
         g_state_packer->set(buffer, g_center.size(), 0);
     }
@@ -211,7 +209,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         
         PruningOptions::reset_ignore_current_state();
         
-        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(predecessor, &op);
+        unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(predecessor, op);
         new_cpg->update(s);
         
         if (old_dup_counter == -1){ // is new center state
@@ -278,10 +276,9 @@ LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &pred
     leaf_state_data_pool[factor]->push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
 
-    OpsLeafProps<Effect> effects = op.get_effects(factor);
-    for (size_t i = 0; i < effects.size(); ++i){
+    for (const Effect &eff : op.get_effects(factor)){
         // no need to check does_fire here, because no conditional effects allowed (yet)
-        g_leaf_factor_packers[factor]->set(buffer, g_new_index[effects[i].var], effects[i].val);
+        g_leaf_factor_packers[factor]->set(buffer, g_new_index[eff.var], eff.val);
     }
     
     // not supported (yet)

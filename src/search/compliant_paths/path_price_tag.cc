@@ -212,9 +212,12 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         
         if (num_effects == g_leaves[factor].size()){
             // center op completely overwrites leaf
-            
-            const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+            LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+#ifndef NDEBUG
+            size_t size_before = g_state_registry->size(factor);
+#endif
             LeafStateHash succ_state = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
+            assert(size_before == g_state_registry->size(factor));
             
             add_state(succ_state, factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
             paths[factor][leaf_state_id_map[factor][succ_state]].reset_supporter();            
@@ -222,7 +225,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         }
 
         // check which leaf states satisfy center precondition and apply effects
-        int number_states = old_tag.get_number_states(factor);
+        size_t number_states = old_tag.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
@@ -233,7 +236,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                         add_state(id, factor, old_tag.get_cost_of_state(id, factor), OperatorID::no_operator, id);
                         paths[factor][leaf_state_id_map[factor][id]].reset_supporter();
                     } else {
-                        const LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                        LeafState state = g_state_registry->lookup_leaf_state(id, factor);
 #ifndef NDEBUG
                         size_t size_before = g_state_registry->size(factor);
 #endif
@@ -252,5 +255,5 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
-    return unique_ptr<CompliantPathGraph> (new PathPriceTag(this));
+    return unique_ptr<CompliantPathGraph>(new PathPriceTag(this));
 }

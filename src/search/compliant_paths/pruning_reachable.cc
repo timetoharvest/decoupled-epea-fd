@@ -29,7 +29,7 @@ PruningReachable::PruningReachable(const PruningReachable *tag) {
 }
 
 unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const State &,
-                                                                                 const Operator *) const {
+                                                                                 const Operator &) const {
     
     assert(g_factoring->get_profile() == FORK); // not supported, yet
 
@@ -38,7 +38,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return clone();
 }
 
-DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION needed) {
+DOMINANCE PruningReachable::check_dominance(const State &other, DOMINANCE needed) {
     PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -46,8 +46,8 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
     compute_frontier();
     other_cpg->compute_frontier();
         
-    bool dominated = needed != DOMINATES;
-    bool dominates = needed != DOMINATED;
+    bool dominated = needed != DOMINANCE::DOMINATES;
+    bool dominates = needed != DOMINANCE::DOMINATED;
     
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
     
@@ -86,7 +86,7 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
             }
 
             if (!dominated && !dominates){
-                return NONE;
+                return DOMINANCE::NONE;
             }
         }
     }
@@ -94,19 +94,19 @@ DOMINATION PruningReachable::check_dominance(const State &other, DOMINATION need
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif          
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif          
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif          
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 void PruningReachable::compute_frontier() {

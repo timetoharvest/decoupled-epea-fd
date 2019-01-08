@@ -36,7 +36,7 @@ FrontierPrices::FrontierPrices(const FrontierPrices *tag) {
 }
 
 unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const State &predecessor,
-                                                                               const Operator*) const {
+                                                                               const Operator&) const {
     
     assert(g_factoring->get_profile() == FORK); // not supported, yet
     
@@ -49,7 +49,7 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
     } else {
         tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_leaves.size(), boost::dynamic_bitset<>());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (tag.frontier[factor].size() != 0){
+            if (tag.frontier[factor].size() == g_state_registry->size(factor)){
                 tmp_p_price->frontier[factor] = tag.frontier[factor];
             } else {
                 tmp_p_price->compute_cost_frontier(factor);
@@ -166,7 +166,7 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed) {
+DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) {
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -174,8 +174,8 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
     compute_cost_frontier();
     other_cpg->compute_cost_frontier();
         
-    bool dominated = needed != DOMINATES;
-    bool dominates = needed != DOMINATED;
+    bool dominated = needed != DOMINANCE::DOMINATES;
+    bool dominates = needed != DOMINANCE::DOMINATED;
     
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
     
@@ -203,9 +203,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
-                if (dominates && other_cpg->frontier[factor][id]){
-                    assert(other_cpg->has_leaf_state(id, factor));
-                    
+                if (dominates && other_cpg->has_leaf_state(id, factor) && other_cpg->frontier[factor][id]){                    
                     if (has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_cost_of_state(id, factor);
                         int new_cost = get_effective_cost_of_state(id, factor);
@@ -219,9 +217,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
                         dominates = false;
                     }
                 }
-                if (dominated && frontier[factor][id]){
-                    assert(has_leaf_state(id, factor));
-                    
+                if (dominated && has_leaf_state(id, factor) && frontier[factor][id]){                    
                     if (other_cpg->has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_effective_cost_of_state(id, factor);
                         int new_cost = get_cost_of_state(id, factor);
@@ -238,7 +234,7 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
             }
 
             if (!dominated && !dominates){
-                return NONE;
+                return DOMINANCE::NONE;
             }
         }
     }
@@ -246,19 +242,19 @@ DOMINATION FrontierPrices::check_dominance(const State& other, DOMINATION needed
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif          
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif          
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif          
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 void FrontierPrices::store_new_graph(const State &state) const {
@@ -285,8 +281,6 @@ void FrontierPrices::goal_price_propagation() {
      
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
         
-//      cout << "Propagate: " << factor << endl;
-        
         vector<bool> closed(g_state_registry->size(factor), false);
         
         boost::dynamic_bitset<> sim_frontier;
@@ -295,13 +289,13 @@ void FrontierPrices::goal_price_propagation() {
         }
         frontier[factor].reset();
 
-        //Alvaro: Given the size of leaf factors I think a bucketqueue
-        //should work better but requires some implementation
-        //effort. Probably worth it to reduce overhead
-        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue?
+        // Alvaro: Given the size of leaf factors I think a bucketqueue
+        // should work better but requires some implementation
+        // effort. Probably worth it to reduce overhead
+        // Alvaro: Use a heap_queue?
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
-            //cout << s << " is goal " << endl; 
             open.push(goal_cost[factor], s);
         }
 
@@ -315,15 +309,13 @@ void FrontierPrices::goal_price_propagation() {
             
             int value = entry.first;
 
-//          cout << "Propagating s " << g_fact_names[g_leaves[factor][0]][g_state_registry->lookup_leaf_state(LeafStateID(state, factor))[g_leaves[factor][0]]] << " with value " << value << endl; 
-            
             closed[state] = true;
             
             if (value != INF) {
                 add_effective_state(state, factor, value);
             }
 
-            for (const auto transition : leaf_state_predecessors[factor][state]) {
+            for (const auto &transition : leaf_state_predecessors[factor][state]) {
                 LeafStateHash t = transition.second;
                 
                 if (closed[t]) {

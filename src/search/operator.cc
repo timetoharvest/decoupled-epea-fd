@@ -19,7 +19,7 @@ bool Condition::is_applicable(const State &state) const {
 }
 
 bool Condition::is_applicable(const LeafState &state) const {
-    assert(g_belongs_to_factor[var] == (int) state.get_id().get_factor());
+    assert(g_belongs_to_factor[var] == state.get_id().get_factor());
     return state[var] == val;
 }
 

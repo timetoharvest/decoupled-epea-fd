@@ -592,7 +592,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
                 } else if (op.get_affected_factor() == factor && is_fork_leaf[factor] && g_leaves[factor].size() > 1){
                     // if the action is a fork-leaf action and the leaf has more than one variable,
                     // we need to get the frontier even if the action does not have a leaf precondition.
-                    // otherwise, we loose completeness (see complicated example in AIJ'17 paper notes).
+                    // otherwise, we loose completeness (see complicated example in JAIR'19 paper notes).
                     mark_fork_frontier_actions_as_stubborn(factor);
                 }
             }
