@@ -509,11 +509,10 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     bool all_built = true;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (precompute_leaf_state_spaces[factor] && (!g_symmetry_graph || g_leaves[factor].size() == 1)){
+        if (precompute_leaf_state_spaces[factor] && !g_symmetry_graph){
             // when doing orbit search, we need to keep the leaf successor
             // generators to get the actions applicable in symmetric leaf states that
             // are not reachable from the initial state
-            // for single-variables leaves, this cannot happen
             leaf_successor_generators[factor].reset();
         } else {
             all_built = false;
@@ -567,9 +566,6 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
     LeafStateHash new_state_id = g_state_registry->get_leaf_state_hash(new_leaf_state, factor);
 
     if (num_leaf_states_before <= new_state_id){
-        // for single-variable leaves, *all* leaf states should be
-        // generated in build_leaf_state_spaces
-        assert(g_leaves[factor].size() != 1);
         assert(leaf_state_id_map[factor].size() <= new_state_id);
 
         Prices goal_price_tag(0);
