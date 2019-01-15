@@ -3,7 +3,6 @@
 #include "ext/tree_util.hh"
 #include "factoring.h"
 #include "plugin.h"
-#include "rng.h"
 
 #include <algorithm>
 #include <iostream>
@@ -197,23 +196,23 @@ SearchEngine *OptionParser::parse_cmd_line(
 
 void OptionParser::parse_decoupled_search(int argc, const char** argv) {
     for (int i = 0; i < argc; i++){
-	string arg = argv[i];
-	if (arg.compare("--decoupling") == 0){            
-	    if (i == argc - 1){
-		throw ArgError("missing argument after --decoupling");
-	    }
-	    
+        string arg = argv[i];
+        if (arg.compare("--decoupling") == 0){
+            if (i == argc - 1){
+                throw ArgError("missing argument after --decoupling");
+            }
+
             OptionParser dry(argv[i+1], true); // dry run
             dry.start_parsing<Factoring *>();
-            
+
             OptionParser p(argv[i+1], false);
             g_factoring = unique_ptr<Factoring>(p.start_parsing<Factoring *>());
-	}
+        }
     }
 }
 
 SearchEngine *OptionParser::parse_cmd_line_aux(
-    const vector<string> &args, bool dry_run) {
+        const vector<string> &args, bool dry_run) {
     SearchEngine *engine(0);
     for (size_t i = 0; i < args.size(); ++i) {
         string arg = args[i];
@@ -234,13 +233,6 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             ++i;
             OptionParser p(args[i], dry_run);
             engine = p.start_parsing<SearchEngine *>();
-        } else if (arg.compare("--random-seed") == 0) {
-            if (is_last)
-                throw ArgError("missing argument after --random-seed");
-            ++i;
-            srand(atoi(args[i].c_str()));
-            g_rng.seed(atoi(args[i].c_str()));
-            cout << "random seed " << args[i] << endl;
         } else if ((arg.compare("--help") == 0) && dry_run) {
             cout << "Help:" << endl;
             bool txt2tags = false;
@@ -276,12 +268,12 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             ++i;
             g_plan_filename = args[i];
         } else if (arg.compare("--decoupling") == 0) {
-            // decoupled search settings have to be read in seperately in parse_factored_search()
+            // decoupled search settings have to be read in separately in parse_factored_search()
             // because factoring needs to be done within the read_everything function
-	    ++i;
+            ++i;
         } else {
-	    throw ArgError("unknown option " + arg);
-	}
+            throw ArgError("unknown option " + arg);
+        }
     }
     return engine;
 }
@@ -302,8 +294,6 @@ string OptionParser::usage(string progname) {
         "--heuristic HEURISTIC_PREDEFINITION\n"
         "    Predefines a heuristic that can afterwards be referenced\n"
         "    by the name that is specified in the definition.\n"
-        "--random-seed SEED\n"
-        "    Use random seed SEED\n\n"
         "--plan-file FILENAME\n"
         "    Plan will be output to a file called FILENAME\n\n"
         "See http://www.fast-downward.org/ for details.";

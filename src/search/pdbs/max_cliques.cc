@@ -1,6 +1,6 @@
 #include "max_cliques.h"
 
-#include "../utilities.h"
+#include "../utils/collections.h"
 
 #include <algorithm>
 #include <cassert>
@@ -16,8 +16,8 @@ class MaxCliqueComputer {
 
     int get_maximizing_vertex(
         const vector<int> &subg, const vector<int> &cand) {
-        assert(is_sorted_unique(subg));
-        assert(is_sorted_unique(cand));
+        assert(utils::is_sorted_unique(subg));
+        assert(utils::is_sorted_unique(cand));
 
         //cout << "subg: " << subg << endl;
         //cout << "cand: " << cand << endl;

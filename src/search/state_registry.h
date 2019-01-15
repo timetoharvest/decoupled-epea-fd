@@ -191,7 +191,7 @@ class StateRegistry {
                                               LeafStateIDSemanticHash,
                                               LeafStateIDSemanticEqual>;
                             
-    typedef std::unordered_map<size_t, size_t> DupCounterTable;
+    using DupCounterTable = std::unordered_map<size_t, size_t>;
                             
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;

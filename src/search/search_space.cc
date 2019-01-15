@@ -13,9 +13,9 @@
 using namespace std;
 
 
-SearchNode::SearchNode(StateID state_id_, SearchNodeInfo &info_,
-                       OperatorCost cost_type_)
-    : state_id(state_id_), info(info_), cost_type(cost_type_) {
+SearchNode::SearchNode(StateID state_id, SearchNodeInfo &info,
+                       OperatorCost cost_type)
+    : state_id(state_id), info(info), cost_type(cost_type) {
     assert(state_id != StateID::no_state);
 }
 
@@ -257,7 +257,7 @@ void SearchSpace::trace_path(const State &goal_state,
                     }
                     ++id;
                 }
-                assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+                assert(marked_leaf_states[factor] != LeafStateHash::MAX);
 
 #ifdef DEBUG_PLAN_EXTRACTION
                 cout << "marked goal fact: " << marked_leaf_states[factor] << " for cost " << min_cost << endl;
@@ -273,9 +273,9 @@ void SearchSpace::trace_path(const State &goal_state,
         vector<OperatorID> decoupled_plan;
         
         // go through center path and fill in leaf actions
-        for (size_t step = 0; step < price_tags.size(); step++){
+        for (size_t step = 0; step < price_tags.size(); ++step){
         
-            const Operator *op = 0;
+            const Operator *op = nullptr;
             if (step < path.size()){
                 op = &g_operators[path[step]];
             }
@@ -300,7 +300,7 @@ void SearchSpace::trace_path(const State &goal_state,
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 
                 bool change = true;
-                while (change && marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+                while (change && marked_leaf_states[factor] != LeafStateHash::MAX){
                     change = false;
                     
                     
@@ -313,7 +313,7 @@ void SearchSpace::trace_path(const State &goal_state,
                             marked_leaf_states[factor] = fact.predecessor;
                             decoupled_plan.push_back(fact.best_supporter);
 
-                            assert(g_operators[fact.best_supporter].get_affected_factor() == (int) factor);
+                            assert(g_operators[fact.best_supporter].get_affected_factor() == factor);
                         } else if (fact.predecessor != LeafStateHash::MAX){
                             // this leaf state has been copied from one decoupled state to its successor
                             // the state can have been modified by the center op
@@ -337,7 +337,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 if (op != nullptr && op->has_effect_on(factor)){
                     // apply leaf effects to predecessor decoupled state
                     
-                    if (marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+                    if (marked_leaf_states[factor] != LeafStateHash::MAX){
                         LeafStateHash state_hash = marked_leaf_states[factor];
                         LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
                         
@@ -356,10 +356,10 @@ void SearchSpace::trace_path(const State &goal_state,
                 if (need_compliant_leaf_state || (g_factoring->get_profile() != FORK && op != nullptr)){
                     // collect and mark leaf precondition of center op
                     
-                    if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){                        
-                        assert(marked_leaf_states[factor] == numeric_limits<size_t>::max() || op->is_applicable(marked_leaf_states[factor], factor));
+                    if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){
+                        assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
                         
-                        if (marked_leaf_states[factor] == numeric_limits<size_t>::max()){
+                        if (marked_leaf_states[factor] == LeafStateHash::MAX){
                             int best_price = numeric_limits<int>::max();
                             
                             size_t number_states = price_tags[step + 1]->get_number_states(factor);
@@ -378,7 +378,7 @@ void SearchSpace::trace_path(const State &goal_state,
                                 ++id;
                             }
                             
-                            assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+                            assert(marked_leaf_states[factor] != LeafStateHash::MAX);
                         }
                     }
                 }
@@ -395,7 +395,7 @@ void SearchSpace::trace_path(const State &goal_state,
         
 #ifndef NDEBUG
         for (size_t i = 0; i < g_leaves.size(); ++i){
-            assert(marked_leaf_states[i] == numeric_limits<size_t>::max());
+            assert(marked_leaf_states[i] == LeafStateHash::MAX);
         }
 #endif
         

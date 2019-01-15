@@ -9,7 +9,6 @@
 #include "heuristic.h"
 #include "leaf_state_id.h"
 #include "operator.h"
-#include "rng.h"
 #include "state.h"
 #include "state_registry.h"
 #include "task_utils/successor_generator.h"
@@ -461,5 +460,5 @@ successor_generator::SuccessorGenerator *g_successor_generator;
 vector<DomainTransitionGraph *> g_transition_graphs;
 
 string g_plan_filename = "sas_plan";
-RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
+
 StateRegistry *g_state_registry = 0;

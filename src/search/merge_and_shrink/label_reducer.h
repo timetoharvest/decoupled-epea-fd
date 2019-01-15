@@ -4,7 +4,9 @@
 #include <vector>
 
 class TransitionSystem;
+namespace equivalence_relation {
 class EquivalenceRelation;
+}
 class Label;
 class LabelSignature;
 class Options;
@@ -42,13 +44,13 @@ class LabelReducer {
     std::vector<int> transition_system_order;
 
     // exact label reduction
-    EquivalenceRelation *compute_outside_equivalence(
+    equivalence_relation::EquivalenceRelation *compute_outside_equivalence(
         int ts_index,
         const std::vector<TransitionSystem *> &all_transition_systems,
         const std::vector<Label *> &labels,
-        std::vector<EquivalenceRelation *> &local_equivalence_relations) const;
+        std::vector<equivalence_relation::EquivalenceRelation *> &local_equivalence_relations) const;
     // returns true iff at least one new label has been created
-    bool reduce_exactly(const EquivalenceRelation *relation,
+    bool reduce_exactly(const equivalence_relation::EquivalenceRelation *relation,
                         std::vector<Label *> &labels) const;
 public:
     explicit LabelReducer(const Options &options);

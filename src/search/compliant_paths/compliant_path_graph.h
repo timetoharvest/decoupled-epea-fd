@@ -80,11 +80,11 @@ protected:
 
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator *op) const = 0;
+                                                                                const Operator &op) const = 0;
     
     virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINATION check_dominance(const State &other, DOMINATION needed = NONE) = 0;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
     virtual void store_new_graph(const State &state) const = 0;
 
@@ -94,6 +94,7 @@ public:
     
     static const int INF;
     
+
     virtual ~CompliantPathGraph() = default;
     
     // TODO has_leaf_state and get_number_states are mainly used to iterate 

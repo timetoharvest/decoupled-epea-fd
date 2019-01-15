@@ -1,16 +1,13 @@
 #include "shrink_bisimulation.h"
 
 #include "transition_system.h"
-
 #include "../option_parser.h"
 #include "../plugin.h"
 
 #include <cassert>
 #include <iostream>
-#include <ext/hash_map>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 /* A successor signature characterizes the behaviour of an abstract
@@ -22,7 +19,7 @@ using namespace __gnu_cxx;
    successor). The bisimulation algorithm requires that the vector is
    sorted and uniquified. */
 
-typedef vector<pair<int, int> > SuccessorSignature;
+using SuccessorSignature = vector<pair<int, int> >;
 
 /* TODO: The following class should probably be renamed. It encodes
    all we need to know about a state for bisimulation: its h value,
@@ -151,7 +148,7 @@ int ShrinkBisimulation::initialize_groups(const TransitionSystem &ts,
        unsolvable.
     */
 
-    typedef hash_map<int, int> GroupMap;
+    using GroupMap = utils::HashMap<int, int>;
     GroupMap h_to_group;
     int num_groups = 1; // Group 0 is for goal states.
     for (int state = 0; state < ts.get_size(); ++state) {

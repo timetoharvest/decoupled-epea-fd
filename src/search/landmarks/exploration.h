@@ -3,13 +3,11 @@
 
 #include "../heuristic.h"
 #include "../globals.h"
-#include "../priority_queue.h"
+#include "../algorithms/priority_queues.h"
 #include "landmark_types.h"
 
-#include <vector>
-#include <ext/hash_set>
-#include <ext/hash_map>
 #include <cassert>
+#include <vector>
 
 class Operator;
 class State;
@@ -78,23 +76,18 @@ struct ExUnaryOperator {
     }
 };
 
-struct ex_hash_operator_ptr {
-    size_t operator()(const Operator *key) const {
-        return reinterpret_cast<size_t>(key);
-    }
-};
 
 class Exploration : public Heuristic {
     static const int MAX_COST_VALUE = 100000000; // See additive_heuristic.h.
 
-    typedef __gnu_cxx::hash_set<const Operator *, ex_hash_operator_ptr> RelaxedPlan;
+    using RelaxedPlan = utils::HashSet<const Operator*>;
     RelaxedPlan relaxed_plan;
     std::vector<ExUnaryOperator> unary_operators;
     std::vector<std::vector<ExProposition> > propositions;
     std::vector<ExProposition *> goal_propositions;
     std::vector<ExProposition *> termination_propositions;
 
-    AdaptiveQueue<ExProposition *> prop_queue;
+    priority_queues::AdaptiveQueue<ExProposition *> prop_queue;
     bool did_write_overflow_warning;
 
     bool heuristic_recomputation_needed;
@@ -104,12 +97,11 @@ class Exploration : public Heuristic {
 
     void setup_exploration_queue(const State &state,
                                  const std::vector<std::pair<int, int> > &excluded_props,
-                                 const __gnu_cxx::hash_set<const Operator *,
-                                                           ex_hash_operator_ptr> &excluded_ops,
+                                 const utils::HashSet<const Operator *> &excluded_ops,
                                  bool use_h_max);
     inline void setup_exploration_queue(const State &state, bool h_max) {
         std::vector<std::pair<int, int> > excluded_props;
-        __gnu_cxx::hash_set<const Operator *, ex_hash_operator_ptr> excluded_ops;
+        utils::HashSet<const Operator*> excluded_ops;
         setup_exploration_queue(state, excluded_props, excluded_ops, h_max);
     }
     void relaxed_exploration(bool use_h_max, bool level_out);
@@ -131,21 +123,19 @@ public:
     void set_additional_goals(const std::vector<std::pair<int, int> > &goals);
     void set_recompute_heuristic() {heuristic_recomputation_needed = true; }
     void compute_reachability_with_excludes(std::vector<std::vector<int> > &lvl_var,
-                                            std::vector<__gnu_cxx::hash_map<std::pair<int, int>, int,
-                                                                            hash_int_pair> > &lvl_op,
+                                            std::vector<utils::HashMap<std::pair<int, int>, int> > &lvl_op,
                                             bool level_out,
                                             const std::vector<std::pair<int, int> > &excluded_props,
-                                            const __gnu_cxx::hash_set<const Operator *,
-                                                                      ex_hash_operator_ptr> &excluded_ops,
+                                            const utils::HashSet<const Operator*> &excluded_ops,
                                             bool compute_lvl_ops);
-    std::vector<const Operator *> exported_ops; // only needed for landmarks count heuristic ha
+    std::vector<OperatorID> exported_ops; // only needed for landmarks count heuristic ha
 
     // Returns true iff disj_goal is relaxed reachable. As a side effect, marks preferred operators
     // via "exported_ops". (This is the real reason why you might want to call this.)
     bool plan_for_disj(std::vector<std::pair<int, int> > &disj_goal, const State &state);
 
     Exploration(const Options &opts);
-    ~Exploration();
+    ~Exploration() = default;
 };
 
 #endif

@@ -49,11 +49,11 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator* op) const {
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator &op) const {
     
     if (g_factoring->get_profile() != FORK){
         unique_ptr<Reachable> tmp_reach(new Reachable(0));
-        tmp_reach->apply_center_op_to_leaves(*this, *op);
+        tmp_reach->apply_center_op_to_leaves(*this, op);
         return tmp_reach;
     } else {                
         return clone();
@@ -268,7 +268,7 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed) {
+DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed) {
     const Reachable *other_cpg = &cpg_storage->reachable[other];
     
     bool sizes_equal = true;
@@ -323,21 +323,21 @@ DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed) {
     }
     
     if (new_is_smaller && new_is_larger){
-        return NONE;
-    } else if (new_is_smaller && needed == DOMINATES){
-        return NONE;
-    } else if (new_is_larger && needed == DOMINATED){
-        return NONE;
+        return DOMINANCE::NONE;
+    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+        return DOMINANCE::NONE;
+    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+        return DOMINANCE::NONE;
     }
     
     if (all_goals_reached){
         // this is only relevant in satisficing fork-decoupled search when the center
         // has not reached its goal yet, but all leaves do.
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     }
     
     if (sizes_equal && all_leaves_max_size){
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -367,11 +367,11 @@ DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed) {
                 dominates = false;
             }
             if (!dominated && !dominates){
-                return NONE;
-            } else if (!dominated && needed == DOMINATED){
-                return NONE;
-            } else if (!dominates && needed == DOMINATES){
-                return NONE;
+                return DOMINANCE::NONE;
+            } else if (!dominated && needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
+            } else if (!dominates && needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
             } else if (number_new_states == 0 && number_old_states > 0){
                 dominates = false;
                 break;
@@ -386,19 +386,19 @@ DOMINATION Reachable::check_dominance(const State &other, DOMINATION needed) {
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif
-        return EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif
-        return DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif
-        return DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return NONE;
+    return DOMINANCE::NONE;
 }
 
 void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op) {

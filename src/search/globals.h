@@ -28,7 +28,6 @@ class IntPacker;
 struct LeafFactorID;
 class Operator;
 class OperatorID;
-class RandomNumberGenerator;
 class State;
 class StateID;
 namespace successor_generator {
@@ -109,7 +108,7 @@ extern AxiomEvaluator *g_axiom_evaluator;
 extern successor_generator::SuccessorGenerator *g_successor_generator;
 extern std::vector<DomainTransitionGraph *> g_transition_graphs;
 extern std::string g_plan_filename;
-extern RandomNumberGenerator g_rng;
+
 // Only one global object for now. Could later be changed to use one instance
 // for each problem in this case the method State::get_id would also have to be
 // changed.

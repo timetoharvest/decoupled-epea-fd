@@ -16,17 +16,14 @@ class Options;
 enum SearchStatus {IN_PROGRESS, TIMEOUT, FAILED, SOLVED};
 
 class SearchEngine {
-
 public:
     typedef std::vector<OperatorID> Plan;
 private:
     SearchStatus status;
     bool solution_found;
-    
     mutable Plan plan;
     StateID cheapest_goal_state;
     bool is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg);
-
 protected:
     SearchSpace search_space;
     SearchProgress search_progress;

@@ -38,9 +38,12 @@ DOWNWARD_OS ?= auto
 
 
 HEADERS = \
+          algorithms/dynamic_bitset.h \
           algorithms/equivalence_relation.h \
+          algorithms/int_hash_set.h \
           algorithms/int_packer.h \
           algorithms/mis.h \
+          algorithms/ordered_set.h \
           algorithms/priority_queues.h \
           algorithms/sccs.h \
           algorithms/segmented_vector.h \
@@ -66,7 +69,6 @@ HEADERS = \
           pref_evaluator.h \
           pruning_method.h \
           relaxation_heuristic.h \
-          rng.h \
           search_engine.h \
           search_node_info.h \
           search_progress.h \
@@ -77,7 +79,6 @@ HEADERS = \
           sum_evaluator.h \
           task_utils/causal_graph.h \
           task_utils/domain_transition_graph.h \
-          task_utils/fact_pair.h \
           task_utils/successor_generator.h \
           task_utils/successor_generator_factory.h \
           task_utils/successor_generator_internals.h \
@@ -89,6 +90,8 @@ HEADERS = \
           utils/logging.h \
           utils/math.h \
           utils/memory.h \
+          utils/rng.h \
+          utils/rng_options.h \
           utils/system.h \
           utils/system_unix.h \
           utils/system_windows.h \
@@ -102,10 +105,10 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
-					lp/solver.h\
+		  lp/solver.h\
           lp/lp_solver.h \
           lp/lp_internals.h \
-					lp/cplex_solver.h
+		  lp/cplex_solver.h
 
 
 ## Each of the following "HEADERS += ..." constructs defines a
@@ -153,18 +156,6 @@ HEADERS += max_heuristic.h
 #            landmarks/landmark_factory_rpg_sasp.h \
 #            landmarks/landmark_factory_zhu_givan.h \
 #            landmarks/util.h \
-
-# HEADERS += learning/AODE.h \
-#            learning/classifier.h \
-#            learning/composite_feature_extractor.h \
-#            learning/feature_extractor.h \
-#            learning/maximum_heuristic.h \
-#            learning/naive_bayes_classifier.h \
-#            learning/PDB_state_space_sample.h \
-#            learning/probe_state_space_sample.h \
-#            learning/selective_max_heuristic.h \
-#            learning/state_space_sample.h \
-#            learning/state_vars_feature_extractor.h \
 
 # HEADERS += pdbs/canonical_pdbs_heuristic.h \
 #            pdbs/dominance_pruner.h \

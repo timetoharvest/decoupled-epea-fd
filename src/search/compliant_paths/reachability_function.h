@@ -12,14 +12,14 @@ class Reachable : public CompliantPathGraph {
 
     static ReachableStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-    
     
     Reachable(const Reachable *tag);
     
-    
     void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
 protected:
     
     std::vector<boost::dynamic_bitset<> > reachable;
@@ -34,11 +34,11 @@ protected:
     void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator *op) const override;
+                                                                                const Operator &op) const override;
 
     virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINATION check_dominance(const State &other, DOMINATION needed) override;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed) override;
     
     virtual void store_new_graph(const State &state) const override;
     

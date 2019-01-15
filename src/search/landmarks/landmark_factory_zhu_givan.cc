@@ -9,9 +9,9 @@
 #include <iostream>
 #include <vector>
 #include <utility>
-#include <ext/hash_map>
 
-using namespace __gnu_cxx;
+using namespace std;
+
 
 LandmarkFactoryZhuGivan::LandmarkFactoryZhuGivan(const Options &opts)
     : LandmarkFactory(opts) {
@@ -86,7 +86,7 @@ LandmarkFactoryZhuGivan::proposition_layer LandmarkFactoryZhuGivan::build_relaxe
     assert(!triggers.empty());
 
     proposition_layer current_prop_layer;
-    hash_set<int> triggered(g_operators.size() + g_axioms.size());
+    utils::HashSet<int> triggered;
 
     // set initial layer
     const State &initial_state = g_initial_state();
@@ -109,9 +109,9 @@ LandmarkFactoryZhuGivan::proposition_layer LandmarkFactoryZhuGivan::build_relaxe
     bool changes = true;
     while (changes) {
         proposition_layer next_prop_layer(current_prop_layer);
-        hash_set<int> next_triggered;
+        utils::HashSet<int> next_triggered;
         changes = false;
-        for (hash_set<int>::const_iterator it = triggered.begin(); it
+        for (utils::HashSet<int>::const_iterator it = triggered.begin(); it
              != triggered.end(); ++it) {
             const Operator &op = lm_graph->get_operator_for_lookup_index(*it);
             if (operator_applicable(op, current_prop_layer)) {

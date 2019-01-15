@@ -2,7 +2,7 @@
 
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../utilities.h"
+#include "../utils/system.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -11,7 +11,7 @@ using namespace std;
 
 MergeLinear::MergeLinear(const Options &opts)
     : MergeStrategy(),
-      order(VariableOrderType(opts.get_enum("variable_order"))),
+      order(variable_order_finder::VariableOrderType(opts.get_enum("variable_order"))),
       need_first_index(true) {
 }
 
@@ -35,14 +35,14 @@ pair<int, int> MergeLinear::get_next(const std::vector<TransitionSystem *> &all_
     --remaining_merges;
     if (done() && !order.done()) {
         cerr << "Variable order finder not done, but no merges remaining" << endl;
-        exit_with(EXIT_CRITICAL_ERROR);
+        exit_with(utils::ExitCode::CRITICAL_ERROR);
     }
     return make_pair(first, second);
 }
 
 void MergeLinear::dump_strategy_specific_options() const {
     cout << "Linear merge strategy: ";
-    order.dump();
+    variable_order_finder::dump_variable_order_type(order.variable_order_type);
 }
 
 string MergeLinear::name() const {

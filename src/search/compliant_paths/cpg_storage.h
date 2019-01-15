@@ -1,10 +1,10 @@
 #ifndef CPG_STORAGE
 #define CPG_STORAGE
 
+#include "effective_prices.h"
 #include "frontier_prices.h"
 #include "../per_state_information.h"
 #include "pricing_function.h"
-#include "effective_prices.h"
 #include "pruning_reachable.h"
 #include "reachability_function.h"
 
@@ -46,7 +46,7 @@ class PriceStorage : public CPGStorage {
     
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &prices[state];
@@ -75,7 +75,7 @@ class EffectivePriceStorage : public CPGStorage {
     
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &effective_prices[state];
@@ -104,7 +104,7 @@ class FrontierPriceStorage : public CPGStorage {
     
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &frontier_prices[state];
@@ -133,7 +133,7 @@ class ReachableStorage : public CPGStorage {
         
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &reachable[state];
@@ -162,7 +162,7 @@ class PruningReachableStorage : public CPGStorage {
         
 protected:
     
-    virtual void register_at_compliant_path_graph();
+    virtual void register_at_compliant_path_graph() override;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &pruning_reachable[state];

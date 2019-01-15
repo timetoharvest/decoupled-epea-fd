@@ -90,7 +90,7 @@ protected:
     
     static FactoredVars var_to_affecting_op;
 
-    static void init_ops_helper();
+    static void init_var_to_ops_map();
 
 
     size_t max_leaf_size;
@@ -105,7 +105,7 @@ protected:
     
     virtual FactoredVars get_factoring() = 0;
     
-    FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
+    FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
     
     FactoredVars get_connected_components(const std::vector<int> &variables) const;
     
@@ -114,8 +114,6 @@ protected:
     void apply_factoring(const FactoredVars &factoring);
     
     void print_factoring() const;
-    
-    void exit_error(std::string message, utils::ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
@@ -143,7 +141,7 @@ public:
 
     
     static const FactoredVars& get_var_to_affecting_op() {
-        init_ops_helper();
+        init_var_to_ops_map();
         return var_to_affecting_op;
     }
 

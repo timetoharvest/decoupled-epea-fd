@@ -1,17 +1,15 @@
 #include "landmark_graph_merged.h"
+
 #include "../option_parser.h"
 #include "../plugin.h"
 
 #include <set>
 
-using namespace __gnu_cxx;
+using namespace std;
 
 LandmarkGraphMerged::LandmarkGraphMerged(const Options &opts)
     : LandmarkFactory(opts),
       lm_graphs(opts.get_list<LandmarkGraph *>("lm_graphs")) {
-}
-
-LandmarkGraphMerged::~LandmarkGraphMerged() {
 }
 
 LandmarkNode *LandmarkGraphMerged::get_matching_landmark(const LandmarkNode &lm) const {
@@ -32,7 +30,7 @@ LandmarkNode *LandmarkGraphMerged::get_matching_landmark(const LandmarkNode &lm)
             return 0;
     } else if (lm.conjunctive) {
         cerr << "Don't know how to handle conjunctive landmarks yet" << endl;
-        exit_with(EXIT_UNSUPPORTED);
+        exit_with(utils::ExitCode::UNSUPPORTED);
     }
     return 0;
 }
@@ -77,7 +75,7 @@ void LandmarkGraphMerged::generate_landmarks() {
                 }
             } else if (node.conjunctive) {
                 cerr << "Don't know how to handle conjunctive landmarks yet" << endl;
-                exit_with(EXIT_UNSUPPORTED);
+                exit_with(utils::ExitCode::UNSUPPORTED);
             }
         }
     }
@@ -90,7 +88,7 @@ void LandmarkGraphMerged::generate_landmarks() {
             const LandmarkNode &from_orig = **it;
             LandmarkNode *from = get_matching_landmark(from_orig);
             if (from) {
-                hash_map<LandmarkNode *, edge_type, hash_pointer>::const_iterator to_it;
+                utils::HashMap<LandmarkNode *, edge_type>::const_iterator to_it;
                 for (to_it = from_orig.children.begin(); to_it != from_orig.children.end(); ++to_it) {
                     const LandmarkNode &to_orig = *to_it->first;
                     edge_type e_type = to_it->second;
