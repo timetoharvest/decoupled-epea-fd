@@ -20,10 +20,7 @@
 #include <sstream>
 #include <time.h>
 
-
 using namespace std;
-
-// TODO refine command line option for abstaining
 
 
 void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
@@ -57,14 +54,17 @@ void Factoring::init_var_to_ops_map() {
 }
 
 Factoring::Factoring(const Options &opts) :
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+            search_type(SEARCH_TYPE(opts.get_enum("search_type"))),
+            abstain_type(ABSTAIN_TYPE(opts.get_enum("abstain_type"))),
+            factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
+    verify_no_axioms_no_conditional_effects();
+
     switch(search_type){
         case FRA : cout << "performing Fork-Root A* search" << endl; break;
         case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
         case SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case SAT : cout << "performing decoupled satisficing search" << endl; break;
         case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
-        case NO_SEARCH : cout << "not running actual search" << endl; break;
         default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::INPUT_ERROR);
     }
     if (opts.contains("max_leaf_size")){
@@ -77,6 +77,9 @@ Factoring::Factoring(const Options &opts) :
         }
     } else {
         max_leaf_size = numeric_limits<size_t>::max();
+    }
+    if (opts.contains("factoring_time_limit")){
+        factoring_timer = utils::CountdownTimer(opts.get<int>("factoring_time_limit"));
     }
     if (opts.contains("pruning")){
         CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
@@ -149,8 +152,8 @@ protected:
 public:
 
     XShapeFactoring(const Options &opts)
-            : ForkFactoring(opts, XSHAPE) {
-        profile = XSHAPE;
+            : ForkFactoring(opts, STAR) {
+        profile = STAR;
         cout << "using X-shape factoring profile" << endl;
     }
 
@@ -202,7 +205,6 @@ protected:
     int arg_merge_leaves = 0;
     int arg_find_all;
     bool arg_all_rankings;
-    int arg_timeout;
     int arg_multiple_mis;
     vector<size_t> arg_mis;
     NGraph cg_g; // cache used for AutoFactoring
@@ -229,7 +231,6 @@ public:
                 arg_merge_leaves(opts.get<int>("merge_leaves")),
                 arg_find_all(opts.get<int>("find_all")),
                 arg_all_rankings(opts.get<bool>("all_rankings")),
-                arg_timeout(opts.get<int>("timeout")),
                 arg_multiple_mis(opts.get<int>("multiple_mis")){
         profile = STAR;
         cout << "using maximum independet set factoring profile - find all MIS: "
@@ -272,7 +273,7 @@ public:
 
     SokobanFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = SOKOBAN;
+        profile = STAR;
         cout << "using sokoban factoring profile" << endl;
     }
 
@@ -288,7 +289,7 @@ public:
 
     OpenstacksFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = OPENSTACKS;
+        profile = STAR;
         cout << "using openstacks factoring profile" << endl;
     }
 
@@ -306,7 +307,7 @@ public:
 
     TPPConstrainedFactoring(const Options &opts)
             : Factoring(opts), inverted(opts.get<bool>("inverted")) {
-        profile = OPENSTACKS;
+        profile = STAR;
         cout << "using " <<  (inverted ? "inverted-" : "") << "tpp factoring profile" << endl;
     }
 
@@ -322,7 +323,7 @@ public:
 
     DocTransferFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = DOC_TRANSFER;
+        profile = STAR;
         cout << "using doc transfer factoring profile" << endl;
     }
 
@@ -338,7 +339,7 @@ public:
 
     PegsolFactoring(const Options &opts)
             : Factoring(opts) {
-        profile = PEGSOL;
+        profile = STAR;
         cout << "using pegsol factoring profile" << endl;
     }
 
@@ -652,14 +653,18 @@ void Factoring::do_factoring_or_abstain() {
 
     if (best_factoring.size() < min_number_leaves){
         cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
-        exit_with(utils::ExitCode::ABSTAINED);
+        switch (abstain_type){
+            case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::ABSTAINED);
+            case ABSTAIN_TYPE::STANDARD_ON_FAILURE : return;
+            case ABSTAIN_TYPE::NO_SEARCH : break;
+        }
     }
 
     apply_factoring(best_factoring);
 
     print_factoring();
 
-    if (search_type == NO_SEARCH) {
+    if (abstain_type == ABSTAIN_TYPE::NO_SEARCH) {
         cout << "Factoring complete, do not perform search." << endl;
         exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
     }
@@ -909,6 +914,10 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 best_factoring = factoring;
                 discarded_leaves = discard_leaf;
                 best_number_leaves = number_leaves;
+            }
+
+            if (factoring_timer.is_expired()){
+                break;
             }
         }
     }
@@ -1615,9 +1624,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         if (cg_g.empty()) {
             cg_g = generate_ngraph();
 
-            MIS mis = MIS();
+            MIS mis;
             vector<boost::dynamic_bitset<>> found_mis;
-            found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, arg_timeout, arg_multiple_mis);
+            found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, factoring_timer, arg_multiple_mis);
 
             // generate factoring
             for (const boost::dynamic_bitset<> &m : found_mis) {
@@ -2391,17 +2400,28 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         OptionFlags(false));
 
     vector<string> search_types;
-    search_types.push_back("fra");
-    search_types.push_back("asda");
-    search_types.push_back("sda");
-    search_types.push_back("sat");
-    search_types.push_back("unsat");
-    search_types.push_back("no_search");
+    search_types.push_back("FRA");
+    search_types.push_back("ASDA");
+    search_types.push_back("SDA");
+    search_types.push_back("SAT");
+    search_types.push_back("UNSAT");
     parser.add_enum_option(
         "search_type",
         search_types,
         "TODO",
         "sda",
+        vector<string>(),
+        OptionFlags(false));
+
+    vector<string> abstain_types;
+    abstain_types.push_back("ABSTAIN_ON_FAILURE");
+    abstain_types.push_back("STANDARD_ON_FAILURE");
+    abstain_types.push_back("NO_SEARCH");
+    parser.add_enum_option(
+        "abstain_type",
+        abstain_types,
+        "TODO",
+        "ABSTAIN_ON_FAILURE",
         vector<string>(),
         OptionFlags(false));
 
@@ -2418,6 +2438,12 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "min_num_leaves",
         "TODO",
         "2"
+    );
+    parser.add_option<int>(
+        "factoring_time_limit",
+        "TODO",
+        "",
+        OptionFlags(false)
     );
 }
 

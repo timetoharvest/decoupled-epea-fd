@@ -10,7 +10,7 @@
 
 using namespace std;
 
-vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, int arg_timeout, int arg_multiple_mis) const {
+vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, utils::CountdownTimer timer, int arg_multiple_mis) const {
 
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << g.size() << endl;
@@ -32,10 +32,8 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
     stack.push_front(g);
 
     size_t mis_steps = 0;
-    utils::CountdownTimer timer(arg_timeout);
-    bool timeout = arg_timeout != 0;
 
-    while (!stack.empty() && (!timeout || !timer.is_expired())) {
+    while (!stack.empty() && !timer.is_expired()) {
         ++mis_steps;
 
         NGraph g = stack.front();

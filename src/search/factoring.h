@@ -3,6 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state_id.h"
+#include "utils/countdown_timer.h"
 #include "utils/system.h"
 
 #include <set>
@@ -20,23 +21,15 @@
 enum PROFILE {
     FORK,
     IFORK,
-    XSHAPE,
     STAR,
-    SOKOBAN,    // domain dependent factoring
-    OPENSTACKS, // domain dependent factoring
-    TPP_CONSTRAINED, // domain dependent factoring
-    INV_TPP_CONSTRAINED, // domain dependent factoring
-    DOC_TRANSFER, // domain dependent factoring
-    PEGSOL, // domain dependent factoring
 };
 
-enum SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
+enum SEARCH_TYPE {
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
     SAT,        // satisficing search
-    UNSAT,      // for proving unsolvability (SAT + optimizations)
-    NO_SEARCH   // stop after doing the factoring
+    UNSAT      // for proving unsolvability (SAT + optimizations)
 };
 
 
@@ -80,7 +73,15 @@ class Options;
 
 class Factoring {
     
+    enum ABSTAIN_TYPE {
+        ABSTAIN_ON_FAILURE, // default, if no factoring is found, the planner stops
+        STANDARD_ON_FAILURE, // run standard search if no factoring is found
+        NO_SEARCH   // stop after doing the factoring
+    };
+
     SEARCH_TYPE search_type;
+
+    ABSTAIN_TYPE abstain_type;
     
     size_t max_precompute_state_space_size;
     
@@ -97,6 +98,9 @@ protected:
     
     size_t min_number_leaves;
     
+    // TODO so-far, this is only considered by LP-based, incident arcs, and MIS factorings; all other factorings ignore the limit
+    utils::CountdownTimer factoring_timer;
+
     PROFILE profile;
     
     std::vector<bool> fork_leaf;
@@ -137,6 +141,11 @@ public:
     
     SEARCH_TYPE get_search_type() const {
         return search_type;
+    }
+
+    bool run_standard_search_because_factoring_failed() const {
+        // TODO hacky, fix this
+        return g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE;
     }
 
     

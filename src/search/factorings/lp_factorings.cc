@@ -125,14 +125,14 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     set_action_schemes();
 
-    if (act_schemes.empty()){
+    if (act_schemes.empty() || factoring_timer.is_expired()){
         // for trivially unsolvable task
         return FactoredVars();
     }
 
     set_potential_leaves(min_mobility, min_flexibility);
 
-    if (potential_leaves.empty()){
+    if (potential_leaves.empty() || factoring_timer.is_expired()){
         return FactoredVars();
     }
 
@@ -228,6 +228,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     }
 
+    if (factoring_timer.is_expired()){
+        return FactoredVars();
+    }
 
     if (factoring_type == GENERAL) {
         for (const ActionSchema &act_schema : act_schemes) {
@@ -281,8 +284,18 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         constraints.push_back(constraint);
     }
 
+    if (factoring_timer.is_expired()){
+        return FactoredVars();
+    }
 
-    CPLEXSolver mip_solver(1, 0, cplex_time_limit);
+    int cplex_limit = cplex_time_limit > 0 ? cplex_time_limit : -1;
+    if (factoring_timer.get_remaining_time() != numeric_limits<double>::infinity()){
+        // TODO: this check seems to work; make sure that this is actually guaranteed by the standard
+        int f_limit = factoring_timer.get_remaining_time();
+        cplex_limit = cplex_limit > 0 ? min(f_limit, cplex_limit) : f_limit;
+    }
+
+    CPLEXSolver mip_solver(1, 0, cplex_limit);
 
     mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
 
@@ -292,7 +305,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     timer = utils::Timer();
 
-    if (cplex_time_limit <= 0){
+    if (cplex_limit <= 0){
         mip_solver.solve();
     } else {
         mip_solver.populate();
@@ -302,7 +315,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
 
     FactoredVars factoring;
 
-    if (cplex_time_limit <= 0) {
+    if (cplex_limit <= 0) {
         if (!mip_solver.has_optimal_solution()){
             cout << "no optimal solution to LP found, factoring failed" << endl;
             return factoring;
@@ -315,7 +328,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
     }
 
     vector<int> solution;
-    if (cplex_time_limit <= 0){
+    if (cplex_limit <= 0){
         solution = mip_solver.extract_int_solution();
     } else {
         solution = mip_solver.extract_best_int_solution();
@@ -951,14 +964,18 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
                     potential_leaves[index].leaf_only_schemes.insert(leaf_only_schema);
                 }
             }
+            if (factoring_timer.is_expired()){
+                potential_leaves.clear();
+                return;
+            }
         }
     }
 
     if (min_mobility > 1 || min_flexibility > 0) {
-        //erase effect schemes that does not satisfy requirements
+        // erase effect schemes that does not satisfy requirements
         auto lambda_expr = [&](const PotentialLeaf &p_leaf){return p_leaf.num_leaf_only_actions < min_mobility || p_leaf.get_flexibility() < min_flexibility;};
         potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
-        //adjust IDs
+        // adjust IDs
         id = 0;
         for (PotentialLeaf &p_leaf : potential_leaves) {
             p_leaf.id = id;
@@ -1013,6 +1030,11 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
                         }
                     }
                 }
+                if (factoring_timer.is_expired()){
+                    potential_leaves.clear();
+                    cout << "timed out." << endl;
+                    return;
+                }
             }
         }
 
@@ -1031,6 +1053,11 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
                         }
                     }
                 }
+                if (factoring_timer.is_expired()){
+                    potential_leaves.clear();
+                    cout << "timed out." << endl;
+                    return;
+                }
             }
 
             for (int var = 0; var < (int) g_variable_domain.size(); ++var){
@@ -1041,6 +1068,10 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
                             p_leaves_cg[pot_leaf_1][pot_leaf_2 - pot_leaf_1 - 1] = true;
                         }
                     }
+                }
+                if (factoring_timer.is_expired()){
+                    potential_leaves.clear();
+                    return;
                 }
             }
 
@@ -1117,6 +1148,11 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
                             p_leaf_counter[index_2] = 0;
                         }
                     }
+                }
+                if (factoring_timer.is_expired()){
+                    potential_leaves.clear();
+                    cout << "timed out." << endl;
+                    return;
                 }
             }
         }
