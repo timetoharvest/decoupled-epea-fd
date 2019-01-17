@@ -79,6 +79,7 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("factoring_time_limit")){
+        // TODO the timeout starts immediately and therefore also includes non-factoring time, like reading in the task
         factoring_timer = utils::CountdownTimer(opts.get<int>("factoring_time_limit"));
     }
     if (opts.contains("pruning")){
