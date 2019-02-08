@@ -25,29 +25,30 @@ class CPLEXSolver : public Solver {
     IloRangeArray ilo_constraints;
     IloModel model;
     IloCplex cplex;
+    int memory_limit; // limit in MB
 public:
-    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0, int time_limit = -1);
+    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0, int time_limit = -1, int memory_limit = -1);
 
-    ~CPLEXSolver();
+    virtual ~CPLEXSolver();
 
-    void load_problem(
+    virtual void load_problem(
             LPObjectiveSense sense,
             const std::vector<LPVariable> &variables,
-            const std::vector<LPConstraint> &constraints);
-    void load_problem(
+            const std::vector<LPConstraint> &constraints) override;
+    virtual void load_problem(
             LPObjectiveSense sense,
             const std::vector<MIPVariable> &variables,
-            const std::vector<LPConstraint> &constraints);
+            const std::vector<LPConstraint> &constraints) override;
 
-    double get_infinity() const;
-    void set_objective_coefficients(const std::vector<double> &coefficients);
-    void set_objective_coefficient(int index, double coefficient);
-    void set_constraint_lower_bound(int index, double bound);
-    void set_constraint_upper_bound(int index, double bound);
-    void set_variable_lower_bound(int index, double bound);
-    void set_variable_upper_bound(int index, double bound);
+    virtual double get_infinity() const override;
+    virtual void set_objective_coefficients(const std::vector<double> &coefficients) override;
+    virtual void set_objective_coefficient(int index, double coefficient) override;
+    virtual void set_constraint_lower_bound(int index, double bound) override;
+    virtual void set_constraint_upper_bound(int index, double bound) override;
+    virtual void set_variable_lower_bound(int index, double bound) override;
+    virtual void set_variable_upper_bound(int index, double bound) override;
 
-    void solve();
+    virtual void solve() override;
     // solves the MIP, populating the solution pool
     void populate();
     void solveLPRelaxation();
@@ -59,7 +60,7 @@ public:
       solutions due to numerical difficulties.
       The LP has to be solved with a call to solve() before calling this method.
     */
-    bool has_optimal_solution() const;
+    virtual bool has_optimal_solution() const override;
 
     /*
       Return true if the solving the LP showed that it is bounded feasible.
@@ -72,7 +73,7 @@ public:
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    double get_objective_value() const;
+    virtual double get_objective_value() const override;
 
     /*
       Return the solution found after solving an LP as a vector with one entry
@@ -80,7 +81,7 @@ public:
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    std::vector<double> extract_solution() const;
+    virtual std::vector<double> extract_solution() const override;
 
     std::vector<double> extract_best_solution() const;
 
@@ -88,11 +89,8 @@ public:
 
     std::vector<int> extract_best_int_solution() const;
 
-    int get_num_variables() const;
-    int get_num_constraints() const;
-
-    NO_RETURN
-    void handle_cplex_error(const IloException &exception) const;
+    virtual int get_num_variables() const override;
+    virtual int get_num_constraints() const override;
 };
 #ifdef __GNUG__
 #pragma GCC diagnostic pop

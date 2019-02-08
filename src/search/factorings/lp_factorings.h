@@ -57,8 +57,6 @@ struct ActionSchema {
 
 class LPFactoring : public Factoring {
 
-protected:
-
     STRATEGY strategy;
 
     FACTORING_TYPE factoring_type;
@@ -70,6 +68,8 @@ protected:
     int max_merge_steps;
 
     int cplex_time_limit;
+
+    int memory_limit;
 
     std::vector<ActionSchema> act_schemes;
 

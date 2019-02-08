@@ -19,7 +19,11 @@ using namespace std;
 using namespace lp;
 
 
-LPFactoring::LPFactoring(const Options &opts) : Factoring(opts) {
+static const string CPLEX_ERROR_MEMORY_1 = "CPLEX Error  1001: Out of memory.\n";
+static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
+
+
+LPFactoring::LPFactoring(const Options &opts) : Factoring(opts), memory_limit(opts.get<int>("memory_limit")) {
      profile = STAR;
      strategy = STRATEGY(opts.get_enum("strategy"));
      factoring_type = FACTORING_TYPE(opts.get_enum("factoring_type"));
@@ -295,20 +299,35 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         cplex_limit = cplex_limit > 0 ? min(f_limit, cplex_limit) : f_limit;
     }
 
-    CPLEXSolver mip_solver(1, 0, cplex_limit);
+    int mem_limit = memory_limit == -1 ? -1 : 0.95 * (memory_limit * 1024 - utils::get_peak_memory_in_kb()) / 1024; // in MB
+    CPLEXSolver mip_solver(1, 0, cplex_limit, mem_limit);
 
-    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
+    try {
 
-    mip_solver.print_statistics();
+        mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
 
-    cout << "LP construction time: " << timer << endl;
+        mip_solver.print_statistics();
 
-    timer = utils::Timer();
+        cout << "LP construction time: " << timer << endl;
 
-    if (cplex_limit <= 0){
-        mip_solver.solve();
-    } else {
-        mip_solver.populate();
+        timer = utils::Timer();
+
+        if (cplex_limit <= 0){
+            mip_solver.solve();
+        } else {
+            mip_solver.populate();
+        }
+
+    } catch (const IloException &excpt) {
+        string error_message = excpt.getMessage();
+        if (error_message == CPLEX_ERROR_MEMORY_1 ||
+                error_message == CPLEX_ERROR_MEMORY_2) {
+            cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
+            return FactoredVars();
+        } else {
+            cout << "CPLEX error : " << error_message << endl;
+            exit_with(utils::ExitCode::CRITICAL_ERROR);
+        }
     }
 
     cout << "LP solving time: " << timer << endl;
@@ -1342,9 +1361,15 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
 
     parser.add_option<int>(
         "cplex_time_limit",
-        "CPLEX timi limit in seconds",
+        "CPLEX time limit in seconds",
         "",
         OptionFlags(false)
+    );
+
+    parser.add_option<int>(
+        "memory_limit",
+        "CPLEX memory limit in MB",
+        "-1"
     );
 
 }

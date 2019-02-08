@@ -1,4 +1,5 @@
 #include "cplex_solver.h"
+
 #include "../utils/system.h"
 
 #ifdef __GNUG__
@@ -16,9 +17,6 @@ using namespace std;
 
 namespace lp {
 
-static const string CPLEX_ERROR_MEMORY_1 = "CPLEX Error  1001: Out of memory.\n";
-static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
-
 CPLEXSolver::~CPLEXSolver() {
     cplex.end();
     model.end();
@@ -30,12 +28,13 @@ CPLEXSolver::~CPLEXSolver() {
     env.end();
 }
 
-CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit)
+CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit, int memory_limit)
     : ilo_variables(IloNumVarArray(env,0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env,0)),
       model(IloModel(env)),
-      cplex(IloCplex(env)) {
+      cplex(IloCplex(env)),
+      memory_limit(memory_limit) {
     is_initialized = false;
     is_solved = false;
     cplex.setParam(IloCplex::Param::Threads, max_num_threads);
@@ -50,7 +49,6 @@ CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int 
 void CPLEXSolver::load_problem(LPObjectiveSense sense,
                             const vector<LPVariable> &variables,
                             const vector<LPConstraint> &constraints) {
-
     IloNumExpr ilo_obj_expr;
     for (const LPVariable &var : variables) {
         IloNumVar ilo_var(env, var.lower_bound, var.upper_bound, ILOFLOAT);
@@ -80,6 +78,11 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
         IloRange ilo_constraint (env, constraint.get_lower_bound(), ilo_constr_expr, constraint.get_upper_bound());
         ilo_constraints.add(ilo_constraint);
         ilo_constr_expr.end();
+
+        if (memory_limit != -1 && memory_limit * 0.95 * 1024 * 1024 <= env.getMemoryUsage()){
+            cerr << "CPLEX out of memory while loading problem." << endl;
+            throw IloMemoryException();
+        }
     }
     model.add(ilo_constraints);
 }
@@ -90,13 +93,13 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
     IloNumExpr ilo_obj_expr(env);
     for (const MIPVariable &var : variables) {
         if (var.type == MIPVariableType::INT) {
-          IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOINT);
-          ilo_variables.add(ilo_var);
-          ilo_obj_expr += var.objective_coefficient * ilo_var;
+            IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOINT);
+            ilo_variables.add(ilo_var);
+            ilo_obj_expr += var.objective_coefficient * ilo_var;
         } else {
-          IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOFLOAT);
-          ilo_variables.add(ilo_var);
-          ilo_obj_expr += var.objective_coefficient * ilo_var;
+            IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOFLOAT);
+            ilo_variables.add(ilo_var);
+            ilo_obj_expr += var.objective_coefficient * ilo_var;
         }
     }
     if (sense == LPObjectiveSense::MINIMIZE) {
@@ -119,6 +122,11 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
         }
         IloRange ilo_constraint (env, constraint.get_lower_bound(), ilo_constr_expr, constraint.get_upper_bound());
         ilo_constraints.add(ilo_constraint);
+
+        if (memory_limit != -1 && memory_limit * 0.95 * 1024 * 1024 <= env.getMemoryUsage()){
+            cerr << "CPLEX out of memory while loading problem." << endl;
+            throw IloMemoryException();
+        }
     }
     model.add(ilo_constraints);
 }
@@ -167,135 +175,95 @@ void CPLEXSolver::set_variable_upper_bound(int index, double bound) {
 }
 
 void CPLEXSolver::solve() {
-    try {
-        cplex.extract(model);
-        cplex.solve();
-        is_solved = true;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
-    }
+    cplex.extract(model);
+    cplex.solve();
+    is_solved = true;
 }
 
 void CPLEXSolver::populate() {
-    try {
-        cplex.extract(model);
-        cplex.populate();
-        is_solved = true;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
-    }
+    cplex.extract(model);
+    cplex.populate();
+    is_solved = true;
 }
 
 void CPLEXSolver::solveLPRelaxation() {
-    try {
-        IloModel relaxed_model(env);
-        relaxed_model.add(model);
-        relaxed_model.add(IloConversion (env, ilo_variables, ILOFLOAT));
-        cplex.extract(relaxed_model);
-        cplex.solve();
-        is_solved = true;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
-    }
+    IloModel relaxed_model(env);
+    relaxed_model.add(model);
+    relaxed_model.add(IloConversion (env, ilo_variables, ILOFLOAT));
+    cplex.extract(relaxed_model);
+    cplex.solve();
+    is_solved = true;
 }
 
 bool CPLEXSolver::has_optimal_solution() const {
-    try {
-        assert(is_solved);
-        return cplex.getStatus() == IloAlgorithm::Optimal;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
-    }
+    assert(is_solved);
+    return cplex.getStatus() == IloAlgorithm::Optimal;
 }
 
 bool CPLEXSolver::has_solution() const {
-    try {
-        assert(is_solved);
-        if (cplex.getStatus() == IloAlgorithm::Optimal ||
-                cplex.getStatus() == IloAlgorithm::Feasible){
-            return true;
-        }
-        return false;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
+    assert(is_solved);
+    if (cplex.getStatus() == IloAlgorithm::Optimal ||
+            cplex.getStatus() == IloAlgorithm::Feasible){
+        return true;
     }
+    return false;
 }
 
 double CPLEXSolver::get_objective_value() const {
-    try {
-        assert(has_optimal_solution());
-        return cplex.getObjValue();
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
-    }
+    assert(has_optimal_solution());
+    return cplex.getObjValue();
 }
 
 vector<int> CPLEXSolver::extract_int_solution() const {
-    try {
-        assert(has_optimal_solution());
-        cout << "CPLEX status: " << cplex.getStatus() << endl;
-        vector<int> solution;
-        for (int var = 0; var < get_num_variables(); var++) {
-            solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
-        }
-        return solution;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
+    assert(has_optimal_solution());
+    cout << "CPLEX status: " << cplex.getStatus() << endl;
+    vector<int> solution;
+    for (int var = 0; var < get_num_variables(); var++) {
+        solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
     }
+    return solution;
 }
 
 vector<int> CPLEXSolver::extract_best_int_solution() const {
-    try {
-        assert(has_solution());
-        cout << "CPLEX status: " << cplex.getStatus() << endl;
-        int best = 0;
-        for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
-            if (cplex.getObjValue(i) > cplex.getObjValue(best)){
-                best = i;
-            }
+    assert(has_solution());
+    cout << "CPLEX status: " << cplex.getStatus() << endl;
+    int best = 0;
+    for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
+        if (cplex.getObjValue(i) > cplex.getObjValue(best)){
+            best = i;
         }
-        vector<int> solution;
-        for (int var = 0; var < get_num_variables(); var++) {
-            solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
-        }
-        return solution;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
     }
+    vector<int> solution;
+    for (int var = 0; var < get_num_variables(); var++) {
+        solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
+    }
+    return solution;
 }
 
 vector<double> CPLEXSolver::extract_solution() const {
-    try {
-        assert(has_optimal_solution());
-        cout << "CPLEX status: " << cplex.getStatus() << endl;
-        vector<double> solution;
-        for (int var = 0; var < get_num_variables(); var++) {
-            solution.push_back(cplex.getValue(ilo_variables[var]));
-        }
-        return solution;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
+    assert(has_optimal_solution());
+    cout << "CPLEX status: " << cplex.getStatus() << endl;
+    vector<double> solution;
+    for (int var = 0; var < get_num_variables(); var++) {
+        solution.push_back(cplex.getValue(ilo_variables[var]));
     }
+    return solution;
 }
 
 vector<double> CPLEXSolver::extract_best_solution() const {
-    try {
-        assert(has_solution());
-        cout << "CPLEX status: " << cplex.getStatus() << endl;
-        int best = 0;
-        for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
-            if (cplex.getObjValue(i) > cplex.getObjValue(best)){
-                best = i;
-            }
+    assert(has_solution());
+    cout << "CPLEX status: " << cplex.getStatus() << endl;
+    int best = 0;
+    for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
+        if (cplex.getObjValue(i) > cplex.getObjValue(best)){
+            best = i;
         }
-        vector<double> solution;
-        for (int var = 0; var < get_num_variables(); var++) {
-            solution.push_back(cplex.getValue(ilo_variables[var], best));
-        }
-        return solution;
-    } catch (IloException &exception) {
-        handle_cplex_error(exception);
     }
+    vector<double> solution;
+    for (int var = 0; var < get_num_variables(); var++) {
+        solution.push_back(cplex.getValue(ilo_variables[var], best));
+    }
+    return solution;
 }
 
 int CPLEXSolver::get_num_variables() const {
@@ -305,20 +273,4 @@ int CPLEXSolver::get_num_variables() const {
 int CPLEXSolver::get_num_constraints() const {
     return ilo_constraints.getSize();
 }
-
-NO_RETURN
-void CPLEXSolver::handle_cplex_error(const IloException &exception) const{
-  string error_message = exception.getMessage();
-  if (error_message == CPLEX_ERROR_MEMORY_1 ||
-      error_message == CPLEX_ERROR_MEMORY_2) {
-      cout << "Error while factoring planning task!" << endl;
-      cout << "CPLEX Out of Memory" << endl;
-      exit_with(utils::ExitCode::OUT_OF_MEMORY);
-  } else {
-      cout << "Error : " << error_message << "\n";
-      exit_with(utils::ExitCode::CRITICAL_ERROR);
-  }
-}
-
-
 }
