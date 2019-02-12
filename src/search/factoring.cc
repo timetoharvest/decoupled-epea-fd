@@ -76,7 +76,7 @@ Factoring::Factoring(const Options &opts) :
             cout << "maximum leaf factor size " << max_leaf_size << endl;
         }
     } else {
-        max_leaf_size = numeric_limits<size_t>::max();
+        max_leaf_size = pow(2, 32);
     }
     if (opts.contains("factoring_time_limit")){
         // TODO the timeout starts immediately and therefore also includes non-factoring time, like reading in the task
@@ -869,9 +869,6 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
 
     FactoredVars best_factoring;
-    size_t best_number_leaves = 0;
-
-    vector<bool> discarded_leaves;
 
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
@@ -898,35 +895,26 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
 
-            size_t number_leaves = factoring.size();
-            if (number_leaves < best_number_leaves){
+            if (factoring.size() < best_factoring.size()){
                 // no need to perform the expensive frozen leaf check if it cannot
                 // possibly result in more leaves
                 continue;
             }
             vector<bool> discard_leaf = get_frozen_leaves(factoring);
-            for (bool discard : discard_leaf){
-                if (discard){
-                    --number_leaves;
+            // put frozen leaves back to center
+            for (int i = factoring.size() - 1; i >= 0; --i){
+                if (discard_leaf[i]){
+                    factoring.erase(factoring.begin() + i);
                 }
             }
 
-            if (number_leaves >= best_number_leaves){
+            if (factoring.size() >= best_factoring.size()){
                 best_factoring = factoring;
-                discarded_leaves = discard_leaf;
-                best_number_leaves = number_leaves;
             }
 
             if (factoring_timer.is_expired()){
                 break;
             }
-        }
-    }
-
-    // put frozen leaves back to center
-    for (int i = best_factoring.size() - 1; i >= 0; --i){
-        if (discarded_leaves[i]){
-            best_factoring.erase(best_factoring.begin() + i);
         }
     }
 
