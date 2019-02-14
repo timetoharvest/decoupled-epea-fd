@@ -195,6 +195,7 @@ public:
 };
 
 class MaxIndependentSetFactoring : public Factoring {
+    // TODO move this to a separate file
 
     vector<FactoredVars> get_factorings(const vector<vector<FactoringRanking*> > &rankings);
 
