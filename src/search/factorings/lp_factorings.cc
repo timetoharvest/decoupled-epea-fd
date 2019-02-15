@@ -218,10 +218,30 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
             }
         }
 
+        size_t num_constraints = 0;
+        for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; ++p_leaf_1) {
+            for (size_t p_leaf_2 = p_leaf_1 + 1; p_leaf_2 < num_p_leaves; ++p_leaf_2) {
+                // we need p_leaf_1 < p_leaf_2
+                if (p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]){
+                    ++num_constraints;
+                }
+            }
+        }
+
+        if (memory_limit != -1 && num_constraints >= memory_limit * 2500){
+            // this limit corresponds to around 10 million constraints with 4GB memory limit
+            // the maximum-sized ILP that could be solved in the experiments with this limit
+            // had around 5 million constraints
+            cerr << "Too many LP constraints, aborting: " << num_constraints << endl;
+            return FactoredVars();
+        }
+
+        constraints.reserve(num_constraints);
 
         for (size_t p_leaf_1 = 0; p_leaf_1 < num_p_leaves; ++p_leaf_1) {
-            for (size_t p_leaf_2 = 0; p_leaf_2 < num_p_leaves; ++p_leaf_2) {
-                if (p_leaf_1 < p_leaf_2 && p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) {
+            for (size_t p_leaf_2 = p_leaf_1 + 1; p_leaf_2 < num_p_leaves; ++p_leaf_2) {
+                // we need p_leaf_1 < p_leaf_2
+                if (p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) {
                     LPConstraint constraint(0.0, 1.0);
                     constraint.insert(p_leaf_1, 1.0);
                     constraint.insert(p_leaf_2, 1.0);
@@ -276,6 +296,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
+    // save memory
+    act_schemes = vector<ActionSchema>();
+    var_to_p_leaves = vector<set<size_t> >();
+
     if (min_number_leaves > 2) {
         // adding the constraint typically increases runtime of CPLEX,
         // therefore, we only add it if we need strictly more than 2 leaves,
@@ -299,12 +323,13 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         cplex_limit = cplex_limit > 0 ? min(f_limit, cplex_limit) : f_limit;
     }
 
-    int mem_limit = memory_limit == -1 ? -1 : 0.95 * (memory_limit * 1024 - utils::get_peak_memory_in_kb()) / 1024; // in MB
-    CPLEXSolver mip_solver(1, 0, cplex_limit, mem_limit);
+    CPLEXSolver mip_solver(1, 0, cplex_limit);
 
     try {
 
         mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
+
+        constraints = vector<LPConstraint>(); // save memory
 
         mip_solver.print_statistics();
 
@@ -373,6 +398,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         }
     }
 
+    // save memory
+    potential_leaves = vector<PotentialLeaf>();
+
     if (all_potential_leaves && leaves_overlap){
         // TODO: investigate this!
         // this tends to happen when CPLEX is running out of memory on the cluster,
@@ -381,11 +409,6 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() {
         cerr << "ERROR: solution returned by CPLEX is not a valid factoring; all potential leaves become leaves, but do overlap." << endl;
         return FactoredVars();
     }
-
-    // save memory
-    potential_leaves = vector<PotentialLeaf>();
-    act_schemes = vector<ActionSchema>();
-    var_to_p_leaves = vector<set<size_t> >();
 
     return factoring;
 }
@@ -908,6 +931,16 @@ void LPFactoring::set_potential_leaves(int min_mobility, float min_flexibility) 
     int id = 0;
     for (size_t as = 0; as < act_schemes.size(); ++as) {
         const ActionSchema &action_schema = act_schemes[as];
+        uint64_t size = 1;
+        for (int var : action_schema.eff_vars){
+            size *= g_variable_domain[var];
+            if (max_leaf_size != 0 && size > max_leaf_size){
+                break;
+            }
+        }
+        if (max_leaf_size != 0 && size > max_leaf_size){
+            continue;
+        }
         bool duplicate = false;
         for (vector<PotentialLeaf>::reverse_iterator rit = potential_leaves.rbegin(); rit != potential_leaves.rend(); ++rit) {
             if (action_schema.eff_vars == rit->vars) {

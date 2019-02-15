@@ -25,12 +25,13 @@ class CPLEXSolver : public Solver {
     IloRangeArray ilo_constraints;
     IloModel model;
     IloCplex cplex;
-    int memory_limit; // limit in MB
 public:
-    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0, int time_limit = -1, int memory_limit = -1);
+    CPLEXSolver(int max_num_threads = 1, double integrality_tolerance = 0.0, int time_limit = -1);
 
     virtual ~CPLEXSolver();
 
+    // TODO probably refactor these two, to not have the potentially huge
+    // vector of constraints in memory twice; instead, build the LP incrementally.
     virtual void load_problem(
             LPObjectiveSense sense,
             const std::vector<LPVariable> &variables,

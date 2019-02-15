@@ -28,13 +28,12 @@ CPLEXSolver::~CPLEXSolver() {
     env.end();
 }
 
-CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit, int memory_limit)
+CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit)
     : ilo_variables(IloNumVarArray(env,0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env,0)),
       model(IloModel(env)),
-      cplex(IloCplex(env)),
-      memory_limit(memory_limit) {
+      cplex(IloCplex(env)) {
     is_initialized = false;
     is_solved = false;
     cplex.setParam(IloCplex::Param::Threads, max_num_threads);
@@ -78,11 +77,6 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
         IloRange ilo_constraint (env, constraint.get_lower_bound(), ilo_constr_expr, constraint.get_upper_bound());
         ilo_constraints.add(ilo_constraint);
         ilo_constr_expr.end();
-
-        if (memory_limit != -1 && memory_limit * 0.95 * 1024 * 1024 <= env.getMemoryUsage()){
-            cerr << "CPLEX out of memory while loading problem." << endl;
-            throw IloMemoryException();
-        }
     }
     model.add(ilo_constraints);
 }
@@ -122,11 +116,6 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
         }
         IloRange ilo_constraint (env, constraint.get_lower_bound(), ilo_constr_expr, constraint.get_upper_bound());
         ilo_constraints.add(ilo_constraint);
-
-        if (memory_limit != -1 && memory_limit * 0.95 * 1024 * 1024 <= env.getMemoryUsage()){
-            cerr << "CPLEX out of memory while loading problem." << endl;
-            throw IloMemoryException();
-        }
     }
     model.add(ilo_constraints);
 }
