@@ -105,6 +105,7 @@ fast_downward_plugin(
     NAME UTILS
     HELP "System utilities"
     SOURCES
+    	utils/array_pool
         utils/collections
         utils/countdown_timer
         utils/hash

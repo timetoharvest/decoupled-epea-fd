@@ -1,66 +1,108 @@
-#ifndef RELAXATION_HEURISTIC_H
-#define RELAXATION_HEURISTIC_H
+#ifndef HEURISTICS_RELAXATION_HEURISTIC_H
+#define HEURISTICS_RELAXATION_HEURISTIC_H
+
+#include "utils/array_pool.h"
 
 #include "heuristic.h"
-#include "operator_id.h"
 
+#include "../utils/collections.h"
+
+#include <cassert>
 #include <vector>
 
 class State;
+class Operator;
 
+namespace relaxation_heuristic {
 struct Proposition;
 struct UnaryOperator;
 
-struct UnaryOperator {
-    OperatorID operator_no; // OperatorID::no_operator for axioms; index into g_operators otherwise
-    std::vector<Proposition *> precondition;
-    Proposition *effect;
-    int base_cost;
+using PropID = int;
+using OpID = int;
 
-    int unsatisfied_preconditions;
-    int cost; // Used for h^max cost or h^add cost;
-              // includes operator cost (base_cost)
-    UnaryOperator(const std::vector<Proposition *> &pre, Proposition *eff,
-                  OperatorID operator_no_, int base)
-        : operator_no(operator_no_), precondition(pre), effect(eff),
-          base_cost(base) {}
-};
+const OpID NO_OP = -1;
 
 struct Proposition {
-    bool is_goal;
-    int id;
-    std::vector<UnaryOperator *> precondition_of;
-
-    int cost; // Used for h^max cost or h^add cost
-    UnaryOperator *reached_by;
-    bool marked; // used when computing preferred operators for h^add and h^FF
-
-    Proposition(int id_) {
-        id = id_;
-        is_goal = false;
-        cost = -1;
-        reached_by = 0;
-        marked = false;
-    }
+    Proposition();
+    int cost; // used for h^max cost or h^add cost
+    // TODO: Make sure in constructor that reached_by does not overflow.
+    PropID reached_by : 30;
+    /* The following two variables are conceptually bools, but Visual C++ does
+       not support packing ints and bools together in a bitfield. */
+    unsigned int is_goal : 1;
+    unsigned int marked : 1; // used for preferred operators of h^add and h^FF
+    int num_precondition_occurences;
+    array_pool::ArrayPoolIndex precondition_of;
 };
 
+static_assert(sizeof(Proposition) == 16, "Proposition has wrong size");
+
+struct UnaryOperator {
+    UnaryOperator(int num_preconditions,
+                  array_pool::ArrayPoolIndex preconditions,
+                  PropID effect,
+                  int operator_no, int base_cost);
+    int cost; // Used for h^max cost or h^add cost;
+              // includes operator cost (base_cost)
+    int unsatisfied_preconditions;
+    PropID effect;
+    int base_cost;
+    int num_preconditions;
+    array_pool::ArrayPoolIndex preconditions;
+    int operator_no; // -1 for axioms; index into the task's operators otherwise
+};
+
+static_assert(sizeof(UnaryOperator) == 28, "UnaryOperator has wrong size");
+
 class RelaxationHeuristic : public Heuristic {
-    void build_unary_operators(const Operator &op, OperatorID operator_no);
+    void build_unary_operators(const Operator &op);
     void simplify();
+
+    // proposition_offsets[var_no]: first PropID related to variable var_no
+    std::vector<PropID> proposition_offsets;
 protected:
     std::vector<UnaryOperator> unary_operators;
-    std::vector<std::vector<Proposition> > propositions;
-    std::vector<Proposition *> goal_propositions;
-    
+    std::vector<Proposition> propositions;
+    std::vector<PropID> goal_propositions;
     
     void reference_ops();
 
-    virtual void initialize();
-    virtual int compute_heuristic(const State &state) = 0;
+    array_pool::ArrayPool preconditions_pool;
+    array_pool::ArrayPool precondition_of_pool;
+
+    array_pool::ArrayPoolSlice get_preconditions(OpID op_id) const {
+        const UnaryOperator &op = unary_operators[op_id];
+        return preconditions_pool.get_slice(op.preconditions, op.num_preconditions);
+    }
+
+    // HACK!
+    std::vector<PropID> get_preconditions_vector(OpID op_id) const {
+        auto view = get_preconditions(op_id);
+        return std::vector<PropID>(view.begin(), view.end());
+    }
+
+    OpID get_op_id(const UnaryOperator &op) const {
+        OpID op_id = &op - unary_operators.data();
+        assert(utils::in_bounds(op_id, unary_operators));
+        return op_id;
+    }
+
+    PropID get_prop_id(int var, int value) const;
+
+    Proposition *get_proposition(PropID prop_id) {
+        return &propositions[prop_id];
+    }
+    UnaryOperator *get_operator(OpID op_id) {
+        return &unary_operators[op_id];
+    }
+
+    // TODO this might be useful for decoupled heuristics
+//    Proposition *get_proposition(int var, int value);
 public:
-    RelaxationHeuristic(const Options &options);
-    virtual ~RelaxationHeuristic();
-    virtual bool dead_ends_are_reliable() const;
+    explicit RelaxationHeuristic(const Options &options);
+
+    virtual bool dead_ends_are_reliable() const override;
 };
+}
 
 #endif
