@@ -104,7 +104,7 @@ PropID RelaxationHeuristic::get_prop_id(int var, int value) const {
 
 void RelaxationHeuristic::build_unary_operators(const Operator &op) {
     int op_no = op.is_axiom() ? -1 : op.get_id();
-    int base_cost = op.get_cost();
+    int base_cost = get_adjusted_cost(op);
     vector<PropID> precondition_props;
     const vector<Condition> &preconditions = op.get_preconditions();
     precondition_props.reserve(preconditions.size());

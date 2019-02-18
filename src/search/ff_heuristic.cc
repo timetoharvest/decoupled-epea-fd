@@ -61,7 +61,7 @@ int FFHeuristic::compute_heuristic(const State &state) {
     for (size_t op_no = 0; op_no < relaxed_plan.size(); ++op_no) {
         if (relaxed_plan[op_no]) {
             relaxed_plan[op_no] = false; // Clean up for next computation.
-            h_ff += g_operators[op_no].get_cost();
+            h_ff += get_adjusted_cost(g_operators[op_no]);
         }
     }
     return h_ff;
