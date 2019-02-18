@@ -12,11 +12,11 @@ ALIASES = {}
 
 
 ALIASES["seq-sat-fd-autotune-1"] = [
-    "--evaluator", "hff=ff(transform=adapt_costs(one))",
-    "--evaluator", "hcea=cea()",
-    "--evaluator", "hcg=cg(transform=adapt_costs(plusone))",
-    "--evaluator", "hgc=goalcount()",
-    "--evaluator", "hAdd=add()",
+    "--heuristic", "hff=ff(transform=adapt_costs(one))",
+    "--heuristic", "hcea=cea()",
+    "--heuristic", "hcg=cg(transform=adapt_costs(plusone))",
+    "--heuristic", "hgc=goalcount()",
+    "--heuristic", "hAdd=add()",
     "--search", """iterated([
 lazy(alt([single(sum([g(),weight(hff,10)])),
           single(sum([g(),weight(hff,10)]),pref_only=true)],
@@ -55,10 +55,10 @@ eager(alt([tiebreaking([sum([g(),weight(hAdd,10)]),hAdd]),
 ],repeat_last=true,continue_on_fail=true)"""]
 
 ALIASES["seq-sat-fd-autotune-2"] = [
-    "--evaluator", "hcea=cea(transform=adapt_costs(plusone))",
-    "--evaluator", "hcg=cg(transform=adapt_costs(one))",
-    "--evaluator", "hgc=goalcount(transform=adapt_costs(plusone))",
-    "--evaluator", "hff=ff()",
+    "--heuristic", "hcea=cea(transform=adapt_costs(plusone))",
+    "--heuristic", "hcg=cg(transform=adapt_costs(one))",
+    "--heuristic", "hgc=goalcount(transform=adapt_costs(plusone))",
+    "--heuristic", "hff=ff()",
     "--search", """iterated([
 ehc(hcea,preferred=[hcea],preferred_usage=0,cost_type=normal),
 lazy(alt([single(sum([weight(g(),2),weight(hff,3)])),
@@ -96,9 +96,9 @@ lazy(alt([single(sum([g(),weight(hff,2)])),
 def _get_lama(**kwargs):
     return [
         "--if-unit-cost",
-        "--evaluator",
+        "--heuristic",
         "hlm=lmcount(lm_rhw(reasonable_orders=true),pref={pref})".format(**kwargs),
-        "--evaluator", "hff=ff()",
+        "--heuristic", "hff=ff()",
         "--search", """iterated([
                          lazy_greedy([hff,hlm],preferred=[hff,hlm]),
                          lazy_wastar([hff,hlm],preferred=[hff,hlm],w=5),
@@ -107,12 +107,12 @@ def _get_lama(**kwargs):
                          lazy_wastar([hff,hlm],preferred=[hff,hlm],w=1)
                          ],repeat_last=true,continue_on_fail=true)""",
         "--if-non-unit-cost",
-        "--evaluator",
+        "--heuristic",
         "hlm1=lmcount(lm_rhw(reasonable_orders=true),transform=adapt_costs(one),pref={pref})".format(**kwargs),
-        "--evaluator", "hff1=ff(transform=adapt_costs(one))",
-        "--evaluator",
+        "--heuristic", "hff1=ff(transform=adapt_costs(one))",
+        "--heuristic",
         "hlm2=lmcount(lm_rhw(reasonable_orders=true),transform=adapt_costs(plusone),pref={pref})".format(**kwargs),
-        "--evaluator", "hff2=ff(transform=adapt_costs(plusone))",
+        "--heuristic", "hff2=ff(transform=adapt_costs(plusone))",
         "--search", """iterated([
                          lazy_greedy([hff1,hlm1],preferred=[hff1,hlm1],
                                      cost_type=one,reopen_closed=false),
@@ -131,14 +131,14 @@ ALIASES["seq-sat-lama-2011"] = _get_lama(pref="true")
 ALIASES["lama"] = _get_lama(pref="false")
 
 ALIASES["lama-first"] = [
-    "--evaluator",
+    "--heuristic",
     "hlm=lmcount(lm_factory=lm_rhw(reasonable_orders=true),transform=adapt_costs(one),pref=false)",
-    "--evaluator", "hff=ff(transform=adapt_costs(one))",
+    "--heuristic", "hff=ff(transform=adapt_costs(one))",
     "--search", """lazy_greedy([hff,hlm],preferred=[hff,hlm],
                                cost_type=one,reopen_closed=false)"""]
 
 ALIASES["seq-opt-bjolp"] = [
-    "--evaluator",
+    "--heuristic",
     "lmc=lmcount(lm_merged([lm_rhw(),lm_hm(m=1)]),admissible=true)",
     "--search",
     "astar(lmc,lazy_evaluator=lmc)"]
