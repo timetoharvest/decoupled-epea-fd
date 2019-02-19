@@ -1,5 +1,7 @@
 #include "max_heuristic.h"
 
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "state.h"
 #include "option_parser.h"
 #include "plugin.h"
@@ -47,8 +49,11 @@ void HSPMaxHeuristic::setup_exploration_queue() {
 
 void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
     for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
-        PropID init_prop = get_prop_id(var, state[var]);
-        enqueue_if_necessary(init_prop, 0);
+        if (heuristic_type == HEURISTIC_TYPE::STD ||
+                g_belongs_to_factor[var] == LeafFactorID::CENTER){
+            PropID init_prop = get_prop_id(var, state[var]);
+            enqueue_if_necessary(init_prop, 0);
+        }
     }
 }
 
@@ -81,6 +86,30 @@ void HSPMaxHeuristic::relaxed_exploration() {
 
 int HSPMaxHeuristic::compute_heuristic(const State &state) {
     setup_exploration_queue();
+
+    if (heuristic_type != HEURISTIC_TYPE::STD){
+        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            int number_states = tag->get_number_states(factor);
+            LeafStateHash id(0);
+            while (number_states > 0){
+                if (tag->has_leaf_state(id, factor)){
+                    --number_states;
+                    int base_cost = 0;
+                    if (heuristic_type == HEURISTIC_TYPE::STAR){
+                        base_cost = tag->get_cost_of_state(id, factor);
+                    }
+                    const LeafState &f = g_state_registry->lookup_leaf_state(id, factor);
+                    for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
+                        int var = g_leaves[factor][v];
+                        enqueue_if_necessary(get_prop_id(var, f[var]), base_cost);
+                    }
+                }
+                ++id;
+            }
+        }
+    }
+
     setup_exploration_queue_state(state);
     relaxed_exploration();
 

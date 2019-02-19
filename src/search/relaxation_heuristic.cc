@@ -54,6 +54,15 @@ RelaxationHeuristic::RelaxationHeuristic(const Options &opts)
         propositions[prop_id].is_goal = true;
         goal_propositions.push_back(prop_id);
     }
+    if (heuristic_type != HEURISTIC_TYPE::STD){
+        for (size_t i = 0; i < g_leaves.size(); ++i){
+            for (size_t j = 0; j < g_goals_per_factor[i].size(); ++j){
+                PropID prop_id = get_prop_id(g_goals_per_factor[i][j].first, g_goals_per_factor[i][j].second);
+                propositions[prop_id].is_goal = true;
+                goal_propositions.push_back(prop_id);
+            }
+        }
+    }
 
     // Build unary operators for operators and axioms.
     unary_operators.reserve(g_operators.size() + g_axioms.size());
@@ -67,11 +76,6 @@ RelaxationHeuristic::RelaxationHeuristic(const Options &opts)
     simplify();
     cout << "time to simplify: " << simplify_timer << endl;
 
-    reference_ops();
-}
-
-void RelaxationHeuristic::reference_ops() {
-    // TODO do we really need this?
     // Cross-reference unary operators.
     vector<vector<OpID>> precondition_of_vectors(propositions.size());
 
@@ -98,13 +102,13 @@ PropID RelaxationHeuristic::get_prop_id(int var, int value) const {
     return proposition_offsets[var] + value;
 }
 
-//Proposition *RelaxationHeuristic::get_proposition(int var, int value) {
-//    return &propositions[get_prop_id(var, value)];
-//}
-
 void RelaxationHeuristic::build_unary_operators(const Operator &op) {
     int op_no = op.is_axiom() ? -1 : op.get_id();
     int base_cost = get_adjusted_cost(op);
+    if (heuristic_type == HEURISTIC_TYPE::CENTER &&
+            op.get_affected_factor() != LeafFactorID::CENTER){
+        base_cost = 0;
+    }
     vector<PropID> precondition_props;
     const vector<Condition> &preconditions = op.get_preconditions();
     precondition_props.reserve(preconditions.size());

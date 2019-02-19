@@ -32,21 +32,11 @@ class AdditiveHeuristic : public relaxation_heuristic::RelaxationHeuristic {
     priority_queues::AdaptiveQueue<PropID> queue;
     bool did_write_overflow_warning;
 
-    void setup_exploration_queue();
     void setup_exploration_queue_state(const State &state);
+    void setup_exploration_queue_decoupled_leaf_states(const State &state);
+
     void relaxed_exploration();
     void mark_preferred_operators(const State &state, PropID goal_id);
-
-    void enqueue_if_necessary(PropID prop_id, int cost, OpID op_id) {
-        assert(cost >= 0);
-        Proposition *prop = get_proposition(prop_id);
-        if (prop->cost == -1 || prop->cost > cost) {
-            prop->cost = cost;
-            prop->reached_by = op_id;
-            queue.push(cost, prop_id);
-        }
-        assert(prop->cost != -1 && prop->cost <= cost);
-    }
 
     void increase_cost(int &cost, int amount) {
         assert(cost >= 0);
@@ -60,6 +50,19 @@ class AdditiveHeuristic : public relaxation_heuristic::RelaxationHeuristic {
 
     void write_overflow_warning();
 protected:
+    void setup_exploration_queue();
+
+    void enqueue_if_necessary(PropID prop_id, int cost, OpID op_id) {
+        assert(cost >= 0);
+        Proposition *prop = get_proposition(prop_id);
+        if (prop->cost == -1 || prop->cost > cost) {
+            prop->cost = cost;
+            prop->reached_by = op_id;
+            queue.push(cost, prop_id);
+        }
+        assert(prop->cost != -1 && prop->cost <= cost);
+    }
+
     virtual int compute_heuristic(const State &state) override;
 
     // Common part of h^add and h^ff computation.

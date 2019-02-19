@@ -1,10 +1,8 @@
 #ifndef HEURISTICS_RELAXATION_HEURISTIC_H
 #define HEURISTICS_RELAXATION_HEURISTIC_H
 
-#include "utils/array_pool.h"
-
 #include "heuristic.h"
-
+#include "utils/array_pool.h"
 #include "../utils/collections.h"
 
 #include <cassert>
@@ -26,7 +24,7 @@ struct Proposition {
     Proposition();
     int cost; // used for h^max cost or h^add cost
     // TODO: Make sure in constructor that reached_by does not overflow.
-    PropID reached_by : 30;
+    OpID reached_by : 30;
     /* The following two variables are conceptually bools, but Visual C++ does
        not support packing ints and bools together in a bitfield. */
     unsigned int is_goal : 1;
@@ -64,8 +62,6 @@ protected:
     std::vector<UnaryOperator> unary_operators;
     std::vector<Proposition> propositions;
     std::vector<PropID> goal_propositions;
-    
-    void reference_ops();
 
     array_pool::ArrayPool preconditions_pool;
     array_pool::ArrayPool precondition_of_pool;
@@ -95,9 +91,6 @@ protected:
     UnaryOperator *get_operator(OpID op_id) {
         return &unary_operators[op_id];
     }
-
-    // TODO this might be useful for decoupled heuristics
-//    Proposition *get_proposition(int var, int value);
 public:
     explicit RelaxationHeuristic(const Options &options);
 

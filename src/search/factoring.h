@@ -17,7 +17,7 @@
 // in the CG because of a single action that has to (and can only) be executed once
 // to "initialize the printer"
 
-enum PROFILE {
+enum FACTORING_PROFILE {
     FORK,
     IFORK,
     XSHAPE,
@@ -30,7 +30,7 @@ enum PROFILE {
     PEGSOL, // domain dependent factoring
 };
 
-enum SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
+enum DECOUPLED_SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
@@ -80,7 +80,7 @@ class Options;
 
 class Factoring {
     
-    SEARCH_TYPE search_type;
+    DECOUPLED_SEARCH_TYPE search_type;
     
     size_t max_precompute_state_space_size;
     
@@ -97,7 +97,7 @@ protected:
     
     size_t min_number_leaves;
     
-    PROFILE profile;
+    FACTORING_PROFILE profile;
     
     std::vector<bool> fork_leaf;
     
@@ -123,7 +123,7 @@ public:
     
     void do_factoring_or_abstain();
     
-    PROFILE get_profile() const {
+    FACTORING_PROFILE get_profile() const {
         return profile;
     }
     
@@ -135,7 +135,7 @@ public:
         return ifork_leaf[factor];
     }
     
-    SEARCH_TYPE get_search_type() const {
+    DECOUPLED_SEARCH_TYPE get_search_type() const {
         return search_type;
     }
 

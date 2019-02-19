@@ -1,5 +1,7 @@
 #include "additive_heuristic.h"
 
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "state.h"
 #include "operator.h"
 #include "option_parser.h"
@@ -51,8 +53,34 @@ void AdditiveHeuristic::setup_exploration_queue() {
 
 void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
     for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
-        PropID init_prop = get_prop_id(var, state[var]);
-        enqueue_if_necessary(init_prop, 0, NO_OP);
+        if (heuristic_type == HEURISTIC_TYPE::STD ||
+                g_belongs_to_factor[var] == LeafFactorID::CENTER){
+            PropID init_prop = get_prop_id(var, state[var]);
+            enqueue_if_necessary(init_prop, 0, NO_OP);
+        }
+    }
+}
+
+void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
+    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        int number_states = tag->get_number_states(factor);
+        LeafStateHash id(0);
+        while (number_states > 0){
+            if (tag->has_leaf_state(id, factor)){
+                --number_states;
+                int base_cost = 0;
+                if (heuristic_type == HEURISTIC_TYPE::STAR){
+                    base_cost = tag->get_cost_of_state(id, factor);
+                }
+                LeafState f = g_state_registry->lookup_leaf_state(id, factor);
+                for (int var : g_leaves[factor]) {
+                    PropID prop_id = get_prop_id(var, f[var]);
+                    enqueue_if_necessary(prop_id, base_cost, 0);
+                }
+            }
+            ++id;
+        }
     }
 }
 
@@ -102,15 +130,18 @@ void AdditiveHeuristic::mark_preferred_operators(
             if (is_preferred && operator_no != -1) {
                 // This is not an axiom.
                 const Operator &op = g_operators[operator_no];
-                assert(task_properties::is_applicable(op, state));
-                set_preferred(op.get_id());
+                if (heuristic_type == HEURISTIC_TYPE::STD || 
+                        op.get_affected_factor() == LeafFactorID::CENTER){
+                    // don't mark leaf ops as preferred
+                    assert(op.is_applicable(state));
+                    set_preferred(op.get_id());
+                }
             }
         }
     }
 }
 
 int AdditiveHeuristic::compute_add_and_ff(const State &state) {
-    setup_exploration_queue();
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
@@ -126,6 +157,12 @@ int AdditiveHeuristic::compute_add_and_ff(const State &state) {
 }
 
 int AdditiveHeuristic::compute_heuristic(const State &state) {
+    setup_exploration_queue();
+    
+    if (heuristic_type != HEURISTIC_TYPE::STD){
+        setup_exploration_queue_decoupled_leaf_states(state);
+    }
+    
     int h = compute_add_and_ff(state);
     if (h != DEAD_END) {
         for (PropID goal_id : goal_propositions)
