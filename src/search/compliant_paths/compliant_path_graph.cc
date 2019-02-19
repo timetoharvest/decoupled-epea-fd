@@ -75,7 +75,7 @@ void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
 }
 
 void CompliantPathGraph::discard_leaf_price_cache() {
-    if (g_factoring->get_profile() != PROFILE::FORK && !leaf_tags_to_cache.empty()){
+    if (g_factoring->get_profile() != FACTORING_PROFILE::FORK && !leaf_tags_to_cache.empty()){
         vector<LeafStateID>().swap(leaf_tags_to_cache);
     }
 }
@@ -96,7 +96,7 @@ void CompliantPathGraph::initialize() {
 }
 
 void CompliantPathGraph::build_leaf_successor_generators() {
-    if (g_factoring->get_profile() != PROFILE::FORK){
+    if (g_factoring->get_profile() != FACTORING_PROFILE::FORK){
         center_action_successor_generator = unique_ptr<successor_generator::SuccessorGenerator>(new successor_generator::SuccessorGenerator(LeafFactorID::CENTER, true));
     }
     leaf_successor_generators.reserve(g_leaves.size());

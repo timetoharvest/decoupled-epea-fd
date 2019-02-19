@@ -13,24 +13,24 @@ using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
     : cost_type(OperatorCost(opts.get_enum("cost_type"))),
-      search_type(SearchType(opts.get_enum("search_type"))){
+      heuristic_type(HEURISTIC_TYPE(opts.get_enum("search_type"))){
     heuristic = NOT_INITIALIZED;
 
     if (g_factoring){
-        if (search_type == STD){
-            if (g_factoring->get_search_type() == SDA){
-                search_type = STAR;
+        if (heuristic_type == HEURISTIC_TYPE::STD){
+            if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SDA){
+                heuristic_type = HEURISTIC_TYPE::STAR;
                 cout << "set type of heuristic to STAR" << endl;
             } else {
                 // assume center heuristic
-                search_type = CENTER;
+                heuristic_type = HEURISTIC_TYPE::CENTER;
                 cout << "set type of heuristic to CENTER" << endl;
             }
         }
     } else {
-        if (search_type != STD){
+        if (heuristic_type != HEURISTIC_TYPE::STD){
             cout << "running standard search; overwriting non-standard search type option of heuristic" << endl;
-            search_type = STD;
+            heuristic_type = HEURISTIC_TYPE::STD;
         }
     }
 }

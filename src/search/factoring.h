@@ -18,18 +18,18 @@
 // in the CG because of a single action that has to (and can only) be executed once
 // to "initialize the printer"
 
-enum PROFILE {
+enum FACTORING_PROFILE {
     FORK,
     IFORK,
     STAR,
 };
 
-enum SEARCH_TYPE {
+enum DECOUPLED_SEARCH_TYPE {
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
     SAT,        // satisficing search
-    UNSAT      // for proving unsolvability (SAT + optimizations)
+    UNSAT       // for proving unsolvability (SAT + optimizations)
 };
 
 
@@ -79,7 +79,7 @@ class Factoring {
         NO_SEARCH   // stop after doing the factoring
     };
 
-    SEARCH_TYPE search_type;
+    DECOUPLED_SEARCH_TYPE search_type;
 
     ABSTAIN_TYPE abstain_type;
     
@@ -101,7 +101,7 @@ protected:
     // TODO so-far, this is only considered by LP-based, incident arcs, and MIS factorings; all other factorings ignore the limit
     utils::CountdownTimer factoring_timer;
 
-    PROFILE profile;
+    FACTORING_PROFILE profile;
     
     std::vector<bool> fork_leaf;
     
@@ -127,7 +127,7 @@ public:
     
     void do_factoring_or_abstain();
     
-    PROFILE get_profile() const {
+    FACTORING_PROFILE get_profile() const {
         return profile;
     }
     
@@ -139,7 +139,7 @@ public:
         return ifork_leaf[factor];
     }
     
-    SEARCH_TYPE get_search_type() const {
+    DECOUPLED_SEARCH_TYPE get_search_type() const {
         return search_type;
     }
 

@@ -1,11 +1,25 @@
-#ifndef ADDITIVE_HEURISTIC_H
-#define ADDITIVE_HEURISTIC_H
+#ifndef HEURISTICS_ADDITIVE_HEURISTIC_H
+#define HEURISTICS_ADDITIVE_HEURISTIC_H
+
+#include "relaxation_heuristic.h"
 
 #include "algorithms/priority_queues.h"
-#include "relaxation_heuristic.h"
+#include "utils/collections.h"
+
 #include <cassert>
 
-class AdditiveHeuristic : public RelaxationHeuristic {
+class State;
+
+namespace additive_heuristic {
+using relaxation_heuristic::PropID;
+using relaxation_heuristic::OpID;
+
+using relaxation_heuristic::NO_OP;
+
+using relaxation_heuristic::Proposition;
+using relaxation_heuristic::UnaryOperator;
+
+class AdditiveHeuristic : public relaxation_heuristic::RelaxationHeuristic {
     /* Costs larger than MAX_COST_VALUE are clamped to max_value. The
        precise value (100M) is a bit of a hack, since other parts of
        the code don't reliably check against overflow as of this
@@ -15,13 +29,14 @@ class AdditiveHeuristic : public RelaxationHeuristic {
      */
     static const int MAX_COST_VALUE = 100000000;
 
-    priority_queues::AdaptiveQueue<Proposition *> queue;
+    priority_queues::AdaptiveQueue<PropID> queue;
     bool did_write_overflow_warning;
 
-    void setup_exploration_queue_decoupled_leaf_states(const State &state);
     void setup_exploration_queue_state(const State &state);
+    void setup_exploration_queue_decoupled_leaf_states(const State &state);
+
     void relaxed_exploration();
-    void mark_preferred_operators(const State &state, Proposition *goal);
+    void mark_preferred_operators(const State &state, PropID goal_id);
 
     void increase_cost(int &cost, int amount) {
         assert(cost >= 0);
@@ -35,26 +50,26 @@ class AdditiveHeuristic : public RelaxationHeuristic {
 
     void write_overflow_warning();
 protected:
-    virtual void initialize();
-    virtual int compute_heuristic(const State &state);
-    
-    void enqueue_if_necessary(Proposition *prop, int cost, UnaryOperator *op) {
+    void setup_exploration_queue();
+
+    void enqueue_if_necessary(PropID prop_id, int cost, OpID op_id) {
         assert(cost >= 0);
+        Proposition *prop = get_proposition(prop_id);
         if (prop->cost == -1 || prop->cost > cost) {
             prop->cost = cost;
-            prop->reached_by = op;
-            queue.push(cost, prop);
+            prop->reached_by = op_id;
+            queue.push(cost, prop_id);
         }
         assert(prop->cost != -1 && prop->cost <= cost);
     }
-    
-    void setup_exploration_queue();
+
+    virtual int compute_heuristic(const State &state) override;
 
     // Common part of h^add and h^ff computation.
     int compute_add_and_ff(const State &state);
 public:
-    AdditiveHeuristic(const Options &options);
-    ~AdditiveHeuristic();
+    explicit AdditiveHeuristic(const Options &opts);
 };
+}
 
 #endif

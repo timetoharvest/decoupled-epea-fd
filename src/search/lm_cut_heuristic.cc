@@ -140,7 +140,8 @@ void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
         effects.push_back(&propositions[op_effects[i].var][op_effects[i].val]);
     }
     int cost = get_adjusted_cost(op);
-    if (search_type == CENTER && op.get_affected_factor() != LeafFactorID::CENTER){
+    if (heuristic_type == HEURISTIC_TYPE::CENTER && 
+            op.get_affected_factor() != LeafFactorID::CENTER){
         cost = 0;   // ADA*/FRA*/SAT => center heuristic
     }
     add_relaxed_operator(precondition, effects, &op, cost);
@@ -189,7 +190,8 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
 
 void LandmarkCutHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
+	if (heuristic_type == HEURISTIC_TYPE::STD ||
+	        g_belongs_to_factor[var] == LeafFactorID::CENTER){
 	    RelaxedProposition *init_prop = &propositions[var][state[var]];
 	    enqueue_if_necessary(init_prop, 0);
 	}
@@ -286,7 +288,8 @@ void LandmarkCutHeuristic::second_exploration(
     second_exploration_queue.push_back(&artificial_precondition);
 
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (search_type == STD || g_belongs_to_factor[var] == LeafFactorID::CENTER){
+	if (heuristic_type == HEURISTIC_TYPE::STD || 
+                g_belongs_to_factor[var] == LeafFactorID::CENTER){
 	    RelaxedProposition *init_prop = &propositions[var][state[var]];
 	    init_prop->status = BEFORE_GOAL_ZONE;
 	    second_exploration_queue.push_back(init_prop);
@@ -384,7 +387,7 @@ void LandmarkCutHeuristic::dereference_ops() {
 
 int LandmarkCutHeuristic::compute_heuristic(const State &state) {
     // TODO: Possibly put back in some kind of preferred operator mechanism.
-    if (search_type != STD){
+    if (heuristic_type != HEURISTIC_TYPE::STD){
         // add virtual operators for factored search
         
         dereference_ops();
@@ -401,7 +404,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                     --number_states;
                     
                     int cost = 0;
-                    if (search_type == STAR){
+                    if (heuristic_type == HEURISTIC_TYPE::STAR){
                         cost = tag->get_cost_of_state(id, factor);
                         assert(cost >= 0);
                     }
