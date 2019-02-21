@@ -55,14 +55,14 @@ void Factoring::init_var_to_ops_map() {
 }
 
 Factoring::Factoring(const Options &opts) :
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+            search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
-        case FRA : cout << "performing Fork-Root A* search" << endl; break;
-        case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
-        case SDA : cout << "performing Star Decoupled A* search" << endl; break;
-        case SAT : cout << "performing decoupled satisficing search" << endl; break;
-        case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
-        case NO_SEARCH : cout << "not running actual search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::FRA : cout << "performing Fork-Root A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::SDA : cout << "performing Star Decoupled A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::SAT : cout << "performing decoupled satisficing search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::UNSAT : cout << "trying to prove task unsolvable" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::NO_SEARCH : cout << "not running actual search" << endl; break;
         default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     if (opts.contains("max_leaf_size")){
@@ -120,7 +120,7 @@ protected:
 
 public:
     
-    ForkFactoring(const Options &opts, PROFILE profile = FORK)
+    ForkFactoring(const Options &opts, FACTORING_PROFILE profile = FORK)
             : Factoring(opts),
               maximize_mobility(opts.get<bool>("maximize_mobility")),
               extend_leaves(opts.get<bool>("extend_leaves")),

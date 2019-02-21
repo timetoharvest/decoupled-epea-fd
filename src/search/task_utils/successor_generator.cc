@@ -33,7 +33,7 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
                                                  vector<OperatorID> &applicable_ops) const {
     assert(g_factoring);
 
-    if (g_factoring->get_profile() == PROFILE::FORK){
+    if (g_factoring->get_profile() == FACTORING_PROFILE::FORK){
         return;
     }
 
