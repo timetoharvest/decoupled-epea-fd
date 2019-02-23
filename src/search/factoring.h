@@ -4,10 +4,8 @@
 #include "globals.h"
 #include "leaf_state_id.h"
 #include "utils/countdown_timer.h"
-#include "utils/system.h"
 
 #include <set>
-#include <string>
 #include <vector>
 
 
@@ -85,11 +83,23 @@ class Factoring {
     
     size_t max_precompute_state_space_size;
     
+    int factoring_time_limit;
+
+    std::vector<bool> fork_leaf;
+
+    std::vector<bool> ifork_leaf;
+
+    void apply_factoring(const std::vector<std::set<int> > &factoring);
+
+    void print_factoring() const;
+
+    bool is_factoring_possible() const;
+
 protected:
     
-    typedef std::vector<std::set<int> > FactoredVars;
-    
-    static FactoredVars var_to_affecting_op;
+    using FactoredVars = std::vector<std::set<int> >;
+
+    static std::vector<std::set<int> > var_to_affecting_op;
 
     static void init_var_to_ops_map();
 
@@ -102,11 +112,7 @@ protected:
     utils::CountdownTimer factoring_timer;
 
     FACTORING_PROFILE profile;
-    
-    std::vector<bool> fork_leaf;
-    
-    std::vector<bool> ifork_leaf;
-    
+
     virtual FactoredVars get_factoring() = 0;
     
     FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
@@ -115,11 +121,8 @@ protected:
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
-    void apply_factoring(const FactoredVars &factoring);
-    
-    void print_factoring() const;
-    
-    Factoring(const Options &ops);
+
+    Factoring(const Options &opts);
     
 public:
     

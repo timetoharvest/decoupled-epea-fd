@@ -56,6 +56,7 @@ void Factoring::init_var_to_ops_map() {
 Factoring::Factoring(const Options &opts) :
             search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))),
             abstain_type(ABSTAIN_TYPE(opts.get_enum("abstain_type"))),
+            factoring_time_limit(opts.get<int>("factoring_time_limit")),
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
     verify_no_axioms_no_conditional_effects();
 
@@ -77,10 +78,6 @@ Factoring::Factoring(const Options &opts) :
         }
     } else {
         max_leaf_size = pow(2, 32);
-    }
-    if (opts.contains("factoring_time_limit")){
-        // TODO the timeout starts immediately and therefore also includes non-factoring time, like reading in the task
-        factoring_timer = utils::CountdownTimer(opts.get<int>("factoring_time_limit"));
     }
     if (opts.contains("pruning")){
         CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
@@ -640,18 +637,43 @@ void Factoring::print_factoring() const {
     cout << "sum flexibility: " << sum_flexibility << endl;
 }
 
+bool Factoring::is_factoring_possible() const {
+    // if there exists a variable that is affected by all actions, then
+    // no mobile factoring can exist.
+    vector<size_t> op_count(g_variable_domain.size());
+    for (const Operator &op : g_operators){
+        for (const Effect &eff : op.get_effects()){
+            ++op_count[eff.var];
+        }
+    }
+    for (size_t i = 0; i < op_count.size(); ++i){
+        if (op_count[i] == g_operators.size()){
+            cout << "No mobile factoring possible." << endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
-    utils::Timer t;
+    if (factoring_time_limit > 0) {
+        factoring_timer = utils::CountdownTimer(factoring_time_limit);
+    }
 
-    FactoredVars best_factoring = get_factoring();
+    FactoredVars best_factoring;
+    if (is_factoring_possible()){
+        // simple sanity check to filter out tasks where no factoring exists
+        best_factoring = get_factoring();
+    }
+
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
 
     // save memory
     var_to_affecting_op = vector<set<int> >();
 
-    cout << "factoring time " << t << endl;
+    cout << "factoring time " << factoring_timer.get_elapsed_time() << endl;
 
     if (best_factoring.size() < min_number_leaves){
         cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
@@ -2432,8 +2454,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>(
         "factoring_time_limit",
         "TODO",
-        "",
-        OptionFlags(false)
+        "0"
     );
 }
 
