@@ -25,9 +25,9 @@ static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
 LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
         strategy(STRATEGY(opts.get_enum("strategy"))),
         factoring_type(FACTORING_TYPE(opts.get_enum("factoring_type"))),
-        min_mobility(opts.get<int>("min_mob")),
-        min_flexibility(opts.get<float>("min_flex")),
-        max_merge_steps(opts.get<int>("max_merge")),
+        min_mobility(opts.get<int>("min_mobility")),
+        min_flexibility(opts.get<float>("min_flexibility")),
+        max_merge_steps(opts.get<int>("max_merge_steps")),
         cplex_time_limit(opts.get<int>("cplex_time_limit")),
         memory_limit(opts.get<int>("memory_limit")) {
     profile = STAR;
