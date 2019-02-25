@@ -10,7 +10,7 @@
 
 using namespace std;
 
-vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, utils::CountdownTimer timer, int arg_multiple_mis) const {
+vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, const utils::CountdownTimer &timer, int arg_multiple_mis) const {
 
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << g.size() << endl;

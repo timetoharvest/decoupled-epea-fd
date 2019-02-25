@@ -1663,7 +1663,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         max_ind_sets.push_back(f);
     }
     if (max_ind_sets.empty()) {
-        exit_with(utils::ExitCode::ABSTAINED);
+        return FactoredVars();
     }
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
         bool valid = check_factoring(max_ind_sets[i]);
