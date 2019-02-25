@@ -84,11 +84,11 @@ class LPFactoring : public Factoring {
 
     std::vector<bool> get_mobile_vars() const;
 
-    std::vector<ActionSchema> get_action_schemas(int min_num_actions = 1) const;
+    std::vector<ActionSchema> get_action_schemas() const;
 
-    std::vector<PotentialLeaf> get_potential_leaves(const std::vector<ActionSchema> &action_schemas, int min_mobility = 1, float min_flexibility = 0) const;
+    std::vector<PotentialLeaf> get_potential_leaves(const std::vector<ActionSchema> &action_schemas) const;
 
-    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves, int max_iterations = 2) const;
+    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves) const;
 
 public:
 
