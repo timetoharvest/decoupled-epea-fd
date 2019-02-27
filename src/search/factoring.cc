@@ -194,9 +194,6 @@ public:
 class MaxIndependentSetFactoring : public Factoring {
     // TODO move this to a separate file
 
-    vector<FactoredVars> get_factorings(const vector<vector<FactoringRanking*> > &rankings);
-
-protected:
     int arg_minimize_center;
     bool arg_minimize_frozen;
     vector<FactoringRanking* > arg_rankings;
@@ -205,18 +202,16 @@ protected:
     int arg_find_all;
     bool arg_all_rankings;
     int arg_multiple_mis;
-    vector<size_t> arg_mis;
-    NGraph cg_g; // cache used for AutoFactoring
-    vector<FactoredVars> max_ind_sets; // cache used for AutoFactoring
 
+    vector<FactoredVars> get_factorings(const vector<vector<FactoringRanking*> > &rankings);
 
     void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &) const;
-
-    //int optimize_experimental(const NGraph &, const set<int> &, const vector<bool> &, const map<int,int> &);
 
     NGraph generate_ngraph() const;
 
     bool check_factoring(const FactoredVars &) const;
+
+protected:
 
     FactoredVars get_factoring() override;
 
@@ -243,16 +238,6 @@ public:
             arg_rankings = opts.get_list<FactoringRanking *>("rankings");
             for (FactoringRanking *ranking : arg_rankings) {
                 cout << ranking->print_feature() << " ";
-            }
-            cout << endl;
-        }
-        cout << " initial MIS: ";
-        if (!opts.contains("mis")) {
-            cout << "None" << endl;
-        } else {
-            arg_mis = opts.get_list<size_t>("mis");
-            for (size_t v: arg_mis) {
-                cout << v << " ";
             }
             cout << endl;
         }
@@ -1574,7 +1559,7 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
 
     for (size_t f = 0; f < components.size(); ++f) {
         for (int v : components[f]){
-            for (int op : Factoring::var_to_affecting_op[v]) {
+            for (int op : var_to_affecting_op[v]) {
                 if (!operator_seen[op]) {
                     // if an operator has been handled by another leaf factor, it has to be a center action
                     operator_seen[op] = true;
@@ -1632,39 +1617,34 @@ vector<bool> Factoring::get_frozen_leaves(const FactoredVars &components) const 
 
 Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     init_var_to_ops_map();
-    if (arg_mis.empty()) {
-        if (cg_g.empty()) {
-            cg_g = generate_ngraph();
 
-            MIS mis;
-            vector<boost::dynamic_bitset<>> found_mis;
-            found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, factoring_timer, arg_multiple_mis);
+    NGraph cg_g = generate_ngraph();
 
-            // generate factoring
-            for (const boost::dynamic_bitset<> &m : found_mis) {
-                FactoredVars f;
-                for (size_t it = 0; it < m.size(); ++it) {
-                    if (m[it]) {
-                        set<int> s;
-                        s.insert((int) it);
-                        f.push_back(s);
-                    }
-                }
-                max_ind_sets.push_back(f);
-            }
-        }
-    } else {
+    MIS mis;
+    vector<boost::dynamic_bitset<>> found_mis;
+
+    utils::CountdownTimer mis_timer(factoring_timer.get_remaining_time() * 0.9);
+    found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, mis_timer, arg_multiple_mis);
+
+    // generate factoring
+    vector<FactoredVars> max_ind_sets;
+    for (const boost::dynamic_bitset<> &m : found_mis) {
         FactoredVars f;
-        for (size_t v: arg_mis) {
-            set<int> m;
-            m.insert(v);
-            f.push_back(m);
+        for (size_t it = 0; it < m.size(); ++it) {
+            if (m[it]) {
+                set<int> s;
+                s.insert((int) it);
+                f.push_back(s);
+            }
         }
         max_ind_sets.push_back(f);
     }
+
+
     if (max_ind_sets.empty()) {
         return FactoredVars();
     }
+
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
         bool valid = check_factoring(max_ind_sets[i]);
         if (!valid) {
@@ -1678,6 +1658,9 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     vector<int> f_c(max_ind_sets.size(),0);
     for (size_t i = 0; i < max_ind_sets.size(); ++i) {
         optimize_feature(max_ind_sets[i], cg_g, f_rm[i], c_rm[i], f_c[i]);
+        if (factoring_timer.is_expired()) {
+            break;
+        }
     }
     size_t max = 0;
     vector<VarInt> max_rank(arg_rankings.size(), VarInt(0));
@@ -1727,7 +1710,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             cout << "   ";
             arg_rankings[i]->get_rank(final_factoring).dump_number();
         }
-        cout << endl;
     }
     if (arg_all_rankings) {
         cout << "All Rankings: " << endl;
@@ -1748,7 +1730,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
 
     cout << "Removed frozen leaves: " << f_rm_max << endl;
-
     cout << "Number of factors: " << final_factoring.size() << endl;
 
     bool valid = check_factoring(final_factoring);
@@ -1786,8 +1767,10 @@ NGraph MaxIndependentSetFactoring::generate_ngraph() const {
 }
 
 bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
-    vector<int> vars;
     bool valid = true;
+    f.empty(); // to avoid unused-parameter compile warning
+#ifdef DEBUG_FACTORING
+    vector<int> vars;
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
         vars.push_back(var);
     }
@@ -1825,7 +1808,7 @@ bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
             }
         }
     }
-#ifdef DEBUG_FACTORING
+
     cout << "Factoring: " << endl;
     for (map<int, pair<set<int>,set<int>>>::iterator it = ig.begin(); it != ig.end(); ++it) {
         cout << "   Factor: " << it->first << endl;
@@ -1886,6 +1869,9 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
     int best_f_rm = 0;
 
     while (true) {
+        if (factoring_timer.is_expired()){
+            break;
+        }
         vector<int> candidates; // pos -> var
         vector<int> candidates_to_leaf; // pos -> leaf
 
