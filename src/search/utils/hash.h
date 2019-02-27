@@ -1,6 +1,8 @@
 #ifndef UTILS_HASH_H
 #define UTILS_HASH_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -255,6 +257,21 @@ void feed(HashState &hash_state, const std::vector<T> &vec) {
     feed(hash_state, static_cast<uint64_t>(vec.size()));
     for (const T &item : vec) {
         feed(hash_state, item);
+    }
+}
+
+template<typename T, typename Q>
+void feed(HashState &hash_state, const boost::dynamic_bitset<T, Q> &bs) {
+    /*
+      Feed size to ensure that no two different bitsets of the same type
+      have the same code prefix.
+
+      Using uint64_t is wasteful on 32-bit platforms but feeding a size_t breaks
+      the build on MacOS (see msg7812).
+    */
+    feed(hash_state, static_cast<uint64_t>(bs.size()));
+    for (size_t i = 0; i < bs.size(); ++i) {
+        feed(hash_state, bs[i]);
     }
 }
 
