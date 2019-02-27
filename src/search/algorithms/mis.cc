@@ -2,13 +2,18 @@
 
 #include "../globals.h" // TODO get rid of this
 #include "../utils/countdown_timer.h"
+#include "../utils/hash.h"
 
-#include "assert.h"
-#include <iostream>
 #include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <list>
+#include <stack>
+#include <unordered_map>
 
 
 using namespace std;
+
 
 vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, const utils::CountdownTimer &timer, int arg_multiple_mis) const {
 
@@ -23,8 +28,8 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
     vector<int> first_mis;
     boost::dynamic_bitset<> elem = boost::dynamic_bitset<>(g.size());
     elem.flip();
-    Subgraph sg = Subgraph(hash_value(elem), &subgraphs, 0, true, 0, g.size());
-    hash_to_subgraph[hash_value(elem)] = subgraphs.size();
+    Subgraph sg = Subgraph(utils::get_hash(elem), &subgraphs, 0, true, 0, g.size());
+    hash_to_subgraph[utils::get_hash(elem)] = subgraphs.size();
     subgraphs.push_back(sg);
     vector<size_t> leaves;
 
@@ -39,14 +44,9 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
         NGraph g = stack.front();
         stack.pop_front();
         boost::dynamic_bitset<> subelems = ngraph_to_bitset(g);
-        size_t current_hash = hash_value(subelems);
+        size_t current_hash = utils::get_hash(subelems);
         size_t parent_pos = hash_to_subgraph[current_hash];
         Subgraph *current_subgraph = &subgraphs[parent_pos];
-
-//        cout << endl << "###############################################" << endl;
-//        print_graph(g);
-//        cout << "current hash: " << current_hash << endl;
-//        subgraphs[0].print();
 
         size_t only_elem = 0;
         size_t g_size = 0;
@@ -68,7 +68,6 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
             CtoCCMap c_to_cc_map(g_variable_domain.size(),-1);
             find_connected_components(g, &c_to_cc_map, &connected_components);
             if (connected_components.size() > 1) {
-//                cout << "connected components" << endl;
                 boost::dynamic_bitset<> cc_b(g.size(), 0);
                 for (set<int> c:connected_components) {
                     set<int> cc = c;
@@ -95,7 +94,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             }
                         }
                     }
-                    size_t h1 = hash_value(ngraph_to_bitset(g_c));
+                    size_t h1 = utils::get_hash(ngraph_to_bitset(g_c));
                     c_hashs.push_back(h1);
                     c_graphs.push_back(g_c);
                 }
@@ -187,8 +186,8 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                         assert(v1 != -1);
                         NGraph g_without_v = remove_components(g, v1);
                         NGraph g_without_w = remove_components(g, w);
-                        size_t h1 = hash_value(ngraph_to_bitset(g_without_v));
-                        size_t h2 = hash_value(ngraph_to_bitset(g_without_w));
+                        size_t h1 = utils::get_hash(ngraph_to_bitset(g_without_v));
+                        size_t h2 = utils::get_hash(ngraph_to_bitset(g_without_w));
 
                         size_t pos1 = subgraphs.size();
                         size_t pos2 = subgraphs.size() + 1;
@@ -227,11 +226,10 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             }
                         }
                     } else {
-//                        cout << "dominance, discard " << v1 << endl;
                         assert(v1 != -1);
                         // test whether subgraph exists already
                         NGraph g_without_v = remove_components(g, v1);
-                        size_t hash = hash_value(ngraph_to_bitset(g_without_v));
+                        size_t hash = utils::get_hash(ngraph_to_bitset(g_without_v));
                         if (hash_to_subgraph.find(hash) != hash_to_subgraph.end()) {
                             size_t new_pos = hash_to_subgraph[hash];
                             Subgraph *twin = &subgraphs[new_pos];
@@ -241,7 +239,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             current_subgraph->add_child(new_pos);
                         } else {
                             size_t pos1 = subgraphs.size();
-                            size_t h1 = hash_value(ngraph_to_bitset(g_without_v));
+                            size_t h1 = utils::get_hash(ngraph_to_bitset(g_without_v));
                             Subgraph c1 = Subgraph(h1, &subgraphs, parent_pos, false, 0, g.size());
                             current_subgraph->add_child(pos1);
                             stack.push_front(g_without_v);
@@ -250,7 +248,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                         }
                     }
                 } else {
-                    //find foldable vertex v (d(v) = 2) [ = 3 as every node is its own neighbour]
+                    // find foldable vertex v (d(v) = 2) [ = 3 as every node is its own neighbour]
                     found = false;
 
                     int v2;
@@ -263,7 +261,6 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                         }
                     }
                     if (found) {
-//                        cout << "folding " << v2 << endl;
                         pair<int,int> u(-1,-1);
                         for (size_t i = 0; i < g[v2].size(); ++i) {
                             if (g[v2][i]) {
@@ -284,7 +281,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             NGraph gf = remove_components(remove_components(g, g[v2]), v2);
 
                             size_t pos1 = subgraphs.size();
-                            size_t h1 = hash_value(ngraph_to_bitset(gf));
+                            size_t h1 = utils::get_hash(ngraph_to_bitset(gf));
                             vector<int> mis1 {v2};
 
                             // case 2: select u1, u2; remove v, u1, u2, N(u1), N(u2)
@@ -304,7 +301,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             remove[u2] = true;
                             NGraph gf2 = remove_components(g, remove);
                             size_t pos2 = subgraphs.size() + 1;
-                            size_t h2 = hash_value(ngraph_to_bitset(gf2));
+                            size_t h2 = utils::get_hash(ngraph_to_bitset(gf2));
                             vector<int> mis2 {u1,u2};
 
                             vector<size_t> ch = {pos1,pos2};
@@ -399,7 +396,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             }
                         }
 
-                        //return max{mis(G - {v} - M{v}, 1 + mis(G - N[v]}
+                        // return max{mis(G - {v} - M{v}, 1 + mis(G - N[v]}
                         // M(v), set of mirrors of v
                         // mirror of v: vertex u in N^2(v) such that N(v)\N(u) is a possibly empty clique
                         // clique: every two distinct vertices are adjacent
@@ -452,18 +449,14 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                                 }
                             }
                         }
-//                        cout << "base, try " << v3 << endl;
-//                        cout << "mirrors: ";
-//                        for (int m:mv) {
-//                            cout << " " << m;
-//                        }
-//                        cout << endl;
+
+
                         size_t pos1 = subgraphs.size();
                         size_t pos2 = subgraphs.size() + 1;
                         NGraph g_without_v = remove_components(remove_components(g, v3), mv);
-                        size_t h1 = hash_value(ngraph_to_bitset(g_without_v));
+                        size_t h1 = utils::get_hash(ngraph_to_bitset(g_without_v));
                         NGraph g_v = remove_components(remove_components(g, g[v3]), v3);
-                        size_t h2 = hash_value(ngraph_to_bitset(g_v));
+                        size_t h2 = utils::get_hash(ngraph_to_bitset(g_v));
                         vector<int> mis1;
                         vector<int> mis2 = {v3};
 
@@ -529,7 +522,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
         NGraph g = stack.front();
         boost::dynamic_bitset<> subelems = ngraph_to_bitset(g);
         stack.pop_front();
-        size_t current_hash = hash_value(subelems);
+        size_t current_hash = utils::get_hash(subelems);
         size_t parent_pos = hash_to_subgraph[current_hash];
         Subgraph *current_subgraph = &subgraphs[parent_pos];
         vector<boost::dynamic_bitset<>> m(g.size());
@@ -561,7 +554,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
 
     cout << "finalizing stack took: " << timer_final << endl;
     Subgraph root = subgraphs[0];
-//    subgraphs[0].print();
+
     vector<boost::dynamic_bitset<>> temp = root.get_mis();
 
     assert(subgraphs[0].is_finalized());
@@ -623,10 +616,6 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
     }
 #endif
     cout << "Graph size: " << g.size() << endl;
-    // print Graph statistic
-
-    //TODO
-
 
     return res_mis;
 }
@@ -766,7 +755,7 @@ boost::dynamic_bitset<> ngraph_to_bitset (const NGraph &g) {
     return subelems;
 }
 
-void Subgraph::mis_finalized(vector<boost::dynamic_bitset<>> is, bool leaf, size_t no, size_t arg_multiple_mis) {
+void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool leaf, size_t no, size_t arg_multiple_mis) {
     if (!children.empty()) {
         --pending_mis;
         if (!is.empty()) {
@@ -895,12 +884,12 @@ void Subgraph::add_child (size_t h) {
     pending_mis = 1;
 }
 
-void Subgraph::add_children (vector<size_t> h, bool b) {
+void Subgraph::add_children (const vector<size_t> &h, bool b) {
     assert(children.empty());
     if (b) {
         child_mis = vector<vector<boost::dynamic_bitset<>>>(h.size());
     }
-    for (size_t ch:h) {
+    for (size_t ch : h) {
         children.push_back(ch);
     }
     pending_mis = h.size();

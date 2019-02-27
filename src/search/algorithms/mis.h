@@ -2,15 +2,9 @@
 #define MIS_H
 
 #include "../ext/boost/dynamic_bitset.hpp"
-#include "../utils/countdown_timer.h"
 
-#include <list>
-#include <map>
-#include <queue>
 #include <set>
-#include <stack>
 #include <vector>
-#include <unordered_map>
 #include <iostream>
 
 
@@ -21,17 +15,20 @@
  */
 
 // NGraph, key = var, entry = set of neighbours
-typedef std::vector<boost::dynamic_bitset<>> NGraph;
-boost::dynamic_bitset<> ngraph_to_bitset (const NGraph &);
+using NGraph = std::vector<boost::dynamic_bitset<>>;
+boost::dynamic_bitset<> ngraph_to_bitset(const NGraph &);
 
-// ConCom(Connected Components),
-// index = connected component, entry = set of vars
-typedef std::vector<std::set<int>> ConComp;
-// maps var the respective connected
-// component it is included in
-typedef std::vector<int> CtoCCMap;
+namespace utils {
+class CountdownTimer;
+}
 
 class MIS {
+    // ConCom(Connected Components),
+    // index = connected component, entry = set of vars
+    using ConComp = std::vector<std::set<int>>;
+    // maps var the respective connected
+    // component it is included in
+    using CtoCCMap = std::vector<int>;
 
 private:
     void find_connected_components(const NGraph&, CtoCCMap *, ConComp *) const;
@@ -48,8 +45,6 @@ public:
 class Subgraph;
 
 class Subgraph {
-protected:
-
     std::vector<boost::dynamic_bitset<>> mis;
     size_t mis_elem;
     bool has_elem;
@@ -67,17 +62,17 @@ protected:
     size_t graph_size;
 public:
 
-    Subgraph (size_t h, std::vector<Subgraph> * sg, size_t p, bool r, size_t no, size_t g_size) : hash(h), subgraphs(sg), root(r), graph_size(g_size){
+    Subgraph (size_t h, std::vector<Subgraph> *sg, size_t p, bool r, size_t no, size_t g_size) : hash(h), subgraphs(sg), root(r), graph_size(g_size){
         child_no.push_back(no);
         parents.push_back(p);
         has_elem = false;
         mis_elem = 0;
         dup_child_mis = std::vector<std::vector<int>>();
-    };
-    void add_child (size_t);
-    void add_children (std::vector<size_t>, bool);
-    void add_parent (size_t, size_t);
-    void mis_finalized(std::vector<boost::dynamic_bitset<>>, bool, size_t, size_t);
+    }
+    void add_child(size_t);
+    void add_children(const std::vector<size_t>&, bool);
+    void add_parent(size_t, size_t);
+    void mis_finalized(const std::vector<boost::dynamic_bitset<>>&, bool, size_t, size_t);
     void clear();
 
     std::vector<boost::dynamic_bitset<>> get_mis() {
@@ -114,24 +109,11 @@ public:
         has_elem = true;
     }
 
-    void add_dup_mis(std::vector<int> m) {
+    void add_dup_mis(const std::vector<int> &m) {
         dup_child_mis.push_back(m);
     }
 };
 
-template <typename B, typename A>
-size_t hash_value(const boost::dynamic_bitset<B, A>& bs) {
-    std::string str = "";
-    for (size_t i = 0; i < bs.size(); ++i) {
-        if (bs[i]) {
-            str += "1";
-        } else {
-            str += "0";
-        }
-    }
-    std::hash<std::string> hash;
-    return hash(str);
-}
 
 void print_bitset(boost::dynamic_bitset<> &);
 
