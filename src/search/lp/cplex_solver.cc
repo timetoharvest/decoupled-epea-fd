@@ -40,7 +40,7 @@ CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int 
     cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, integrality_tolerance);
     if (time_limit > 0){
         cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
-        cplex.setParam(IloCplex::Param::MIP::Limits::Populate, 5);
+        cplex.setParam(IloCplex::Param::MIP::Limits::Populate, cplex.getParam(IloCplex::Param::MIP::Pool::Capacity));
         cplex.setParam(IloCplex::Param::MIP::Pool::Replace, CPX_SOLNPOOL_OBJ);
     }
 }
