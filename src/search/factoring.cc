@@ -635,11 +635,6 @@ bool Factoring::is_factoring_possible() const {
         if (op_count[i] == g_operators.size()){
             cout << "No mobile factoring possible." << endl;
             return false;
-        } else if (op_count[i] == 0 && profile == FACTORING_PROFILE::IFORK){
-
-            cerr << "ERROR: non-mobile variable " << g_fact_names[i][0] << endl;
-
-            return false;
         }
     }
     return true;
