@@ -4,7 +4,7 @@
 #include "../operator.h"
 #include "../operator_cost.h"
 #include "../state_registry.h"
-#include "../successor_generator.h"
+#include "../task_utils/successor_generator.h"
 
 #include <limits>
 #include <iostream>
@@ -16,7 +16,7 @@ using namespace std;
 void PathPriceTagInfo::dump() const {
     cout << "PathPriceTagInfo" << endl;
     if (best_supporter != 0){   // 0 for initial state facts
-        cout << "op: " << best_supporter->get_name() << endl;
+        cout << "op: " << g_operators[best_supporter].get_name() << endl;
     } else {
         cout << "initial state fact" << endl;
     }
@@ -46,7 +46,7 @@ PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
 }
 
 bool PathPriceTag::add_state(LeafStateHash id, LeafFactorID factor, int cost, 
-                             const Operator* bs, 
+                             OperatorID bs,
                              LeafStateHash predecessor) {
     bool added = Prices::add_state(id, factor, cost);
     
@@ -126,32 +126,31 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                     
                     if (precompute_leaf_state_spaces[factor] || 
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
-                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == 0){
+                        if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == OperatorID::no_operator){
                             // is "dead-end" leaf state
                             ++id;
                             continue;
                         }
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                            const Operator *op = leaf_state_successors[factor][id][o].first;
-                            if (is_ifork_leaf || op->is_center_applicable(base_state)){ // TODO what about caching applicability per update?
+                            const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                            if (is_ifork_leaf || op.is_center_applicable(base_state)){ // TODO what about caching applicability per update?
                                 change |= add_state(leaf_state_successors[factor][id][o].second, factor,
-                                                    cost + get_adjusted_action_cost(*op, cost_type), op, id);
+                                                    cost + get_adjusted_action_cost(op, cost_type), op.get_id(), id);
                             }
                         }
                     } else {                      
                         const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
                         
-                        vector<const Operator*> applicable_ops;
-                        g_leaf_successor_generators[factor]->generate_applicable_ops_ignore_others(predecessor, applicable_ops);
+                        vector<OperatorID> applicable_ops;
+                        leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
 
                         // apply all applicable_ops to predecessor and store the outcome          
-                        for (size_t j = 0; j < applicable_ops.size(); ++j){
-                            const Operator *op = applicable_ops[j];
-                            const vector<const Effect*> &effects = op->get_effects(factor);
-                            assert(op->get_affected_factor() != LeafFactorID::CENTER);
+                        for (OperatorID op_id : applicable_ops){
+                            const Operator &op = g_operators[op_id];
+                            assert(op.get_affected_factor() != LeafFactorID::CENTER);
                             
-                            if (!effects.empty() && op->is_center_applicable(base_state)){
-                                LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, *op);
+                            if (op.has_effect_on(factor) && op.is_center_applicable(base_state)){
+                                LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
                                 
                                 if (lid >= leaf_state_id_map[factor].size()){
                                     // this can happen when using reachability functions in search, since here we might
@@ -160,7 +159,7 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                                     best_prices.resize(lid + 1, numeric_limits<int>::max());
                                 }
                                 
-                                change |= add_state(lid, factor, cost + get_adjusted_action_cost(*op, cost_type), op, id);
+                                change |= add_state(lid, factor, cost + get_adjusted_action_cost(op, cost_type), op_id, id);
                             }
                         }
                     }
@@ -213,17 +212,20 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
         
         if (num_effects == g_leaves[factor].size()){
             // center op completely overwrites leaf
-            
-            const LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+            LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
+#ifndef NDEBUG
+            size_t size_before = g_state_registry->size(factor);
+#endif
             LeafStateHash succ_state = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
+            assert(size_before == g_state_registry->size(factor));
             
-            add_state(succ_state, factor, 0, 0, LeafStateHash::MAX);
+            add_state(succ_state, factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
             paths[factor][leaf_state_id_map[factor][succ_state]].reset_supporter();            
             continue;
         }
 
         // check which leaf states satisfy center precondition and apply effects
-        int number_states = old_tag.get_number_states(factor);
+        size_t number_states = old_tag.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
@@ -231,10 +233,10 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 
                 if (!has_pre_on_factor || op.is_applicable(id, factor)){
                     if (num_effects == 0){
-                        add_state(id, factor, old_tag.get_cost_of_state(id, factor), 0, id);
+                        add_state(id, factor, old_tag.get_cost_of_state(id, factor), OperatorID::no_operator, id);
                         paths[factor][leaf_state_id_map[factor][id]].reset_supporter();
                     } else {
-                        const LeafState state = g_state_registry->lookup_leaf_state(id, factor);
+                        LeafState state = g_state_registry->lookup_leaf_state(id, factor);
 #ifndef NDEBUG
                         size_t size_before = g_state_registry->size(factor);
 #endif
@@ -242,7 +244,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                         
                         assert(size_before == g_state_registry->size(factor));
             
-                        add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), 0, id);
+                        add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), OperatorID::no_operator, id);
                         paths[factor][leaf_state_id_map[factor][succ_id]].reset_supporter();
                     }
                 }
@@ -253,5 +255,5 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
-    return unique_ptr<CompliantPathGraph> (new PathPriceTag(this));
+    return unique_ptr<CompliantPathGraph>(new PathPriceTag(this));
 }

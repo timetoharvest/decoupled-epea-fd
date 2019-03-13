@@ -1,15 +1,16 @@
 #include "eager_search.h"
 
+#include "compliant_paths/pruning_options.h"
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "globals.h"
 #include "heuristic.h"
 #include "option_parser.h"
 #include "plugin.h"
-#include "pruning/por_method.h"
-#include "compliant_paths/pruning_options.h"
-#include "successor_generator.h"
+#include "pruning_method.h"
+#include "task_utils/successor_generator.h"
 #include "sum_evaluator.h"
+#include "utils/timer.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -29,10 +30,8 @@ EagerSearch::EagerSearch(
     } else {
         f_evaluator = 0;
     }
-    if (opts.contains("partial_order_reduction")){
-        partial_order_reduction_method = opts.get<POR::PORMethod*>("partial_order_reduction");
-    } else {
-        partial_order_reduction_method = 0;
+    if (opts.contains("pruning")){
+        pruning_method = unique_ptr<PruningMethod>(opts.get<PruningMethod*>("pruning"));
     }
     if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
         pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
@@ -107,21 +106,17 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_options();
+    
+    if (pruning_method){
+        pruning_method->initialize();
     }
-}
-
-EagerSearch::~EagerSearch() {
-    // TODO also delete other members?
-    delete partial_order_reduction_method;
 }
 
 void EagerSearch::statistics() const {
     search_progress.print_statistics();
     search_space.statistics();
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->dump_statistics();
+    if (pruning_method){
+        pruning_method->print_statistics();
     }
 }
 
@@ -136,7 +131,7 @@ SearchStatus EagerSearch::step() {
         g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
-             << ") is greater/equal to cost of best found plan => goal reached [t=" << g_timer << "]" << endl;
+             << ") is greater/equal to cost of best found plan => goal reached [t=" << utils::g_timer << "]" << endl;
         return SOLVED;
     }
 
@@ -145,16 +140,16 @@ SearchStatus EagerSearch::step() {
         return SOLVED;
     }
 
-    vector<const Operator *> applicable_ops;
-    set<const Operator *> preferred_ops;
+    vector<OperatorID> applicable_ops;
+    set<OperatorID> preferred_ops;
 
     g_successor_generator->generate_applicable_ops(s, applicable_ops);
     
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
-    // even when pruned by the POR method.
-    if (partial_order_reduction_method != 0){
-        partial_order_reduction_method->prune_operators(s, applicable_ops);
+    // even when pruned by the pruning method.
+    if (pruning_method){
+        pruning_method->prune_operators(s, applicable_ops);
     }
 
     // This evaluates the expanded state (again) to get preferred ops
@@ -164,29 +159,29 @@ SearchStatus EagerSearch::step() {
         if (!h->is_dead_end()) {
             // In an alternation search with unreliable heuristics, it is
             // possible that this heuristic considers the state a dead end.
-            vector<const Operator *> preferred;
+            vector<OperatorID> preferred;
             h->get_preferred_operators(preferred);
             preferred_ops.insert(preferred.begin(), preferred.end());
         }
     }
     search_progress.inc_evaluations(preferred_operator_heuristics.size());
 
-    for (size_t i = 0; i < applicable_ops.size(); ++i) {
-        const Operator *op = applicable_ops[i];
+    for (OperatorID op_id : applicable_ops) {
+        const Operator &op = g_operators[op_id];
 
-	// g-value upper bound pruning for factored search => g_sum_min_goal_cost
+        // g-value upper bound pruning for factored search => g_sum_min_goal_cost
         int goal_cost = g_sum_min_goal_cost;
         if (g_factoring && g_factoring->get_profile() != FORK){
             // because g-value might include some goal cost
             goal_cost = max(0, goal_cost - node.get_leaf_part_g());
         }
-        if ((node.get_g() + get_adjusted_cost(*op) + goal_cost) >= bound) {
+        if ((node.get_g() + get_adjusted_cost(op) + goal_cost) >= bound) {
             continue;
         }
 
-        State succ_state = g_state_registry->get_successor_state(s, *op);
+        State succ_state = g_state_registry->get_successor_state(s, op);
         search_progress.inc_generated();
-        bool is_preferred = (preferred_ops.find(op) != preferred_ops.end());
+        bool is_preferred = (preferred_ops.find(op_id) != preferred_ops.end());
 
         SearchNode succ_node = search_space.get_node(succ_state);
 
@@ -204,7 +199,7 @@ SearchStatus EagerSearch::step() {
                   evaluation here. We must call reach_state for each
                   heuristic for its side effects.
                 */
-                if (heuristics[j]->reach_state(s, *op, succ_state))
+                if (heuristics[j]->reach_state(s, op_id, succ_state))
                     h_is_dirty = true;
             }
             if (h_is_dirty && use_multi_path_dependence)
@@ -225,7 +220,7 @@ SearchStatus EagerSearch::step() {
             // before having checked that we're not in a dead end. The
             // division of responsibilities is a bit tricky here -- we
             // may want to refactor this later.
-	    open_list->evaluate(node.get_g() + get_adjusted_cost(*op) + g_inc_g_by, is_preferred);
+            open_list->evaluate(node.get_g() + get_adjusted_cost(op) + g_inc_g_by, is_preferred);
 	    
             bool dead_end = open_list->is_dead_end();
             if (dead_end) {
@@ -237,15 +232,15 @@ SearchStatus EagerSearch::step() {
             //TODO:CR - add an ID to each state, and then we can use a vector to save per-state information
             int succ_h = heuristics[0]->get_heuristic();
             if (do_pathmax) {
-                if ((node.get_h() - get_adjusted_cost(*op)) > succ_h) {
+                if ((node.get_h() - get_adjusted_cost(op)) > succ_h) {
                     //cout << "Pathmax correction: " << succ_h << " -> " << node.get_h() - get_adjusted_cost(*op) << endl;
-                    succ_h = node.get_h() - get_adjusted_cost(*op);
+                    succ_h = node.get_h() - get_adjusted_cost(op);
                     heuristics[0]->set_evaluator_value(succ_h);
-                    open_list->evaluate(node.get_g() + get_adjusted_cost(*op), is_preferred);
+                    open_list->evaluate(node.get_g() + get_adjusted_cost(op), is_preferred);
                     search_progress.inc_pathmax_corrections();
                 }
             }
-            succ_node.open(succ_h, node, op);
+            succ_node.open(succ_h, node, op_id);
             
             if (!insert_state(succ_node)){
                 // pruning for FDA* / AFRA*
@@ -257,7 +252,7 @@ SearchStatus EagerSearch::step() {
                 reward_progress();
             }
             
-        } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(*op) + g_inc_g_by) {
+        } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(op) + g_inc_g_by) {
             
             if (!g_factoring || !PruningOptions::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
@@ -275,7 +270,7 @@ SearchStatus EagerSearch::step() {
                         search_progress.inc_reopened();
                     }
 
-                    succ_node.reopen(node, op);
+                    succ_node.reopen(node, op_id);
                     heuristics[0]->set_evaluator_value(succ_node.get_h());
                     // TODO: this appears fishy to me. Why is here only heuristic[0]
                     // involved? Is this still feasible in the current version?
@@ -296,7 +291,7 @@ SearchStatus EagerSearch::step() {
                     // if we do not reopen closed nodes, we just update the parent pointers
                     // Note that this could cause an incompatibility between
                     // the g-value and the actual path that is traced back
-                    succ_node.update_parent(node, op);
+                    succ_node.update_parent(node, op_id);
                 }
             }
         }
@@ -333,9 +328,9 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
     while (true) {
         if (open_list->empty()) {
             if (!found_solution()){     // this happens for FDA* and AFRA* only
-                cout << "Completely explored state space -- no solution! [t=" << g_timer << "]" << endl;
+                cout << "Completely explored state space -- no solution! [t=" << utils::g_timer << "]" << endl;
             } else {
-                cout << "no more states in openlist [t=" << g_timer << "]" << endl;
+                cout << "no more states in openlist [t=" << utils::g_timer << "]" << endl;
             }
             // HACK! HACK! we do this because SearchNode has no default/copy constructor
             SearchNode dummy_node = search_space.get_node(g_initial_state());
@@ -504,9 +499,10 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
-    parser.add_option<POR::PORMethod*>("partial_order_reduction", 
-                                       "partial order reduction method",
-                                       "none");
+    parser.add_option<PruningMethod*>("pruning", 
+                                      "pruning method",
+                                      "",
+                                      OptionFlags(false));
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 

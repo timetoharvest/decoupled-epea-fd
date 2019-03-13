@@ -4,11 +4,10 @@
 #include "../factoring.h"
 #include "../globals.h"
 #include "../operator.h"
-#include "../priority_queue.h"
+#include "../algorithms/priority_queues.h"
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
-#include "../utilities.h"
 
 #include <limits>
 
@@ -68,7 +67,7 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
 }
 
 unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State&,
-                                                                                const Operator *) const {    
+                                                                                const Operator &) const {
     assert(g_factoring->get_profile() == FORK); // not supported, yet
 
     return clone();
@@ -86,7 +85,7 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION needed, int g_advantage) {
+DOMINANCE EffectivePrices::check_dominance(const State& other, DOMINANCE needed, int g_advantage) {
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -144,11 +143,11 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
     }
 
     if (new_is_smaller && new_is_larger){
-        return DOMINATION::NONE;
-    } else if (new_is_smaller && needed == DOMINATION::DOMINATES){
-        return DOMINATION::NONE;
-    } else if (new_is_larger && needed == DOMINATION::DOMINATED){
-        return DOMINATION::NONE;
+        return DOMINANCE::NONE;
+    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+        return DOMINANCE::NONE;
+    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+        return DOMINANCE::NONE;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -182,18 +181,18 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
                     if (old_cost > new_cost){
                         max_needed_to_be_dominated = max(max_needed_to_be_dominated, old_cost - new_cost);
                         if (max_needed_to_dominate != 0){
-                            return DOMINATION::NONE;
+                            return DOMINANCE::NONE;
                         }
                     } else if (old_cost < new_cost){
                         max_needed_to_dominate = max(max_needed_to_dominate, new_cost - old_cost);
                         if (max_needed_to_be_dominated != 0){
-                            return DOMINATION::NONE;
+                            return DOMINANCE::NONE;
                         }
                     }
                 } else {
                     dominated = false;
-                    if (!dominates || needed == DOMINATION::DOMINATED){
-                        return DOMINATION::NONE;
+                    if (!dominates || needed == DOMINANCE::DOMINATED){
+                        return DOMINANCE::NONE;
                     }
                 }
                 if (number_new_states == 0 && number_old_states > 0){
@@ -203,8 +202,8 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
             } else if (other_cpg->has_effective_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
-                if (!dominated || needed == DOMINATION::DOMINATES){
-                    return DOMINATION::NONE;
+                if (!dominated || needed == DOMINANCE::DOMINATES){
+                    return DOMINANCE::NONE;
                 }
                 if (number_old_states == 0 && number_new_states > 0){
                     dominated = false;
@@ -217,16 +216,16 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
         sum_needed_to_be_dominated -= max_needed_to_be_dominated;
         if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
             // TODO can we do more in this case?
-            return DOMINATION::NONE;
+            return DOMINANCE::NONE;
         } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
             dominates = false;
-            if (needed == DOMINATION::DOMINATES){
-                return DOMINATION::NONE;
+            if (needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
             }
         } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
             dominated = false;
-            if (needed == DOMINATION::DOMINATED){
-                return DOMINATION::NONE;
+            if (needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
             }
         }
     }
@@ -234,19 +233,19 @@ DOMINATION EffectivePrices::check_dominance(const State& other, DOMINATION neede
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif
-        return DOMINATION::EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif
-        return DOMINATION::DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif
-        return DOMINATION::DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return DOMINATION::NONE;
+    return DOMINANCE::NONE;
 }
 
 bool EffectivePrices::has_effective_leaf_state(LeafStateHash id, LeafFactorID factor) const {
@@ -303,17 +302,15 @@ void EffectivePrices::goal_price_propagation() {
      
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
         
-//      cout << "Propagate: " << factor << endl;
-        
         vector<bool> closed(g_state_registry->size(factor), false);
 
-        //Alvaro: Given the size of leaf factors I think a bucketqueue
-        //should work better but requires some implementation
-        //effort. Probably worth it to reduce overhead
-        HeapQueue<LeafStateHash, compare_pair_first_greater<LeafStateHash> > open; //Alvaro: Use a heap_queue? 
+        // Alvaro: Given the size of leaf factors I think a bucketqueue
+        // should work better but requires some implementation
+        // effort. Probably worth it to reduce overhead
+        // Alvaro: Use a heap_queue?
+        priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
         
         for (LeafStateHash s : leaf_goal_states[factor]) {
-            //cout << s << " is goal " << endl; 
             open.push(goal_cost[factor], s);
         }
 
@@ -340,7 +337,7 @@ void EffectivePrices::goal_price_propagation() {
                     continue;
                 }
 
-                int action_cost = get_adjusted_action_cost(*transition.first, cost_type);
+                int action_cost = get_adjusted_action_cost(g_operators[transition.first], cost_type);
                 int propagated_val = (value == INF ? numeric_limits<int>::max() : std::max(0, value - action_cost));
 
                 int previous_t_val = !has_effective_leaf_state(t, factor) ? numeric_limits<int>::max() :

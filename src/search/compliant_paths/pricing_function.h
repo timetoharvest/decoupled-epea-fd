@@ -13,8 +13,6 @@ class Prices : public CompliantPathGraph {
     
     static PriceStorage *cpg_storage;
     
-    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-    
         
     Prices(const Prices *tag);
 
@@ -23,6 +21,9 @@ class Prices : public CompliantPathGraph {
     // of a search node
     void reduce_cost_by(LeafFactorID factor, int cost);
     
+
+    static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
 protected:  
 
     std::vector<std::vector<int> > prices;
@@ -38,11 +39,11 @@ protected:
     void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator *op) const override;
+                                                                                const Operator &op) const override;
                                                                           
     virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINATION check_dominance(const State &other, DOMINATION needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
     
     virtual void store_new_graph(const State &state) const override;
     

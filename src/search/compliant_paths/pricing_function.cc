@@ -7,7 +7,6 @@
 #include "effective_prices.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
-#include "../utilities.h"
 
 #include <limits>
 
@@ -79,12 +78,12 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
 }
 
 unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const State&, 
-                                                                       const Operator* op) const {
+                                                                       const Operator &op) const {
     // TODO what about having a static pointer in the class to prevent reallocation?
         
     if (g_factoring->get_profile() != FORK){
         unique_ptr<Prices> tmp_price(new Prices(0));
-        tmp_price->apply_center_op_to_leaves(*this, *op);
+        tmp_price->apply_center_op_to_leaves(*this, op);
         return tmp_price;
     } else {                
         return clone();
@@ -131,13 +130,20 @@ void Prices::update(const State &base_state) {
             // and copy everything from that state
             if (get_number_states(factor) == 1){
                 LeafStateHash leaf_id(0);
+#ifndef NDEBUG
+                bool found = false;
+#endif
                 for (;;){
                     // TODO there should be a better way to find the state
                     if (has_leaf_state(leaf_id, factor)){
+#ifndef NDEBUG
+                        found = true;
+#endif
                         break;
                     }
                     ++leaf_id;
                 }
+                assert(found);
                 if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){
                     const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
                     
@@ -183,11 +189,11 @@ void Prices::update(const State &base_state) {
                     assert(id < leaf_state_successors[factor].size());
 
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        const Operator *op = leaf_state_successors[factor][id][o].first;
-                        if (is_ifork_leaf || op->is_center_applicable(base_state)){
+                        const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                        if (is_ifork_leaf || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             change |= add_state(successor, factor, 
-                                                           cost + get_adjusted_action_cost(*op, cost_type));
+                                                cost + get_adjusted_action_cost(op, cost_type));
                         }
                     }
                     
@@ -214,7 +220,7 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_advantage) {
+DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed, int g_advantage) {
     const Prices *other_cpg = &cpg_storage->prices[other];
     
     bool sizes_equal = true;
@@ -270,11 +276,11 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
     }
 
     if (new_is_smaller && new_is_larger){
-        return DOMINATION::NONE;
-    } else if (new_is_smaller && needed == DOMINATION::DOMINATES){
-        return DOMINATION::NONE;
-    } else if (new_is_larger && needed == DOMINATION::DOMINATED){
-        return DOMINATION::NONE;
+        return DOMINANCE::NONE;
+    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+        return DOMINANCE::NONE;
+    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+        return DOMINANCE::NONE;
     }
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
@@ -308,18 +314,18 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
                     if (old_cost > new_cost){
                         max_needed_to_be_dominated = max(max_needed_to_be_dominated, old_cost - new_cost);
                         if (max_needed_to_dominate != 0){
-                            return DOMINATION::NONE;
+                            return DOMINANCE::NONE;
                         }
                     } else if (old_cost < new_cost){
                         max_needed_to_dominate = max(max_needed_to_dominate, new_cost - old_cost);
                         if (max_needed_to_be_dominated != 0){
-                            return DOMINATION::NONE;
+                            return DOMINANCE::NONE;
                         }
                     }
                 } else {
                     dominated = false;
-                    if (!dominates || needed == DOMINATION::DOMINATED){
-                        return DOMINATION::NONE;
+                    if (!dominates || needed == DOMINANCE::DOMINATED){
+                        return DOMINANCE::NONE;
                     }
                 }
                 if (number_new_states == 0 && number_old_states > 0){
@@ -329,8 +335,8 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
             } else if (other_cpg->has_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
-                if (!dominated || needed == DOMINATION::DOMINATES){
-                    return DOMINATION::NONE;
+                if (!dominated || needed == DOMINANCE::DOMINATES){
+                    return DOMINANCE::NONE;
                 }
                 if (number_old_states == 0 && number_new_states > 0){
                     dominated = false;
@@ -343,16 +349,16 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
         sum_needed_to_be_dominated -= max_needed_to_be_dominated;
         if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
             // TODO can we do more in this case?
-            return DOMINATION::NONE;
+            return DOMINANCE::NONE;
         } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
             dominates = false;
-            if (needed == DOMINATION::DOMINATES){
-                return DOMINATION::NONE;
+            if (needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
             }
         } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
             dominated = false;
-            if (needed == DOMINATION::DOMINATED){
-                return DOMINATION::NONE;
+            if (needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
             }
         }
     }
@@ -360,19 +366,19 @@ DOMINATION Prices::check_dominance(const State &other, DOMINATION needed, int g_
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
 #endif
-        return DOMINATION::EQUAL;
+        return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
 #endif
-        return DOMINATION::DOMINATED;
+        return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
 #endif
-        return DOMINATION::DOMINATES;
+        return DOMINANCE::DOMINATES;
     }
-    return DOMINATION::NONE;
+    return DOMINANCE::NONE;
 }
 
 void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op) {

@@ -4,14 +4,13 @@
 #include "max_cliques.h"
 #include "pdb_heuristic.h"
 #include "util.h"
-
 #include "../operator.h"
 #include "../state.h"
 #include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../timer.h"
-#include "../utilities.h"
+#include "../utils/logging.h"
+#include "../utils/timer.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -22,7 +21,7 @@ using namespace std;
 CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
     : Heuristic(opts) {
     const vector<vector<int> > &pattern_collection(opts.get_list<vector<int> >("patterns"));
-    Timer timer;
+    utils::Timer timer;
     size = 0;
     pattern_databases.reserve(pattern_collection.size());
     for (size_t i = 0; i < pattern_collection.size(); ++i)
@@ -105,7 +104,7 @@ void CanonicalPDBsHeuristic::compute_additive_vars() {
 }
 
 void CanonicalPDBsHeuristic::dominance_pruning() {
-    Timer timer;
+    utils::Timer timer;
     int num_patterns = pattern_databases.size();
     int num_cliques = max_cliques.size();
 

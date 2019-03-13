@@ -1,6 +1,6 @@
 #include "cea_heuristic.h"
 
-#include "domain_transition_graph.h"
+#include "task_utils/domain_transition_graph.h"
 #include "operator.h"
 #include "state.h"
 #include "globals.h"
@@ -153,7 +153,7 @@ LocalProblem *ContextEnhancedAdditiveHeuristic::build_problem_for_variable(
             LocalProblemNode &target = problem->nodes[target_value];
             for (size_t j = 0; j < dtg_trans.cea_labels.size(); ++j) {
                 const ValueTransitionLabel &label = dtg_trans.cea_labels[j];
-                int action_cost = get_adjusted_cost(*label.op);
+                int action_cost = get_adjusted_cost(label.op->get_id());
                 LocalTransition trans(&node, &target, &label, action_cost);
                 node.outgoing_transitions.push_back(trans);
             }
@@ -365,7 +365,7 @@ void ContextEnhancedAdditiveHeuristic::mark_helpful_transitions(
                 // If there are no zero-cost actions, the target_cost/
                 // action_cost test above already guarantees applicability.
                 assert(!op->is_axiom());
-                set_preferred(op);
+                set_preferred(op->get_id());
             }
         } else {
             // Recursively compute helpful transitions for preconditions.

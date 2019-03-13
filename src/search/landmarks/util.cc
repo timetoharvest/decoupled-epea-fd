@@ -2,11 +2,12 @@
 
 #include "landmark_graph.h"
 #include "../operator.h"
+#include "../utils/hash.h"
 
 #include <limits>
 
 using namespace std;
-using namespace __gnu_cxx;
+
 
 bool _possibly_fires(const vector<Condition> &conditions, const vector<vector<int> > &lvl_var) {
     for (size_t i = 0; i < conditions.size(); ++i)
@@ -17,12 +18,12 @@ bool _possibly_fires(const vector<Condition> &conditions, const vector<vector<in
 }
 
 
-hash_map<int, int> _intersect(const hash_map<int, int> &a, const hash_map<int, int> &b) {
+utils::HashMap<int, int> _intersect(const utils::HashMap<int, int> &a, const utils::HashMap<int, int> &b) {
     if (a.size() > b.size())
         return _intersect(b, a);
-    hash_map<int, int> result;
-    for (hash_map<int, int>::const_iterator it1 = a.begin(); it1 != a.end(); ++it1) {
-        hash_map<int, int>::const_iterator it2 = b.find(it1->first);
+    utils::HashMap<int, int> result;
+    for (utils::HashMap<int, int>::const_iterator it1 = a.begin(); it1 != a.end(); ++it1) {
+        utils::HashMap<int, int>::const_iterator it2 = b.find(it1->first);
         if (it2 != b.end() && it2->second == it1->second)
             result.insert(*it1);
     }

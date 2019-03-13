@@ -3,7 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state_id.h"
-#include "utilities.h"
+#include "utils/system.h"
 
 #include <set>
 #include <string>
@@ -17,26 +17,26 @@
 // in the CG because of a single action that has to (and can only) be executed once
 // to "initialize the printer"
 
-enum PROFILE {
+enum FACTORING_PROFILE {
     FORK,
-    I_FORK,
-    X_SHAPE,
-    CENTER,
-    SOKOBAN,    // domain dependant factoring
-    OPENSTACKS, // domain dependant factoring
-    TPP_CONSTRAINED, // domain dependant factoring
-    INV_TPP_CONSTRAINED, // domain dependant factoring
-    DOC_TRANSFER, // domain dependant factoring
-    PEGSOL, // domain dependant factoring
-    INC_ARCS
+    IFORK,
+    XSHAPE,
+    STAR,
+    SOKOBAN,    // domain dependent factoring
+    OPENSTACKS, // domain dependent factoring
+    TPP_CONSTRAINED, // domain dependent factoring
+    INV_TPP_CONSTRAINED, // domain dependent factoring
+    DOC_TRANSFER, // domain dependent factoring
+    PEGSOL, // domain dependent factoring
 };
 
-enum SEARCH_TYPE {
+enum DECOUPLED_SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
     FRA,        // stop if leaf plan not optimal
     ASDA,       // anytime search
     SDA,        // fork-decoupled search
     SAT,        // satisficing search
-    UNSAT       // for proving unsolvability (SAT + optimizations)
+    UNSAT,      // for proving unsolvability (SAT + optimizations)
+    NO_SEARCH   // stop after doing the factoring
 };
 
 
@@ -80,7 +80,7 @@ class Options;
 
 class Factoring {
     
-    SEARCH_TYPE search_type;
+    DECOUPLED_SEARCH_TYPE search_type;
     
     size_t max_precompute_state_space_size;
     
@@ -88,11 +88,16 @@ protected:
     
     typedef std::vector<std::set<int> > FactoredVars;
     
+    static FactoredVars var_to_affecting_op;
+
+    static void init_var_to_ops_map();
+
+
     size_t max_leaf_size;
     
     size_t min_number_leaves;
     
-    PROFILE profile;
+    FACTORING_PROFILE profile;
     
     std::vector<bool> fork_leaf;
     
@@ -100,17 +105,15 @@ protected:
     
     virtual FactoredVars get_factoring() = 0;
     
-    FactoredVars get_sccs(std::vector<int> variables = std::vector<int>()) const;
+    FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
     
-    FactoredVars get_connected_components(std::vector<int> variables) const;
+    FactoredVars get_connected_components(const std::vector<int> &variables) const;
     
-    std::vector<bool> get_frozen_leaves(FactoredVars components) const;
+    std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
-    void apply_factoring(FactoredVars factoring);
+    void apply_factoring(const FactoredVars &factoring);
     
     void print_factoring() const;
-    
-    void exit_error(std::string message, ExitCode exit_code) const;
     
     Factoring(const Options &ops);
     
@@ -120,7 +123,7 @@ public:
     
     void do_factoring_or_abstain();
     
-    PROFILE get_profile() const {
+    FACTORING_PROFILE get_profile() const {
         return profile;
     }
     
@@ -132,10 +135,15 @@ public:
         return ifork_leaf[factor];
     }
     
-    SEARCH_TYPE get_search_type() const {
+    DECOUPLED_SEARCH_TYPE get_search_type() const {
         return search_type;
     }
+
     
+    static const FactoredVars& get_var_to_affecting_op() {
+        init_var_to_ops_map();
+        return var_to_affecting_op;
+    }
 
     static void add_options_to_parser(OptionParser &parser);
     

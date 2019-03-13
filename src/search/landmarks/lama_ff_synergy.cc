@@ -1,4 +1,5 @@
 #include "lama_ff_synergy.h"
+
 #include "../option_parser.h"
 #include "../plugin.h"
 #include "landmark_factory_rpg_sasp.h"
@@ -31,13 +32,13 @@ LamaFFSynergy::LamaFFSynergy(const Options &opts)
     initialized = false;
 }
 
-void LamaFFSynergy::get_lama_preferred_operators(std::vector<const Operator *> &result) {
+void LamaFFSynergy::get_lama_preferred_operators(std::vector<OperatorID> &result) {
     result.insert(result.end(),
                   lama_preferred_operators.begin(),
                   lama_preferred_operators.end());
 }
 
-void LamaFFSynergy::get_ff_preferred_operators(std::vector<const Operator *> &result) {
+void LamaFFSynergy::get_ff_preferred_operators(std::vector<OperatorID> &result) {
     result.insert(result.end(),
                   ff_preferred_operators.begin(),
                   ff_preferred_operators.end());

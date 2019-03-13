@@ -13,24 +13,24 @@ using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
     : cost_type(OperatorCost(opts.get_enum("cost_type"))),
-      search_type(SearchType(opts.get_enum("search_type"))){
+      heuristic_type(HEURISTIC_TYPE(opts.get_enum("search_type"))){
     heuristic = NOT_INITIALIZED;
 
     if (g_factoring){
-        if (search_type == STD){
-            if (g_factoring->get_search_type() == SDA){
-                search_type = STAR;
+        if (heuristic_type == HEURISTIC_TYPE::STD){
+            if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SDA){
+                heuristic_type = HEURISTIC_TYPE::STAR;
                 cout << "set type of heuristic to STAR" << endl;
             } else {
                 // assume center heuristic
-                search_type = CENTER;
+                heuristic_type = HEURISTIC_TYPE::CENTER;
                 cout << "set type of heuristic to CENTER" << endl;
             }
         }
     } else {
-        if (search_type != STD){
+        if (heuristic_type != HEURISTIC_TYPE::STD){
             cout << "running standard search; overwriting non-standard search type option of heuristic" << endl;
-            search_type = STD;
+            heuristic_type = HEURISTIC_TYPE::STD;
         }
     }
 }
@@ -38,9 +38,9 @@ Heuristic::Heuristic(const Options &opts)
 Heuristic::~Heuristic() {
 }
 
-void Heuristic::set_preferred(const Operator *op) {
-    if (!op->is_marked()) {
-        op->mark();
+void Heuristic::set_preferred(OperatorID op) {
+    if (!g_operators[op].is_marked()) {
+        g_operators[op].mark();
         preferred_operators.push_back(op);
     }
 }
@@ -51,7 +51,7 @@ void Heuristic::evaluate(const State &state) {
     preferred_operators.clear();
     heuristic = compute_heuristic(state);
     for (size_t i = 0; i < preferred_operators.size(); ++i)
-        preferred_operators[i]->unmark();
+        g_operators[preferred_operators[i]].unmark();
     assert(heuristic == DEAD_END || heuristic >= 0);
 
     if (heuristic == DEAD_END) {
@@ -65,7 +65,7 @@ void Heuristic::evaluate(const State &state) {
 #ifndef NDEBUG
     if (heuristic != DEAD_END) {
         for (size_t i = 0; i < preferred_operators.size(); ++i)
-            assert(preferred_operators[i]->is_applicable(state));
+            assert(g_operators[preferred_operators[i]].is_applicable(state));
     }
 #endif
     evaluator_value = heuristic;
@@ -99,7 +99,7 @@ int Heuristic::get_heuristic() {
     return heuristic;
 }
 
-void Heuristic::get_preferred_operators(std::vector<const Operator *> &result) {
+void Heuristic::get_preferred_operators(std::vector<OperatorID> &result) {
     assert(heuristic >= 0);
     result.insert(result.end(),
                   preferred_operators.begin(),
@@ -107,7 +107,7 @@ void Heuristic::get_preferred_operators(std::vector<const Operator *> &result) {
 }
 
 bool Heuristic::reach_state(const State & /*parent_state*/,
-                            const Operator & /*op*/, const State & /*state*/) {
+                            OperatorID  /*op*/, const State & /*state*/) {
     return false;
 }
 
@@ -129,6 +129,10 @@ void Heuristic::set_evaluator_value(int val) {
     evaluator_value = val;
 }
 
+int Heuristic::get_adjusted_cost(OperatorID op) const {
+    return get_adjusted_action_cost(g_operators[op], cost_type);
+}
+
 int Heuristic::get_adjusted_cost(const Operator &op) const {
     return get_adjusted_action_cost(op, cost_type);
 }
@@ -139,6 +143,7 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("STD");
     search_types.push_back("STAR");
     search_types.push_back("CENTER");
+    // TODO rename this to heuristic_type
     parser.add_enum_option(
         "search_type",
         search_types,

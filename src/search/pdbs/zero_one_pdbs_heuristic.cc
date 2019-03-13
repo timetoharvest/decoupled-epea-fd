@@ -1,14 +1,13 @@
 #include "zero_one_pdbs_heuristic.h"
 
 #include "pdb_heuristic.h"
-#include "util.h"
-
-#include "../operator.h"
-#include "../state.h"
 #include "../globals.h"
+#include "../operator.h"
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../utilities.h"
+#include "../state.h"
+#include "util.h"
+#include "../utils/logging.h"
 
 #include <vector>
 

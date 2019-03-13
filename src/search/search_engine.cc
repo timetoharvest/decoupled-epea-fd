@@ -1,11 +1,12 @@
 #include "search_engine.h"
 
-#include "countdown_timer.h"
 #include "factoring.h"
 #include "globals.h"
 #include "option_parser.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cpg_storage.h"
+#include "utils/countdown_timer.h"
+#include "utils/timer.h"
 
 #include <cassert>
 #include <iostream>
@@ -24,15 +25,12 @@ SearchEngine::SearchEngine(const Options &opts)
       max_time(opts.get<double>("max_time")) {
     if (opts.get<int>("bound") < 0) {
         cerr << "error: negative cost bound " << opts.get<int>("bound") << endl;
-        exit_with(EXIT_INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     bound = opts.get<int>("bound");
     if (g_factoring){
 	CompliantPathGraph::set_cost_type(cost_type);
     }
-}
-
-SearchEngine::~SearchEngine() {
 }
 
 void SearchEngine::statistics() const {
@@ -59,7 +57,7 @@ void SearchEngine::set_plan(const Plan &p) {
 void SearchEngine::search() {
     initialize();
     
-    CountdownTimer timer(max_time);
+    utils::CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
         status = step();
         if (timer.is_expired()) {
@@ -69,8 +67,8 @@ void SearchEngine::search() {
         }
     }
 
-    cout << "Actual search time: " << timer
-         << " [t=" << g_timer << "]" << endl;
+    cout << "Actual search time: " << timer.get_elapsed_time()
+         << " [t=" << utils::g_timer << "]" << endl;
 }
 
 bool SearchEngine::check_goal_and_set_plan(const State &state) {
@@ -91,8 +89,8 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
                 if (!is_optimal_leaf_plan(state, *cpg)){
-                    cout << ", cannot guarantee optimality => exit [t=" << g_timer << "]" << endl;
-                    exit_with(EXIT_UNSOLVED_INCOMPLETE);
+                    cout << ", cannot guarantee optimality => exit [t=" << utils::g_timer << "]" << endl;
+                    exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
@@ -107,7 +105,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                         bound = solution_cost;
                         cheapest_goal_state = state.get_id();
                     }                    
-                    cout << ", not leaf-optimal => continue search [t=" << g_timer << "]" << endl;                            
+                    cout << ", not leaf-optimal => continue search [t=" << utils::g_timer << "]" << endl;
                     return false;
                 }
             } else if (g_factoring->get_search_type() == SDA){
@@ -119,10 +117,10 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
                 }
-                cout << " [t=" << g_timer << "]" << endl;
+                cout << " [t=" << utils::g_timer << "]" << endl;
                 return false;
             }
-            cout << " [t=" << g_timer << "]" << endl;
+            cout << " [t=" << utils::g_timer << "]" << endl;
             return true;
 	}
 	Plan plan;
@@ -170,8 +168,12 @@ void SearchEngine::save_plan_if_necessary() const {
         if (g_factoring){
             search_space.trace_path(g_state_registry->lookup_state(cheapest_goal_state), plan);
         }
-        save_plan(get_plan(), 0);
+        save_plan(get_plan(), false);
     }
+}
+
+int SearchEngine::get_adjusted_cost(OperatorID op) const {
+    return get_adjusted_action_cost(g_operators[op], cost_type);
 }
 
 int SearchEngine::get_adjusted_cost(const Operator &op) const {

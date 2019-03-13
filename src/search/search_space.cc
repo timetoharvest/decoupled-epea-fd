@@ -13,9 +13,9 @@
 using namespace std;
 
 
-SearchNode::SearchNode(StateID state_id_, SearchNodeInfo &info_,
-                       OperatorCost cost_type_)
-    : state_id(state_id_), info(info_), cost_type(cost_type_) {
+SearchNode::SearchNode(StateID state_id, SearchNodeInfo &info,
+                       OperatorCost cost_type)
+    : state_id(state_id), info(info), cost_type(cost_type) {
     assert(state_id != StateID::no_state);
 }
 
@@ -79,16 +79,16 @@ void SearchNode::open_initial(int h) {
     info.real_g = 0;
     info.h = h;
     info.parent_state_id = StateID::no_state;
-    info.creating_operator = 0;
+    info.creating_operator = OperatorID::no_operator;
 }
 
 void SearchNode::open(int h, const SearchNode &parent_node,
-                      const Operator *parent_op) {
+                      OperatorID parent_op) {
     assert(info.status == SearchNodeInfo::NEW);
     info.status = SearchNodeInfo::OPEN;
-    info.g = parent_node.info.g + get_adjusted_action_cost(*parent_op, cost_type) + g_inc_g_by;
+    info.g = parent_node.info.g + get_adjusted_action_cost(g_operators[parent_op], cost_type) + g_inc_g_by;
     info.leaf_part_g = parent_node.info.leaf_part_g + g_inc_g_by;
-    info.real_g = parent_node.info.real_g + parent_op->get_cost() + g_inc_g_by;// HACK
+    info.real_g = parent_node.info.real_g + g_operators[parent_op].get_cost() + g_inc_g_by;// HACK
     info.h = h;
     info.parent_state_id = parent_node.get_state_id();
     info.creating_operator = parent_op;
@@ -96,16 +96,16 @@ void SearchNode::open(int h, const SearchNode &parent_node,
 }
 
 void SearchNode::reopen(const SearchNode &parent_node,
-                        const Operator *parent_op) {
+                        OperatorID parent_op) {
     assert(info.status == SearchNodeInfo::OPEN ||
            info.status == SearchNodeInfo::CLOSED);
 
     // The latter possibility is for inconsistent heuristics, which
     // may require reopening closed nodes.
     info.status = SearchNodeInfo::OPEN;
-    info.g = parent_node.info.g + get_adjusted_action_cost(*parent_op, cost_type) + g_inc_g_by;
+    info.g = parent_node.info.g + get_adjusted_action_cost(g_operators[parent_op], cost_type) + g_inc_g_by;
     info.leaf_part_g = parent_node.info.leaf_part_g + g_inc_g_by;
-    info.real_g = parent_node.info.real_g + parent_op->get_cost() + g_inc_g_by;// HACK
+    info.real_g = parent_node.info.real_g + g_operators[parent_op].get_cost() + g_inc_g_by;// HACK
     info.parent_state_id = parent_node.get_state_id();
     info.creating_operator = parent_op;
     g_inc_g_by = 0;
@@ -113,14 +113,14 @@ void SearchNode::reopen(const SearchNode &parent_node,
 
 // like reopen, except doesn't change status
 void SearchNode::update_parent(const SearchNode &parent_node,
-                               const Operator *parent_op) {
+                               OperatorID parent_op) {
     assert(info.status == SearchNodeInfo::OPEN ||
            info.status == SearchNodeInfo::CLOSED);
     // The latter possibility is for inconsistent heuristics, which
     // may require reopening closed nodes.
-    info.g = parent_node.info.g + get_adjusted_action_cost(*parent_op, cost_type) + g_inc_g_by;
+    info.g = parent_node.info.g + get_adjusted_action_cost(g_operators[parent_op], cost_type) + g_inc_g_by;
     info.leaf_part_g = parent_node.info.leaf_part_g + g_inc_g_by;
-    info.real_g = parent_node.info.real_g + parent_op->get_cost() + g_inc_g_by;// HACK
+    info.real_g = parent_node.info.real_g + g_operators[parent_op].get_cost() + g_inc_g_by;// HACK
     info.parent_state_id = parent_node.get_state_id();
     info.creating_operator = parent_op;
     g_inc_g_by = 0;
@@ -145,7 +145,7 @@ void SearchNode::dump() const {
     cout << "g = " << info.g << " h = " << info.h << endl;
     g_state_registry->lookup_state(state_id).dump_pddl();
     if (info.creating_operator) {
-        cout << " created by " << info.creating_operator->get_name()
+        cout << " created by " << g_operators[info.creating_operator].get_name()
              << " from " << info.parent_state_id << endl;
     } else {
         cout << " no parent" << endl;
@@ -164,7 +164,7 @@ SearchNode SearchSpace::get_node(const State &state) {
 }
 
 void SearchSpace::trace_path(const State &goal_state,
-                             vector<const Operator *> &path) const {
+                             vector<OperatorID> &path) const {
                                  
     State current_state = goal_state;
     
@@ -174,13 +174,13 @@ void SearchSpace::trace_path(const State &goal_state,
     
     for (;;) {          // backtrace solution path
         const SearchNodeInfo &info = search_node_infos[current_state];
-        const Operator *op = info.creating_operator;
+        OperatorID op = info.creating_operator;
         
         if (g_factoring){
             states.push_back(current_state.get_id());
         }
 
-        if (op == 0) {  // reached initial state => done
+        if (op == OperatorID::no_operator) {  // reached initial state => done
             assert(info.parent_state_id == StateID::no_state);
             break;
         }
@@ -205,14 +205,14 @@ void SearchSpace::trace_path(const State &goal_state,
         price_tags[0].reset(new PathPriceTag(0));
         
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            price_tags[0]->add_state(LeafStateHash(0), factor, 0, 0, LeafStateHash::MAX);
+            price_tags[0]->add_state(LeafStateHash(0), factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
         }
         price_tags[0]->update_price_tags(g_state_registry->lookup_state(states[0]));
         
         for (size_t i = 1; i < states.size(); ++i){            
             if (g_factoring->get_profile() != FORK){
                 price_tags[i].reset(new PathPriceTag(0));
-                price_tags[i]->apply_center_op_to_leaves(*price_tags[i - 1], *path[i - 1]);
+                price_tags[i]->apply_center_op_to_leaves(*price_tags[i - 1], g_operators[path[i - 1]]);
             } else {
                 price_tags[i].reset(new PathPriceTag(price_tags[i - 1].get()));
             }
@@ -257,7 +257,7 @@ void SearchSpace::trace_path(const State &goal_state,
                     }
                     ++id;
                 }
-                assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+                assert(marked_leaf_states[factor] != LeafStateHash::MAX);
 
 #ifdef DEBUG_PLAN_EXTRACTION
                 cout << "marked goal fact: " << marked_leaf_states[factor] << " for cost " << min_cost << endl;
@@ -270,14 +270,14 @@ void SearchSpace::trace_path(const State &goal_state,
         cout << "start backtracing plan" << endl;
 #endif
         
-        vector<const Operator*> decoupled_plan;
+        vector<OperatorID> decoupled_plan;
         
         // go through center path and fill in leaf actions
-        for (size_t step = 0; step < price_tags.size(); step++){
+        for (size_t step = 0; step < price_tags.size(); ++step){
         
-            const Operator *op = 0;
+            const Operator *op = nullptr;
             if (step < path.size()){
-                op = path[step];
+                op = &g_operators[path[step]];
             }
                         
 #ifdef DEBUG_PLAN_EXTRACTION
@@ -300,20 +300,20 @@ void SearchSpace::trace_path(const State &goal_state,
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
 
                 bool change = true;
-                while (change && marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+                while (change && marked_leaf_states[factor] != LeafStateHash::MAX){
                     change = false;
                     
                     
                     const PathPriceTagInfo &fact = price_tags[step]->get_path_info_for_fact(marked_leaf_states[factor], factor);
                     if (fact.is_new){
-                        if (fact.best_supporter != 0){
+                        if (fact.best_supporter != OperatorID::no_operator){
                             assert(fact.predecessor != LeafStateHash::MAX);
                             assert(fact.predecessor != marked_leaf_states[factor]);
                             
                             marked_leaf_states[factor] = fact.predecessor;
                             decoupled_plan.push_back(fact.best_supporter);
 
-                            assert(fact.best_supporter->get_affected_factor() == (int) factor);
+                            assert(g_operators[fact.best_supporter].get_affected_factor() == factor);
                         } else if (fact.predecessor != LeafStateHash::MAX){
                             // this leaf state has been copied from one decoupled state to its successor
                             // the state can have been modified by the center op
@@ -334,15 +334,15 @@ void SearchSpace::trace_path(const State &goal_state,
 
                 bool need_compliant_leaf_state = false;
                 
-                if (op != nullptr && !op->get_effects(factor).empty()){
+                if (op != nullptr && op->has_effect_on(factor)){
                     // apply leaf effects to predecessor decoupled state
                     
-                    if (marked_leaf_states[factor] != numeric_limits<size_t>::max()){
+                    if (marked_leaf_states[factor] != LeafStateHash::MAX){
                         LeafStateHash state_hash = marked_leaf_states[factor];
                         LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
                         
                         assert(marked_leaf_states[factor] != predecessor_hash);
-                        assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == 0);
+                        assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == OperatorID::no_operator);
                         
                         if (price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor != LeafStateHash::MAX){
                             marked_leaf_states[factor] = predecessor_hash;
@@ -356,10 +356,10 @@ void SearchSpace::trace_path(const State &goal_state,
                 if (need_compliant_leaf_state || (g_factoring->get_profile() != FORK && op != nullptr)){
                     // collect and mark leaf precondition of center op
                     
-                    if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){                        
-                        assert(marked_leaf_states[factor] == numeric_limits<size_t>::max() || op->is_applicable(marked_leaf_states[factor], factor));
+                    if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){
+                        assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
                         
-                        if (marked_leaf_states[factor] == numeric_limits<size_t>::max()){
+                        if (marked_leaf_states[factor] == LeafStateHash::MAX){
                             int best_price = numeric_limits<int>::max();
                             
                             size_t number_states = price_tags[step + 1]->get_number_states(factor);
@@ -378,7 +378,7 @@ void SearchSpace::trace_path(const State &goal_state,
                                 ++id;
                             }
                             
-                            assert(marked_leaf_states[factor] != numeric_limits<size_t>::max());
+                            assert(marked_leaf_states[factor] != LeafStateHash::MAX);
                         }
                     }
                 }
@@ -386,7 +386,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 
                 
             if (op != nullptr){
-                decoupled_plan.push_back(op);
+                decoupled_plan.push_back(op->get_id());
 #ifdef DEBUG_PLAN_EXTRACTION
                 cout << "added center op: " << decoupled_plan.back()->get_name() << endl;
 #endif
@@ -395,7 +395,7 @@ void SearchSpace::trace_path(const State &goal_state,
         
 #ifndef NDEBUG
         for (size_t i = 0; i < g_leaves.size(); ++i){
-            assert(marked_leaf_states[i] == numeric_limits<size_t>::max());
+            assert(marked_leaf_states[i] == LeafStateHash::MAX);
         }
 #endif
         
@@ -414,7 +414,7 @@ void SearchSpace::dump() const {
         cout << id << ": ";
         s.dump_fdr();
         if (node_info.creating_operator && node_info.parent_state_id != StateID::no_state) {
-            cout << " created by " << node_info.creating_operator->get_name()
+            cout << " created by " << g_operators[node_info.creating_operator].get_name()
                  << " from " << node_info.parent_state_id << endl;
         } else {
             cout << "has no parent" << endl;

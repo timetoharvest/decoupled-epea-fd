@@ -3,7 +3,7 @@
 #include "transition_system.h"
 #include "label.h"
 
-#include "../equivalence_relation.h"
+#include "../algorithms/equivalence_relation.h"
 #include "../globals.h"
 #include "../option_parser.h"
 
@@ -53,10 +53,10 @@ void LabelReducer::reduce_labels(pair<int, int> next_merge,
         assert(all_transition_systems[next_merge.first]);
         assert(all_transition_systems[next_merge.second]);
 
-        vector<EquivalenceRelation *> local_equivalence_relations(
+        vector<equivalence_relation::EquivalenceRelation *> local_equivalence_relations(
             all_transition_systems.size(), 0);
 
-        EquivalenceRelation *relation = compute_outside_equivalence(
+        equivalence_relation::EquivalenceRelation *relation = compute_outside_equivalence(
             next_merge.first, all_transition_systems,
             labels, local_equivalence_relations);
         reduce_exactly(relation, labels);
@@ -79,7 +79,7 @@ void LabelReducer::reduce_labels(pair<int, int> next_merge,
     assert(!transition_system_order.empty());
     while (transition_system_order[tso_index] >= num_transition_systems) {
         ++tso_index;
-        assert(in_bounds(tso_index, transition_system_order));
+        assert(utils::in_bounds(tso_index, transition_system_order));
     }
 
     int max_iterations;
@@ -92,7 +92,7 @@ void LabelReducer::reduce_labels(pair<int, int> next_merge,
     }
 
     int num_unsuccessful_iterations = 0;
-    vector<EquivalenceRelation *> local_equivalence_relations(
+    vector<equivalence_relation::EquivalenceRelation *> local_equivalence_relations(
         all_transition_systems.size(), 0);
 
     for (int i = 0; i < max_iterations; ++i) {
@@ -101,7 +101,7 @@ void LabelReducer::reduce_labels(pair<int, int> next_merge,
 
         bool have_reduced = false;
         if (current_transition_system != 0) {
-            EquivalenceRelation *relation = compute_outside_equivalence(
+            equivalence_relation::EquivalenceRelation *relation = compute_outside_equivalence(
                 ts_index, all_transition_systems,
                 labels, local_equivalence_relations);
             have_reduced = reduce_exactly(relation, labels);
@@ -132,11 +132,11 @@ void LabelReducer::reduce_labels(pair<int, int> next_merge,
         delete local_equivalence_relations[i];
 }
 
-EquivalenceRelation *LabelReducer::compute_outside_equivalence(
+equivalence_relation::EquivalenceRelation *LabelReducer::compute_outside_equivalence(
     int ts_index,
     const vector<TransitionSystem *> &all_transition_systems,
     const vector<Label *> &labels,
-    vector<EquivalenceRelation *> &local_equivalence_relations) const {
+    vector<equivalence_relation::EquivalenceRelation *> &local_equivalence_relations) const {
     /*Returns an equivalence relation over labels s.t. l ~ l'
     iff l and l' are locally equivalent in all transition systems
     T' \neq T. (They may or may not be locally equivalent in T.) */
@@ -165,7 +165,8 @@ EquivalenceRelation *LabelReducer::compute_outside_equivalence(
             annotated_labels.push_back(make_pair(0, label_no));
         }
     }
-    EquivalenceRelation *relation = EquivalenceRelation::from_annotated_elements<int>(num_labels, annotated_labels);
+    equivalence_relation::EquivalenceRelation *relation =
+            equivalence_relation::EquivalenceRelation::from_annotated_elements<int>(num_labels, annotated_labels);
 
     for (size_t i = 0; i < all_transition_systems.size(); ++i) {
         TransitionSystem *ts = all_transition_systems[i];
@@ -192,13 +193,14 @@ EquivalenceRelation *LabelReducer::compute_outside_equivalence(
     return relation;
 }
 
-bool LabelReducer::reduce_exactly(const EquivalenceRelation *relation, std::vector<Label *> &labels) const {
+bool LabelReducer::reduce_exactly(const equivalence_relation::EquivalenceRelation *relation,
+        std::vector<Label *> &labels) const {
     int num_labels = 0;
     int num_labels_after_reduction = 0;
-    for (BlockListConstIter it = relation->begin(); it != relation->end(); ++it) {
-        const Block &block = *it;
+    for (equivalence_relation::BlockListConstIter it = relation->begin(); it != relation->end(); ++it) {
+        const equivalence_relation::Block &block = *it;
         vector<Label *> equivalent_labels;
-        for (ElementListConstIter jt = block.begin(); jt != block.end(); ++jt) {
+        for (equivalence_relation::ElementListConstIter jt = block.begin(); jt != block.end(); ++jt) {
             assert(*jt < static_cast<int>(labels.size()));
             Label *label = labels[*jt];
             if (!label->is_reduced()) {

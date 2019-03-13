@@ -1,24 +1,23 @@
 #include "pattern_generation_edelkamp.h"
 
-#include "pdb_heuristic.h"
-#include "zero_one_pdbs_heuristic.h"
-
-#include "../causal_graph.h"
 #include "../globals.h"
+#include "pdb_heuristic.h"
 #include "../plugin.h"
-#include "../rng.h"
-#include "../timer.h"
-#include "../utilities.h"
+#include "../utils/rng.h"
+#include "../task_utils/causal_graph.h"
+#include "../utils/logging.h"
+#include "../utils/math.h"
+#include "../utils/timer.h"
+#include "zero_one_pdbs_heuristic.h"
 
 #include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <limits>
 #include <vector>
-#include <ext/hash_set>
 
-using namespace __gnu_cxx;
 using namespace std;
+
 
 PatternGenerationEdelkamp::PatternGenerationEdelkamp(const Options &opts)
     : pdb_max_size(opts.get<int>("pdb_max_size")),
@@ -27,7 +26,7 @@ PatternGenerationEdelkamp::PatternGenerationEdelkamp(const Options &opts)
       mutation_probability(opts.get<double>("mutation_probability")),
       disjoint_patterns(opts.get<bool>("disjoint")),
       cost_type(OperatorCost(opts.get<int>("cost_type"))) {
-    Timer timer;
+    utils::Timer timer;
     genetic_algorithm();
     cout << "Pattern generation (Edelkamp) time: " << timer << endl;
 }
@@ -47,13 +46,14 @@ void PatternGenerationEdelkamp::select(const vector<double> &fitness_values) {
 
     vector<vector<vector<bool> > > new_pattern_collections;
     new_pattern_collections.reserve(num_collections);
+    utils::RandomNumberGenerator rng;
     for (int i = 0; i < num_collections; ++i) {
         int selected;
         if (total_so_far == 0) {
             // All fitness values are 0 => choose uniformly.
-            selected = g_rng(fitness_values.size());
+            selected = rng(fitness_values.size());
         } else {
-            double random = g_rng() * total_so_far; // [0..total_so_far)
+            double random = rng() * total_so_far; // [0..total_so_far)
             // Find first entry which is strictly greater than random.
             selected = upper_bound(cumulative_fitness.begin(),
                                    cumulative_fitness.end(), random) -
@@ -65,11 +65,12 @@ void PatternGenerationEdelkamp::select(const vector<double> &fitness_values) {
 }
 
 void PatternGenerationEdelkamp::mutate() {
+    utils::RandomNumberGenerator rng;
     for (size_t i = 0; i < pattern_collections.size(); ++i) {
         for (size_t j = 0; j < pattern_collections[i].size(); ++j) {
             vector<bool> &pattern = pattern_collections[i][j];
             for (size_t k = 0; k < pattern.size(); ++k) {
-                double random = g_rng(); // [0..1)
+                double random = rng(); // [0..1)
                 if (random < mutation_probability) {
                     pattern[k].flip();
                 }
@@ -88,8 +89,8 @@ void PatternGenerationEdelkamp::transform_to_pattern_normal_form(const vector<bo
 
 void PatternGenerationEdelkamp::remove_irrelevant_variables(
     vector<int> &pattern) const {
-    hash_set<int> in_original_pattern(pattern.begin(), pattern.end());
-    hash_set<int> in_pruned_pattern;
+    utils::HashSet<int> in_original_pattern(pattern.begin(), pattern.end());
+    utils::HashSet<int> in_pruned_pattern;
 
     vector<int> vars_to_check;
     for (size_t i = 0; i < g_goal.size(); ++i) {
@@ -107,7 +108,7 @@ void PatternGenerationEdelkamp::remove_irrelevant_variables(
         // A variable is relevant to the pattern if it is a goal variable or if
         // there is a pre->eff arc from the variable to a relevant variable.
         // Note that there is no point in considering eff->eff arcs here.
-        const vector<int> &rel = g_causal_graph->get_eff_to_pre(var);
+        const vector<int> &rel = causal_graph::get_causal_graph().get_eff_to_pre(var);
         for (size_t i = 0; i < rel.size(); ++i) {
             int var_no = rel[i];
             if (in_original_pattern.count(var_no) &&
@@ -129,7 +130,7 @@ bool PatternGenerationEdelkamp::is_pattern_too_large(
     int mem = 1;
     for (size_t i = 0; i < pattern.size(); ++i) {
         int domain_size = g_variable_domain[pattern[i]];
-        if (!is_product_within_limit(mem, domain_size, pdb_max_size))
+        if (!utils::is_product_within_limit(mem, domain_size, pdb_max_size))
             return true;
         mem *= domain_size;
     }
@@ -209,10 +210,10 @@ void PatternGenerationEdelkamp::bin_packing() {
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         variables.push_back(i);
     }
-
+    utils::RandomNumberGenerator rng;
     for (int i = 0; i < num_collections; ++i) {
         // random variable ordering for all pattern collections
-        random_shuffle(variables.begin(), variables.end(), g_rng);
+        rng.shuffle(variables);
         vector<vector<bool> > pattern_collection;
         vector<bool> pattern(g_variable_name.size(), false);
         int current_size = 1;
@@ -221,7 +222,7 @@ void PatternGenerationEdelkamp::bin_packing() {
             int next_var_size = g_variable_domain[var];
             if (next_var_size > pdb_max_size) // var never fits into a bin
                 continue;
-            if (!is_product_within_limit(current_size, next_var_size, pdb_max_size)) {
+            if (!utils::is_product_within_limit(current_size, next_var_size, pdb_max_size)) {
                 // Open a new bin for var.
                 pattern_collection.push_back(pattern);
                 pattern.clear();

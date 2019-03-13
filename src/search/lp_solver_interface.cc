@@ -1,7 +1,7 @@
 #include "lp_solver_interface.h"
 
 #include "option_parser.h"
-#include "utilities.h"
+#include "utils/system.h"
 
 #ifdef COIN_HAS_CLP
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -48,9 +48,9 @@ public:
         if (messageBuffer_ == CPLEX_WARNING_COMPRESS) {
             CoinMessageHandler::checkSeverity();
         } else if (messageBuffer_ == CPLEX_ERROR_OOM || messageBuffer_ == CPLEX_ERROR_OOM_PRE) {
-            exit_with(EXIT_OUT_OF_MEMORY);
+            exit_with(utils::ExitCode::OUT_OF_MEMORY);
         } else {
-            exit_with(EXIT_CRITICAL_ERROR);
+            exit_with(utils::ExitCode::CRITICAL_ERROR);
         }
     }
 };
@@ -112,14 +112,14 @@ OsiSolverInterface *create_lp_solver(LPSolverType solver_type) {
         ABORT("Unknown LP solver type.");
     }
     cerr << "You must build the planner with the " << missing_symbol << " symbol defined" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+    exit_with(utils::ExitCode::CRITICAL_ERROR);
 }
 
 void handle_coin_error(const CoinError &error) {
     cerr << "Coin threw exception: " << error.message() << endl
          << " from method " << error.methodName() << endl
          << " from class " << error.className() << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+    exit_with(utils::ExitCode::CRITICAL_ERROR);
 }
 
 #endif

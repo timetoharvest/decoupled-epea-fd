@@ -4,7 +4,7 @@
 class Options;
 class OptionParser;
 
-enum DOMINATION {
+enum DOMINANCE {
     NONE,
     DOMINATED,
     DOMINATES,
@@ -27,13 +27,15 @@ class PruningOptions {
     
     bool frontier_pruning;
     
+    void verify_options() const;
+
     
     static bool ignore_current_search_state;
     
     static bool reopen_closed_nodes;
     
 public:
-    PruningOptions() : irrelevance(NO), 
+    PruningOptions() : irrelevance(IRRELEVANCE::NO),
                        do_simulation(false), 
                        goal_price_propagation(false),
                        frontier_pruning(false) {}
@@ -42,7 +44,7 @@ public:
 
     ~PruningOptions() = default;
     
-    void init() const;
+    void initialize() const;
     
     bool use_frontier() const {
         return frontier_pruning;
