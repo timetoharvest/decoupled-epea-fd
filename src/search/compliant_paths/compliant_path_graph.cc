@@ -353,6 +353,9 @@ void CompliantPathGraph::build_leaf_state_spaces() {
 
                 if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
                     // the goal states of fork leaves don't need successors
+                    if (compute_leaf_backwards_graph && id >= leaf_state_predecessors[factor].size()) {
+                        leaf_state_predecessors[factor].resize(id + 1);
+                    }
                     continue;
                 }
 
