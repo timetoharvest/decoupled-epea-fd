@@ -268,7 +268,7 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed) {
+DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) {
     const Reachable *other_cpg = &cpg_storage->reachable[other];
     
     bool sizes_equal = true;
@@ -343,7 +343,7 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed) {
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
     
-    // compare prices / reachability
+    // compare reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;

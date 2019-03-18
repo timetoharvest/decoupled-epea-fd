@@ -37,7 +37,7 @@ protected:
                                                                                 
     virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed) override;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
     
     virtual void store_new_graph(const State &state) const override;
     
