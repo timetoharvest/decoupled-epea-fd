@@ -264,18 +264,30 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
 
     if (factoring_type == GENERAL) {
         for (const ActionSchema &act_schema : action_schemas) {
+            if (factoring_timer.is_expired()){
+                return FactoredVars();
+            }
             if (act_schema.eff_vars.size() < 2) {
                 continue;
             }
-            set<int> relevant_p_leaves;
+            set<size_t> relevant_p_leaves;
             for (int var : act_schema.eff_vars) {
-                for (int index : var_to_p_leaves[var]) {
+                for (size_t index : var_to_p_leaves[var]) {
                     relevant_p_leaves.insert(index);
                 }
             }
+            if (relevant_p_leaves.size() < 2){
+                continue;
+            }
             LPConstraint constraint(0.0, act_schema.eff_vars.size() - 1);
+            // in contrast to the definition, where at least one potential leaf
+            // of each hyperedge must belong to the center, this constraint encodes
+            // that at least one variable from act_schema must belong to the center.
+            // this coincides with the definition because there is an edge in the
+            // graph between every pair of intersecting potential leaves, so variables
+            // are only ever counted at most once.
             bool non_empty = false;
-            for (int index : relevant_p_leaves) {
+            for (size_t index : relevant_p_leaves) {
                 bool superset = true;
                 int size_intersection = 0;
                 for (int var_1 : act_schema.eff_vars) {
@@ -284,6 +296,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
                         if (var_1 == var_2) {
                             var_contained = true;
                             size_intersection++;
+                            break;
+                        } else if (var_1 < var_2){
+                            // both vectors are sorted
                             break;
                         }
                     }
@@ -299,9 +314,6 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
             if (non_empty) {
                 constraints.push_back(constraint);
             }
-            if (factoring_timer.is_expired()){
-                return FactoredVars();
-            }
         }
     }
 
@@ -315,7 +327,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         // since 2 leaves are guaranteed by the elimination of potential leaves
         // in set_potential_leaves()
         LPConstraint constraint(min_number_leaves, min(potential_leaves.size(), g_variable_domain.size()));
-        for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); p_leaf++) {
+        for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
             constraint.insert(p_leaf, 1.0);
         }
         constraints.push_back(constraint);
