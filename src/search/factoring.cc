@@ -362,6 +362,37 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
 
+    // check if it is a proper general-star factoring
+    for (const Operator &op : g_operators){
+        bool is_center_op = false;
+        for (const Effect &eff : op.get_effects()){
+            if (g_belongs_to_factor[eff.var] == LeafFactorID::CENTER){
+                is_center_op = true;
+                break;
+            }
+        }
+        if (!is_center_op){
+            bool error = false;
+            LeafFactorID factor(g_belongs_to_factor[op.get_effects().begin()->var]);
+            for (const Effect &eff : op.get_effects()){
+                if (g_belongs_to_factor[eff.var] != factor){
+                    error = true;
+                    cerr << "leaf action has effect on more than one leaf (" << factor << ", " << g_belongs_to_factor[eff.var] << "): " << op.get_name() << endl;
+                }
+            }
+            for (const Condition &pre : op.get_preconditions()){
+                if (g_belongs_to_factor[pre.var] != factor && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER){
+                    error = true;
+                    cerr << "leaf action has preconditions on more than one leaf(" << factor << ", " << g_belongs_to_factor[pre.var] << "): " << op.get_name() << endl;
+                }
+            }
+
+            if (error){
+                exit_with(utils::ExitCode::CRITICAL_ERROR);
+            }
+        }
+    }
+
     // assign operators to their factors
 #ifdef DEBUG_FACTORING
     vector<int> num_ops_per_factor(g_leaves.size());
