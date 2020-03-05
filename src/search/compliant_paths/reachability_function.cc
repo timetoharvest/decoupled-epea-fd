@@ -30,6 +30,9 @@ Reachable::Reachable(const Reachable *tag) {
 }
 
 bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
+    if (is_leaf_state_space_scc[factor]){
+        return false;
+    }
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
@@ -70,6 +73,10 @@ void Reachable::update(const State &base_state) {
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
+        if (is_leaf_state_space_scc[factor]){
+            continue;
+        }
+
         if (g_factoring->is_fork_leaf(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || 
@@ -285,6 +292,9 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
     
     // check number of reachable leaf states
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (is_leaf_state_space_scc[factor]){
+            continue;
+        }
         if (g_factoring->is_fork_leaf(factor)) {
             // in satisficing search, updating CPG stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
@@ -345,7 +355,7 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
     
     // compare reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (skip_leaf[factor]) { // is fork-leaf that reached its goal
+        if (is_leaf_state_space_scc[factor] || skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
         size_t number_new_states = get_number_states(factor);
@@ -494,6 +504,9 @@ void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFacto
 
 bool Reachable::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
     assert(id < leaf_state_id_map[factor].size());
+    if (is_leaf_state_space_scc[factor]){
+        return true;
+    }
     if (leaf_state_id_map[factor][id] == -1){
         return false;
     }
@@ -504,22 +517,34 @@ bool Reachable::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
 int Reachable::get_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
     assert(has_leaf_state(id, factor));
     assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
+    if (is_leaf_state_space_scc[factor]){
+        return g_min_action_cost_per_factor[factor];
+    }
+    // TODO: this assumes that the initial state is not a goal state, otherwise need to return 0 for initial state e.g. for forks
     return reachable[factor][leaf_state_id_map[factor][id]] ? g_min_action_cost_per_factor[factor] : INF;
 }
 
 size_t Reachable::get_number_states(LeafFactorID factor) const {
+    if (is_leaf_state_space_scc[factor]){
+        return g_state_registry->size(factor);
+    }
     return reachable[factor].count();
 }
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
     if (goal_reached[factor]){
-        return g_min_action_cost_per_factor[factor];
+        return g_min_action_cost_per_factor[factor]; // TODO: this assumes that the initial state is not a goal state
     } else {
         return INF;
     }
 }
 
 bool Reachable::goal_reachable(LeafFactorID factor) const {
+    if (is_leaf_state_space_scc[factor]){
+        // this is ok because the construction of the leaf state spaces makes
+        // sure that every leaf with a goal has a goal leaf state reachable
+        return !g_goals_per_factor[factor].empty();
+    }
     return goal_reached[factor];
 }
 

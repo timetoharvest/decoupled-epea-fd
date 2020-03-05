@@ -37,9 +37,13 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
         return;
     }
 
-    // TODO: for IFORK leaves that are invertible, there is no need to actually check
-    // the leaf preconditions. collecting all actions enabled by the current
-    // center state is enough.
+    if (g_factoring->get_profile() == FACTORING_PROFILE::IFORK && CompliantPathGraph::all_leaves_invertible()){
+        // for IFORK leaves that are invertible, there is no need to actually check
+        // the leaf preconditions. collecting all actions enabled by the current
+        // center state is enough.
+        // TODO: make this more fine-grained
+        return;
+    }
 
     counter.assign(g_operators.size(), 0);
     is_applicable_leaf.resize(g_operators.size());

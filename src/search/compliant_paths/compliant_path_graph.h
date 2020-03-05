@@ -70,6 +70,8 @@ protected:
     
     static std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > leaf_state_predecessors;
     
+    static std::vector<bool> is_leaf_state_space_scc;
+
     static std::vector<std::vector<int> > leaf_state_id_map;
     
     static std::vector<size_t> curr_leaf_state_max_id;
@@ -161,6 +163,15 @@ public:
         return precompute_leaf_state_spaces[factor];
     }
     
+    static bool all_leaves_invertible() {
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (!is_leaf_state_space_scc[factor]){
+                return false;
+            }
+        }
+        return true;
+    }
+
 };
 
 #endif

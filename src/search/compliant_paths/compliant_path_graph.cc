@@ -1,5 +1,6 @@
 #include "compliant_path_graph.h"
 
+#include "../algorithms/sccs.h"
 #include "cpg_storage.h"
 #include "../factoring.h"
 #include "../leaf_state_id.h"
@@ -48,6 +49,8 @@ vector<unique_ptr<successor_generator::SuccessorGenerator> > CompliantPathGraph:
 vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_successors;
 
 vector<vector<vector<pair<OperatorID, LeafStateHash> > > > CompliantPathGraph::leaf_state_predecessors;
+
+vector<bool> CompliantPathGraph::is_leaf_state_space_scc;
     
 vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
     
@@ -130,7 +133,8 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     
     vector<size_t> predecessors;
     
-    if (PruningOptions::are_closed_nodes_reopened()){
+    if (PruningOptions::are_closed_nodes_reopened() &&
+            !(g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
         StateID curr_id = predecessor.get_id();
         while (curr_id.hash() != 0){
             if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
@@ -143,7 +147,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     
     int replaced_state_dup = -1;
 
-    for (int dup = 0; dup <= curr_number_duplicates; dup++){
+    for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // check the price tags of all equal center states
         
 #ifdef DEBUG_PRUNING
@@ -287,6 +291,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     leaf_state_id_map.resize(g_leaves.size(), vector<int>(1, -1));
     curr_leaf_state_max_id.resize(g_leaves.size(), 0);
     
+    is_leaf_state_space_scc.resize(g_leaves.size(), false);
+
     if (compute_leaf_backwards_graph){
         leaf_state_predecessors.resize(g_leaves.size());
         precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
@@ -309,6 +315,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             // skip fork-leaf factor without a goal
             continue;
         }
+
+        vector<vector<int> > leaf_only_state_space_graph;
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
         cout << "       starting RPG for leaf factor " << factor << endl;
@@ -340,6 +348,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                     }
                 } else {
                     best_prices.resize(id + 1, numeric_limits<int>::max());
+                    leaf_only_state_space_graph.resize(id + 1);
                 }
                 
                 const LeafState curr_leaf_state = g_state_registry->lookup_leaf_state(id, factor);
@@ -418,6 +427,11 @@ void CompliantPathGraph::build_leaf_state_spaces() {
                             continue;
                         }
 
+                        if (!op.has_precondition_on(LeafFactorID::CENTER) && op.get_affected_factor() != LeafFactorID::CENTER){
+                            // is leaf action without center precondition
+                            leaf_only_state_space_graph[id].push_back(succ_id);
+                        }
+
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
                         cout << "created leaf state " << succ_id << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
                         g_state_registry->lookup_leaf_state(succ_id).dump_pddl();
@@ -452,6 +466,14 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             }
         }
         
+        size_t num_sccs = sccs::compute_maximal_sccs(leaf_only_state_space_graph).size();
+        if (num_sccs == 1){
+            is_leaf_state_space_scc[factor] = true;
+            cout << "state space of leaf " << factor << " is strongly connected via leaf-only actions" << endl;
+        } else if (num_sccs == g_state_registry->size(factor)){
+            cout << "no non-trivial leaf-only SCC in state space of leaf " << factor << endl;
+        }
+
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
     cout << "   RPG for leaf factor " << factor << " finished" << endl;
 #endif
