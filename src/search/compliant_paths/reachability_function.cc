@@ -275,9 +275,13 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) {
+DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int) {
+    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
+        return DOMINANCE::NONE;
+    }
+
     const Reachable *other_cpg = &cpg_storage->reachable[other];
-    
+
     bool sizes_equal = true;
     bool new_is_larger = false;
     bool new_is_smaller = false;
@@ -397,6 +401,8 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
         cout << "old tag is equal to new one" << endl;
 #endif
         return DOMINANCE::EQUAL;
+    } else if (pruning->use_exact_duplicate_checking()){
+        return DOMINANCE::NONE;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
@@ -585,5 +591,14 @@ void Reachable::dump() const {
 
 unique_ptr<CompliantPathGraph> Reachable::clone() const {
     return unique_ptr<CompliantPathGraph>(new Reachable(this));
+}
+
+uint64_t Reachable::get_hash() const {
+    utils::HashState hash_state;
+    feed(hash_state, goal_reached);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        feed(hash_state, reachable[factor]);
+    }
+    return hash_state.get_hash64();
 }
 

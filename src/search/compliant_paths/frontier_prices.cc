@@ -166,7 +166,7 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed, int) {
+DOMINANCE FrontierPrices::check_dominance(const State& other, uint64_t, DOMINANCE needed, int) {
     // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
     
@@ -439,5 +439,16 @@ void FrontierPrices::dump() const {
 
 unique_ptr<CompliantPathGraph> FrontierPrices::clone() const {
     return unique_ptr<CompliantPathGraph> (new FrontierPrices(this));
+}
+
+uint64_t FrontierPrices::get_hash() const {
+    utils::HashState hash_state;
+    feed(hash_state, goal_cost);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        hash_state.feed(get_number_effective_states(factor));
+        feed(hash_state, effective_prices[factor]);
+        feed(hash_state, frontier[factor]);
+    }
+    return hash_state.get_hash64();
 }
 

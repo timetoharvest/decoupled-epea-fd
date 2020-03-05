@@ -147,6 +147,11 @@ int CompliantPathGraph::check_dominance(const State &base_state,
     
     int replaced_state_dup = -1;
 
+    uint64_t hash = 0;
+    if (pruning->use_exact_duplicate_checking()){
+        hash = get_hash();
+    }
+
     for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // check the price tags of all equal center states
         
@@ -169,7 +174,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             // in this case, all dominated nodes are also dominated by the state
             // that dominates this one
 
-            DOMINANCE res = check_dominance(s);
+            DOMINANCE res = check_dominance(s, hash);
             
             if (res != DOMINANCE::NONE){
                 if (res == DOMINANCE::DOMINATES) {
@@ -194,7 +199,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 
-                DOMINANCE res = check_dominance(s);
+                DOMINANCE res = check_dominance(s, hash);
             
                 if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
                     int old_g = search_space->get_node(s).get_g();
@@ -224,7 +229,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // engine what to do with the current state, independent of its g value.
                     if (new_g > old_g){
 
-                        DOMINANCE res = check_dominance(s, DOMINANCE::DOMINATED, old_g - new_g);
+                        DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATED, old_g - new_g);
 
                         if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                             // current state is dominated by or equal to a previously generated state
@@ -233,7 +238,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
                     } else if (new_g < old_g) {
 
-                        DOMINANCE res = check_dominance(s, DOMINANCE::DOMINATES, old_g - new_g);
+                        DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATES, old_g - new_g);
 
                         if (res == DOMINANCE::EQUAL){
                             // state will replace old state in search
@@ -248,7 +253,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
                     } else {
 
-                        DOMINANCE res = check_dominance(s);
+                        DOMINANCE res = check_dominance(s, hash);
 
                         if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                             // current state is dominated by or equal to a previously generated state
@@ -266,7 +271,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // current state is successor of the state compared to, so can only be
                     // pruned if it is dominated by/equal to its predecessor; new_g >= old_g
 
-                    DOMINANCE res = check_dominance(s, DOMINANCE::DOMINATED, old_g - new_g);
+                    DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATED, old_g - new_g);
 
                     if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                         return dup;

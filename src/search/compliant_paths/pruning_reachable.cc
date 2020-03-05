@@ -5,6 +5,7 @@
 #include "../operator.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
+#include "../utils/hash.h"
 
 #include <limits>
 
@@ -38,7 +39,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return clone();
 }
 
-DOMINANCE PruningReachable::check_dominance(const State &other, DOMINANCE needed, int) {
+DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, DOMINANCE needed, int) {
     PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -173,4 +174,14 @@ void PruningReachable::dump() const {
 
 unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
     return unique_ptr<CompliantPathGraph>(new PruningReachable(this));
+}
+
+uint64_t PruningReachable::get_hash() const {
+    utils::HashState hash_state;
+    feed(hash_state, goal_reached);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        feed(hash_state, reachable[factor]);
+        feed(hash_state, frontier[factor]);
+    }
+    return hash_state.get_hash64();
 }

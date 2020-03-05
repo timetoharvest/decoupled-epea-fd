@@ -220,7 +220,11 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed, int g_advantage) {
+DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int g_advantage) {
+    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
+        return DOMINANCE::NONE;
+    }
+
     const Prices *other_cpg = &cpg_storage->prices[other];
     
     bool sizes_equal = true;
@@ -367,6 +371,8 @@ DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed, int g_ad
         cout << "old tag is equal to new one" << endl;
 #endif
         return DOMINANCE::EQUAL;
+    } else if (pruning->use_exact_duplicate_checking()){
+            return DOMINANCE::NONE;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
@@ -529,3 +535,12 @@ unique_ptr<CompliantPathGraph> Prices::clone() const {
     return unique_ptr<CompliantPathGraph>(new Prices(this));
 }
 
+uint64_t Prices::get_hash() const {
+    utils::HashState hash_state;
+    feed(hash_state, number_states);
+    feed(hash_state, goal_cost);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        feed(hash_state, prices[factor]);
+    }
+    return hash_state.get_hash64();
+}

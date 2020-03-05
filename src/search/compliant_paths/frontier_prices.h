@@ -37,7 +37,7 @@ protected:
                                                                                 
     virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int g_advantage) override;
     
     virtual void store_new_graph(const State &state) const override;
     
@@ -48,6 +48,8 @@ public:
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual uint64_t get_hash() const override;
 
     
     static void register_cpg_storage(FrontierPriceStorage *storage);

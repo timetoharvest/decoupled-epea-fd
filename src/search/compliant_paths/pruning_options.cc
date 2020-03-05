@@ -14,16 +14,17 @@ bool PruningOptions::ignore_current_search_state = false;
 bool PruningOptions::reopen_closed_nodes = false;
 
 
-PruningOptions::PruningOptions(const Options &opts)
-                    : irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
-                      do_simulation(opts.get<bool>("simulation")),
-                      goal_price_propagation(opts.get<bool>("goal_price_propagation")),
-                      frontier_pruning(opts.get<bool>("frontier")) {
 
-    if (frontier_pruning){
-        cout << "using frontier pruning method" << endl;
-    } else {
-        cout << "using basic pruning method" << endl;
+PruningOptions::PruningOptions(const Options &opts)
+                    : pruning_type(PRUNING_TYPE(opts.get_enum("pruning_type"))),
+                      irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
+                      do_simulation(opts.get<bool>("simulation")),
+                      goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
+
+    switch (pruning_type){
+    case PRUNING_TYPE::DOMINANCE: cout << "using dominance pruning" << endl; break;
+    case PRUNING_TYPE::DUPLICATE: cout << "using exact duplicate checking" << endl; break;
+    case PRUNING_TYPE::FRONTIER: cout << "using frontier pruning method" << endl; break;
     }                                            
                                             
     if (goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
@@ -45,8 +46,18 @@ PruningOptions::PruningOptions(const Options &opts)
 
 void PruningOptions::verify_options() const {
     if (g_factoring->get_profile() != FORK){
-        if (frontier_pruning || goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
+        if (pruning_type == PRUNING_TYPE::FRONTIER ||
+                goal_price_propagation ||
+                do_simulation ||
+                irrelevance != IRRELEVANCE::NO){
+
             cerr << "Advanced pruning methods are only supported for fork factorings!" << endl;
+            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+        }
+    }
+    if (pruning_type == PRUNING_TYPE::DUPLICATE){
+        if (goal_price_propagation || do_simulation){
+            cerr << "Goal price propagation and simulation are not (yet) supported for exact duplicate checking!" << endl;
             exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
@@ -92,11 +103,25 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
                            "perform simulation irrelevance pruning", "NO");
 }
 
-static PruningOptions *_parse_basic(OptionParser &parser) {
+static PruningOptions *_parse_dominance(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
-    opts.set<bool>("frontier", false);
+    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DOMINANCE);
+
+    PruningOptions *pruning = 0;
+    if (!parser.dry_run()) {
+        pruning = new PruningOptions(opts);
+    }
+
+    return pruning;
+}
+
+static PruningOptions *_parse_duplicate(OptionParser &parser) {
+    PruningOptions::add_options_to_parser(parser);
+    Options opts = parser.parse();
+
+    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DUPLICATE);
 
     PruningOptions *pruning = 0;
     if (!parser.dry_run()) {
@@ -108,10 +133,9 @@ static PruningOptions *_parse_basic(OptionParser &parser) {
 
 static PruningOptions *_parse_frontier(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
-
     Options opts = parser.parse();
     
-    opts.set<bool>("frontier", true);
+    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::FRONTIER);
 
     PruningOptions *pruning = 0;
     if (!parser.dry_run()) {
@@ -121,5 +145,6 @@ static PruningOptions *_parse_frontier(OptionParser &parser) {
     return pruning;
 }
 
-static Plugin<PruningOptions> _plugin("basic", _parse_basic);
+static Plugin<PruningOptions> _plugin_dominance("dominance", _parse_dominance);
+static Plugin<PruningOptions> _plugin_duplicate("duplicate", _parse_duplicate);
 static Plugin<PruningOptions> _plugin_frontier("cost_frontier", _parse_frontier);

@@ -85,7 +85,7 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE EffectivePrices::check_dominance(const State& other, DOMINANCE needed, int g_advantage) {
+DOMINANCE EffectivePrices::check_dominance(const State& other, uint64_t , DOMINANCE needed, int g_advantage) {
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -283,7 +283,7 @@ void EffectivePrices::store_new_graph(const State &state) const {
 }
 
 unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
-    if (pruning->use_frontier()){
+    if (pruning->use_frontier_pruning()){
         return FrontierPrices::get_init_state_cpg();
     }
     
@@ -388,5 +388,15 @@ void EffectivePrices::dump() const {
 
 unique_ptr<CompliantPathGraph> EffectivePrices::clone() const {
     return unique_ptr<CompliantPathGraph> (new EffectivePrices(this));
+}
+
+uint64_t EffectivePrices::get_hash() const {
+    utils::HashState hash_state;
+    feed(hash_state, goal_cost);
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        hash_state.feed(get_number_effective_states(factor));
+        feed(hash_state, effective_prices[factor]);
+    }
+    return hash_state.get_hash64();
 }
 

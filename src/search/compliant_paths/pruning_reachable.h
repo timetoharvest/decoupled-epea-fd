@@ -30,7 +30,7 @@ protected:
 // no own implementation so far. the only use would be to skip non-frontier states in the update
 // virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int g_advantage) override;
     
     virtual void store_new_graph(const State &state) const override;
     
@@ -42,7 +42,9 @@ public:
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
     
+    virtual uint64_t get_hash() const override;
     
+
     static void register_cpg_storage(PruningReachableStorage *storage);
  
 };

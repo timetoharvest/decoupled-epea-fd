@@ -15,6 +15,8 @@ class CPGStorage {
     
 protected:
     
+    PerStateInformation<uint64_t> hashes;
+
     virtual void register_at_compliant_path_graph() = 0;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) = 0;
@@ -25,6 +27,8 @@ public:
     
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) = 0;
+
     virtual size_t size(const StateRegistry *registry) const = 0;
     
     
@@ -58,6 +62,8 @@ public:
         return &prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return prices.size(registry);
     }
@@ -87,6 +93,8 @@ public:
         return &effective_prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return effective_prices.size(registry);
     }
@@ -105,7 +113,7 @@ class FrontierPriceStorage : public CPGStorage {
 protected:
     
     virtual void register_at_compliant_path_graph() override;
-    
+
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &frontier_prices[state];
     }
@@ -116,6 +124,8 @@ public:
         return &frontier_prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return frontier_prices.size(registry);
     }
@@ -145,6 +155,8 @@ public:
         return &reachable[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return reachable.size(registry);
     }
@@ -174,6 +186,8 @@ public:
         return &pruning_reachable[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return pruning_reachable.size(registry);
     }
