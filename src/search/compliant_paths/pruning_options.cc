@@ -17,6 +17,8 @@ bool PruningOptions::reopen_closed_nodes = false;
 
 PruningOptions::PruningOptions(const Options &opts)
                     : pruning_type(PRUNING_TYPE(opts.get_enum("pruning_type"))),
+                      min_price_in_g(opts.get<bool>("include_price_in_g")),
+                      g_in_dominance(opts.get<bool>("include_g_in_dominance")),
                       irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                       do_simulation(opts.get<bool>("simulation")),
                       goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
@@ -91,6 +93,14 @@ void PruningOptions::initialize() const {
 
 
 void PruningOptions::add_options_to_parser(OptionParser &parser){
+    parser.add_option<bool>("include_price_in_g",
+                            "increase the g-value of decoupled states by the sum of minimum prices",
+                            "true");
+
+    parser.add_option<bool>("include_g_in_dominance",
+                            "incorporate the difference in g-values of decoupled states into the dominance checking",
+                            "true");
+
     parser.add_option<bool>("goal_price_propagation",
                             "perform goal price propagation", "false");
     

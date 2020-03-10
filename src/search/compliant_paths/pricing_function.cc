@@ -224,6 +224,9 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, DOMINANCE n
     if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
         return DOMINANCE::NONE;
     }
+    if (!pruning->include_g_in_dominance()){
+        g_advantage = 0;
+    }
 
     const Prices *other_cpg = &cpg_storage->prices[other];
     
@@ -286,7 +289,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, DOMINANCE n
     } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
         return DOMINANCE::NONE;
     }
-    
+
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
 
@@ -452,7 +455,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
             add_state(g_state_registry->get_successor_leaf_state_hash(pred, op), factor, min_price);
         }
 
-        if (min_price > 0){
+        if (pruning->include_min_price_in_g() && min_price > 0){
             g_inc_g_by += min_price;
             reduce_cost_by(factor, min_price);
         }

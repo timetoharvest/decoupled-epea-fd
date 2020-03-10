@@ -36,6 +36,14 @@ class PruningOptions {
 
     PRUNING_TYPE pruning_type;
     
+    // use g_inc_g_by to increase the g-value of decoupled states
+    // by the sum of minimum prices
+    bool min_price_in_g;
+
+    // incorporate the difference in g-values of decoupled states
+    // into the dominance checking
+    bool g_in_dominance;
+
     IRRELEVANCE irrelevance;
 
     bool do_simulation;
@@ -51,6 +59,8 @@ class PruningOptions {
     
 public:
     PruningOptions() : pruning_type(PRUNING_TYPE::DOMINANCE),
+                       min_price_in_g(true),
+                       g_in_dominance(true),
                        irrelevance(IRRELEVANCE::NO),
                        do_simulation(false), 
                        goal_price_propagation(false) {}
@@ -73,6 +83,14 @@ public:
         return pruning_type == PRUNING_TYPE::FRONTIER;
     }
     
+    bool include_min_price_in_g() const {
+        return min_price_in_g;
+    }
+
+    bool include_g_in_dominance() const {
+        return g_in_dominance;
+    }
+
     bool do_advanced_pruning() const {
         return do_simulation || goal_price_propagation || pruning_type == PRUNING_TYPE::FRONTIER;
     }
