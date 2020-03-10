@@ -166,7 +166,8 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) {
+DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed, int) {
+    // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -199,7 +200,7 @@ DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) 
                 assert(get_goal_cost(factor) == other_cpg->get_goal_cost(factor));
             }
 #endif
-	}
+        }
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
@@ -207,8 +208,8 @@ DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) 
                     if (has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_cost_of_state(id, factor);
                         int new_cost = get_effective_cost_of_state(id, factor);
-                        assert(old_cost != -1);
-                        assert(new_cost != -1);
+                        assert(old_cost != CompliantPathGraph::INF);
+                        assert(new_cost != CompliantPathGraph::INF);
                         
                         if (old_cost < new_cost){
                             dominates = false;
@@ -221,8 +222,8 @@ DOMINANCE FrontierPrices::check_dominance(const State& other, DOMINANCE needed) 
                     if (other_cpg->has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_effective_cost_of_state(id, factor);
                         int new_cost = get_cost_of_state(id, factor);
-                        assert(old_cost != -1);
-                        assert(new_cost != -1);
+                        assert(old_cost != CompliantPathGraph::INF);
+                        assert(new_cost != CompliantPathGraph::INF);
                         
                         if (old_cost > new_cost){
                             dominated = false;
