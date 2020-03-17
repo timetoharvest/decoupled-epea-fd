@@ -233,7 +233,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, DOMINANCE n
     bool sizes_equal = true;
     bool new_is_larger = false;
     bool new_is_smaller = false;
-    
+
     int sum_needed_to_dominate = 0;
     int sum_needed_to_be_dominated = 0;
 
@@ -416,16 +416,10 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         
         // center op completely overwrites this leaf factor
         bool leaf_overwritten = num_effects == g_leaves[factor].size();
-        
-        if (leaf_overwritten && !has_pre_on_factor){
-            const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
-            add_state(g_state_registry->get_successor_leaf_state_hash(pred, op), factor, 0);
-            continue;
-        }
               
         int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
                 
-        int number_states = old_tag.get_number_states(factor);
+        size_t number_states = old_tag.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
             if (old_tag.has_leaf_state(id, factor)){
