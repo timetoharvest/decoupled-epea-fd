@@ -76,10 +76,24 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
         if (g_factoring){         
             const SearchNode &info = search_space.get_node(state);
             int solution_cost = info.get_g();
+
             const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 if (!g_goals_per_factor[factor].empty()){
                     solution_cost += cpg->get_goal_cost(factor);
+                } else if (!g_factoring->is_fork_leaf(factor)) {
+                    // for non-fork leaves, need to add minimum price of compliant leaf state
+                    // for fork leaves, the initial leaf state is always compliant at cost 0
+                    int min_compliant_state_cost = numeric_limits<int>::max();
+                    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                        if (cpg->has_leaf_state(id, factor)){
+                            min_compliant_state_cost = min(min_compliant_state_cost, cpg->get_cost_of_state(id, factor));
+                            if (min_compliant_state_cost == 0){
+                                break;
+                            }
+                        }
+                    }
+                    solution_cost += min_compliant_state_cost;
                 }
             }
             cout << "found a plan of cost " << solution_cost;
