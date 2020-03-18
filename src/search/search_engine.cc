@@ -148,6 +148,8 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 
 bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg) {
     int sum_goal_cost = search_space.get_node(state).get_leaf_part_g();
+    // when using g-value adjustment, part of the leaf goal cost might go into the center g value.
+    // also, cost of non-fork non-goal leaves might go into leaf_part_g, which is important to check
     for (LeafFactorID factor(0); factor < g_min_goal_cost.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
             assert(cpg.get_goal_cost(factor) >= 0);
@@ -155,11 +157,10 @@ bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathG
             if (sum_goal_cost > g_sum_min_goal_cost){
                 return false;
             }
-        } 
-#ifndef NDEBUG
-        // g-adjustment should ensure that there always exists a leaf state with cost 0 in non-fork leaves
-        // for fork leaves, it is trivially true
-        else {
+        } else if (!g_factoring->is_fork_leaf(factor)) {
+            // in case of non-fork leaves without goal, we do not know if the current goal is
+            // the cheapest possible, unless there is a compliant leaf state with price 0
+            // for fork leaves, it is trivially true
             int min_compliant_path_cost = numeric_limits<int>::max();
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (cpg.has_leaf_state(id, factor)){
@@ -170,9 +171,10 @@ bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathG
                     }
                 }
             }
-            assert(min_compliant_path_cost == 0);
+            if (min_compliant_path_cost > 0) {
+                return false;
+            }
         }
-#endif
     }
     return true;
 }
