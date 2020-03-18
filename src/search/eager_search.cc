@@ -302,7 +302,7 @@ SearchStatus EagerSearch::step() {
 
 bool EagerSearch::insert_state(const SearchNode &succ_node) {
     if (!g_factoring || !found_solution()){
-	return true;
+        return true;
     }
     if (succ_node.get_g() + succ_node.get_h() >= bound){
         return false;
@@ -327,9 +327,11 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
 
     while (true) {
         if (open_list->empty()) {
-            if (!found_solution()){     // this happens for FDA* and AFRA* only
+            if (!found_solution()){
                 cout << "Completely explored state space -- no solution! [t=" << utils::g_timer << "]" << endl;
             } else {
+                // in optimal decoupled search, we cannot stop on the first solution found,
+                // need to continue until provably no better solution exists
                 cout << "no more states in openlist [t=" << utils::g_timer << "]" << endl;
             }
             // HACK! HACK! we do this because SearchNode has no default/copy constructor
@@ -351,20 +353,17 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             continue;
         }
         
-        // upper bound pruning for factored search
+        // upper bound pruning for decoupled search
         if (g_factoring && found_solution()){
-            int goal_cost = g_sum_min_goal_cost;
-            if (g_factoring->get_profile() != FORK){
-                // because g-value might include some goal cost
-                goal_cost = max(0, goal_cost - node.get_leaf_part_g());
-            }
-            if ((node.get_g() + max(goal_cost, node.get_h())) >= bound) {
+            // prune states that cannot possibly result in a cheaper solution
+            // g-value might include some goal cost
+            int goal_cost = max(0, g_sum_min_goal_cost - node.get_leaf_part_g());
+            if (node.get_g() + max(goal_cost, node.get_h()) >= bound) {
                 continue;
             }
             if (g_factoring->get_search_type() == ASDA && pruning_heuristic != 0){
                 pruning_heuristic->evaluate(s);
-                int fork_h = pruning_heuristic->get_heuristic();
-                if (node.get_g() + fork_h >= bound){
+                if (node.get_g() + pruning_heuristic->get_heuristic() >= bound){
                     continue;
                 }
             }
