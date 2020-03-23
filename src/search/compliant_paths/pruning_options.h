@@ -44,6 +44,10 @@ class PruningOptions {
     // into the dominance checking
     bool g_in_dominance;
 
+    // compare prices across leaves, so higher prices in one
+    // can be traded against lower prices in another leaf
+    bool prices_in_dominance;
+
     IRRELEVANCE irrelevance;
 
     bool do_simulation;
@@ -54,13 +58,14 @@ class PruningOptions {
 
     
     static bool ignore_current_search_state; // TODO: get rid of this hack
-    
+
     static bool reopen_closed_nodes;
     
 public:
     PruningOptions() : pruning_type(PRUNING_TYPE::DOMINANCE),
                        min_price_in_g(true),
                        g_in_dominance(true),
+                       prices_in_dominance(true),
                        irrelevance(IRRELEVANCE::NO),
                        do_simulation(false), 
                        goal_price_propagation(false) {}
@@ -91,6 +96,10 @@ public:
         return g_in_dominance;
     }
 
+    bool trade_prices_in_dominance() const {
+        return prices_in_dominance;
+    }
+
     bool do_advanced_pruning() const {
         return do_simulation || goal_price_propagation || pruning_type == PRUNING_TYPE::FRONTIER;
     }
@@ -115,7 +124,7 @@ public:
     static bool ignore_current_state() {
         return ignore_current_search_state;
     }
-    
+
     static void set_reopen_closed_nodes() {
         reopen_closed_nodes = true;
     }

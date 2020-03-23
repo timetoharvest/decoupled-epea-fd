@@ -19,6 +19,7 @@ PruningOptions::PruningOptions(const Options &opts)
                     : pruning_type(PRUNING_TYPE(opts.get_enum("pruning_type"))),
                       min_price_in_g(opts.get<bool>("include_price_in_g")),
                       g_in_dominance(opts.get<bool>("include_g_in_dominance")),
+                      prices_in_dominance(opts.get<bool>("trade_prices_in_dominance")),
                       irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                       do_simulation(opts.get<bool>("simulation")),
                       goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
@@ -99,6 +100,10 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
 
     parser.add_option<bool>("include_g_in_dominance",
                             "incorporate the difference in g-values of decoupled states into the dominance checking",
+                            "true");
+
+    parser.add_option<bool>("trade_prices_in_dominance",
+                            "trade prices across leaves in dominance checking",
                             "true");
 
     parser.add_option<bool>("goal_price_propagation",
