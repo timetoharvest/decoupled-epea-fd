@@ -137,9 +137,8 @@ int CompliantPathGraph::check_dominance(const State &base_state,
             !(g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
         StateID curr_id = predecessor.get_id();
         while (curr_id.hash() != 0){
-            if (find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end()){
-                predecessors.push_back(curr_id.hash());
-            }
+	    assert(find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end());
+            predecessors.push_back(curr_id.hash());
             curr_id = search_space->get_node(g_state_registry->lookup_state(curr_id)).get_parent_state_id();
         }
         predecessors.push_back(0); // initial state always has StateID 0
@@ -176,24 +175,25 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
             DOMINANCE res = check_dominance(s, hash);
             
-            if (res != DOMINANCE::NONE){
-                if (res == DOMINANCE::DOMINATES) {
-                    // set dominated nodes to closed
-                    SearchNode node = search_space->get_node(s);
-                    if (node.is_open()){
-                        node.close();
-                    }
-                } else {
-                    replaced_state_dup = dup;
-
-                    // otherwise, the path to an existing state dominating this one
-                    // will be updated, so that paths to leaf states that are not
-                    // reachable in this state cannot be constructed
-                    // this is only needed for eager search, where for duplicate states
-                    // reached on a cheaper path, the predecessor is updated
-                    PruningOptions::set_ignore_current_state();
+            if (res == DOMINANCE::DOMINATES) {
+                // set dominated nodes to closed
+                SearchNode node = search_space->get_node(s);
+                if (node.is_open()){
+                    node.close();
                 }
-            }       
+            } else if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL) {
+                // TODO could as well return duplicate right away; try this out
+                // TODO if it turns out not to make a difference, merge this with
+                // the SAT/UNSAT case below
+                replaced_state_dup = dup;
+
+                // otherwise, the path to an existing state dominating this one
+                // might be updated (if reached with lower g), so that paths to leaf states that are not
+                // reachable in this state cannot be constructed
+                // this probably only happens in eager search, which updates the parent if
+                // new g is lower even if closed nodes are not reopened
+                PruningOptions::set_ignore_current_state();
+            }
             
         } else {
             
@@ -270,6 +270,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                 } else {
                     // current state is successor of the state compared to, so can only be
                     // pruned if it is dominated by/equal to its predecessor; new_g >= old_g
+                    assert(new_g >= old_g);
 
                     DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATED, old_g - new_g);
 
