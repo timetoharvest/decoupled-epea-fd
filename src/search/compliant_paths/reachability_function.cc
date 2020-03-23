@@ -275,7 +275,7 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int) {
+DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOMINANCE needed) {
     if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
         return DOMINANCE::NONE;
     }

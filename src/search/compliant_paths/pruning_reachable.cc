@@ -39,7 +39,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return clone();
 }
 
-DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, DOMINANCE needed, int) {
+DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
     PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -112,7 +112,7 @@ DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, DOMINA
 
 void PruningReachable::compute_frontier() {
     assert(g_factoring->get_profile() == FORK);
-    assert(pruning->use_frontier());
+    assert(pruning->use_frontier_pruning());
     
     if (!frontier.empty()){
         return;

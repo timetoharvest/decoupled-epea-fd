@@ -169,13 +169,10 @@ SearchStatus EagerSearch::step() {
     for (OperatorID op_id : applicable_ops) {
         const Operator &op = g_operators[op_id];
 
-        // g-value upper bound pruning for factored search => g_sum_min_goal_cost
-        int goal_cost = g_sum_min_goal_cost;
-        if (g_factoring && g_factoring->get_profile() != FORK){
-            // because g-value might include some goal cost
-            goal_cost = max(0, goal_cost - node.get_leaf_part_g());
-        }
-        if ((node.get_g() + get_adjusted_cost(op) + goal_cost) >= bound) {
+        // g-value upper bound pruning for decoupled search => g_sum_min_goal_cost
+        // get_leaf_g might include part of leaf goal cost for non-fork leaves
+        int goal_cost = max(0, g_sum_min_goal_cost - node.get_leaf_part_g());
+        if (node.get_g() + get_adjusted_cost(op) + goal_cost >= bound) {
             continue;
         }
 

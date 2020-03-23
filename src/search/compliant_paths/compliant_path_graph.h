@@ -86,7 +86,7 @@ protected:
     
     virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, DOMINANCE needed = DOMINANCE::NONE, int g_advantage = 0) = 0;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
     virtual void store_new_graph(const State &state) const = 0;
 
@@ -121,10 +121,10 @@ public:
 
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1
-    int check_dominance(const State &base_state,
-                        int curr_number_duplicates,
-                        const State &predecessor,
-                        const Operator &op);
+    std::pair<int, bool> check_dominance(const State &base_state,
+                                         int curr_number_duplicates,
+                                         const State &predecessor,
+                                         const Operator &op);
     
 
     static void initialize();

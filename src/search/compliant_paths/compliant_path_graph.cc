@@ -119,10 +119,10 @@ void CompliantPathGraph::set_cost_type(OperatorCost ct) {
     }
 }
 
-int CompliantPathGraph::check_dominance(const State &base_state,
-                                        int curr_number_duplicates,
-                                        const State &predecessor,
-                                        const Operator &op) {
+pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
+                                                    int curr_number_duplicates,
+                                                    const State &predecessor,
+                                                    const Operator &op) {
     
     int new_g = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type) + g_inc_g_by;
     
@@ -207,7 +207,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                         // otherwise, that existing state would be reopened
                         PruningOptions::set_ignore_current_state();
                     }
-                    return dup;
+                    return {dup, false};
                 } else if (res == DOMINANCE::DOMINATES){
                     // set dominated nodes to closed
                     SearchNode node = search_space->get_node(s);
@@ -229,20 +229,20 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // engine what to do with the current state, independent of its g value.
                     if (new_g > old_g){
 
-                        DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATED, old_g - new_g);
+                        DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
 
                         if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                             // current state is dominated by or equal to a previously generated state
-                            return dup;
+                            return {dup, false};
                         }
 
                     } else if (new_g < old_g) {
 
-                        DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATES, old_g - new_g);
+                        DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATES);
 
-                        if (res == DOMINANCE::EQUAL){
+                        if (res == DOMINANCE::EQUAL){ // TODO why not if new dominates?
                             // state will replace old state in search
-                            return dup;
+                            return {dup, true};
                         } else if (res == DOMINANCE::DOMINATES){
                             // close dominated states if they are not parent of current state
                             SearchNode node = search_space->get_node(s);
@@ -257,7 +257,7 @@ int CompliantPathGraph::check_dominance(const State &base_state,
 
                         if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                             // current state is dominated by or equal to a previously generated state
-                            return dup;
+                            return {dup, false};
                         } else if (res == DOMINANCE::DOMINATES){
                             // close dominated states if they are not parent of current state
                             SearchNode node = search_space->get_node(s);
@@ -272,19 +272,19 @@ int CompliantPathGraph::check_dominance(const State &base_state,
                     // pruned if it is dominated by/equal to its predecessor; new_g >= old_g
                     assert(new_g >= old_g);
 
-                    DOMINANCE res = check_dominance(s, hash, DOMINANCE::DOMINATED, old_g - new_g);
+                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
 
                     if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
-                        return dup;
+                        return {dup, false};
                     }
                 }
             }
         }
     }
     if (replaced_state_dup != -1){
-        return replaced_state_dup;
+        return {replaced_state_dup, false};
     } else {
-        return curr_number_duplicates + 1;
+        return {curr_number_duplicates + 1, false};
     }
 }
 

@@ -216,7 +216,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             new_cpg->store_new_graph(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
-            int new_dup_counter = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
+            auto [new_dup_counter, replace_old_cpg] = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
             assert((size_t) new_dup_counter < MAX_DUPLICATE_COUNTER);
             
             state_data_pool.push_back(s.get_packed_buffer());
@@ -228,9 +228,13 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             id = insert_id_or_pop_state();
             s = lookup_state(id);
             
-            if (new_dup_counter > old_dup_counter){    // is a new decoupled state
-                new_cpg->store_new_graph(s);
+            if (new_dup_counter > old_dup_counter){
+                // is a new decoupled state
                 state_duplicate_counter[base_state_id] = new_dup_counter;
+            }
+            if (new_dup_counter > old_dup_counter || replace_old_cpg){
+                // new decoupled state, or new decoupled state dominates an existing one => replace cpg
+                new_cpg->store_new_graph(s);
             }
         }
         

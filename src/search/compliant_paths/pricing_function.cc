@@ -220,7 +220,7 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int g_advantage) {
+DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) {
     if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
         return DOMINANCE::NONE;
     }

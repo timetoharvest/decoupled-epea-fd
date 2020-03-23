@@ -85,7 +85,7 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE EffectivePrices::check_dominance(const State& other, uint64_t , DOMINANCE needed, int g_advantage) {
+DOMINANCE EffectivePrices::check_dominance(const State& other, uint64_t , int g_advantage, DOMINANCE needed) {
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
     
     assert(g_factoring->get_profile() == FORK);

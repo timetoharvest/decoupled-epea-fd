@@ -283,13 +283,13 @@ void SearchSpace::trace_path(const State &goal_state,
 #ifdef DEBUG_PLAN_EXTRACTION
             cout << "current center state: " << states[step] << endl;
             g_state_registry->lookup_state(states[step]).dump_pddl();
-            for (size_t factor = 0; factor < g_leaves.size(); ++factor){
-                for (size_t i = 0; i < g_state_registry->size(factor); ++i){
-                    if (price_tags[step]->has_leaf_state(LeafStateID(i, factor))){
-                        if (price_tags[step]->get_path_info_for_fact(LeafStateID(i, factor)).is_new){
+            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+                for (LeafStateHash i(0); i < g_state_registry->size(factor); ++i){
+                    if (price_tags[step]->has_leaf_state(i, factor)){
+                        if (price_tags[step]->get_path_info_for_fact(i, factor).is_new){
                             cout << "is new:" << endl;
                         }
-                        g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
+                        g_state_registry->lookup_leaf_state(i, factor).dump_pddl();
                     }
                 }
             }

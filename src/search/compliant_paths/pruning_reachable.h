@@ -30,7 +30,7 @@ protected:
 // no own implementation so far. the only use would be to skip non-frontier states in the update
 // virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, DOMINANCE needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
     virtual void store_new_graph(const State &state) const override;
     
