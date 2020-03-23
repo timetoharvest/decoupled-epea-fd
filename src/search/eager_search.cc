@@ -274,7 +274,7 @@ SearchStatus EagerSearch::step() {
                     open_list->evaluate(succ_node.get_g(), is_preferred);
 
                     if (!insert_state(succ_node)){
-                        // pruning for FDA* / AFRA*
+                        // pruning for SDA* / ASDA*
                         continue;
                     }
                     
