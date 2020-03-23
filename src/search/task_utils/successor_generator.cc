@@ -42,6 +42,10 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
         // the leaf preconditions. collecting all actions enabled by the current
         // center state is enough.
         // TODO: make this more fine-grained
+        // TODO: this actually only works if all combinations of facts of all leaves can be reached!
+        // i.e. for every center action with a leaf precondition, the reachable part of the leaf state
+        // space has to have a leaf state that satisfies this leaf precondition
+        // => need to filter out actions for which this does not hold in a preprocess
         return;
     }
 
