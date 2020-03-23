@@ -229,26 +229,31 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                     // engine what to do with the current state, independent of its g value.
                     if (new_g > old_g){
 
-                        DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
+                        DOMINANCE res = check_dominance(s, hash, old_g - new_g);
 
                         if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                             // current state is dominated by or equal to a previously generated state
                             return {dup, false};
-                        }
-
-                    } else if (new_g < old_g) {
-
-                        DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATES);
-
-                        if (res == DOMINANCE::EQUAL){ // TODO why not if new dominates?
-                            // state will replace old state in search
-                            return {dup, true};
-                        } else if (res == DOMINANCE::DOMINATES){
+                        } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATES){
                             // close dominated states if they are not parent of current state
+                            // cannot do anything else; search does not reopen nodes with higher g
                             SearchNode node = search_space->get_node(s);
                             if (node.is_open()){
                                 node.close();
                             }
+                        }
+
+                    } else if (new_g < old_g) {
+
+                        DOMINANCE res = check_dominance(s, hash, old_g - new_g);
+
+                        if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
+                            // state will replace old state in search
+                            return {dup, true};
+                        } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATED){
+                            // treat as duplicate, need to tell search to not reopen/update parent
+                            PruningOptions::set_ignore_current_state();
+                            return {dup, false};
                         }
 
                     } else {
@@ -260,6 +265,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                             return {dup, false};
                         } else if (res == DOMINANCE::DOMINATES){
                             // close dominated states if they are not parent of current state
+                            // cannot do anything else; search does not reopen nodes with equal g
                             SearchNode node = search_space->get_node(s);
                             if (node.is_open()){
                                 node.close();
@@ -269,7 +275,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
 
                 } else {
                     // current state is successor of the state compared to, so can only be
-                    // pruned if it is dominated by/equal to its predecessor; new_g >= old_g
+                    // pruned if it is dominated by/equal to its predecessor
                     assert(new_g >= old_g);
 
                     DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
