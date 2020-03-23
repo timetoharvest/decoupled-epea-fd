@@ -229,22 +229,18 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
     }
 
     const Prices *other_cpg = &cpg_storage->prices[other];
-    
-    bool sizes_equal = true;
-    bool new_is_larger = false;
-    bool new_is_smaller = false;
 
-    int sum_needed_to_dominate = 0;
-    int sum_needed_to_be_dominated = 0;
+    bool dominated = true;
+    bool dominates = true;
+
+    int goal_advantage = 0;
 
     // check number of reachable leaf states and goal cost for early termination
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (other_cpg->get_number_states(factor) > get_number_states(factor)){
-            new_is_smaller = true;
-            sizes_equal = false;
+            dominates = false;
         } else if (other_cpg->get_number_states(factor) < get_number_states(factor)){
-            new_is_larger = true;
-            sizes_equal = false;
+            dominated = false;
         }
 
         if (!g_goals_per_factor[factor].empty()){
@@ -253,81 +249,67 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
             int new_goal_cost = get_goal_cost(factor);
             if (old_goal_cost != CompliantPathGraph::INF){
                 if (new_goal_cost != CompliantPathGraph::INF){
-                    if (old_goal_cost < new_goal_cost){
-                        sum_needed_to_dominate += new_goal_cost - old_goal_cost;
-                    } else if (old_goal_cost > new_goal_cost){
-                        sum_needed_to_be_dominated -= old_goal_cost - new_goal_cost;
+                    if (pruning->trade_prices_in_dominance()){
+                        goal_advantage = other_cpg->get_goal_cost(factor) - get_goal_cost(factor);
+                    } else {
+                        if (old_goal_cost > new_goal_cost){
+                            dominated = false;
+                        } else if (old_goal_cost < new_goal_cost){
+                            dominates = false;
+                        }
                     }
                 } else {
-                    new_is_smaller = true;
-                    sizes_equal = false;
+                    dominates = false;
                 }
             } else if (new_goal_cost != CompliantPathGraph::INF){
-                new_is_larger = true;
-                sizes_equal = false;
+                dominated = false;
             }
         }
     }
     
-    if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
-        // TODO can we do more in this case?
-        new_is_smaller = true;
-        new_is_larger = true;
-        sizes_equal = false;
-    } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
-        new_is_smaller = true;
-        sizes_equal = false;
-    } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
-        new_is_larger = true;
-        sizes_equal = false;
+    if (g_advantage + goal_advantage > 0){
+        dominated = false;
+    } else if (g_advantage + goal_advantage < 0){
+        dominates = false;
     }
 
-    if (new_is_smaller && new_is_larger){
+    if (!dominates && !dominated){
         return DOMINANCE::NONE;
-    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
+    } else if (!dominates && needed == DOMINANCE::DOMINATES){
         return DOMINANCE::NONE;
-    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
+    } else if (!dominated && needed == DOMINANCE::DOMINATED){
         return DOMINANCE::NONE;
     }
 
-    bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
-    bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
-
-    sum_needed_to_dominate = 0;
-    sum_needed_to_be_dominated = 0;
+    int sum_max_price_advantage = 0;
+    int sum_max_price_disadvantage = 0;
 
     // compare prices / reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         size_t number_new_states = get_number_states(factor);
         size_t number_old_states = other_cpg->get_number_states(factor);
         LeafStateHash id(0);
-        int max_needed_to_dominate = 0;
-        int max_needed_to_be_dominated = 0;
+        int max_advantage = 0;
+        int max_disadvantage = 0;
+        int min_advantage = numeric_limits<int>::max();
+        int min_disadvantage = numeric_limits<int>::max();
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             if (has_leaf_state(id, factor)){
                 --number_new_states;
                 if (other_cpg->has_leaf_state(id, factor)){
                     --number_old_states;
-                    if (number_old_states == 0 && number_new_states > 0){
-                        dominated = false;
-                        break;
-                    }
                     int old_cost = other_cpg->get_cost_of_state(id, factor);
                     int new_cost = get_cost_of_state(id, factor);
-                    assert(old_cost != CompliantPathGraph::INF);
-                    assert(new_cost != CompliantPathGraph::INF);
-                    
+                    assert(old_cost != CompliantPathGraph::INF && old_cost >= 0);
+                    assert(new_cost != CompliantPathGraph::INF && new_cost >= 0);
+
                     if (old_cost > new_cost){
-                        max_needed_to_be_dominated = max(max_needed_to_be_dominated, old_cost - new_cost);
-                        if (max_needed_to_dominate != 0){
-                            return DOMINANCE::NONE;
-                        }
+                        max_advantage = max(max_advantage, old_cost - new_cost);
+                        min_advantage = min(min_advantage, old_cost - new_cost);
                     } else if (old_cost < new_cost){
-                        max_needed_to_dominate = max(max_needed_to_dominate, new_cost - old_cost);
-                        if (max_needed_to_be_dominated != 0){
-                            return DOMINANCE::NONE;
-                        }
+                        max_disadvantage = max(max_disadvantage, new_cost - old_cost);
+                        min_disadvantage = min(min_disadvantage, new_cost - old_cost);
                     }
                 } else {
                     dominated = false;
@@ -335,7 +317,10 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
                         return DOMINANCE::NONE;
                     }
                 }
-                if (number_new_states == 0 && number_old_states > 0){
+                if (number_old_states == 0 && number_new_states > 0){
+                    dominated = false;
+                    break;
+                } else if (number_new_states == 0 && number_old_states > 0){
                     dominates = false;
                     break;
                 }
@@ -352,23 +337,38 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
             }
             ++id;
         }
-        sum_needed_to_dominate += max_needed_to_dominate;
-        sum_needed_to_be_dominated -= max_needed_to_be_dominated;
-        if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
-            // TODO can we do more in this case?
-            return DOMINANCE::NONE;
-        } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
-            dominates = false;
-            if (needed == DOMINANCE::DOMINATES){
-                return DOMINANCE::NONE;
+
+        sum_max_price_advantage += max_advantage;
+        sum_max_price_disadvantage -= max_disadvantage;
+
+        if (pruning->trade_prices_in_dominance()){
+            if (max_advantage == 0 && min_disadvantage != numeric_limits<int>::max()){
+                sum_max_price_advantage -= min_disadvantage;
             }
-        } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
-            dominated = false;
-            if (needed == DOMINANCE::DOMINATED){
-                return DOMINANCE::NONE;
+            if (max_disadvantage == 0 && min_advantage != numeric_limits<int>::max()){
+                sum_max_price_disadvantage += min_advantage;
+            }
+        } else {
+            if (g_advantage + sum_max_price_advantage > 0){
+                dominated = false;
+            }
+            if (g_advantage + sum_max_price_disadvantage < 0){
+                dominates = false;
             }
         }
+
+        if (!dominated && !dominates){
+            return DOMINANCE::NONE;
+        }
     }
+
+    if (g_advantage + sum_max_price_advantage > 0){
+        dominated = false;
+    }
+    if (g_advantage + sum_max_price_disadvantage < 0){
+        dominates = false;
+    }
+
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
