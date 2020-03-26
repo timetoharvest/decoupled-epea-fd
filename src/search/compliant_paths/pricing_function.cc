@@ -310,6 +310,9 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
                     } else if (old_cost < new_cost){
                         max_disadvantage = max(max_disadvantage, new_cost - old_cost);
                         min_disadvantage = min(min_disadvantage, new_cost - old_cost);
+                    } else {
+                    	min_advantage = 0;
+                    	min_disadvantage = 0;
                     }
                 } else {
                     dominated = false;
