@@ -131,6 +131,11 @@ void SearchNode::increase_h(int h) {
     info.h = h;
 }
 
+void SearchNode::decrease_h(int h) {
+    assert(h <= info.h);
+    info.h = h;
+}
+
 void SearchNode::close() {
     assert(info.status == SearchNodeInfo::OPEN);
     info.status = SearchNodeInfo::CLOSED;

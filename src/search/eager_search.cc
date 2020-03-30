@@ -268,9 +268,27 @@ SearchStatus EagerSearch::step() {
                     }
 
                     succ_node.reopen(node, op_id);
-                    heuristics[0]->set_evaluator_value(succ_node.get_h());
-                    // TODO: this appears fishy to me. Why is here only heuristic[0]
-                    // involved? Is this still feasible in the current version?
+
+                    if (succ_node.is_h_dirty()){
+                        // h_dirty is set by check_dominance() in CompliantPathGraph
+                        // when a new state dominates and replaces an existing one
+                        for (size_t j = 0; j < heuristics.size(); ++j)
+                            heuristics[j]->evaluate(succ_state);
+                        succ_node.clear_h_dirty();
+                        search_progress.inc_evaluated_states();
+                        search_progress.inc_evaluations(heuristics.size());
+
+                        int new_h = heuristics[0]->get_heuristic();
+                        if (new_h < succ_node.get_h()){
+                            // new h < old h
+                            succ_node.decrease_h(new_h);
+                        }
+                    } else {
+                        // TODO: this appears fishy to me. Why is here only heuristic[0]
+                        // involved? Is this still feasible in the current version?
+                        heuristics[0]->set_evaluator_value(succ_node.get_h());
+                    }
+
                     open_list->evaluate(succ_node.get_g(), is_preferred);
 
                     if (!insert_state(succ_node)){

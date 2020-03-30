@@ -249,7 +249,10 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
 
                         if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
                             // state will replace old state in search
-                            return {dup, true};
+                        	// need to set h dirty so the search evaluates the heuristic on the
+                        	// new state, which can result in lower h value
+                        	search_space->get_node(s).set_h_dirty();
+                        	return {dup, true};
                         } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATED){
                             // treat as duplicate, need to tell search to not reopen/update parent
                             PruningOptions::set_ignore_current_state();

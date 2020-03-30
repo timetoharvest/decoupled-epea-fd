@@ -46,6 +46,7 @@ public:
     void update_parent(const SearchNode &parent_node,
                        OperatorID parent_op);
     void increase_h(int h);
+    void decrease_h(int h); // needed for optimal decoupled search
     void close();
     void mark_as_dead_end();
 
