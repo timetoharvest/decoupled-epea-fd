@@ -139,7 +139,7 @@ const State &StateRegistry::get_initial_state() {
             
             unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
             
-            init_state_cpg->store_new_graph(*cached_initial_state);
+            init_state_cpg->store_new_cpg(*cached_initial_state);
             
             state_duplicate_counter[0] = 0;
         }
@@ -213,7 +213,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         new_cpg->update(s);
         
         if (old_dup_counter == -1){ // is new center state
-            new_cpg->store_new_graph(s);
+            new_cpg->store_new_cpg(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
             auto [new_dup_counter, replace_old_cpg] = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
@@ -232,13 +232,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 // is a new decoupled state
                 state_duplicate_counter[base_state_id] = new_dup_counter;
             }
+            if (replace_old_cpg){
+            	CompliantPathGraph::clear_cpg_cache(s);
+            }
             if (new_dup_counter > old_dup_counter || replace_old_cpg){
                 // new decoupled state, or new decoupled state dominates an existing one => replace cpg
-                new_cpg->store_new_graph(s);
+                new_cpg->store_new_cpg(s);
             }
         }
         
-        new_cpg->discard_new_graph();
+        new_cpg->discard_new_cpg();
         
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;

@@ -277,8 +277,7 @@ size_t EffectivePrices::get_number_effective_states(LeafFactorID factor) const {
     }
 }
 
-void EffectivePrices::store_new_graph(const State &state) const {
-    discard_new_graph(); // the cache is set by the parent class
+void EffectivePrices::store_new_cpg(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
 

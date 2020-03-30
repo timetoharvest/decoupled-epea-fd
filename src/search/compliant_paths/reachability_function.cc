@@ -69,7 +69,7 @@ void Reachable::update(const State &base_state) {
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
 
-    assert(leaf_tags_to_cache.empty());
+    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -115,12 +115,12 @@ void Reachable::update(const State &base_state) {
                     }
                     ++leaf_id;
                 }
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
+                if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
+                    const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
                     
-                    size_t number_states = tag_to_copy->get_number_states(factor) - 1;
+                    size_t number_states = cpg_to_copy->get_number_states(factor) - 1;
                     for (LeafStateHash id(0) ; id < g_state_registry->size(factor); ++id){
-                        if (id != leaf_id && tag_to_copy->has_leaf_state(id, factor)){
+                        if (id != leaf_id && cpg_to_copy->has_leaf_state(id, factor)){
                             add_state(id, factor);
                             if (--number_states == 0){
                                 break;
@@ -129,7 +129,7 @@ void Reachable::update(const State &base_state) {
                     }
                     continue;
                 } else {
-                    leaf_tags_to_cache.push_back(LeafStateID(leaf_id, factor));
+                    leaf_states_to_cache_for_current_cpg.push_back(LeafStateID(leaf_id, factor));
                 }
             }
         }
@@ -554,8 +554,8 @@ bool Reachable::goal_reachable(LeafFactorID factor) const {
     return goal_reached[factor];
 }
 
-void Reachable::store_new_graph(const State &state) const {
-    cache_leaf_price_tags(state);
+void Reachable::store_new_cpg(const State &state) const {
+    cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
 

@@ -38,15 +38,18 @@ void Prices::reduce_cost_by(LeafFactorID factor, int cost) {
     if (goal_cost[factor] != INF){
         // if there is a goal state, its cost must be >= cost!
         goal_cost[factor] -= cost;
+        assert(goal_cost[factor] >= 0);
     }
     for (size_t id = 0; id < prices[factor].size(); ++id){
         if (prices[factor][id] != INF){
             prices[factor][id] -= cost;
+            assert(prices[factor][id] >= 0);
         }
     }
 }
 
 bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
+	assert(cost >= 0);
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
@@ -96,7 +99,7 @@ void Prices::update(const State &base_state) {
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
     
-    assert(leaf_tags_to_cache.empty());
+    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -120,11 +123,11 @@ void Prices::update(const State &base_state) {
 #endif 
         
         bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
-        
+
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
             // the two above conditions together prevent errors in case the CG is not connected.
             // i.e. leaf_price_cache is empty for fork topologies
-            
+
             // no need to rebuild the reachable leaf state space every time
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
@@ -144,25 +147,25 @@ void Prices::update(const State &base_state) {
                     ++leaf_id;
                 }
                 assert(found);
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){
-                    const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
-                    
+                if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
+                    const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
+
                     int cost_delta = get_cost_of_state(leaf_id, factor);
-                    cost_delta -= tag_to_copy->get_cost_of_state(leaf_id, factor);
-                    
-                    size_t num_states = tag_to_copy->get_number_states(factor) - 1;
+                    cost_delta -= cpg_to_copy->get_cost_of_state(leaf_id, factor);
+
+                    size_t num_states = cpg_to_copy->get_number_states(factor) - 1;
                     for (LeafStateHash id(0) ; id < number_leaf_states; ++id){
-                        if (id != leaf_id && tag_to_copy->has_leaf_state(id, factor)){
-                            int cost = tag_to_copy->get_cost_of_state(id, factor);
+                        if (id != leaf_id && cpg_to_copy->has_leaf_state(id, factor)){
+                            int cost = cpg_to_copy->get_cost_of_state(id, factor);
                             add_state(id, factor, cost + cost_delta);
                             if (--num_states == 0){
                                 break;
                             }
-                        }       
+                        }
                     }
                     continue;
                 } else {
-                    leaf_tags_to_cache.push_back(LeafStateID(leaf_id, factor));
+                	leaf_states_to_cache_for_current_cpg.push_back(LeafStateID(leaf_id, factor));
                 }
             }
         }
@@ -266,7 +269,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
             }
         }
     }
-    
+
     if (g_advantage + goal_advantage > 0){
         dominated = false;
     } else if (g_advantage + goal_advantage < 0){
@@ -489,8 +492,8 @@ bool Prices::goal_reachable(LeafFactorID factor) const {
     return goal_cost[factor] != INF;
 }
 
-void Prices::store_new_graph(const State &state) const {
-    cache_leaf_price_tags(state);
+void Prices::store_new_cpg(const State &state) const {
+    cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
 

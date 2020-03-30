@@ -40,7 +40,7 @@ protected:
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_graph(const State &state) const override;
+    virtual void store_new_cpg(const State &state) const override;
     
 public:
     

@@ -65,7 +65,7 @@ void FrontierPrices::update(const State &base_state) {
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
     
-    assert(leaf_tags_to_cache.empty());
+    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -258,7 +258,7 @@ DOMINANCE FrontierPrices::check_dominance(const State& other, uint64_t, int, DOM
     return DOMINANCE::NONE;
 }
 
-void FrontierPrices::store_new_graph(const State &state) const {
+void FrontierPrices::store_new_cpg(const State &state) const {
     cpg_storage->store_cpg(state, *this);
 }
 

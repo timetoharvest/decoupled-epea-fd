@@ -32,9 +32,9 @@ OperatorCost CompliantPathGraph::cost_type;
 
 vector<bool> CompliantPathGraph::precompute_leaf_state_spaces;
 
-vector<vector<StateID> > CompliantPathGraph::leaf_price_cache;
+vector<vector<StateID> > CompliantPathGraph::cpg_cache;
 
-vector<LeafStateID> CompliantPathGraph::leaf_tags_to_cache;
+vector<LeafStateID> CompliantPathGraph::leaf_states_to_cache_for_current_cpg;
 
 vector<boost::dynamic_bitset<> > CompliantPathGraph::is_a_leaf_goal_state;
 
@@ -63,23 +63,37 @@ bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID facto
     return is_a_leaf_goal_state[factor][id];
 }
 
-void CompliantPathGraph::cache_leaf_price_tags(const State &state) {
-    if (g_factoring->get_profile() != FORK && !leaf_tags_to_cache.empty()){
-        for (size_t i = 0; i < leaf_tags_to_cache.size(); i++){
-            LeafStateHash leaf_id = leaf_tags_to_cache[i].hash();
-            LeafFactorID factor = leaf_tags_to_cache[i].get_factor();
-            if (leaf_price_cache[factor].size() <= leaf_id){
-                leaf_price_cache[factor].resize(leaf_id + 1, StateID::no_state);
+void CompliantPathGraph::cache_cpg(const State &state) {
+    if (g_factoring->get_profile() != FORK && !leaf_states_to_cache_for_current_cpg.empty()){
+        for (size_t i = 0; i < leaf_states_to_cache_for_current_cpg.size(); i++){
+            LeafStateHash leaf_id = leaf_states_to_cache_for_current_cpg[i].hash();
+            LeafFactorID factor = leaf_states_to_cache_for_current_cpg[i].get_factor();
+            if (cpg_cache[factor].size() <= leaf_id){
+                cpg_cache[factor].resize(leaf_id + 1, StateID::no_state);
             }
-            leaf_price_cache[factor][leaf_id] = state.get_id();
+            cpg_cache[factor][leaf_id] = state.get_id();
         }
-        vector<LeafStateID>().swap(leaf_tags_to_cache);
+        vector<LeafStateID>().swap(leaf_states_to_cache_for_current_cpg);
     }
 }
 
-void CompliantPathGraph::discard_leaf_price_cache() {
-    if (g_factoring->get_profile() != FACTORING_PROFILE::FORK && !leaf_tags_to_cache.empty()){
-        vector<LeafStateID>().swap(leaf_tags_to_cache);
+void CompliantPathGraph::clear_cpg_cache(const State &state) {
+	if (g_factoring->get_profile() != FORK){
+		for (LeafFactorID factor(0); factor < cpg_cache.size(); ++factor){
+			if (g_factoring->is_ifork_leaf(factor)){
+				for (LeafStateHash id(0); id < cpg_cache[factor].size(); ++id){
+					if (cpg_cache[factor][id] == state.get_id()){
+						cpg_cache[factor][id] = StateID::no_state;
+					}
+				}
+			}
+		}
+	}
+}
+
+void CompliantPathGraph::discard_cpg_cache() {
+    if (!leaf_states_to_cache_for_current_cpg.empty()){
+        vector<LeafStateID>().swap(leaf_states_to_cache_for_current_cpg);
     }
 }
 
@@ -92,7 +106,7 @@ void CompliantPathGraph::initialize() {
     // initialize cache if at least one inv-fork leaf present
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (g_factoring->is_ifork_leaf(factor)){
-            leaf_price_cache = vector<vector<StateID> >(g_leaves.size());
+            cpg_cache = vector<vector<StateID> >(g_leaves.size());
             break;
         }
     }
@@ -598,7 +612,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
     }
 }
 
-void CompliantPathGraph::discard_new_graph() const {
-    discard_leaf_price_cache();
+void CompliantPathGraph::discard_new_cpg() const {
+    discard_cpg_cache();
 }
 

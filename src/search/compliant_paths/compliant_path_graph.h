@@ -55,9 +55,19 @@ protected:
     
     static std::vector<bool> precompute_leaf_state_spaces;
     
-    static std::vector<std::vector<StateID> > leaf_price_cache;
+    // Stores for every leaf state the StateID of the decoupled state
+    // from which the CompliantPathGraph can be copied.
+    // In inverted-fork factorings, if the leaf state space is rebuilt
+    // from a single leaf state, we can save the reconstruction effort
+    // and simply copy the final CompliantPathGraph for that factor
+    // from a decoupled state that started reconstruction in the same
+    // leaf state
+    static std::vector<std::vector<StateID> > cpg_cache;
     
-    static std::vector<LeafStateID> leaf_tags_to_cache;
+    // temporary memory that keeps the leaf state IDs from which the
+    // current CompliantPathGraph started reconstruction of the leaf
+    // state spaces for inverted-fork leaves
+    static std::vector<LeafStateID> leaf_states_to_cache_for_current_cpg;
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
@@ -76,9 +86,16 @@ protected:
     
     static std::vector<size_t> curr_leaf_state_max_id;
     
-    static void cache_leaf_price_tags(const State &state);
+    static void cache_cpg(const State &state);
     
-    static void discard_leaf_price_cache();
+    // when overwriting the CompliantPathGraph of state, because the new
+    // decoupled state dominates the old one, we need to clear the cache
+    // for all leaf states that point to state, since it can happen that
+    // not the same leaf state is the starting point of construction of
+    // the leaf state space in the new CompliantPathGraph
+    static void clear_cpg_cache(const State &state);
+
+    static void discard_cpg_cache();
 
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
@@ -88,9 +105,9 @@ protected:
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
-    virtual void store_new_graph(const State &state) const = 0;
+    virtual void store_new_cpg(const State &state) const = 0;
 
-    virtual void discard_new_graph() const;
+    virtual void discard_new_cpg() const;
     
 public:
     
