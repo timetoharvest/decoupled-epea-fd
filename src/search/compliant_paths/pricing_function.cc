@@ -237,6 +237,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
     bool dominates = true;
 
     int goal_advantage = 0;
+    int goal_disadvantage = 0;
 
     // check number of reachable leaf states and goal cost for early termination
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
@@ -252,14 +253,10 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
             int new_goal_cost = get_goal_cost(factor);
             if (old_goal_cost != CompliantPathGraph::INF){
                 if (new_goal_cost != CompliantPathGraph::INF){
-                    if (pruning->trade_prices_in_dominance()){
-                        goal_advantage = other_cpg->get_goal_cost(factor) - get_goal_cost(factor);
-                    } else {
-                        if (old_goal_cost > new_goal_cost){
-                            dominated = false;
-                        } else if (old_goal_cost < new_goal_cost){
-                            dominates = false;
-                        }
+                    if (old_goal_cost > new_goal_cost){
+                        goal_advantage += old_goal_cost - new_goal_cost;
+                    } else if (old_goal_cost < new_goal_cost){
+                        goal_disadvantage += new_goal_cost - old_goal_cost;
                     }
                 } else {
                     dominates = false;
@@ -270,10 +267,22 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
         }
     }
 
-    if (g_advantage + goal_advantage > 0){
+    if (pruning->trade_prices_in_dominance()){
+        if (g_advantage + goal_advantage - goal_disadvantage > 0){
+            dominated = false;
+        } else if (g_advantage + goal_advantage - goal_disadvantage < 0){
+            dominates = false;
+        }
+    } else if (goal_advantage > 0 && goal_disadvantage > 0){
         dominated = false;
-    } else if (g_advantage + goal_advantage < 0){
         dominates = false;
+    } else {
+        if (g_advantage + goal_advantage > 0){
+            dominated = false;
+        }
+        if (g_advantage - goal_disadvantage < 0){
+            dominates = false;
+        }
     }
 
     if (!dominates && !dominated){
