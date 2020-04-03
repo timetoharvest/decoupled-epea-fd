@@ -50,7 +50,7 @@ MERGE_AND_SHRINK = ('astar(merge_and_shrink('
     'label_reduction=exact('
         'before_shrinking=true,'
         'before_merging=false),'
-    'max_states=50000,threshold_before_merge=1,verbosity=silent))')
+    'max_states=50000,threshold_before_merge=1))')
 
 SEARCH_TESTS = [
     ("strips", [], "astar(add())", defaultdict(lambda: returncodes.SUCCESS)),

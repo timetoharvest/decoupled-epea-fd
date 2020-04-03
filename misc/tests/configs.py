@@ -28,7 +28,7 @@ def configs_optimal_core():
             "merge_tree=linear(variable_order=reverse_level)),"
             "shrink_strategy=shrink_fh(),"
             "label_reduction=exact(before_shrinking=false,"
-            "before_merging=true),max_states=50000,verbosity=silent))"],
+            "before_merging=true),max_states=50000))"],
         "astar_merge_and_shrink_dfp_bisim": [
             "--search",
             "astar(merge_and_shrink(merge_strategy=merge_stateless("
@@ -39,7 +39,7 @@ def configs_optimal_core():
             "shrink_strategy=shrink_bisimulation(greedy=false),"
             "label_reduction=exact(before_shrinking=true,"
             "before_merging=false),max_states=50000,"
-            "threshold_before_merge=1,verbosity=silent))"],
+            "threshold_before_merge=1))"],
         "astar_merge_and_shrink_dfp_greedy_bisim": [
             "--search",
             "astar(merge_and_shrink(merge_strategy=merge_stateless("
@@ -51,7 +51,7 @@ def configs_optimal_core():
             "greedy=true),"
             "label_reduction=exact(before_shrinking=true,"
             "before_merging=false),max_states=infinity,"
-            "threshold_before_merge=1,verbosity=silent))"],
+            "threshold_before_merge=1))"],
         "blind-sss-simple": [
             "--search",
             "astar(blind(), pruning=stubborn_sets_simple())"],
@@ -103,22 +103,22 @@ def configs_satisficing_core():
             "h=cg()",
             "--search",
             "lazy_greedy([h],preferred=[h])"],
-        # LAMA first
-        "lama-first": [
-            "--evaluator",
-            "hlm=lmcount(lm_factory=lm_rhw(reasonable_orders=true),transform=adapt_costs(one),pref=false)",
-            "--evaluator", "hff=ff(transform=adapt_costs(one))",
-            "--search", """lazy_greedy([hff,hlm],preferred=[hff,hlm],
-                                       cost_type=one,reopen_closed=false)"""],
-        "lama-first-typed": [
-            "--evaluator",
-            "hlm=lmcount(lm_factory=lm_rhw(reasonable_orders=true),transform=adapt_costs(one),pref=false)",
-            "--evaluator", "hff=ff(transform=adapt_costs(one))",
-            "--search",
-                "lazy(alt([single(hff), single(hff, pref_only=true),"
-                "single(hlm), single(hlm, pref_only=true), type_based([hff, g()])], boost=1000),"
-                "preferred=[hff,hlm], cost_type=one, reopen_closed=false, randomize_successors=true,"
-                "preferred_successors_first=false)"],
+    }
+
+
+def configs_optimal_ipc():
+    return {
+        "seq_opt_merge_and_shrink": ["--alias", "seq-opt-merge-and-shrink"],
+        "seq_opt_fdss_1": ["--alias", "seq-opt-fdss-1"],
+        "seq_opt_fdss_2": ["--alias", "seq-opt-fdss-2"],
+    }
+
+
+def configs_satisficing_ipc():
+    return {
+        "seq_sat_lama_2011": ["--alias", "seq-sat-lama-2011"],
+        "seq_sat_fdss_1": ["--alias", "seq-sat-fdss-1"],
+        "seq_sat_fdss_2": ["--alias", "seq-sat-fdss-2"],
     }
 
 
