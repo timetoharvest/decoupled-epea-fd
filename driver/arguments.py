@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import argparse
 import os.path
 import re
@@ -89,6 +87,7 @@ Examples:
 """ % "\n\n".join("%s\n%s" % (desc, " ".join(cmd)) for desc, cmd in EXAMPLES)
 
 COMPONENTS_PLUS_OVERALL = ["translate", "search", "validate", "overall"]
+DEFAULT_SAS_FILE = "output.sas"
 
 
 """
@@ -341,6 +340,9 @@ def parse_args():
         action="help", default=argparse.SUPPRESS,
         help="show this help message and exit")
     help_options.add_argument(
+        "-v", "--version", action="store_true",
+        help="print version number and exit")
+    help_options.add_argument(
         "--show-aliases", action="store_true",
         help="show the known aliases (see --alias) and exit")
 
@@ -370,16 +372,16 @@ def parse_args():
         help="run a config with an alias (e.g. seq-sat-lama-2011)")
     driver_other.add_argument(
         "--build",
-        help="BUILD can be a predefined build name like release32 "
-            "(default), debug32, release64 and debug64, a custom build "
-            "name, or the path to a directory holding the planner "
-            "binaries. The driver first looks for the planner binaries "
-            "under 'BUILD'. If this path does not exist, it tries the "
-            "directory '<repo>/builds/BUILD/bin', where the build "
-            "script creates them by default.")
+        help="BUILD can be a predefined build name like release "
+            "(default) and debug, a custom build name, or the path to "
+            "a directory holding the planner binaries. The driver "
+            "first looks for the planner binaries under 'BUILD'. If "
+            "this path does not exist, it tries the directory "
+            "'<repo>/builds/BUILD/bin', where the build script creates "
+            "them by default.")
     driver_other.add_argument(
         "--debug", action="store_true",
-        help="alias for --build=debug32 --validate")
+        help="alias for --build=debug --validate")
     driver_other.add_argument(
         "--validate", action="store_true",
         help='validate plans (implied by --debug); needs "validate" (VAL) on PATH')
@@ -393,8 +395,13 @@ def parse_args():
         help="write plan(s) to FILE (default: %(default)s; anytime configurations append .1, .2, ...)")
 
     driver_other.add_argument(
-        "--sas-file", metavar="FILE", default="output.sas",
-        help="intermediate file for storing the translator output (default: %(default)s)")
+        "--sas-file", metavar="FILE",
+        help="intermediate file for storing the translator output "
+            "(implies --keep-sas-file, default: {})".format(DEFAULT_SAS_FILE))
+    driver_other.add_argument(
+        "--keep-sas-file", action="store_true",
+        help="keep translator output file (implied by --sas-file, default: "
+            "delete file if translator and search component are active)")
 
     driver_other.add_argument(
         "--portfolio", metavar="FILE",
@@ -410,7 +417,6 @@ def parse_args():
         "--cleanup", action="store_true",
         help="clean up temporary files (translator output and plan files) and exit")
 
-
     parser.add_argument(
         "planner_args", nargs=argparse.REMAINDER,
         help="file names and options passed on to planner components")
@@ -424,15 +430,20 @@ def parse_args():
 
     args = parser.parse_args()
 
+    if args.sas_file:
+        args.keep_sas_file = True
+    else:
+        args.sas_file = DEFAULT_SAS_FILE
+
     if args.build and args.debug:
         print_usage_and_exit_with_driver_input_error(
-            parser, "The option --debug is an alias for --build=debug32 "
+            parser, "The option --debug is an alias for --build=debug "
                      "--validate. Do no specify both --debug and --build.")
     if not args.build:
         if args.debug:
-            args.build = "debug32"
+            args.build = "debug"
         else:
-            args.build = "release32"
+            args.build = "release"
 
     _split_planner_args(parser, args)
 
@@ -462,7 +473,9 @@ def parse_args():
         print_usage_and_exit_with_driver_input_error(
             parser, "--portfolio-single_plan may only be used for portfolios.")
 
-    if not args.show_aliases and not args.cleanup:
+    if not args.version and not args.show_aliases and not args.cleanup:
         _set_components_and_inputs(parser, args)
+        if "translate" not in args.components or "search" not in args.components:
+            args.keep_sas_file = True
 
     return args
