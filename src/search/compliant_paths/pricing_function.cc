@@ -405,7 +405,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
     return DOMINANCE::NONE;
 }
 
-void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op) {
+void Prices::apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op) {
     // TODO store some tree that captures which leaf states satisfy a certain leaf condition
     // then run only over the states that satisfy the leaf precondition of op.
     // this should be a lot faster than running over all leaf states and check if the condition
@@ -423,26 +423,26 @@ void Prices::apply_center_op_to_leaves(const Prices &old_tag, const Operator &op
         if (!has_pre_on_factor && num_effects == 0){
             // op does not affect leaf at all => copy everything
  
-            number_states[factor] = old_tag.number_states[factor];
-            prices[factor] = old_tag.prices[factor];
-            goal_cost[factor] = old_tag.goal_cost[factor];
+            number_states[factor] = old_cpg.number_states[factor];
+            prices[factor] = old_cpg.prices[factor];
+            goal_cost[factor] = old_cpg.goal_cost[factor];
             continue;
         }
         
         // center op completely overwrites this leaf factor
         bool leaf_overwritten = num_effects == g_leaves[factor].size();
               
-        int min_price = has_pre_on_factor ? numeric_limits<int>::max() : 0;
+        int min_price = numeric_limits<int>::max();
                 
-        size_t number_states = old_tag.get_number_states(factor);
+        size_t number_states = old_cpg.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
-            if (old_tag.has_leaf_state(id, factor)){
+            if (old_cpg.has_leaf_state(id, factor)){
                 --number_states;
                 
                 if (!has_pre_on_factor || op.is_applicable(id, factor)){ // TODO there should be a more efficient way to check this! yep, cf above TODO 
                     
-                    int cost = old_tag.get_cost_of_state(id, factor);
+                    int cost = old_cpg.get_cost_of_state(id, factor);
                     
                     min_price = min(min_price, cost);
                     
