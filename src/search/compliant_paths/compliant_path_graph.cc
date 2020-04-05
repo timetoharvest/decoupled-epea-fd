@@ -497,6 +497,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         
         size_t num_sccs = sccs::compute_maximal_sccs(leaf_only_state_space_graph).size();
         if (num_sccs == 1){
+            // TODO check that product of leaf variable domains equal leaf state space size
             is_leaf_state_space_scc[factor] = true;
             cout << "state space of leaf " << factor << " is strongly connected via leaf-only actions" << endl;
         } else if (num_sccs == g_state_registry->size(factor)){
