@@ -169,7 +169,7 @@ public:
 
     virtual ~PerStateInformation() override {
         for (auto it : entries_by_registry) {
-            it->first->unsubscribe(this);
+            it.first->unsubscribe(this);
             delete it.second;
         }
     }
