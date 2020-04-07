@@ -38,9 +38,8 @@ protected:
 
     size_t get_number_effective_states(LeafFactorID factor) const;
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
-    
-    virtual void update(const State &base_state) override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
+                                                                                const Operator &op) const override;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     

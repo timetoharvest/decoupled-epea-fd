@@ -44,7 +44,8 @@ void FrontierPrices::resize() {
     // TODO why dont we resize effective_prices + number/frontier..? see also above comment
 }
 
-unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const Operator&) const {
+unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const State &new_center_state,
+                                                                               const Operator&) const {
     unique_ptr<FrontierPrices> tmp_p_price(new FrontierPrices(*this));
     if (frontier.empty()){
         // should only happen for initial state
@@ -60,10 +61,11 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
             }
         }
     }
+    tmp_p_price->update(new_center_state);
     return tmp_p_price;
 }
 
-void FrontierPrices::update(const State &base_state) {
+void FrontierPrices::update(const State &new_center_state) {
 
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING RPG" << endl;
@@ -118,7 +120,7 @@ void FrontierPrices::update(const State &base_state) {
                     bool all_applicable = !pruning->propagate_goal_prices();
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
-                        if (op.is_center_applicable(base_state)){
+                        if (op.is_center_applicable(new_center_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             bool added = add_state(successor, factor, 
                                                    cost + get_adjusted_action_cost(op, cost_type));

@@ -18,6 +18,8 @@ class Prices : public CompliantPathGraph {
     // of a search node
     void reduce_cost_by(LeafFactorID factor, int cost);
     
+    void apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op);
+
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
@@ -35,11 +37,10 @@ protected:
     // return true, if the fact was actually added
     bool add_state(LeafStateHash id, LeafFactorID factor, int cost);
     
-    void apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op);
+    void update(const State &new_center_state);
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
-                                                                          
-    virtual void update(const State &base_state) override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
+                                                                                const Operator &op) const override;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     

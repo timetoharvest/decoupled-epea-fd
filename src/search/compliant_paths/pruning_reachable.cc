@@ -35,9 +35,12 @@ void PruningReachable::resize() {
     goal_reached.resize(g_leaves.size(), false);
 }
 
-unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const Operator &) const {
+unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const State &new_center_state,
+                                                                                 const Operator &) const {
     // TODO copy frontier from predecessor?
-    return clone();
+    unique_ptr<PruningReachable> p_reach(new PruningReachable(*this));
+    p_reach->update(new_center_state);
+    return p_reach;
 }
 
 DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {

@@ -58,15 +58,18 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const Operator &op) const {
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &new_center_state,
+                                                                          const Operator &op) const {
+    unique_ptr<Reachable> tmp_reach;
     if (g_factoring->get_profile() != FORK){
-        unique_ptr<Reachable> tmp_reach(new Reachable());
+        tmp_reach.reset(new Reachable());
         tmp_reach->resize();
         tmp_reach->apply_center_op_to_leaves(*this, op);
-        return tmp_reach;
     } else {                
-        return clone();
+        tmp_reach.reset(new Reachable(*this));
     }
+    tmp_reach->update(new_center_state);
+    return tmp_reach;
 }
 
 void Reachable::update(const State &base_state) {

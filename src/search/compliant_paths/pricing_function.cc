@@ -87,17 +87,19 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const Operator &op) const {
+unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const State &new_center_state,
+                                                                       const Operator &op) const {
     // TODO what about having a static pointer in the class to prevent reallocation?
-        
+    unique_ptr<Prices> tmp_price;
     if (g_factoring->get_profile() != FORK){
-        unique_ptr<Prices> tmp_price(new Prices());
+        tmp_price.reset(new Prices());
         tmp_price->resize();
         tmp_price->apply_center_op_to_leaves(*this, op);
-        return tmp_price;
     } else {                
-        return clone();
+        tmp_price.reset(new Prices(*this));
     }
+    tmp_price->update(new_center_state);
+    return tmp_price;
 }
 
 void Prices::update(const State &base_state) {

@@ -17,8 +17,6 @@ class PruningReachable : public Reachable {
 
     void compute_frontier();
     
-    PruningReachable(const PruningReachable *tag);
-    
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
@@ -26,7 +24,8 @@ protected:
     
     std::vector<boost::dynamic_bitset<> > frontier;    
 
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
+                                                                                const Operator &op) const override;
                                                                                 
 // no own implementation so far. the only use would be to skip non-frontier states in the update
 // virtual void update(const State &base_state) = 0;

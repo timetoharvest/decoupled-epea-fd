@@ -43,9 +43,9 @@ class PathPriceTag : public Prices { // TODO rename to PathPrices?
 
     const PathPriceInfo &get_path_info(LeafStateHash id, LeafFactorID factor) const;
     
-    void update(const State &base_state);
+    void update(const State &new_center_state);
     
-    void apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const PathPriceTag &old_cpg, const Operator &op);
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
     

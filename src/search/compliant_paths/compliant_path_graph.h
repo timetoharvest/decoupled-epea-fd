@@ -98,9 +98,7 @@ protected:
     static void discard_cpg_cache();
 
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const = 0;
-    
-    virtual void update(const State &base_state) = 0;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const = 0;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     

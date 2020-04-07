@@ -76,20 +76,17 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
     return false;
 }
 
-unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const Operator &) const {
-    return clone();
-}
-
-void EffectivePrices::update(const State &base_state) {
-    Prices::update(base_state);
-
+unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State &new_center_state,
+                                                                                const Operator &) const {
+    unique_ptr<EffectivePrices> eff_prices(new EffectivePrices(*this));
+    eff_prices->update(new_center_state);
     if(pruning->propagate_simulation_prices()){
-        propagate_dominance_prices();
+        eff_prices->propagate_dominance_prices();
     }
-
     if(pruning->propagate_goal_prices()) {
-        goal_price_propagation();
+        eff_prices->goal_price_propagation();
     }
+    return eff_prices;
 }
 
 DOMINANCE EffectivePrices::check_dominance(const State &other, uint64_t, int g_advantage, DOMINANCE needed) {
