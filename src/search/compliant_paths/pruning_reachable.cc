@@ -19,30 +19,29 @@ void PruningReachable::register_cpg_storage(PruningReachableStorage *storage) {
     cpg_storage = storage;
 }
 
-PruningReachable::PruningReachable(const PruningReachable *tag) {
-    if (tag == 0){
-        reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
-        goal_reached.resize(g_leaves.size(), false);
-    } else {
-        reachable = tag->reachable;
-        goal_reached = tag->goal_reached;
-    }
+PruningReachable::PruningReachable(const PruningReachable &other) : Reachable(other) {
+    assert(g_factoring->get_profile() == FORK);
 }
 
-unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const State &,
-                                                                                 const Operator &) const {
-    
-    assert(g_factoring->get_profile() == FORK); // not supported, yet
+PruningReachable& PruningReachable::operator=(PruningReachable &&other) {
+    reachable = move(other.reachable);
+    goal_reached = move(other.goal_reached);
+    frontier = move(other.frontier);
+    return *this;
+}
 
+void PruningReachable::resize() {
+    reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
+    goal_reached.resize(g_leaves.size(), false);
+}
+
+unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const Operator &) const {
     // TODO copy frontier from predecessor?
-
     return clone();
 }
 
 DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
     PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
-    
-    assert(g_factoring->get_profile() == FORK);
 
     compute_frontier();
     other_cpg->compute_frontier();
@@ -111,7 +110,6 @@ DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, D
 }
 
 void PruningReachable::compute_frontier() {
-    assert(g_factoring->get_profile() == FORK);
     assert(pruning->use_frontier_pruning());
     
     if (!frontier.empty()){
@@ -134,12 +132,13 @@ void PruningReachable::compute_frontier() {
     }
 }
 
-void PruningReachable::store_new_cpg(const State &state) const {
+void PruningReachable::store_new_cpg(const State &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
 unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_cpg() {
-    unique_ptr<PruningReachable> reach(new PruningReachable(0));
+    unique_ptr<PruningReachable> reach(new PruningReachable());
+    reach->resize();
         
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         reach->add_state(LeafStateHash(0), factor);
@@ -172,12 +171,11 @@ void PruningReachable::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new PruningReachable(this));
+    return unique_ptr<CompliantPathGraph>(new PruningReachable(*this));
 }
 
 uint64_t PruningReachable::get_hash() const {
     utils::HashState hash_state;
-    feed(hash_state, goal_reached);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         feed(hash_state, reachable[factor]);
         feed(hash_state, frontier[factor]);

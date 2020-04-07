@@ -19,14 +19,20 @@ void Reachable::register_cpg_storage(ReachableStorage *storage) {
     cpg_storage = storage;
 }
 
-Reachable::Reachable(const Reachable *tag) {
-    if (tag == 0){
-        reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
-        goal_reached.resize(g_leaves.size(), false);
-    } else {
-        reachable = tag->reachable;
-        goal_reached = tag->goal_reached;
-    }
+Reachable::Reachable(const Reachable &other) {
+    reachable = other.reachable;
+    goal_reached = other.goal_reached;
+}
+
+Reachable& Reachable::operator=(Reachable &&other) {
+    reachable = move(other.reachable);
+    goal_reached = move(other.goal_reached);
+    return *this;
+}
+
+void Reachable::resize() {
+    reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
+    goal_reached.resize(g_leaves.size(), false);
 }
 
 bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
@@ -52,10 +58,10 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator &op) const {
-    
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const Operator &op) const {
     if (g_factoring->get_profile() != FORK){
-        unique_ptr<Reachable> tmp_reach(new Reachable(0));
+        unique_ptr<Reachable> tmp_reach(new Reachable());
+        tmp_reach->resize();
         tmp_reach->apply_center_op_to_leaves(*this, op);
         return tmp_reach;
     } else {                
@@ -554,7 +560,7 @@ bool Reachable::goal_reachable(LeafFactorID factor) const {
     return goal_reached[factor];
 }
 
-void Reachable::store_new_cpg(const State &state) const {
+void Reachable::store_new_cpg(const State &state) {
     cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
@@ -563,7 +569,8 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
     if (pruning->do_advanced_pruning()){
         return PruningReachable::get_init_state_cpg();        
     } else {
-        unique_ptr<Reachable> reach(new Reachable(0));
+        unique_ptr<Reachable> reach(new Reachable());
+        reach->resize();
             
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
@@ -590,12 +597,11 @@ void Reachable::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> Reachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Reachable(this));
+    return unique_ptr<CompliantPathGraph>(new Reachable(*this));
 }
 
 uint64_t Reachable::get_hash() const {
     utils::HashState hash_state;
-    feed(hash_state, goal_reached);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         feed(hash_state, reachable[factor]);
     }

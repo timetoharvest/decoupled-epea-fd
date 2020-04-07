@@ -13,7 +13,7 @@ class Reachable : public CompliantPathGraph {
     static ReachableStorage *cpg_storage;
     
     
-    Reachable(const Reachable *tag);
+    void resize();
     
     void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
@@ -31,20 +31,27 @@ protected:
     // not already reached, before
     bool add_state(LeafStateHash id, LeafFactorID factor);
     
-    void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Reachable &old_cpg, const Operator &op);
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator &op) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
 
     virtual void update(const State &base_state) override;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_cpg(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
     Reachable(){};
+
+    Reachable(const Reachable &cpg);
+
+    Reachable(Reachable &&other) = delete;
+
+    Reachable& operator=(const Reachable &other) = delete;
+
+    Reachable& operator=(Reachable &&other);
     
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     

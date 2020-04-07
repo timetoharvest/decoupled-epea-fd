@@ -21,36 +21,40 @@ void FrontierPrices::register_cpg_storage(FrontierPriceStorage *storage) {
     cpg_storage = storage;
 }
 
-FrontierPrices::FrontierPrices(const FrontierPrices *tag) {
-    if (tag == 0){
-        number_states = vector<size_t>(g_leaves.size(), 0);
-        prices = vector<vector<int> >(g_leaves.size());
-        goal_cost = vector<int>(g_leaves.size(), INF);
-    } else {
-        number_states = tag->number_states;
-        prices = tag->prices;
-        goal_cost = tag->goal_cost;
-        // TODO why dont we copy frontier/effective_prices here?
-        // trying it out results in incomplete algorithm, just why??
-    }
+FrontierPrices::FrontierPrices(const FrontierPrices &other) : EffectivePrices(other) {
+    assert(g_factoring->get_profile() == FACTORING_PROFILE::FORK);
+    // TODO why dont we copy frontier/effective_prices here?
+    // trying it out results in incomplete algorithm, just why??
 }
 
-unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const State &predecessor,
-                                                                               const Operator&) const {
-    
-    assert(g_factoring->get_profile() == FORK); // not supported, yet
-    
-    unique_ptr<FrontierPrices> tmp_p_price(new FrontierPrices(this));
-        
-    const FrontierPrices &tag = cpg_storage->frontier_prices[predecessor];
-    if (tag.frontier.empty()){
-        assert(predecessor.get_id().hash() == 0);
+FrontierPrices& FrontierPrices::operator=(FrontierPrices &&other) {
+    prices = move(other.prices);
+    number_states = move(other.number_states);
+    goal_cost = move(other.goal_cost);
+    effective_prices = move(other.effective_prices);
+    number_effective_states = move(other.number_effective_states);
+    frontier = move(other.frontier);
+    return *this;
+}
+
+void FrontierPrices::resize() {
+    number_states = vector<size_t>(g_leaves.size(), 0);
+    prices = vector<vector<int> >(g_leaves.size());
+    goal_cost = vector<int>(g_leaves.size(), INF);
+    // TODO why dont we resize effective_prices + number/frontier..? see also above comment
+}
+
+unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const Operator&) const {
+    unique_ptr<FrontierPrices> tmp_p_price(new FrontierPrices(*this));
+    if (frontier.empty()){
+        // should only happen for initial state
+        // TODO not sure if this is still true
         tmp_p_price->compute_cost_frontier();
     } else {
         tmp_p_price->frontier = vector<boost::dynamic_bitset<> >(g_leaves.size(), boost::dynamic_bitset<>());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (tag.frontier[factor].size() == g_state_registry->size(factor)){
-                tmp_p_price->frontier[factor] = tag.frontier[factor];
+            if (frontier[factor].size() == g_state_registry->size(factor)){
+                tmp_p_price->frontier[factor] = frontier[factor];
             } else {
                 tmp_p_price->compute_cost_frontier(factor);
             }
@@ -166,11 +170,9 @@ void FrontierPrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE FrontierPrices::check_dominance(const State& other, uint64_t, int, DOMINANCE needed) {
+DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
     // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
-    
-    assert(g_factoring->get_profile() == FORK);
 
     compute_cost_frontier();
     other_cpg->compute_cost_frontier();
@@ -258,23 +260,24 @@ DOMINANCE FrontierPrices::check_dominance(const State& other, uint64_t, int, DOM
     return DOMINANCE::NONE;
 }
 
-void FrontierPrices::store_new_cpg(const State &state) const {
+void FrontierPrices::store_new_cpg(const State &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
 unique_ptr<CompliantPathGraph> FrontierPrices::get_init_state_cpg() {
-    unique_ptr<FrontierPrices> prices(new FrontierPrices(0));
+    unique_ptr<FrontierPrices> init_frontierprices(new FrontierPrices());
+    init_frontierprices->resize();
 
-    prices->frontier.resize(g_leaves.size());
+    init_frontierprices->frontier.resize(g_leaves.size());
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        prices->add_state(LeafStateHash(0), factor, 0);
-        prices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
-        prices->frontier[factor][0] = true;
+        init_frontierprices->add_state(LeafStateHash(0), factor, 0);
+        init_frontierprices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
+        init_frontierprices->frontier[factor][0] = true;
     }
-    prices->update(g_initial_state());
+    init_frontierprices->update(g_initial_state());
     
-    return prices;
+    return init_frontierprices;
 }
 
 void FrontierPrices::goal_price_propagation() {
@@ -343,8 +346,6 @@ void FrontierPrices::goal_price_propagation() {
 }
 
 void FrontierPrices::propagate_dominance_prices() {
-    assert(g_factoring->get_profile() == FORK);
-    
     const vector<vector<vector<LeafStateHash> > > &simulated_states = SimulationRelation::get_simulation_relation();
     
     for (LeafFactorID factor(0); factor < simulated_states.size(); ++factor){
@@ -364,8 +365,6 @@ void FrontierPrices::propagate_dominance_prices() {
 }
 
 void FrontierPrices::compute_cost_frontier() {
-    assert(g_factoring->get_profile() == FORK);
-    
     if (frontier.empty()){
         // frontier is only stored for states for which the dominance was already checked at some point
         //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
@@ -390,8 +389,6 @@ void FrontierPrices::compute_cost_frontier() {
 }
 
 void FrontierPrices::compute_cost_frontier(LeafFactorID factor) {
-    assert(g_factoring->get_profile() == FORK);
-    
     frontier[factor].resize(g_state_registry->size(factor), false);
     
     size_t num_states = get_number_states(factor);
@@ -438,15 +435,19 @@ void FrontierPrices::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> FrontierPrices::clone() const {
-    return unique_ptr<CompliantPathGraph> (new FrontierPrices(this));
+    return unique_ptr<CompliantPathGraph>(new FrontierPrices(*this));
 }
 
 uint64_t FrontierPrices::get_hash() const {
     utils::HashState hash_state;
-    feed(hash_state, goal_cost);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        hash_state.feed(get_number_effective_states(factor));
-        feed(hash_state, effective_prices[factor]);
+        if (effective_prices.empty()){
+            // this can probably happen when no prices are propagated,
+            // i.e. add_effective_state was never called
+            feed(hash_state, prices[factor]);
+        } else {
+            feed(hash_state, effective_prices[factor]);
+        }
         feed(hash_state, frontier[factor]);
     }
     return hash_state.get_hash64();

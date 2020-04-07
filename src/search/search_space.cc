@@ -207,21 +207,21 @@ void SearchSpace::trace_path(const State &goal_state,
         // reconstruct leaf paths
         vector<unique_ptr<PathPriceTag> > price_tags(states.size());
         
-        price_tags[0].reset(new PathPriceTag(0));
+        price_tags[0].reset(new PathPriceTag());
         
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             price_tags[0]->add_state(LeafStateHash(0), factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
         }
-        price_tags[0]->update_price_tags(g_state_registry->lookup_state(states[0]));
+        price_tags[0]->update(g_state_registry->lookup_state(states[0]));
         
         for (size_t i = 1; i < states.size(); ++i){            
             if (g_factoring->get_profile() != FORK){
-                price_tags[i].reset(new PathPriceTag(0));
+                price_tags[i].reset(new PathPriceTag());
                 price_tags[i]->apply_center_op_to_leaves(*price_tags[i - 1], g_operators[path[i - 1]]);
             } else {
-                price_tags[i].reset(new PathPriceTag(price_tags[i - 1].get()));
+                price_tags[i].reset(new PathPriceTag(*price_tags[i - 1].get()));
             }
-            price_tags[i]->update_price_tags(g_state_registry->lookup_state(states[i]));
+            price_tags[i]->update(g_state_registry->lookup_state(states[i]));
         }
 
 #ifdef DEBUG_PLAN_EXTRACTION
@@ -309,23 +309,23 @@ void SearchSpace::trace_path(const State &goal_state,
                     change = false;
                     
                     
-                    const PathPriceTagInfo &fact = price_tags[step]->get_path_info_for_fact(marked_leaf_states[factor], factor);
-                    if (fact.is_new){
-                        if (fact.best_supporter != OperatorID::no_operator){
-                            assert(fact.predecessor != LeafStateHash::MAX);
-                            assert(fact.predecessor != marked_leaf_states[factor]);
+                    const PathPriceInfo &path_info = price_tags[step]->get_path_info(marked_leaf_states[factor], factor);
+                    if (path_info.is_new){
+                        if (path_info.generating_op != OperatorID::no_operator){
+                            assert(path_info.predecessor != LeafStateHash::MAX);
+                            assert(path_info.predecessor != marked_leaf_states[factor]);
                             
-                            marked_leaf_states[factor] = fact.predecessor;
-                            decoupled_plan.push_back(fact.best_supporter);
+                            marked_leaf_states[factor] = path_info.predecessor;
+                            decoupled_plan.push_back(path_info.generating_op);
 
-                            assert(g_operators[fact.best_supporter].get_affected_factor() == factor);
-                        } else if (fact.predecessor != LeafStateHash::MAX){
+                            assert(g_operators[path_info.generating_op].get_affected_factor() == factor);
+                        } else if (path_info.predecessor != LeafStateHash::MAX){
                             // this leaf state has been copied from one decoupled state to its successor
                             // the state can have been modified by the center op
                             
-                            assert(marked_leaf_states[factor] == fact.predecessor);
+                            assert(marked_leaf_states[factor] == path_info.predecessor);
                             
-                            marked_leaf_states[factor] = fact.predecessor;
+                            marked_leaf_states[factor] = path_info.predecessor;
                         } else {
                             // can happen for center factoring when center op completely overwrites leaf
                             
@@ -344,12 +344,12 @@ void SearchSpace::trace_path(const State &goal_state,
                     
                     if (marked_leaf_states[factor] != LeafStateHash::MAX){
                         LeafStateHash state_hash = marked_leaf_states[factor];
-                        LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
+                        LeafStateHash predecessor_hash = price_tags[step]->get_path_info(state_hash, factor).predecessor;
                         
                         assert(marked_leaf_states[factor] != predecessor_hash);
-                        assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == OperatorID::no_operator);
+                        assert(price_tags[step]->get_path_info(state_hash, factor).generating_op == OperatorID::no_operator);
                         
-                        if (price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor != LeafStateHash::MAX){
+                        if (price_tags[step]->get_path_info(state_hash, factor).predecessor != LeafStateHash::MAX){
                             marked_leaf_states[factor] = predecessor_hash;
                         } else {
                             need_compliant_leaf_state = true;

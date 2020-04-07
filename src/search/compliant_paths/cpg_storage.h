@@ -44,8 +44,8 @@ class PriceStorage : public CPGStorage {
 
     PerStateInformation<Prices> prices;
     
-    void store_cpg(const State &state, const Prices &cpg) {
-        prices[state] = cpg;
+    void store_cpg(const State &state, Prices &cpg) {
+        prices[state] = std::move(cpg);
     }
     
 protected:
@@ -75,8 +75,8 @@ class EffectivePriceStorage : public CPGStorage {
 
     PerStateInformation<EffectivePrices> effective_prices;
     
-    void store_cpg(const State &state, const EffectivePrices &cpg) {
-        effective_prices[state] = cpg;
+    void store_cpg(const State &state, EffectivePrices &cpg) {
+        effective_prices[state] = std::move(cpg);
     }
     
 protected:
@@ -106,8 +106,8 @@ class FrontierPriceStorage : public CPGStorage {
 
     PerStateInformation<FrontierPrices> frontier_prices;
     
-    void store_cpg(const State &state, const FrontierPrices &cpg) {
-        frontier_prices[state] = cpg;
+    void store_cpg(const State &state, FrontierPrices &cpg) {
+        frontier_prices[state] = std::move(cpg);
     }
     
 protected:
@@ -137,8 +137,8 @@ class ReachableStorage : public CPGStorage {
 
     PerStateInformation<Reachable> reachable;
     
-    void store_cpg(const State &state, const Reachable &cpg) {
-        reachable[state] = cpg;
+    void store_cpg(const State &state, Reachable &cpg) {
+        reachable[state] = std::move(cpg);
     }
         
 protected:
@@ -168,8 +168,8 @@ class PruningReachableStorage : public CPGStorage {
 
     PerStateInformation<PruningReachable> pruning_reachable;
     
-    void store_cpg(const State &state, const PruningReachable &cpg) {
-        pruning_reachable[state] = cpg;
+    void store_cpg(const State &state, PruningReachable &cpg) {
+        pruning_reachable[state] = std::move(cpg);
     }
         
 protected:

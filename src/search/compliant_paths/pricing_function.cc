@@ -20,16 +20,23 @@ void Prices::register_cpg_storage(PriceStorage *storage) {
     cpg_storage = storage;
 }
 
-Prices::Prices(const Prices *tag) {
-    if (tag == 0){
-        number_states = vector<size_t>(g_leaves.size(), 0);
-        prices = vector<vector<int> >(g_leaves.size());
-        goal_cost = vector<int>(g_leaves.size(), INF);
-    } else {
-        number_states = tag->number_states;
-        prices = tag->prices;
-        goal_cost = tag->goal_cost;
-    }
+Prices::Prices(const Prices &other) {
+    number_states = other.number_states;
+    prices = other.prices;
+    goal_cost = other.goal_cost;
+}
+
+Prices& Prices::operator=(Prices &&other) {
+    prices = move(other.prices);
+    number_states = move(other.number_states);
+    goal_cost = move(other.goal_cost);
+    return *this;
+}
+
+void Prices::resize() {
+    number_states = vector<size_t>(g_leaves.size(), 0);
+    prices = vector<vector<int> >(g_leaves.size());
+    goal_cost = vector<int>(g_leaves.size(), INF);
 }
 
 void Prices::reduce_cost_by(LeafFactorID factor, int cost) {
@@ -80,12 +87,12 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const State&, 
-                                                                       const Operator &op) const {
+unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const Operator &op) const {
     // TODO what about having a static pointer in the class to prevent reallocation?
         
     if (g_factoring->get_profile() != FORK){
-        unique_ptr<Prices> tmp_price(new Prices(0));
+        unique_ptr<Prices> tmp_price(new Prices());
+        tmp_price->resize();
         tmp_price->apply_center_op_to_leaves(*this, op);
         return tmp_price;
     } else {                
@@ -193,6 +200,7 @@ void Prices::update(const State &base_state) {
 
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
+                        // TODO what about caching applicability per update?
                         if (is_ifork_leaf || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             change |= add_state(successor, factor, 
@@ -501,7 +509,7 @@ bool Prices::goal_reachable(LeafFactorID factor) const {
     return goal_cost[factor] != INF;
 }
 
-void Prices::store_new_cpg(const State &state) const {
+void Prices::store_new_cpg(const State &state) {
     cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
@@ -510,14 +518,15 @@ unique_ptr<CompliantPathGraph> Prices::get_init_state_cpg() {
     if (pruning->do_advanced_pruning()){
         return EffectivePrices::get_init_state_cpg();
     } else {
-        unique_ptr<Prices> prices(new Prices(0));
+        unique_ptr<Prices> init_price(new Prices());
+        init_price->resize();
             
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            prices->add_state(LeafStateHash(0), factor, 0);
+            init_price->add_state(LeafStateHash(0), factor, 0);
         }
-        prices->update(g_initial_state());
+        init_price->update(g_initial_state());
         
-        return prices;
+        return init_price;
     }
 }
 
@@ -544,13 +553,11 @@ void Prices::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> Prices::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Prices(this));
+    return unique_ptr<CompliantPathGraph>(new Prices(*this));
 }
 
 uint64_t Prices::get_hash() const {
     utils::HashState hash_state;
-    feed(hash_state, number_states);
-    feed(hash_state, goal_cost);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         feed(hash_state, prices[factor]);
     }

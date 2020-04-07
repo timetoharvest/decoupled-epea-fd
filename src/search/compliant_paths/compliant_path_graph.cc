@@ -327,7 +327,8 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
     }
     
-    Prices goal_price_tag(0);
+    Prices goal_price_tag;
+    goal_price_tag.resize();
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         goal_price_tag.add_state(LeafStateHash(0), factor, 0);

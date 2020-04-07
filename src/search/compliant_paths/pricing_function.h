@@ -13,10 +13,7 @@ class Prices : public CompliantPathGraph {
     
     static PriceStorage *cpg_storage;
     
-        
-    Prices(const Prices *tag);
 
-    
     // used when including part of the leaf cost into the g-value
     // of a search node
     void reduce_cost_by(LeafFactorID factor, int cost);
@@ -33,24 +30,33 @@ protected:
     // stores the current minimal goal cost per factor
     std::vector<int> goal_cost;
 
+    void resize();
+
     // return true, if the fact was actually added
     bool add_state(LeafStateHash id, LeafFactorID factor, int cost);
     
-    void apply_center_op_to_leaves(const Prices &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op);
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator &op) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
                                                                           
     virtual void update(const State &base_state) override;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_cpg(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
     Prices(){};
     
+    Prices(const Prices &tag);
+
+    Prices(Prices &&other) = delete;
+
+    Prices& operator=(const Prices &other) = delete;
+
+    Prices& operator=(Prices &&other);
+
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
     virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;

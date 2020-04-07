@@ -21,21 +21,31 @@ void EffectivePrices::register_cpg_storage(EffectivePriceStorage *storage) {
     cpg_storage = storage;
 }
 
-EffectivePrices::EffectivePrices(const EffectivePrices *tag) {
-    if (tag == 0){
-        number_states = vector<size_t>(g_leaves.size(), 0);
-        prices = vector<vector<int> >(g_leaves.size());
-        goal_cost = vector<int>(g_leaves.size(), INF);
-    } else {
-        number_states = tag->number_states;
-        prices = tag->prices;
-        goal_cost = tag->goal_cost;
-        // TODO why dont we copy effective_prices here?
-        // trying it out results in incomplete algorithm, just why??
-    }
+EffectivePrices::EffectivePrices(const EffectivePrices &other) : Prices(other) {
+    assert(g_factoring->get_profile() == FACTORING_PROFILE::FORK);
+    // TODO why dont we copy effective_prices here?
+    // trying it out results in incomplete algorithm, just why??
+}
+
+EffectivePrices& EffectivePrices::operator=(EffectivePrices &&other) {
+    prices = move(other.prices);
+    number_states = move(other.number_states);
+    goal_cost = move(other.goal_cost);
+    effective_prices = move(other.effective_prices);
+    number_effective_states = move(other.number_effective_states);
+    return *this;
+}
+
+void EffectivePrices::resize() {
+    assert(g_factoring->get_profile() == FACTORING_PROFILE::FORK);
+    number_states = vector<size_t>(g_leaves.size(), 0);
+    prices = vector<vector<int> >(g_leaves.size());
+    goal_cost = vector<int>(g_leaves.size(), INF);
+    // TODO why dont we resize effective_prices + number..? see also above comment
 }
 
 bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor, int cost) {
+    assert(cost >= 0);
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
@@ -66,10 +76,7 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
     return false;
 }
 
-unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State&,
-                                                                                const Operator &) const {
-    assert(g_factoring->get_profile() == FORK); // not supported, yet
-
+unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const Operator &) const {
     return clone();
 }
 
@@ -85,10 +92,8 @@ void EffectivePrices::update(const State &base_state) {
     }
 }
 
-DOMINANCE EffectivePrices::check_dominance(const State& other, uint64_t , int g_advantage, DOMINANCE needed) {
+DOMINANCE EffectivePrices::check_dominance(const State &other, uint64_t, int g_advantage, DOMINANCE needed) {
     const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
-    
-    assert(g_factoring->get_profile() == FORK);
 
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -277,7 +282,7 @@ size_t EffectivePrices::get_number_effective_states(LeafFactorID factor) const {
     }
 }
 
-void EffectivePrices::store_new_cpg(const State &state) const {
+void EffectivePrices::store_new_cpg(const State &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -286,21 +291,19 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
         return FrontierPrices::get_init_state_cpg();
     }
     
-    unique_ptr<EffectivePrices> prices(new EffectivePrices(0));
+    unique_ptr<EffectivePrices> init_effprices(new EffectivePrices());
+    init_effprices->resize();
         
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        prices->add_state(LeafStateHash(0), factor, 0);
+        init_effprices->add_state(LeafStateHash(0), factor, 0);
     }
-    prices->update(g_initial_state());
+    init_effprices->update(g_initial_state());
     
-    return prices;
+    return init_effprices;
 }
 
 void EffectivePrices::goal_price_propagation() {
-    assert(g_factoring->get_profile() == FORK);
-     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-        
         vector<bool> closed(g_state_registry->size(factor), false);
 
         // Alvaro: Given the size of leaf factors I think a bucketqueue
@@ -350,8 +353,6 @@ void EffectivePrices::goal_price_propagation() {
 }
 
 void EffectivePrices::propagate_dominance_prices() {
-    assert(g_factoring->get_profile() == FORK);
-    
     const vector<vector<vector<LeafStateHash> > > &simulated_states = SimulationRelation::get_simulation_relation();
     
     for (LeafFactorID factor(0); factor < simulated_states.size(); ++factor){
@@ -386,15 +387,19 @@ void EffectivePrices::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> EffectivePrices::clone() const {
-    return unique_ptr<CompliantPathGraph> (new EffectivePrices(this));
+    return unique_ptr<CompliantPathGraph>(new EffectivePrices(*this));
 }
 
 uint64_t EffectivePrices::get_hash() const {
     utils::HashState hash_state;
-    feed(hash_state, goal_cost);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        hash_state.feed(get_number_effective_states(factor));
-        feed(hash_state, effective_prices[factor]);
+        if (effective_prices.empty()){
+            // this can happen when no prices are propagated,
+            // i.e. add_effective_state was never called
+            feed(hash_state, prices[factor]);
+        } else {
+            feed(hash_state, effective_prices[factor]);
+        }
     }
     return hash_state.get_hash64();
 }

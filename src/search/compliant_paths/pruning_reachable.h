@@ -13,6 +13,8 @@ class PruningReachable : public Reachable {
     static PruningReachableStorage *cpg_storage;
 
     
+    void resize();
+
     void compute_frontier();
     
     PruningReachable(const PruningReachable *tag);
@@ -24,19 +26,28 @@ protected:
     
     std::vector<boost::dynamic_bitset<> > frontier;    
 
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator &op) const override;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const Operator &op) const override;
                                                                                 
 // no own implementation so far. the only use would be to skip non-frontier states in the update
 // virtual void update(const State &base_state) = 0;
                                                                           
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_cpg(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
-    PruningReachable(){};
+    PruningReachable(){
+        assert(g_factoring->get_profile() == FORK);
+    };
+
+    PruningReachable(const PruningReachable &cpg);
+
+    PruningReachable(PruningReachable &&other) = delete;
+
+    PruningReachable& operator=(const PruningReachable &other) = delete;
+
+    PruningReachable& operator=(PruningReachable &&other);
     
     virtual void dump() const override;
 
