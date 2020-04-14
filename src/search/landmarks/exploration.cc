@@ -1,14 +1,13 @@
 #include "exploration.h"
+
 #include "../operator.h"
 #include "../state.h"
 #include "../globals.h"
-#include "../utilities.h"
 
 #include <cassert>
 #include <limits>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 /* Integration Note: this class is the same as (rich man's) FF heuristic
    (taken from hector branch) except for the following:
@@ -68,9 +67,6 @@ Exploration::Exploration(const Options &opts)
     heuristic_recomputation_needed = true;
 }
 
-Exploration::~Exploration() {
-}
-
 void Exploration::increase_cost(int &cost, int amount) {
     assert(cost >= 0);
     assert(amount >= 0);
@@ -125,18 +121,18 @@ void Exploration::build_unary_operators(const Operator &op) {
     vector<pair<int, int> > precondition_var_vals1;
 
     for (size_t i = 0; i < preconditions.size(); ++i) {
-        assert(in_bounds(preconditions[i].var, g_variable_domain));
+        assert(utils::in_bounds(preconditions[i].var, g_variable_domain));
         assert(preconditions[i].val >= 0 && preconditions[i].val < g_variable_domain[preconditions[i].var]);
         precondition_var_vals1.push_back(make_pair(preconditions[i].var, preconditions[i].val));
     }
     for (size_t i = 0; i < effects.size(); ++i) {
         vector<pair<int, int> > precondition_var_vals2(precondition_var_vals1);
-        assert(in_bounds(effects[i].var, g_variable_domain));
+        assert(utils::in_bounds(effects[i].var, g_variable_domain));
         assert(effects[i].val >= 0 && effects[i].val < g_variable_domain[effects[i].var]);
         ExProposition *effect = &propositions[effects[i].var][effects[i].val];
         const vector<Condition> &eff_conds = effects[i].conditions;
         for (size_t j = 0; j < eff_conds.size(); ++j) {
-            assert(in_bounds(eff_conds[j].var, g_variable_domain));
+            assert(utils::in_bounds(eff_conds[j].var, g_variable_domain));
             assert(eff_conds[j].val >= 0 && eff_conds[j].val < g_variable_domain[eff_conds[j].var]);
             precondition_var_vals2.push_back(make_pair(eff_conds[j].var, eff_conds[j].val));
         }
@@ -167,8 +163,7 @@ public:
 // heuristic computation
 void Exploration::setup_exploration_queue(const State &state,
                                           const vector<pair<int, int> > &excluded_props,
-                                          const hash_set<const Operator *,
-                                                         ex_hash_operator_ptr> &excluded_ops,
+                                          const utils::HashSet<const Operator*> &excluded_ops,
                                           bool use_h_max = false) {
     prop_queue.clear();
 
@@ -328,7 +323,7 @@ void Exploration::collect_relaxed_plan(ExProposition *goal,
                 && unary_op->h_add_cost == unary_op->base_cost
                 && unary_op->depth == 0
                 && !op->is_axiom()) {
-                set_preferred(op);
+                set_preferred(op->get_id());
                 assert(op->is_applicable(state));
             }
         }
@@ -336,10 +331,10 @@ void Exploration::collect_relaxed_plan(ExProposition *goal,
 }
 
 void Exploration::compute_reachability_with_excludes(vector<vector<int> > &lvl_var,
-                                                     vector<hash_map<pair<int, int>, int, hash_int_pair> > &lvl_op,
+                                                     vector<utils::HashMap<pair<int, int>, int> > &lvl_op,
                                                      bool level_out,
                                                      const vector<pair<int, int> > &excluded_props,
-                                                     const hash_set<const Operator *, ex_hash_operator_ptr> &excluded_ops,
+                                                     const utils::HashSet<const Operator*> &excluded_ops,
                                                      bool compute_lvl_ops) {
     // Perform exploration using h_max-values
     setup_exploration_queue(g_initial_state(), excluded_props, excluded_ops, true);
@@ -354,7 +349,7 @@ void Exploration::compute_reachability_with_excludes(vector<vector<int> > &lvl_v
         }
     }
     if (compute_lvl_ops) {
-        hash_map< const Operator *, int, ex_hash_operator_ptr> operator_index;
+        utils::HashMap<const Operator*, int> operator_index;
         for (size_t i = 0; i < g_operators.size(); ++i) {
             operator_index.insert(make_pair(&g_operators[i], i));
         }
@@ -424,7 +419,7 @@ void Exploration::collect_ha(ExProposition *goal,
             && unary_op->h_add_cost == unary_op->base_cost
             && unary_op->depth == 0
             && !op->is_axiom()) {
-            exported_ops.push_back(op); // This is a helpful action.
+            exported_ops.push_back(op->get_id()); // This is a helpful action.
             assert(op->is_applicable(state));
         }
     }

@@ -222,14 +222,17 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed) {
+DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed, int g_advantage) {
     const Prices *other_cpg = &cpg_storage->prices[other];
     
     bool sizes_equal = true;
     bool new_is_larger = false;
     bool new_is_smaller = false;
     
-    // check number of reachable leaf states
+    int sum_needed_to_dominate = 0;
+    int sum_needed_to_be_dominated = 0;
+
+    // check number of reachable leaf states and goal cost for early termination
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (other_cpg->get_number_states(factor) > get_number_states(factor)){
             new_is_smaller = true;
@@ -238,8 +241,42 @@ DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed) {
             new_is_larger = true;
             sizes_equal = false;
         }
+
+        if (!g_goals_per_factor[factor].empty()){
+            // compare goal cost
+            int old_goal_cost = other_cpg->get_goal_cost(factor);
+            int new_goal_cost = get_goal_cost(factor);
+            if (old_goal_cost != CompliantPathGraph::INF){
+                if (new_goal_cost != CompliantPathGraph::INF){
+                    if (old_goal_cost < new_goal_cost){
+                        sum_needed_to_dominate += new_goal_cost - old_goal_cost;
+                    } else if (old_goal_cost > new_goal_cost){
+                        sum_needed_to_be_dominated -= old_goal_cost - new_goal_cost;
+                    }
+                } else {
+                    new_is_smaller = true;
+                    sizes_equal = false;
+                }
+            } else if (new_goal_cost != CompliantPathGraph::INF){
+                new_is_larger = true;
+                sizes_equal = false;
+            }
+        }
     }
     
+    if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
+        // TODO can we do more in this case?
+        new_is_smaller = true;
+        new_is_larger = true;
+        sizes_equal = false;
+    } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
+        new_is_smaller = true;
+        sizes_equal = false;
+    } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
+        new_is_larger = true;
+        sizes_equal = false;
+    }
+
     if (new_is_smaller && new_is_larger){
         return DOMINANCE::NONE;
     } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
@@ -250,49 +287,81 @@ DOMINANCE Prices::check_dominance(const State &other, DOMINANCE needed) {
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
-    
+
+    sum_needed_to_dominate = 0;
+    sum_needed_to_be_dominated = 0;
+
     // compare prices / reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         size_t number_new_states = get_number_states(factor);
         size_t number_old_states = other_cpg->get_number_states(factor);
         LeafStateHash id(0);
+        int max_needed_to_dominate = 0;
+        int max_needed_to_be_dominated = 0;
         while (number_new_states + number_old_states > 0){
             assert(id < g_state_registry->size(factor));
             if (has_leaf_state(id, factor)){
                 --number_new_states;
                 if (other_cpg->has_leaf_state(id, factor)){
                     --number_old_states;
+                    if (number_old_states == 0 && number_new_states > 0){
+                        dominated = false;
+                        break;
+                    }
                     int old_cost = other_cpg->get_cost_of_state(id, factor);
                     int new_cost = get_cost_of_state(id, factor);
-                    assert(old_cost != -1);
-                    assert(new_cost != -1);
+                    assert(old_cost != CompliantPathGraph::INF);
+                    assert(new_cost != CompliantPathGraph::INF);
                     
                     if (old_cost > new_cost){
-                        dominated = false;
+                        max_needed_to_be_dominated = max(max_needed_to_be_dominated, old_cost - new_cost);
+                        if (max_needed_to_dominate != 0){
+                            return DOMINANCE::NONE;
+                        }
                     } else if (old_cost < new_cost){
-                        dominates = false;
+                        max_needed_to_dominate = max(max_needed_to_dominate, new_cost - old_cost);
+                        if (max_needed_to_be_dominated != 0){
+                            return DOMINANCE::NONE;
+                        }
                     }
                 } else {
                     dominated = false;
-                }                
+                    if (!dominates || needed == DOMINANCE::DOMINATED){
+                        return DOMINANCE::NONE;
+                    }
+                }
+                if (number_new_states == 0 && number_old_states > 0){
+                    dominates = false;
+                    break;
+                }
             } else if (other_cpg->has_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
-            }
-            if (!dominated && !dominates){
-                return DOMINANCE::NONE;
-            } else if (!dominated && needed == DOMINANCE::DOMINATED){
-                return DOMINANCE::NONE;
-            } else if (!dominates && needed == DOMINANCE::DOMINATES){
-                return DOMINANCE::NONE;
-            } else if (number_new_states == 0 && number_old_states > 0){
-                dominates = false;
-                break;
-            } else if (number_old_states == 0 && number_new_states > 0){
-                dominated = false;
-                break;
+                if (!dominated || needed == DOMINANCE::DOMINATES){
+                    return DOMINANCE::NONE;
+                }
+                if (number_old_states == 0 && number_new_states > 0){
+                    dominated = false;
+                    break;
+                }
             }
             ++id;
+        }
+        sum_needed_to_dominate += max_needed_to_dominate;
+        sum_needed_to_be_dominated -= max_needed_to_be_dominated;
+        if (sum_needed_to_dominate != 0 && sum_needed_to_be_dominated != 0){
+            // TODO can we do more in this case?
+            return DOMINANCE::NONE;
+        } else if (sum_needed_to_dominate != 0 && sum_needed_to_dominate > g_advantage){
+            dominates = false;
+            if (needed == DOMINANCE::DOMINATES){
+                return DOMINANCE::NONE;
+            }
+        } else if (sum_needed_to_be_dominated != 0 && sum_needed_to_be_dominated < g_advantage){
+            dominated = false;
+            if (needed == DOMINANCE::DOMINATED){
+                return DOMINANCE::NONE;
+            }
         }
     }
     if (dominated && dominates){
@@ -513,6 +582,26 @@ bool Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // if_less is true and in that case we checked this in
     // per.produce_less(prices)
     return true;
+}
+
+size_t Prices::get_memory_footprint() const {
+    size_t num_bytes = 0;
+    if (!prices.empty()){
+        // we need the check because in decoupled orbit search
+        // there may be "empty" decoupled states
+        num_bytes += sizeof(vector<int>);
+        num_bytes += g_leaves.size() * sizeof(int);
+
+        num_bytes += sizeof(vector<size_t>);
+        num_bytes += g_leaves.size() * sizeof(size_t);
+
+        num_bytes += sizeof(vector<vector<int> >);
+        num_bytes += g_leaves.size() * sizeof(vector<int>);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += prices[factor].size() * sizeof(int);
+        }
+    }
+    return num_bytes;
 }
 
 unique_ptr<CompliantPathGraph> Prices::clone() const {

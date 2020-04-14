@@ -9,10 +9,11 @@
 #include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../timer.h"
+#include "../utils/timer.h"
 
 #include <cassert>
 #include <vector>
+
 using namespace std;
 
 MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const Options &opts)
@@ -61,7 +62,7 @@ TransitionSystem *MergeAndShrinkHeuristic::build_transition_system() {
     // vector of all transition systems. entries with 0 have been merged.
     vector<TransitionSystem *> all_transition_systems;
     if (g_variable_domain.size() * 2 - 1 > all_transition_systems.max_size())
-        exit_with(EXIT_OUT_OF_MEMORY);
+        exit_with(utils::ExitCode::SEARCH_OUT_OF_MEMORY);
     all_transition_systems.reserve(g_variable_domain.size() * 2 - 1);
     TransitionSystem::build_atomic_transition_systems(all_transition_systems, labels);
 
@@ -141,7 +142,7 @@ TransitionSystem *MergeAndShrinkHeuristic::build_transition_system() {
         if (all_transition_systems[i]) {
             if (final_transition_system) {
                 cerr << "Found more than one remaining transition system!" << endl;
-                exit_with(EXIT_CRITICAL_ERROR);
+                exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
             final_transition_system = all_transition_systems[i];
             assert(i == all_transition_systems.size() - 1);
@@ -164,7 +165,7 @@ TransitionSystem *MergeAndShrinkHeuristic::build_transition_system() {
 }
 
 void MergeAndShrinkHeuristic::initialize() {
-    Timer timer;
+    utils::Timer timer;
     cout << "Initializing merge-and-shrink heuristic..." << endl;
     dump_options();
     warn_on_unusual_options();

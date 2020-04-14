@@ -2,15 +2,13 @@
 
 #include "../globals.h"
 #include "../operator.h"
-//#include "../utils/.h"
+#include "../utils/hash.h"
 
+#include <cassert>
 #include <iostream>
 #include <map>
-#include <cassert>
-#include <ext/hash_map>
 
 using namespace std;
-using namespace __gnu_cxx;
 
 
 void DomainTransitionGraph::read_all(istream &in) {
@@ -124,7 +122,7 @@ void DomainTransitionGraph::read_data(istream &in) {
             // afterthought.
             sort(precond_pairs.begin(), precond_pairs.end());
 
-            hash_map<int, int> pre_map;
+            utils::HashMap<int, int> pre_map;
             const vector<Condition> &preconditions = the_operator->get_preconditions();
             for (size_t j = 0; j < preconditions.size(); ++j)
                 pre_map[preconditions[j].var] = preconditions[j].val;
@@ -133,7 +131,7 @@ void DomainTransitionGraph::read_data(istream &in) {
             for (size_t j = 0; j < effects.size(); ++j) {
                 int var_no = effects[j].var;
                 int pre = -1;
-                hash_map<int, int>::const_iterator pre_it = pre_map.find(var_no); 
+                utils::HashMap<int, int>::const_iterator pre_it = pre_map.find(var_no);
                 if (pre_it != pre_map.end())
                     pre = pre_it->second;
                 int post = effects[j].val;
@@ -221,10 +219,9 @@ void ValueTransition::simplify_labels(
       Put the element into the new labels list iff this is the case.
      */
 
-    typedef vector<pair<int, int> > HashKey;
-    typedef hash_map<HashKey, int, hash_pair_vector> HashMap;
+    using HashKey = vector<pair<int, int> >;
+    using HashMap = utils::HashMap<HashKey, int>;
     HashMap label_index;
-    label_index.resize(label_vec.size() * 2);
 
     for (size_t i = 0; i < label_vec.size(); ++i) {
         HashKey key;

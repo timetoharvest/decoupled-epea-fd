@@ -1,5 +1,9 @@
 #include "graph_creator.h"
 
+#ifdef USE_BLISS
+#include <graph.hh>
+#endif
+
 #include "../compliant_paths/compliant_path_graph.h"
 #include "lexicographic_ordering.h"
 #include "../operator.h"
@@ -33,20 +37,14 @@ void GraphCreator::initialize() {
     unique_ptr<bliss::AbstractGraph> graph(create_bliss_directed_graph());
     ((bliss::Digraph*) graph.get())->set_splitting_heuristic(bliss::Digraph::shs_flm);
 
-    // Added in version 0.5. Needs to be removed in version 0.72
-#ifdef USE_BLISS05
-    graph->set_time_bound(time_bound);
-    graph->set_generators_bound(generators_bound);
-#else
     if (time_bound > 0) {
         cerr << "Warning! Time bound is implemented only in Bliss 0.5" << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     if (generators_bound > 0) {
         cerr << "Warning! Generators bound is implemented only in Bliss 0.5" << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
-#endif
 
     bliss::Stats stats1;
     cout << "Using Bliss to find group generators" << endl;
@@ -62,19 +60,19 @@ void GraphCreator::initialize() {
     cout << "done initializing symmetries [t=" << utils::g_timer << "]" << endl;
 #else
     cerr << "You must build the planner with the USE_BLISS symbol defined" << endl;
-    exit_with(EXIT_CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 #endif
 }
 
 #ifdef USE_BLISS
-bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
+unique_ptr<bliss::Digraph> GraphCreator::create_bliss_directed_graph() const {
     // Differ from create_bliss_graph() in (a) having one node per action (incoming arcs from pre, outgoing to eff),
     //                                 and (b) not having a node for goal, recoloring the respective values.
     // initialization
 
     Permutation::init_fact_index();
 
-    bliss::Digraph* g = new bliss::Digraph();
+    unique_ptr<bliss::Digraph> g(new bliss::Digraph());
     int idx = 0;
     // add vertex for each varaible
     for (size_t i = 0; i < g_variable_domain.size(); i++){
@@ -136,7 +134,7 @@ bliss::Digraph* GraphCreator::create_bliss_directed_graph() const {
 
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
-void GraphCreator::add_operator_directed_graph(bliss::Digraph *g, const Operator &op) const {
+void GraphCreator::add_operator_directed_graph(unique_ptr<bliss::Digraph> &g, const Operator &op) const {
     int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
 
     int op_idx = g->add_vertex(OP_COLOR);

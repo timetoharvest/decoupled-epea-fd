@@ -3,13 +3,12 @@
 #include "match_tree.h"
 #include "util.h"
 
+#include "../algorithms/priority_queues.h"
 #include "../globals.h"
 #include "../operator.h"
 #include "../state.h"
 #include "../plugin.h"
-#include "../priority_queue.h"
-#include "../timer.h"
-#include "../utilities.h"
+#include "../utils/timer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -73,7 +72,7 @@ PDBHeuristic::PDBHeuristic(
     }
     relevant_operators.resize(g_operators.size(), false);
 
-    Timer timer;
+    utils::Timer timer;
     set_pattern(opts.get_list<int>("pattern"));
     if (dump)
         cout << "PDB construction time: " << timer << endl;
@@ -177,7 +176,7 @@ void PDBHeuristic::create_pdb() {
     }
 
     distances.reserve(num_states);
-    AdaptiveQueue<size_t> pq; // (first implicit entry: priority,) second entry: index for an abstract state
+    priority_queues::AdaptiveQueue<size_t> pq; // (first implicit entry: priority,) second entry: index for an abstract state
 
     // initialize queue
     for (size_t state_index = 0; state_index < num_states; ++state_index) {
@@ -213,7 +212,7 @@ void PDBHeuristic::create_pdb() {
 }
 
 void PDBHeuristic::set_pattern(const vector<int> &pat) {
-    assert(is_sorted_unique(pat));
+    assert(utils::is_sorted_unique(pat));
     pattern = pat;
     hash_multipliers.reserve(pattern.size());
     variable_to_index.resize(g_variable_name.size(), -1);

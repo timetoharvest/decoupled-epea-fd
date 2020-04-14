@@ -539,7 +539,7 @@ void SearchSpace::trace_symmetric_path(vector<OperatorID> &path, vector<StateID>
             g_state_registry->lookup_state(states[i-1]).dump_pddl();
             cout << endl << "From the state:" << endl;
             g_state_registry->lookup_state(states[i]).dump_pddl();
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
 #endif
         path[i-1] = min_cost_op;

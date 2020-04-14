@@ -252,9 +252,6 @@ State StateRegistry::get_state_permutation(const State &state, const DecoupledPe
 }
 
 State StateRegistry::get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation) {
-    assert(g_symmetry_graph);
-    assert(g_factoring);
-    
     vector<int> permuted(g_variable_domain.size(), -1);
     for (int var : g_center){
         permuted[var] = state[var];
@@ -269,8 +266,7 @@ State StateRegistry::get_decoupled_state_permutation(const State &state, Complia
     }
     g_state_packer->set(buffer, g_center.size(), 0);
     
-    StateID id = insert_id_or_pop_state();
-    return lookup_state(id);
+    return lookup_state(insert_id_or_pop_state());
 }
 
 //TODO it would be nice to move the actual state creation (and operator application)
@@ -540,39 +536,17 @@ size_t StateRegistry::get_max_number_duplicates() const {
 }
 
 void StateRegistry::output_decoupled_state_space_size() const {
-    size_t dec_size_1 = g_center.size() * size();  // sum_s(|center| + sum_leaves(|leaf| * #reachable leaf states in s))
-    size_t dec_size_2 = g_center.size() * size();  // sum_s(|center| + sum_leaves(#reachable leaf states in s))
-    size_t dec_size_3 = g_center.size() * size();  // sum_s(|center| + sum_leaves(#leaf states in s))
-    size_t dec_size_4 = g_center.size() * size();  // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
+    size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        dec_size_4 += size(factor) * g_leaves[factor].size();
+        dec_size += sizeof(PackedStateBin) * g_leaf_factor_packers[factor]->get_num_bins() * size(factor);
     }
-    
-    // in orbit search, when reconstructing the plan, there are center states created
-    // for which no CompliantPathGraph is stored
-    
+
     for (size_t i = 0; i < CPGStorage::storage->size(this); ++i){
-        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(lookup_state(StateID(i)));
-        if (!cpg->is_empty()){
-            // we need to have this due to the resizing behaviour of the
-            // PerStateInformation, which will generate new empty entries when
-            // accessing an element if the state registry has grown in the meantime.
-            // this happens in particular when generating new center states in the
-            // plan reconstruction of orbit search
-            for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                size_t number_states = cpg->get_number_states(factor);
-                dec_size_1 += g_leaves[factor].size() * number_states;
-                dec_size_2 += number_states;
-                dec_size_3 += size(factor);
-                dec_size_4 += number_states;
-            }
-        }
+        dec_size += CPGStorage::storage->get_cpg(lookup_state(StateID(i)))->get_memory_footprint();
     }
-    cout << "decoupled state space size [1] " << dec_size_1 << endl;
-    cout << "decoupled state space size [2] " << dec_size_2 << endl;
-    cout << "decoupled state space size [3] " << dec_size_3 << endl;
-    cout << "decoupled state space size [4] " << dec_size_4 << endl;
+    cout << "decoupled state space size " << dec_size << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {

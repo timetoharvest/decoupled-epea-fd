@@ -131,14 +131,14 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
-    } else if (g_factoring->get_search_type() == SEARCH_TYPE::SAT){
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+    } else if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT){
     	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::INPUT_ERROR);
+    	exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     
-    if (g_factoring->get_search_type() == SEARCH_TYPE::UNSAT){
+    if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::UNSAT){
     	CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
     }
 
@@ -154,11 +154,11 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     is_fork_leaf = vector<bool>(g_leaves.size(), false);
     is_ifork_leaf = vector<bool>(g_leaves.size(), false);
     
-    if (g_factoring->get_profile() == FORK){
+    if (g_factoring->get_profile() == FACTORING_PROFILE::FORK){
         is_fork_factoring = true;
         has_fork_leaf = true;
         is_fork_leaf.assign(g_leaves.size(), true);
-    } else if (g_factoring->get_profile() == IFORK){
+    } else if (g_factoring->get_profile() == FACTORING_PROFILE::IFORK){
         is_ifork_factoring = true;
         has_ifork_leaf = true;
         is_ifork_leaf.assign(g_leaves.size(), true);
@@ -375,6 +375,7 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
 }
 
 void StubbornSetsDecoupled::compute_interference_relation() {
+    // TODO try to compute interference incrementally
     size_t num_operators = g_operators.size();
     interference_relation.resize(num_operators);
 
@@ -591,7 +592,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
                 } else if (op.get_affected_factor() == factor && is_fork_leaf[factor] && g_leaves[factor].size() > 1){
                     // if the action is a fork-leaf action and the leaf has more than one variable,
                     // we need to get the frontier even if the action does not have a leaf precondition.
-                    // otherwise, we loose completeness (see complicated example in JAIR'18 paper notes).
+                    // otherwise, we loose completeness (see complicated example in JAIR'19 paper notes).
                     mark_fork_frontier_actions_as_stubborn(factor);
                 }
             }

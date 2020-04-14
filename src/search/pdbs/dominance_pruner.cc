@@ -1,6 +1,9 @@
 #include "dominance_pruner.h"
 
+#include <algorithm>
+
 using namespace std;
+
 
 DominancePruner::DominancePruner(vector<PDBHeuristic *> &pattern_databases_,
                                  vector<vector<PDBHeuristic *> > &max_cliques_)
@@ -68,7 +71,7 @@ void DominancePruner::prune() {
     // other cliques. This prevents removing both copies of a clique that occurs
     // twice.
     vector<bool> clique_removed(max_cliques.size(), false);
-    __gnu_cxx::hash_set<PDBHeuristic *, hash_pointer > remaining_heuristics;
+    utils::HashSet<PDBHeuristic *> remaining_heuristics;
 
     compute_superset_relation();
     // Check all pairs of cliques for dominance.

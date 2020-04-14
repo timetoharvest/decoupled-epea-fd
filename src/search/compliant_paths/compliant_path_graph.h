@@ -86,7 +86,7 @@ protected:
     
     virtual void update(const State &base_state) = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed = DOMINANCE::NONE) = 0;
+    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed = DOMINANCE::NONE, int g_advantage = 0) = 0;
     
     virtual void store_new_graph(const State &state) const = 0;
 
@@ -118,9 +118,9 @@ public:
     virtual void dump() const = 0;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
-
-    // TODO: get rid of this, only used for statistics printout in StateRegistry
-    virtual bool is_empty() const = 0;
+    
+    // returns an approximation of the number of bytes stored in memory of this CPG for factor
+    virtual size_t get_memory_footprint() const = 0;
 
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1

@@ -29,7 +29,7 @@ void Group::initialize() {
 void Group::add_permutation(void* param, unsigned int, const unsigned int * full_perm){
     if (!safe_to_add_generators) {
         cout << "Not safe to add permutations at this point!" << endl;
-        exit_with(utils::ExitCode::CRITICAL_ERROR);
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
     Permutation perm(full_perm);
@@ -41,7 +41,7 @@ void Group::add_permutation(void* param, unsigned int, const unsigned int * full
         if (num_identity_generators > stop_after_false_generated) {
             cout << endl << "Problems with generating symmetry group! Too many false generators." << endl;
             cout << "Number of generators: 0" << endl;
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
     }
 }
@@ -49,7 +49,7 @@ void Group::add_permutation(void* param, unsigned int, const unsigned int * full
 void Group::add_generator(Permutation gen) {
     if (!safe_to_add_generators) {
         cout << "Not safe to add permutations at this point!" << endl;
-        exit_with(utils::ExitCode::CRITICAL_ERROR);
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
     generators.push_back(gen);

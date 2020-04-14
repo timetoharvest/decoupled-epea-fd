@@ -3,12 +3,12 @@
 #include "label.h"
 #include "labels.h"
 #include "shrink_fh.h"
-
-#include "../equivalence_relation.h"
+#include "../algorithms/equivalence_relation.h"
 #include "../globals.h"
-#include "../priority_queue.h"
-#include "../timer.h"
-#include "../utilities.h"
+#include "../algorithms/priority_queues.h"
+#include "../utils/hash.h"
+#include "../utils/system.h"
+#include "../utils/timer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -21,8 +21,9 @@
 #include <set>
 #include <string>
 #include <sstream>
+
 using namespace std;
-using namespace __gnu_cxx;
+
 
 /* Implementation note: Transitions are grouped by their labels,
  not by source state or any such thing. Such a grouping is beneficial
@@ -77,11 +78,11 @@ int TransitionSystem::get_label_cost_by_index(int label_no) const {
 
 void TransitionSystem::discard_states(const vector<bool> &to_be_pruned_states) {
     assert(int(to_be_pruned_states.size()) == num_states);
-    vector<slist<AbstractStateRef> > equivalence_relation;
+    vector<list<AbstractStateRef> > equivalence_relation;
     equivalence_relation.reserve(num_states);
     for (int state = 0; state < num_states; ++state) {
         if (!to_be_pruned_states[state]) {
-            slist<AbstractStateRef> group;
+            list<AbstractStateRef> group;
             group.push_front(state);
             equivalence_relation.push_back(group);
         }
@@ -241,7 +242,7 @@ void TransitionSystem::compute_goal_distances_unit_cost() {
 
 static void dijkstra_search(
     const vector<vector<pair<int, int> > > &graph,
-    AdaptiveQueue<int> &queue,
+    priority_queues::AdaptiveQueue<int> &queue,
     vector<int> &distances) {
     while (!queue.empty()) {
         pair<int, int> top_pair = queue.pop();
@@ -278,7 +279,7 @@ void TransitionSystem::compute_init_distances_general_cost() {
 
     // TODO: Reuse the same queue for multiple computations to save speed?
     //       Also see compute_goal_distances_general_cost.
-    AdaptiveQueue<int> queue;
+    priority_queues::AdaptiveQueue<int> queue;
     for (AbstractStateRef state = 0; state < num_states; ++state) {
         if (state == init_state) {
             init_distances[state] = 0;
@@ -302,7 +303,7 @@ void TransitionSystem::compute_goal_distances_general_cost() {
 
     // TODO: Reuse the same queue for multiple computations to save speed?
     //       Also see compute_init_distances_general_cost.
-    AdaptiveQueue<int> queue;
+    priority_queues::AdaptiveQueue<int> queue;
     for (AbstractStateRef state = 0; state < num_states; ++state) {
         if (goal_states[state]) {
             goal_distances[state] = 0;
@@ -315,7 +316,7 @@ void TransitionSystem::compute_goal_distances_general_cost() {
 bool TransitionSystem::are_transitions_sorted_unique() const {
     for (size_t i = 0; i < transitions_by_label.size(); ++i) {
         const vector<Transition> &transitions = transitions_by_label[i];
-        if (!is_sorted_unique(transitions)) {
+        if (!utils::is_sorted_unique(transitions)) {
             return false;
         }
     }
@@ -386,7 +387,7 @@ void TransitionSystem::normalize() {
        transitions that later turn out to be unnecessary because the
        label becomes irrelevant.
     */
-    hash_set<int> labels_made_irrelevant;
+    utils::HashSet<int> labels_made_irrelevant;
     for (int reduced_label_no = num_labels; reduced_label_no < labels->get_size();
          ++reduced_label_no) {
         const Label *reduced_label = labels->get_label_by_index(reduced_label_no);
@@ -481,7 +482,7 @@ void TransitionSystem::normalize() {
     assert(is_normalized());
 }
 
-EquivalenceRelation *TransitionSystem::compute_local_equivalence_relation() const {
+equivalence_relation::EquivalenceRelation *TransitionSystem::compute_local_equivalence_relation() const {
     /* If label l1 is irrelevant and label l2 is relevant but has exactly the
        transitions of an irrelevant label, we do not detect the equivalence. */
 
@@ -524,7 +525,7 @@ EquivalenceRelation *TransitionSystem::compute_local_equivalence_relation() cons
         }
         ++annotation;
     }
-    return EquivalenceRelation::from_annotated_elements<int>(num_labels, annotated_labels);
+    return equivalence_relation::EquivalenceRelation::from_annotated_elements<int>(num_labels, annotated_labels);
 }
 
 void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *> &result,
@@ -545,7 +546,7 @@ void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *
         const OperatorLabel *op_label = dynamic_cast<const OperatorLabel *>(label);
         const vector<Condition> &preconditions = op_label->get_preconditions();
         const vector<Effect> &effects = op_label->get_effects();
-        hash_map<int, int> pre_val;
+        utils::HashMap<int, int> pre_val;
         vector<bool> has_effect_on_var(g_variable_domain.size(), false);
         for (size_t i = 0; i < preconditions.size(); ++i)
             pre_val[preconditions[i].var] = preconditions[i].val;
@@ -559,7 +560,7 @@ void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *
             // Determine possible values that var can have when this
             // operator is applicable.
             int pre_value = -1;
-            hash_map<int, int>::const_iterator pre_val_it = pre_val.find(var);
+            utils::HashMap<int, int>::const_iterator pre_val_it = pre_val.find(var);
             if (pre_val_it != pre_val.end())
                 pre_value = pre_val_it->second;
             int pre_value_min, pre_value_max;
@@ -634,7 +635,7 @@ void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *
 }
 
 void TransitionSystem::apply_abstraction(
-    vector<slist<AbstractStateRef> > &collapsed_groups) {
+    vector<list<AbstractStateRef> > &collapsed_groups) {
     /* Note on how this method interacts with the distance information
        (init_distances and goal_distances): if no two states with
        different g or h values are combined by the abstraction (i.e.,
@@ -672,7 +673,7 @@ void TransitionSystem::apply_abstraction(
     cout << tag() << "applying abstraction (" << get_size()
          << " to " << collapsed_groups.size() << " states)" << endl;
 
-    typedef slist<AbstractStateRef> Group;
+    using Group = list<AbstractStateRef>;
 
     vector<int> abstraction_mapping(num_states, PRUNED_STATE);
 
@@ -824,7 +825,7 @@ void TransitionSystem::statistics(bool include_expensive_statistics) const {
     } else {
         cout << "transition system is unsolvable";
     }
-    cout << " [t=" << g_timer << "]" << endl;
+    cout << " [t=" << utils::g_timer << "]" << endl;
 }
 
 int TransitionSystem::get_peak_memory_estimate() const {
@@ -987,7 +988,7 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
     components[0] = ts1;
     components[1] = ts2;
 
-    ::set_union(ts1->varset.begin(), ts1->varset.end(), ts2->varset.begin(),
+    set_union(ts1->varset.begin(), ts1->varset.end(), ts2->varset.begin(),
                 ts2->varset.end(), back_inserter(varset));
 
     int ts1_size = ts1->get_size();
@@ -1034,7 +1035,7 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
                 ts2->transitions_by_label[label_no];
             if (relevant1 && relevant2) {
                 if (bucket1.size() * bucket2.size() > transitions.max_size())
-                    exit_with(EXIT_OUT_OF_MEMORY);
+                    exit_with(utils::ExitCode::SEARCH_OUT_OF_MEMORY);
                 transitions.reserve(bucket1.size() * bucket2.size());
                 for (size_t i = 0; i < bucket1.size(); ++i) {
                     int src1 = bucket1[i].src;
@@ -1050,7 +1051,7 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
             } else if (relevant1) {
                 assert(!relevant2);
                 if (bucket1.size() * ts2_size > transitions.max_size())
-                    exit_with(EXIT_OUT_OF_MEMORY);
+                    exit_with(utils::ExitCode::SEARCH_OUT_OF_MEMORY);
                 transitions.reserve(bucket1.size() * ts2_size);
                 for (size_t i = 0; i < bucket1.size(); ++i) {
                     int src1 = bucket1[i].src;
@@ -1064,7 +1065,7 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
             } else if (relevant2) {
                 assert(!relevant1);
                 if (bucket2.size() * ts1_size > transitions.max_size())
-                    exit_with(EXIT_OUT_OF_MEMORY);
+                    exit_with(utils::ExitCode::SEARCH_OUT_OF_MEMORY);
                 transitions.reserve(bucket2.size() * ts1_size);
                 for (int s1 = 0; s1 < ts1_size; ++s1) {
                     for (size_t i = 0; i < bucket2.size(); ++i) {
@@ -1075,7 +1076,7 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
                         transitions.push_back(Transition(src, target));
                     }
                 }
-                assert(is_sorted_unique(transitions));
+                assert(utils::is_sorted_unique(transitions));
             }
         }
     }

@@ -38,7 +38,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return clone();
 }
 
-DOMINANCE PruningReachable::check_dominance(const State &other, DOMINANCE needed) {
+DOMINANCE PruningReachable::check_dominance(const State &other, DOMINANCE needed, int) {
     PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
     
     assert(g_factoring->get_profile() == FORK);
@@ -175,9 +175,21 @@ unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
     return unique_ptr<CompliantPathGraph>(new PruningReachable(this));
 }
 
+size_t PruningReachable::get_memory_footprint() const {
+    size_t num_bytes = Reachable::get_memory_footprint();
+    if (num_bytes != 0 && !frontier.empty()){
+        num_bytes += sizeof(vector<boost::dynamic_bitset<> >);
+
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += frontier[factor].num_blocks() * sizeof(boost::dynamic_bitset<>::block_type);
+        }
+    }
+    return num_bytes;
+}
+
 bool PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
     // TODO implement this
     cerr << "PruningReachable::apply_symmetry_permutation not implemented" << endl;
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
     

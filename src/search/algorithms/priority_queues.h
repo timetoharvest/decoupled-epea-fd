@@ -68,7 +68,8 @@ template <typename Value>
 struct compare_pair_first_greater {
     typedef typename AbstractQueue<Value>::Entry Entry;
     bool operator()(const Entry &lhs, const Entry &rhs) const {
-        return rhs.first == -1 || (rhs.first > lhs.first && lhs.first != -1);
+        // TODO -1 is used to encode infinity in EffectivePrices, fix this
+        return lhs.first != -1 && (rhs.first == -1 || rhs.first > lhs.first);
     }
 };
 

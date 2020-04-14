@@ -1,6 +1,6 @@
 #include "h_m_landmarks.h"
+
 #include "../plugin.h"
-#include "../exact_timer.h"
 
 
 std::ostream & operator<<(std::ostream &os, const Fluent &p) {
@@ -586,7 +586,7 @@ HMLandmarks::HMLandmarks(const Options &opts)
     std::cout << "H_m_Landmarks(" << m_ << ")" << std::endl;
     if (!g_axioms.empty()) {
         cerr << "H_m_Landmarks do not support axioms" << endl;
-        exit_with(EXIT_UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     // need this to be able to print propositions for debugging
     // already called in global.cc

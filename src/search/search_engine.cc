@@ -26,7 +26,7 @@ SearchEngine::SearchEngine(const Options &opts)
       max_time(opts.get<double>("max_time")) {
     if (opts.get<int>("bound") < 0) {
         cerr << "error: negative cost bound " << opts.get<int>("bound") << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     bound = opts.get<int>("bound");
     if (g_factoring){
@@ -84,7 +84,7 @@ void SearchEngine::search() {
         }
     }
 
-    cout << "Actual search time: " << timer
+    cout << "Actual search time: " << timer.get_elapsed_time()
          << " [t=" << utils::g_timer << "]" << endl;
 }
 
@@ -100,14 +100,14 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 }
             }
             cout << "found a plan of cost " << solution_cost;
-            
+
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
                 if (!is_optimal_leaf_plan(state, *cpg)){
                     cout << ", cannot guarantee optimality => exit [t=" << utils::g_timer << "]" << endl;
-                    exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+                    exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
@@ -139,10 +139,10 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
             }
             cout << " [t=" << utils::g_timer << "]" << endl;
             return true;
-	}
-	Plan plan;
+        }
+        Plan plan;
         search_space.trace_path(state, plan);
-	cout << "Solution found!" << endl;
+        cout << "Solution found!" << endl;
         set_plan(plan);
         return true;
     }
@@ -185,7 +185,7 @@ void SearchEngine::save_plan_if_necessary() const {
         if (g_factoring){
             search_space.trace_path(g_state_registry->lookup_state(cheapest_goal_state), plan);
         }
-        save_plan(get_plan(), 0);
+        save_plan(get_plan(), false);
     }
 }
 

@@ -1,9 +1,6 @@
 #ifndef SYMMETRIES_GRAPH_CREATOR_H
 #define SYMMETRIES_GRAPH_CREATOR_H
 
-#ifdef USE_BLISS
-#include <graph.hh>
-#endif
 #include "decoupled_group.h"
 #include "lexicographic_ordering.h"
 #include "group.h"
@@ -14,6 +11,11 @@
 enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
               GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
               CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
+
+
+namespace bliss {
+class Digraph;
+}
 
 /**
  * This class will create a bliss graph which will be used to find the
@@ -30,14 +32,14 @@ class GraphCreator  {
     
     const LexicographicOrdering lex_ordering;
 
-    unique_ptr<Group> group;
+    std::unique_ptr<Group> group;
 
-    unique_ptr<DecoupledGroup> decoupled_group;
+    std::unique_ptr<DecoupledGroup> decoupled_group;
 
 #ifdef USE_BLISS
-    bliss::Digraph* create_bliss_directed_graph() const;
+    std::unique_ptr<bliss::Digraph> create_bliss_directed_graph() const;
 
-    void add_operator_directed_graph(bliss::Digraph* g, const Operator& op) const;
+    void add_operator_directed_graph(std::unique_ptr<bliss::Digraph> &g, const Operator &op) const;
 #endif
 
     // bool effect_can_be_overwritten(int ind, const std::vector<PrePost>& prepost) const;
@@ -50,7 +52,7 @@ public:
 
     void initialize();
 
-    const vector<int> & get_canonical_state(const State &state)  {
+    const std::vector<int> & get_canonical_state(const State &state)  {
         return group->get_canonical_state(state);
     }
 

@@ -693,7 +693,7 @@ OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operat
     }
 
     cerr << "Error: no symmetric operator found in  DecoupledPermutation::find_matching_min_cost_permuted_op"  << endl;    
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
 
 bool DecoupledPermutation::stabilizes_center(const State &center) const {

@@ -55,15 +55,15 @@ void Factoring::init_var_to_ops_map() {
 }
 
 Factoring::Factoring(const Options &opts) :
-            search_type(SEARCH_TYPE(opts.get_enum("search_type"))) {
+            search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))) {
     switch(search_type){
-        case FRA : cout << "performing Fork-Root A* search" << endl; break;
-        case ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
-        case SDA : cout << "performing Star Decoupled A* search" << endl; break;
-        case SAT : cout << "performing decoupled satisficing search" << endl; break;
-        case UNSAT : cout << "trying to prove task unsolvable" << endl; break;
-        case NO_SEARCH : cout << "not running actual search" << endl; break;
-        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::INPUT_ERROR);
+        case DECOUPLED_SEARCH_TYPE::FRA : cout << "performing Fork-Root A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::SDA : cout << "performing Star Decoupled A* search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::SAT : cout << "performing decoupled satisficing search" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::UNSAT : cout << "trying to prove task unsolvable" << endl; break;
+        case DECOUPLED_SEARCH_TYPE::NO_SEARCH : cout << "not running actual search" << endl; break;
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -120,7 +120,7 @@ protected:
 
 public:
     
-    ForkFactoring(const Options &opts, PROFILE profile = FORK)
+    ForkFactoring(const Options &opts, FACTORING_PROFILE profile = FORK)
             : Factoring(opts),
               maximize_mobility(opts.get<bool>("maximize_mobility")),
               extend_leaves(opts.get<bool>("extend_leaves")),
@@ -167,7 +167,7 @@ public:
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
     }
-  
+
 };
 
 class SokobanFactoring : public Factoring {
@@ -445,7 +445,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 }
 
 void Factoring::print_factoring() const {
-#ifndef NDEBUG
+#ifdef DEBUG_FACTORING
     cout << "final factoring:" << endl;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         cout << "leaf " << factor << ": ";
@@ -481,7 +481,7 @@ void Factoring::print_factoring() const {
     }
     
     cout << "min leaf factor size: " << min_size << endl;
-    cout << "average leaf factor size: " << (uint64_t) (avg_size / g_leaves.size()) << endl;
+    cout << "average leaf factor size: " << (uint64_t)(avg_size / g_leaves.size()) << endl;
     cout << "max leaf factor size: " << max_size << endl;
 
     // mobility and flexibility
@@ -522,7 +522,7 @@ void Factoring::print_factoring() const {
             for (int var : g_leaves[factor]){
                 cerr << g_fact_names[var][0] << endl;
             }
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
@@ -559,8 +559,8 @@ void Factoring::do_factoring_or_abstain() {
     cout << "factoring time " << t << endl;
 
     if (best_factoring.size() < min_number_leaves){
-	cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
-        exit_with(utils::ExitCode::ABSTAINED);
+        cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
+        exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
     }
 
     apply_factoring(best_factoring);
@@ -569,7 +569,7 @@ void Factoring::do_factoring_or_abstain() {
 
     if (search_type == NO_SEARCH) {
         cout << "Factoring complete, do not perform search." << endl;
-        exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+        exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
 
@@ -1350,17 +1350,16 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
     return best_factoring;
 }
 
-Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
+Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const {
     vector<vector<int> > vars(g_variable_domain.size());
     size_t bound = variables.empty() ? g_variable_domain.size() : variables.size();
     for (size_t i = 0; i < bound; i++){
         if (variables.empty() || variables.size() == g_variable_domain.size()){
             vars[i] = causal_graph::get_causal_graph().get_successors(i);
         } else {
-            vector<int> successors = causal_graph::get_causal_graph().get_successors(variables[i]);
-            for (size_t succ = 0; succ < successors.size(); succ++){
-                if (find(variables.begin(), variables.end(), successors[succ]) != variables.end()){
-                    vars[variables[i]].push_back(successors[succ]);
+            for (int succ : causal_graph::get_causal_graph().get_successors(variables[i])){
+                if (find(variables.begin(), variables.end(), succ) != variables.end()){
+                    vars[variables[i]].push_back(succ);
                 }
             }
         }
@@ -1373,8 +1372,9 @@ Factoring::FactoredVars Factoring::get_sccs(vector<int> variables) const {
         if (found_sccs[i].size() != 1 || variables.empty() || variables.size() == g_variable_name.size()){
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
         } else if (find(variables.begin(), variables.end(), found_sccs[i][0]) != variables.end()){
-	    // this can happen if not all variables are in *variables*
-	    // the SCC class needs the input vector to be aligned very specifically
+            // TODO check this
+            // this can happen if not all variables are in *variables*
+            // the SCC class needs the input vector to be aligned very specifically
             real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
         }
     }

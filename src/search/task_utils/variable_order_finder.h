@@ -4,6 +4,8 @@
 #include <memory>
 #include <vector>
 
+class MergeLinear;
+
 namespace variable_order_finder {
 enum VariableOrderType {
     CG_GOAL_LEVEL,
@@ -22,6 +24,7 @@ extern void dump_variable_order_type(VariableOrderType variable_order_type);
   least as long as the variable order finder.
 */
 class VariableOrderFinder {
+    friend class ::MergeLinear; // to dump variable order type
     const VariableOrderType variable_order_type;
     std::vector<int> selected_vars;
     std::vector<int> remaining_vars;

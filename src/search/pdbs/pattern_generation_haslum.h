@@ -9,7 +9,9 @@
 #include <vector>
 
 class CanonicalPDBsHeuristic;
+namespace utils {
 class CountdownTimer;
+}
 class State;
 class Options;
 class PDBHeuristic;
@@ -25,7 +27,7 @@ class PatternGenerationHaslum {
     CanonicalPDBsHeuristic *current_heuristic;
 
     int num_rejected; // for stats only
-    CountdownTimer *hill_climbing_timer;
+    utils::CountdownTimer *hill_climbing_timer;
 
     /* For the given pattern, all possible extensions of the pattern by one relevant variable
        are inserted into candidate_patterns. This may generate duplicated patterns. */
