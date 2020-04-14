@@ -44,7 +44,17 @@ PruningOptions::PruningOptions(const Options &opts)
         if (irrelevance != IRRELEVANCE::NO){
             cout << "performing irrelevance analysis in leaf factors" << endl;
         }
-    }    
+    }
+    if (pruning_type == PRUNING_TYPE::FRONTIER &&
+            (min_price_in_g ||
+                    g_in_dominance ||
+                    prices_in_dominance)){
+        cout << "WARNING: include_price_in_g, include_g_in_dominance, or trade_prices_in_dominance are not"
+                "supported for cost_frontier pruning, disabling these options in favor of frontier pruning." << endl;
+        min_price_in_g = false;
+        g_in_dominance = false;
+        prices_in_dominance = false;
+    }
 }
 
 void PruningOptions::verify_options() const {
