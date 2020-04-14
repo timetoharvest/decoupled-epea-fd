@@ -68,12 +68,6 @@ void PruningOptions::verify_options() const {
             exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
-    if (pruning_type == PRUNING_TYPE::DUPLICATE){
-        if (goal_price_propagation || do_simulation){
-            cerr << "Goal price propagation and simulation are not (yet) supported for exact duplicate checking!" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-        }
-    }
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
             cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
