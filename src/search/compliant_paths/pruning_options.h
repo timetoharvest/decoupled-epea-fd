@@ -11,18 +11,11 @@ enum DOMINANCE {
     EQUAL
 };
 
-class PruningOptions;
-
-static PruningOptions* _parse_dominance(OptionParser &parser);
-static PruningOptions* _parse_duplicate(OptionParser &parser);
-static PruningOptions* _parse_frontier(OptionParser &parser);
 
 class PruningOptions {
-    friend PruningOptions* _parse_dominance(OptionParser &parser); // to use PRUNING_TYPE
-    friend PruningOptions* _parse_duplicate(OptionParser &parser);
-    friend PruningOptions* _parse_frontier(OptionParser &parser);
     
     enum PRUNING_TYPE {
+        // TODO FRONTIER and DUPLICATE are actually orthogonal and can be combined
         DOMINANCE,
         DUPLICATE,
         FRONTIER
@@ -135,6 +128,10 @@ public:
     
     static void add_options_to_parser(OptionParser &parser);
     
+    static PruningOptions* _parse_dominance(OptionParser &parser);
+    static PruningOptions* _parse_duplicate(OptionParser &parser);
+    static PruningOptions* _parse_frontier(OptionParser &parser);
+
 };
 
 #endif
