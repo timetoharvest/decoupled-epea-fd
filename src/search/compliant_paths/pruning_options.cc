@@ -118,7 +118,7 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
                            "perform simulation irrelevance pruning", "NO");
 }
 
-static PruningOptions *_parse_dominance(OptionParser &parser) {
+PruningOptions *PruningOptions::_parse_dominance(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
@@ -132,7 +132,7 @@ static PruningOptions *_parse_dominance(OptionParser &parser) {
     return pruning;
 }
 
-static PruningOptions *_parse_duplicate(OptionParser &parser) {
+PruningOptions *PruningOptions::_parse_duplicate(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
 
@@ -146,7 +146,7 @@ static PruningOptions *_parse_duplicate(OptionParser &parser) {
     return pruning;
 }
 
-static PruningOptions *_parse_frontier(OptionParser &parser) {
+PruningOptions *PruningOptions::_parse_frontier(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
@@ -160,6 +160,6 @@ static PruningOptions *_parse_frontier(OptionParser &parser) {
     return pruning;
 }
 
-static Plugin<PruningOptions> _plugin_dominance("dominance", _parse_dominance);
-static Plugin<PruningOptions> _plugin_duplicate("duplicate", _parse_duplicate);
-static Plugin<PruningOptions> _plugin_frontier("cost_frontier", _parse_frontier);
+static Plugin<PruningOptions> _plugin_dominance("dominance", PruningOptions::_parse_dominance);
+static Plugin<PruningOptions> _plugin_duplicate("duplicate", PruningOptions::_parse_duplicate);
+static Plugin<PruningOptions> _plugin_frontier("cost_frontier", PruningOptions::_parse_frontier);
