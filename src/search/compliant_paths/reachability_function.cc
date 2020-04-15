@@ -19,17 +19,26 @@ void Reachable::register_cpg_storage(ReachableStorage *storage) {
     cpg_storage = storage;
 }
 
-Reachable::Reachable(const Reachable *tag) {
-    if (tag == 0){
-        reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
-        goal_reached.resize(g_leaves.size(), false);
-    } else {
-        reachable = tag->reachable;
-        goal_reached = tag->goal_reached;
-    }
+Reachable::Reachable(const Reachable &other) {
+    reachable = other.reachable;
+    goal_reached = other.goal_reached;
+}
+
+Reachable& Reachable::operator=(Reachable &&other) {
+    reachable = move(other.reachable);
+    goal_reached = move(other.goal_reached);
+    return *this;
+}
+
+void Reachable::resize() {
+    reachable = vector<boost::dynamic_bitset<> >(g_leaves.size());
+    goal_reached.resize(g_leaves.size(), false);
 }
 
 bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
+    if (is_leaf_state_space_scc[factor]){
+        return false;
+    }
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
@@ -49,15 +58,18 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &, const Operator &op) const {
-    
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &new_center_state,
+                                                                          const Operator &op) const {
+    unique_ptr<Reachable> tmp_reach;
     if (g_factoring->get_profile() != FORK){
-        unique_ptr<Reachable> tmp_reach(new Reachable(0));
+        tmp_reach.reset(new Reachable());
+        tmp_reach->resize();
         tmp_reach->apply_center_op_to_leaves(*this, op);
-        return tmp_reach;
     } else {                
-        return clone();
+        tmp_reach.reset(new Reachable(*this));
     }
+    tmp_reach->update(new_center_state);
+    return tmp_reach;
 }
 
 void Reachable::update(const State &base_state) {
@@ -66,10 +78,14 @@ void Reachable::update(const State &base_state) {
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
 
-    assert(leaf_tags_to_cache.empty());
+    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
+        if (is_leaf_state_space_scc[factor]){
+            continue;
+        }
+
         if (g_factoring->is_fork_leaf(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || 
@@ -93,6 +109,7 @@ void Reachable::update(const State &base_state) {
         bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
         
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
+            // TODO is it really still worth it with the invertible ifork leaf optimization?
             // the two above conditions together prevent errors in case the CG is not connected.
             // i.e. g_leaf_price_cache is empty for fork topologies
             
@@ -108,12 +125,12 @@ void Reachable::update(const State &base_state) {
                     }
                     ++leaf_id;
                 }
-                if (leaf_price_cache[factor].size() > leaf_id && leaf_price_cache[factor][leaf_id] != StateID::no_state){                    
-                    const CompliantPathGraph *tag_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(leaf_price_cache[factor][leaf_id]));
+                if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
+                    const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
                     
-                    size_t number_states = tag_to_copy->get_number_states(factor) - 1;
+                    size_t number_states = cpg_to_copy->get_number_states(factor) - 1;
                     for (LeafStateHash id(0) ; id < g_state_registry->size(factor); ++id){
-                        if (id != leaf_id && tag_to_copy->has_leaf_state(id, factor)){
+                        if (id != leaf_id && cpg_to_copy->has_leaf_state(id, factor)){
                             add_state(id, factor);
                             if (--number_states == 0){
                                 break;
@@ -122,7 +139,7 @@ void Reachable::update(const State &base_state) {
                     }
                     continue;
                 } else {
-                    leaf_tags_to_cache.push_back(LeafStateID(leaf_id, factor));
+                    leaf_states_to_cache_for_current_cpg.push_back(LeafStateID(leaf_id, factor));
                 }
             }
         }
@@ -268,9 +285,13 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) {
+DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOMINANCE needed) {
+    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
+        return DOMINANCE::NONE;
+    }
+
     const Reachable *other_cpg = &cpg_storage->reachable[other];
-    
+
     bool sizes_equal = true;
     bool new_is_larger = false;
     bool new_is_smaller = false;
@@ -285,6 +306,9 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
     
     // check number of reachable leaf states
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        if (is_leaf_state_space_scc[factor]){
+            continue;
+        }
         if (g_factoring->is_fork_leaf(factor)) {
             // in satisficing search, updating CPG stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
@@ -345,7 +369,7 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
     
     // compare reachability
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (skip_leaf[factor]) { // is fork-leaf that reached its goal
+        if (is_leaf_state_space_scc[factor] || skip_leaf[factor]) { // is fork-leaf that reached its goal
             continue;
         }
         size_t number_new_states = get_number_states(factor);
@@ -387,6 +411,8 @@ DOMINANCE Reachable::check_dominance(const State &other, DOMINANCE needed, int) 
         cout << "old tag is equal to new one" << endl;
 #endif
         return DOMINANCE::EQUAL;
+    } else if (pruning->use_exact_duplicate_checking()){
+        return DOMINANCE::NONE;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
@@ -494,6 +520,9 @@ void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFacto
 
 bool Reachable::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
     assert(id < leaf_state_id_map[factor].size());
+    if (is_leaf_state_space_scc[factor]){
+        return true;
+    }
     if (leaf_state_id_map[factor][id] == -1){
         return false;
     }
@@ -504,27 +533,39 @@ bool Reachable::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
 int Reachable::get_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
     assert(has_leaf_state(id, factor));
     assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
+    if (is_leaf_state_space_scc[factor]){
+        return g_min_action_cost_per_factor[factor];
+    }
+    // TODO: this assumes that the initial state is not a goal state, otherwise need to return 0 for initial state e.g. for forks
     return reachable[factor][leaf_state_id_map[factor][id]] ? g_min_action_cost_per_factor[factor] : INF;
 }
 
 size_t Reachable::get_number_states(LeafFactorID factor) const {
+    if (is_leaf_state_space_scc[factor]){
+        return g_state_registry->size(factor);
+    }
     return reachable[factor].count();
 }
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
     if (goal_reached[factor]){
-        return g_min_action_cost_per_factor[factor];
+        return g_min_action_cost_per_factor[factor]; // TODO: this assumes that the initial state is not a goal state
     } else {
         return INF;
     }
 }
 
 bool Reachable::goal_reachable(LeafFactorID factor) const {
+    if (is_leaf_state_space_scc[factor]){
+        // this is ok because the construction of the leaf state spaces makes
+        // sure that every leaf with a goal has a goal leaf state reachable
+        return !g_goals_per_factor[factor].empty();
+    }
     return goal_reached[factor];
 }
 
-void Reachable::store_new_graph(const State &state) const {
-    cache_leaf_price_tags(state);
+void Reachable::store_new_cpg(const State &state) {
+    cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -532,7 +573,8 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
     if (pruning->do_advanced_pruning()){
         return PruningReachable::get_init_state_cpg();        
     } else {
-        unique_ptr<Reachable> reach(new Reachable(0));
+        unique_ptr<Reachable> reach(new Reachable());
+        reach->resize();
             
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
@@ -559,6 +601,14 @@ void Reachable::dump() const {
 }
 
 unique_ptr<CompliantPathGraph> Reachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Reachable(this));
+    return unique_ptr<CompliantPathGraph>(new Reachable(*this));
+}
+
+uint64_t Reachable::get_hash() const {
+    utils::HashState hash_state;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        feed(hash_state, reachable[factor]);
+    }
+    return hash_state.get_hash64();
 }
 

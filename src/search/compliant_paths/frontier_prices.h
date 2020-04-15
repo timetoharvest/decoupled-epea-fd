@@ -14,8 +14,7 @@ class FrontierPrices : public EffectivePrices {
     static FrontierPriceStorage *cpg_storage;
     
 
-    FrontierPrices(const FrontierPrices *tag);
-    
+    void resize();
     
     void compute_cost_frontier();
 
@@ -25,6 +24,8 @@ class FrontierPrices : public EffectivePrices {
 
     void propagate_dominance_prices();
     
+    void update(const State &new_center_state);
+
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
@@ -32,22 +33,32 @@ protected:
     
     std::vector<boost::dynamic_bitset<> > frontier;
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
                                                                                 const Operator &op) const override;
-                                                                                
-    virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_graph(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
-    FrontierPrices(){};
+    FrontierPrices(){
+        assert(g_factoring->get_profile() == FACTORING_PROFILE::FORK);
+    };
+
+    FrontierPrices(const FrontierPrices &cpg);
+
+    FrontierPrices(FrontierPrices &&other) = delete;
+
+    FrontierPrices& operator=(const FrontierPrices &other) = delete;
+
+    FrontierPrices& operator=(FrontierPrices &&other);
     
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual uint64_t get_hash() const override;
 
     
     static void register_cpg_storage(FrontierPriceStorage *storage);
