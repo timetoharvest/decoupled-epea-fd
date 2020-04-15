@@ -180,8 +180,8 @@ unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
 uint64_t PruningReachable::get_hash() const {
     utils::HashState hash_state;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        // reachable uniquely determines frontier, so no need to hash both
         feed(hash_state, reachable[factor]);
-        feed(hash_state, frontier[factor]);
     }
     return hash_state.get_hash64();
 }

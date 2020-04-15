@@ -3,6 +3,7 @@
 #include "../globals.h"
 #include "../operator.h"
 #include "../state.h"
+#include "../state_registry.h"
 
 #include <cassert>
 
@@ -100,6 +101,11 @@ void GeneratorForkBinary::generate_applicable_ops_ignore_outside_pre(
     generator2->generate_applicable_ops_ignore_outside_pre(state, applicable_ops);
 }
 
+void GeneratorForkBinary::remove_never_applicable_center_ops(LeafFactorID factor) {
+    generator1->remove_never_applicable_center_ops(factor);
+    generator2->remove_never_applicable_center_ops(factor);
+}
+
 GeneratorForkMulti::GeneratorForkMulti(vector<unique_ptr<GeneratorBase>> children)
     : children(move(children)) {
     /* Note that we permit 0-ary forks as a way to define empty
@@ -125,6 +131,12 @@ void GeneratorForkMulti::generate_applicable_ops_ignore_outside_pre(
     const LeafState &state, vector<OperatorID> &applicable_ops) const {
     for (const auto &generator : children)
         generator->generate_applicable_ops_ignore_outside_pre(state, applicable_ops);
+}
+
+void GeneratorForkMulti::remove_never_applicable_center_ops(LeafFactorID factor) {
+    for (auto &generator : children){
+        generator->remove_never_applicable_center_ops(factor);
+    }
 }
 
 GeneratorSwitchVector::GeneratorSwitchVector(
@@ -165,6 +177,14 @@ void GeneratorSwitchVector::generate_applicable_ops_ignore_outside_pre(
             if (generator_for_val) {
                 generator_for_val->generate_applicable_ops_ignore_outside_pre(state, applicable_ops);
             }
+        }
+    }
+}
+
+void GeneratorSwitchVector::remove_never_applicable_center_ops(LeafFactorID factor) {
+    for (auto &generator_for_val : generator_for_value){
+        if (generator_for_val){
+            generator_for_val->remove_never_applicable_center_ops(factor);
         }
     }
 }
@@ -213,6 +233,12 @@ void GeneratorSwitchHash::generate_applicable_ops_ignore_outside_pre(
     }
 }
 
+void GeneratorSwitchHash::remove_never_applicable_center_ops(LeafFactorID factor) {
+    for (auto &generator_for_val : generator_for_value){
+        generator_for_val.second->remove_never_applicable_center_ops(factor);
+    }
+}
+
 GeneratorSwitchSingle::GeneratorSwitchSingle(
     int switch_var_id, int value, unique_ptr<GeneratorBase> generator_for_value)
     : switch_var_id(switch_var_id),
@@ -239,6 +265,10 @@ void GeneratorSwitchSingle::generate_applicable_ops_ignore_outside_pre(
     if (g_belongs_to_factor[switch_var_id] != state.get_id().get_factor() || value == state[switch_var_id]) {
         generator_for_value->generate_applicable_ops_ignore_outside_pre(state, applicable_ops);
     }
+}
+
+void GeneratorSwitchSingle::remove_never_applicable_center_ops(LeafFactorID factor) {
+    generator_for_value->remove_never_applicable_center_ops(factor);
 }
 
 GeneratorLeafVector::GeneratorLeafVector(vector<OperatorID> &&applicable_operators)
@@ -291,26 +321,67 @@ void GeneratorLeafVector::generate_applicable_ops_ignore_outside_pre(
     }
 }
 
+void GeneratorLeafVector::remove_never_applicable_center_ops(LeafFactorID factor) {
+    for (auto it = applicable_operators.begin(); it != applicable_operators.end(); ++it){
+        if (g_operators[*it].has_precondition_on(factor)){
+            bool applicable = false;
+            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                if (g_operators[*it].is_applicable(id, factor)){
+                    applicable = true;
+                    break;
+                }
+            }
+            if (!applicable){
+                it = applicable_operators.erase(it);
+            }
+        }
+    }
+}
+
 GeneratorLeafSingle::GeneratorLeafSingle(OperatorID applicable_operator)
     : applicable_operator(applicable_operator) {
 }
 
 void GeneratorLeafSingle::generate_applicable_ops(
     const State &, vector<OperatorID> &applicable_ops) const {
-    applicable_ops.push_back(applicable_operator);
+    if (applicable_operator != OperatorID::no_operator){
+        // in case the op is never applicable given an invertible ifork leaf
+        applicable_ops.push_back(applicable_operator);
+    }
 }
 
 void GeneratorLeafSingle::generate_applicable_ops(
     const LeafState &, vector<OperatorID> &applicable_ops) const {
-    applicable_ops.push_back(applicable_operator);
+    if (applicable_operator != OperatorID::no_operator){
+        // in case the op is never applicable given an invertible ifork leaf
+        applicable_ops.push_back(applicable_operator);
+    }
 }
 
 void GeneratorLeafSingle::generate_applicable_ops_ignore_outside_pre(
     const LeafState &state, vector<OperatorID> &applicable_ops) const {
-    LeafFactorID factor = state.get_id().get_factor();
-    if (g_operators[applicable_operator].has_precondition_on(factor) ||
-            g_operators[applicable_operator].has_effect_on(factor)){
-        applicable_ops.push_back(applicable_operator);
+    if (applicable_operator != OperatorID::no_operator){
+        // in case the op is never applicable given an invertible ifork leaf
+        LeafFactorID factor = state.get_id().get_factor();
+        if (g_operators[applicable_operator].has_precondition_on(factor) ||
+                g_operators[applicable_operator].has_effect_on(factor)){
+            applicable_ops.push_back(applicable_operator);
+        }
+    }
+}
+
+void GeneratorLeafSingle::remove_never_applicable_center_ops(LeafFactorID factor) {
+    if (g_operators[applicable_operator].has_precondition_on(factor)){
+        bool applicable = false;
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (g_operators[applicable_operator].is_applicable(id, factor)){
+                applicable = true;
+                break;
+            }
+        }
+        if (!applicable){
+            applicable_operator = OperatorID::no_operator;
+        }
     }
 }
 }

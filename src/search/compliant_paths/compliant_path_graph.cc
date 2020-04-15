@@ -498,7 +498,18 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         
         size_t num_sccs = sccs::compute_maximal_sccs(leaf_only_state_space_graph).size();
         if (num_sccs == 1){
-            // TODO check that product of leaf variable domains equal leaf state space size
+            size_t prod_size = 1;
+            for (int var : g_leaves[factor]){
+                prod_size *= g_variable_domain[var];
+            }
+            if (prod_size != g_state_registry->size(factor)){
+                cout << "WARNING: not all leaf states for leaf " << factor
+                        << " are reachable, removing non-applicable center actions from successor generator" << endl;
+                // TODO could do this for all leaves where leaf state space is constructed
+                // TODO be careful with decoupled orbit search, there can be symmetric leaf
+                // states not reachable from the initial state
+                g_successor_generator->remove_never_applicable_center_ops(factor);
+            }
             is_leaf_state_space_scc[factor] = true;
             cout << "state space of leaf " << factor << " is strongly connected via leaf-only actions" << endl;
         } else if (num_sccs == g_state_registry->size(factor)){

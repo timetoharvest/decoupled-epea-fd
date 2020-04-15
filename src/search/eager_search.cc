@@ -280,7 +280,6 @@ SearchStatus EagerSearch::step() {
 
                         int new_h = heuristics[0]->get_heuristic();
                         if (new_h < succ_node.get_h()){
-                            // new h < old h
                             succ_node.decrease_h(new_h);
                         }
                     } else {

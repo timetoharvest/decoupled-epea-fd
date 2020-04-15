@@ -109,6 +109,7 @@ void Reachable::update(const State &base_state) {
         bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
         
         if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
+            // TODO is it really still worth it with the invertible ifork leaf optimization?
             // the two above conditions together prevent errors in case the CG is not connected.
             // i.e. g_leaf_price_cache is empty for fork topologies
             

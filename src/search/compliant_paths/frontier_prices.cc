@@ -450,7 +450,7 @@ uint64_t FrontierPrices::get_hash() const {
         } else {
             feed(hash_state, effective_prices[factor]);
         }
-        feed(hash_state, frontier[factor]);
+        // prices uniquely determine frontier, so no need to hash frontier
     }
     return hash_state.get_hash64();
 }
