@@ -42,6 +42,8 @@ public:
     // used in decoupled search to compute leaf state spaces (center actions w. leaf pre/eff)
     void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const;
+
+    void remove_never_applicable_center_ops(LeafFactorID factor);
 };
 }
 

@@ -5,6 +5,7 @@
 #include "../operator_cost.h"
 #include "../state_registry.h"
 #include "../task_utils/successor_generator.h"
+#include "../utils/system.h"
 
 #include <limits>
 #include <iostream>
@@ -13,10 +14,10 @@
 using namespace std;
 
 
-void PathPriceTagInfo::dump() const {
+void PathPriceInfo::dump() const {
     cout << "PathPriceTagInfo" << endl;
-    if (best_supporter != 0){   // 0 for initial state facts
-        cout << "op: " << g_operators[best_supporter].get_name() << endl;
+    if (generating_op != 0){   // 0 for initial state facts
+        cout << "op: " << g_operators[generating_op].get_name() << endl;
     } else {
         cout << "initial state fact" << endl;
     }
@@ -26,28 +27,22 @@ void PathPriceTagInfo::dump() const {
 }
 
 
-PathPriceTag::PathPriceTag(const PathPriceTag *cpg) {
-    if (cpg == 0){
-        number_states = vector<size_t>(g_leaves.size(), 0);
-        prices = vector<vector<int> >(g_leaves.size());
-        goal_cost = vector<int>(g_leaves.size(), INF);
-        paths = vector<vector<PathPriceTagInfo> >(g_leaves.size());
-    } else {
-        number_states = cpg->number_states;
-        goal_cost = cpg->goal_cost;
-        prices = cpg->prices;
-        paths = cpg->paths;
-        for (size_t factor = 0; factor < g_leaves.size(); ++factor){
-            for (size_t state = 0; state < prices[factor].size(); ++state){
-                paths[factor][state].reset_supporter();
-            }
+PathPriceTag::PathPriceTag() : Prices() {
+    Prices::resize();
+    paths = vector<vector<PathPriceInfo> >(g_leaves.size());
+}
+
+PathPriceTag::PathPriceTag(const PathPriceTag &other) : Prices(other) {
+    paths = other.paths;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash state(0); state < prices[factor].size(); ++state){
+            paths[factor][state].reset_generating_op();
         }
     }
 }
 
 bool PathPriceTag::add_state(LeafStateHash id, LeafFactorID factor, int cost, 
-                             OperatorID bs,
-                             LeafStateHash predecessor) {
+                             OperatorID generating_op, LeafStateHash predecessor) {
     bool added = Prices::add_state(id, factor, cost);
     
     size_t leaf_id = leaf_state_id_map[factor][id];
@@ -56,43 +51,27 @@ bool PathPriceTag::add_state(LeafStateHash id, LeafFactorID factor, int cost,
         paths[factor].resize(leaf_id + 1);
     }
     if (added){
-        paths[factor][leaf_id] = PathPriceTagInfo(bs, predecessor, true);
+        paths[factor][leaf_id] = PathPriceInfo(generating_op, predecessor, true);
     }
     return added;
 }
 
-const PathPriceTagInfo& PathPriceTag::get_path_info_for_fact(LeafStateHash id, LeafFactorID factor) const {
+const PathPriceInfo& PathPriceTag::get_path_info(LeafStateHash id, LeafFactorID factor) const {
     assert((size_t) leaf_state_id_map[factor][id] < paths[factor].size());
     return paths[factor][leaf_state_id_map[factor][id]];
 }
 
-void PathPriceTag::update_price_tags(const State &base_state) {
-    
-#ifdef DEBUG_PATH_RECONSTRUCTION
-    cout << "+++++++++++++++ STARTING RPG" << endl;
-#endif
-
+void PathPriceTag::update(const State &base_state) {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
         if (g_factoring->is_fork_leaf(factor)){
+            // TODO do we need this optimization here? try to keep the code simple
             // skip fork leaves that don't have a goal or whose goal is already achieved (only satisficing search)
             if (g_goals_per_factor[factor].empty() || (g_factoring->get_search_type() == SAT && goal_cost[factor] != INF)){
                 continue;
             }
         }
 
-#ifdef DEBUG_PATH_RECONSTRUCTION
-        cout << "       starting RPG for leaf factor " << factor << endl;
-        const vector<PriceTagInfo*> &achieved_facts = new_tag.get_facts(factor);
-        for (int i = 0; i < achieved_facts.size(); i++){
-            if (achieved_facts[i] == 0){
-                continue;
-            }
-            lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
-        }
-        cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
-#endif   
-        
         vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
         
         bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
@@ -133,7 +112,8 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                         }
                         for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                             const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
-                            if (is_ifork_leaf || op.is_center_applicable(base_state)){ // TODO what about caching applicability per update?
+                            if (is_ifork_leaf || op.is_center_applicable(base_state)){
+                                // TODO what about caching applicability per update?
                                 change |= add_state(leaf_state_successors[factor][id][o].second, factor,
                                                     cost + get_adjusted_action_cost(op, cost_type), op.get_id(), id);
                             }
@@ -174,25 +154,10 @@ void PathPriceTag::update_price_tags(const State &base_state) {
                 ++id;
             }
         }
-        
-#ifdef DEBUG_PATH_RECONSTRUCTION
-    cout << "   RPG for leaf factor " << factor << " finished" << endl;
-#endif
-
-    
     }
-        
-#ifdef DEBUG_PATH_RECONSTRUCTION
-    cout << "+++++++++++++++ RPG FINISHED" << endl;
-#endif
 }
 
 void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const Operator &op) {
-     
-#ifdef DEBUG_PATH_RECONSTRUCTION
-    cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
-#endif
-
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
           
         bool has_pre_on_factor = op.has_precondition_on(factor);
@@ -205,7 +170,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             goal_cost[factor] = old_tag.goal_cost[factor];
             paths[factor] = old_tag.paths[factor];
             for (size_t id = 0; id < paths[factor].size(); ++id){
-                paths[factor][id].reset_supporter();
+                paths[factor][id].reset_generating_op();
             }
             continue;
         }
@@ -220,7 +185,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             assert(size_before == g_state_registry->size(factor));
             
             add_state(succ_state, factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
-            paths[factor][leaf_state_id_map[factor][succ_state]].reset_supporter();            
+            paths[factor][leaf_state_id_map[factor][succ_state]].reset_generating_op();
             continue;
         }
 
@@ -234,7 +199,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                 if (!has_pre_on_factor || op.is_applicable(id, factor)){
                     if (num_effects == 0){
                         add_state(id, factor, old_tag.get_cost_of_state(id, factor), OperatorID::no_operator, id);
-                        paths[factor][leaf_state_id_map[factor][id]].reset_supporter();
+                        paths[factor][leaf_state_id_map[factor][id]].reset_generating_op();
                     } else {
                         LeafState state = g_state_registry->lookup_leaf_state(id, factor);
 #ifndef NDEBUG
@@ -245,7 +210,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
                         assert(size_before == g_state_registry->size(factor));
             
                         add_state(succ_id, factor, old_tag.get_cost_of_state(id, factor), OperatorID::no_operator, id);
-                        paths[factor][leaf_state_id_map[factor][succ_id]].reset_supporter();
+                        paths[factor][leaf_state_id_map[factor][succ_id]].reset_generating_op();
                     }
                 }
             }
@@ -255,5 +220,7 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {
-    return unique_ptr<CompliantPathGraph>(new PathPriceTag(this));
+    // TODO fix this
+    cerr << "this code must not be reached; path_price_tag.cc" << endl;
+    utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }

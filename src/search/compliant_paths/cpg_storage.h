@@ -15,6 +15,8 @@ class CPGStorage {
     
 protected:
     
+    PerStateInformation<uint64_t> hashes;
+
     virtual void register_at_compliant_path_graph() = 0;
     
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) = 0;
@@ -25,6 +27,8 @@ public:
     
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) = 0;
+
     virtual size_t size(const StateRegistry *registry) const = 0;
     
     
@@ -40,8 +44,8 @@ class PriceStorage : public CPGStorage {
 
     PerStateInformation<Prices> prices;
     
-    void store_cpg(const State &state, const Prices &cpg) {
-        prices[state] = cpg;
+    void store_cpg(const State &state, Prices &cpg) {
+        prices[state] = std::move(cpg);
     }
     
 protected:
@@ -58,6 +62,8 @@ public:
         return &prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return prices.size(registry);
     }
@@ -69,8 +75,8 @@ class EffectivePriceStorage : public CPGStorage {
 
     PerStateInformation<EffectivePrices> effective_prices;
     
-    void store_cpg(const State &state, const EffectivePrices &cpg) {
-        effective_prices[state] = cpg;
+    void store_cpg(const State &state, EffectivePrices &cpg) {
+        effective_prices[state] = std::move(cpg);
     }
     
 protected:
@@ -87,6 +93,8 @@ public:
         return &effective_prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return effective_prices.size(registry);
     }
@@ -98,14 +106,14 @@ class FrontierPriceStorage : public CPGStorage {
 
     PerStateInformation<FrontierPrices> frontier_prices;
     
-    void store_cpg(const State &state, const FrontierPrices &cpg) {
-        frontier_prices[state] = cpg;
+    void store_cpg(const State &state, FrontierPrices &cpg) {
+        frontier_prices[state] = std::move(cpg);
     }
     
 protected:
     
     virtual void register_at_compliant_path_graph() override;
-    
+
     virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
         return &frontier_prices[state];
     }
@@ -116,6 +124,8 @@ public:
         return &frontier_prices[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return frontier_prices.size(registry);
     }
@@ -127,8 +137,8 @@ class ReachableStorage : public CPGStorage {
 
     PerStateInformation<Reachable> reachable;
     
-    void store_cpg(const State &state, const Reachable &cpg) {
-        reachable[state] = cpg;
+    void store_cpg(const State &state, Reachable &cpg) {
+        reachable[state] = std::move(cpg);
     }
         
 protected:
@@ -145,6 +155,8 @@ public:
         return &reachable[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return reachable.size(registry);
     }
@@ -156,8 +168,8 @@ class PruningReachableStorage : public CPGStorage {
 
     PerStateInformation<PruningReachable> pruning_reachable;
     
-    void store_cpg(const State &state, const PruningReachable &cpg) {
-        pruning_reachable[state] = cpg;
+    void store_cpg(const State &state, PruningReachable &cpg) {
+        pruning_reachable[state] = std::move(cpg);
     }
         
 protected:
@@ -174,6 +186,8 @@ public:
         return &pruning_reachable[state];
     }
     
+    virtual uint64_t get_decoupled_state_hash(const State &state) override;
+
     virtual size_t size(const StateRegistry *registry) const override {
         return pruning_reachable.size(registry);
     }
