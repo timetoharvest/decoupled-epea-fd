@@ -26,9 +26,7 @@
 class CoinPackedVectorBase;
 class OsiSolverInterface;
 
-namespace options {
 class OptionParser;
-}
 
 namespace lp {
 enum class LPSolverType {
@@ -39,7 +37,7 @@ enum class LPObjectiveSense {
     MAXIMIZE, MINIMIZE
 };
 
-void add_lp_solver_option_to_parser(options::OptionParser &parser);
+void add_lp_solver_option_to_parser(OptionParser &parser);
 
 class LPConstraint {
     std::vector<int> variables;

@@ -147,7 +147,7 @@ double LandmarkUniformSharedCostAssignment::cost_sharing_h_value() {
 }
 
 LandmarkEfficientOptimalSharedCostAssignment::LandmarkEfficientOptimalSharedCostAssignment(
-    LandmarkGraph &graph, OperatorCost cost_type, LPSolverType solver_type)
+    LandmarkGraph &graph, OperatorCost cost_type, lp::LPSolverType solver_type)
     : LandmarkCostAssignment(graph, cost_type) {
 #ifdef USE_LP
     si = create_lp_solver(solver_type);
