@@ -3,6 +3,7 @@
 #include "successor_generator_factory.h"
 #include "successor_generator_internals.h"
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"

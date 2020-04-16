@@ -1,6 +1,7 @@
 #ifndef PRUNING_REACHABLE_H
 #define PRUNING_REACHABLE_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "reachability_function.h"
 
 #include <vector>

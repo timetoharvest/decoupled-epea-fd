@@ -1,6 +1,7 @@
 #ifndef FRONTIER_PRICES_H
 #define FRONTIER_PRICES_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "compliant_path_graph.h"
 #include "effective_prices.h"
 
