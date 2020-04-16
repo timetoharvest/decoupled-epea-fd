@@ -85,6 +85,12 @@ struct compare_pair_first_less {
 template<typename Value, typename compare_func = compare_pair_first_less<Value> >
 class HeapQueue : public AbstractQueue<Value> {
     typedef typename AbstractQueue<Value>::Entry Entry;
+
+    bool is_valid_key(int key) const {
+        int infinity = std::numeric_limits<int>::max();
+        return key != infinity;
+    }
+
     class Heap
         : public std::priority_queue<Entry, std::vector<Entry>, compare_func> {
         // We inherit since our friend needs access to the underlying
