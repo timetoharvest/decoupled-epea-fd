@@ -135,6 +135,11 @@ void SearchNode::increase_h(int h) {
     info.h = h;
 }
 
+void SearchNode::decrease_h(int h) {
+    assert(h <= info.h);
+    info.h = h;
+}
+
 void SearchNode::close() {
     assert(info.status == SearchNodeInfo::OPEN);
     info.status = SearchNodeInfo::CLOSED;
@@ -214,7 +219,7 @@ void SearchSpace::trace_path(const State &goal_state,
     vector<Permutation> permutations; // needed for orbit search
     vector<StateID> states; // needed for decoupled search and orbit search
     vector<unique_ptr<DecoupledPermutation> > decoupled_permutations; // needed for decoupled orbit search
-    vector<PathPriceTag> cpgs; // needed for decoupled orbit search
+    vector<unique_ptr<PathPriceTag> > cpgs; // needed for decoupled orbit search
     
     assert(path.empty());
     
@@ -225,7 +230,7 @@ void SearchSpace::trace_path(const State &goal_state,
         if (g_factoring || g_symmetry_graph){
             states.push_back(current_state.get_id());
             if (g_factoring && g_symmetry_graph){
-                cpgs.push_back(PathPriceTag(*CPGStorage::storage->get_cpg(current_state)));
+                cpgs.push_back(unique_ptr<PathPriceTag>(new PathPriceTag(*CPGStorage::storage->get_cpg(current_state))));
             }
         }
 
@@ -238,8 +243,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 if (g_factoring){
                     new_state = g_state_registry->get_center_successor(parent_state, g_operators[op]);
                     new_cpg = CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(parent_state, g_operators[op]);
-                    new_cpg->update(new_state);
-                    new_cpg->discard_new_graph();
+                    new_cpg->discard_new_cpg();
                 } else {
                     new_state = g_state_registry->get_successor_state(parent_state, g_operators[op], false);
                 }
@@ -306,21 +310,21 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
     // reconstruct leaf paths
     vector<unique_ptr<PathPriceTag> > price_tags(states.size());
 
-    price_tags[0].reset(new PathPriceTag(0));
+    price_tags[0].reset(new PathPriceTag());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         price_tags[0]->add_state(LeafStateHash(0), factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
     }
-    price_tags[0]->update_price_tags(g_state_registry->lookup_state(states[0]));
+    price_tags[0]->update(g_state_registry->lookup_state(states[0]));
 
     for (size_t i = 1; i < states.size(); ++i){
         if (g_factoring->get_profile() != FORK){
-            price_tags[i].reset(new PathPriceTag(0));
+            price_tags[i].reset(new PathPriceTag());
             price_tags[i]->apply_center_op_to_leaves(*price_tags[i - 1], g_operators[path[i - 1]]);
         } else {
-            price_tags[i].reset(new PathPriceTag(price_tags[i - 1].get()));
+            price_tags[i].reset(new PathPriceTag(*price_tags[i - 1].get()));
         }
-        price_tags[i]->update_price_tags(g_state_registry->lookup_state(states[i]));
+        price_tags[i]->update(g_state_registry->lookup_state(states[i]));
     }
 
 #ifdef DEBUG_PLAN_EXTRACTION
@@ -353,9 +357,6 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
                         if (min_cost > new_cost){
                             min_cost = new_cost;
                             marked_leaf_states[factor] = id;
-                            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-                                break;
-                            }
                         }
                     }
                 }
@@ -387,13 +388,13 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
 #ifdef DEBUG_PLAN_EXTRACTION
         cout << "current center state: " << states[step] << endl;
         g_state_registry->lookup_state(states[step]).dump_pddl();
-        for (size_t factor = 0; factor < g_leaves.size(); ++factor){
-            for (size_t i = 0; i < g_state_registry->size(factor); ++i){
-                if (price_tags[step]->has_leaf_state(LeafStateID(i, factor))){
-                    if (price_tags[step]->get_path_info_for_fact(LeafStateID(i, factor)).is_new){
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            for (LeafStateHash i(0); i < g_state_registry->size(factor); ++i){
+                if (price_tags[step]->has_leaf_state(i, factor)){
+                    if (price_tags[step]->get_path_info_for_fact(i, factor).is_new){
                         cout << "is new:" << endl;
                     }
-                    g_state_registry->lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
+                    g_state_registry->lookup_leaf_state(i, factor).dump_pddl();
                 }
             }
         }
@@ -405,84 +406,75 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
 
             bool change = true;
             while (change && marked_leaf_states[factor] != LeafStateHash::MAX){
+                // backtrack in current CPG to next center action
                 change = false;
 
-                const PathPriceTagInfo &fact = price_tags[step]->get_path_info_for_fact(marked_leaf_states[factor], factor);
-                if (fact.is_new){
-                    if (fact.best_supporter != OperatorID::no_operator){
-                        assert(fact.predecessor != LeafStateHash::MAX);
-                        assert(fact.predecessor != marked_leaf_states[factor]);
+                const PathPriceInfo &path_info = price_tags[step]->get_path_info(marked_leaf_states[factor], factor);
+                if (path_info.is_new){
+                    if (path_info.generating_op != OperatorID::no_operator){
+                        // leaf action
+                        assert(path_info.predecessor != LeafStateHash::MAX);
+                        assert(path_info.predecessor != marked_leaf_states[factor]); // not a self-loop
+                        assert(g_operators[path_info.generating_op].get_affected_factor() == factor);
 
-                        marked_leaf_states[factor] = fact.predecessor;
-                        decoupled_plan.push_back(fact.best_supporter);
-
-                        assert(g_operators[fact.best_supporter].get_affected_factor() == factor);
-                    } else if (fact.predecessor != LeafStateHash::MAX){
-                        // this leaf state has been copied from one decoupled state to its successor
-                        // the state can have been modified by the center op
-
-                        assert(marked_leaf_states[factor] == fact.predecessor);
-
-                        marked_leaf_states[factor] = fact.predecessor;
+                        marked_leaf_states[factor] = path_info.predecessor;
+                        decoupled_plan.push_back(path_info.generating_op);
+                        change = true;
                     } else {
-                        // can happen for center factoring when center op completely overwrites leaf
-
-                        assert(op == nullptr || op->get_effects(factor).size() == g_leaves[factor].size());
+                        // marked_leaf_states[factor] is initial leaf state
+                        assert(op == nullptr);
+                        assert(path_info.predecessor == LeafStateHash::MAX);
 
                         marked_leaf_states[factor] = LeafStateHash::MAX;
                     }
-                    change = true;
                 }
             }
 
             bool need_compliant_leaf_state = false;
 
-            if (op != nullptr && op->has_effect_on(factor)){
-                // apply leaf effects to predecessor decoupled state
+            if (marked_leaf_states[factor] != LeafStateHash::MAX && op != nullptr && op->has_effect_on(factor)){
+                // mimic leaf effects to predecessor decoupled state
+                const PathPriceInfo &path_info = price_tags[step]->get_path_info(marked_leaf_states[factor], factor);
 
-                if (marked_leaf_states[factor] != LeafStateHash::MAX){
-                    LeafStateHash state_hash = marked_leaf_states[factor];
-                    LeafStateHash predecessor_hash = price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor;
+                assert(path_info.generating_op == OperatorID::no_operator);
 
-                    assert(marked_leaf_states[factor] != predecessor_hash);
-                    assert(price_tags[step]->get_path_info_for_fact(state_hash, factor).best_supporter == OperatorID::no_operator);
+                if (path_info.predecessor != LeafStateHash::MAX){
+                    // predecessor leaf state in predecessor decoupled state
+                    marked_leaf_states[factor] = path_info.predecessor;
+                } else {
+                    // center action completely overwrites leaf,
+                    // pick any leaf state in predecessor decoupled state
+                    assert(op->get_effects(factor).size() == g_leaves[factor].size());
 
-                    if (price_tags[step]->get_path_info_for_fact(state_hash, factor).predecessor != LeafStateHash::MAX){
-                        marked_leaf_states[factor] = predecessor_hash;
-                    } else {
-                        need_compliant_leaf_state = true;
-                        marked_leaf_states[factor] = LeafStateHash::MAX;
-                    }
+                    need_compliant_leaf_state = true;
+                    marked_leaf_states[factor] = LeafStateHash::MAX;
                 }
             }
 
-            if (need_compliant_leaf_state || (g_factoring->get_profile() != FORK && op != nullptr)){
-                // collect and mark leaf precondition of center op
+            if (need_compliant_leaf_state || (op != nullptr && op->has_precondition_on(factor))){
+                // find and mark leaf precondition of center op
+                assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
 
-                if (need_compliant_leaf_state || !op->get_preconditions(factor).empty()){
-                    assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
+                if (marked_leaf_states[factor] == LeafStateHash::MAX){
+                    int best_price = numeric_limits<int>::max();
 
-                    if (marked_leaf_states[factor] == LeafStateHash::MAX){
-                        int best_price = numeric_limits<int>::max();
-
-                        size_t number_states = price_tags[step + 1]->get_number_states(factor);
-                        LeafStateHash id(0);
-                        while (number_states > 0) {
-                            if (price_tags[step + 1]->has_leaf_state(id, factor)){
-                                --number_states;
-                                if (op->is_applicable(id, factor)){
-                                    int cost = price_tags[step + 1]->get_cost_of_state(id, factor);
-                                    if (cost < best_price){
-                                        best_price = cost;
-                                        marked_leaf_states[factor] = id;
-                                    }
+                    size_t number_states = price_tags[step + 1]->get_number_states(factor);
+                    LeafStateHash id(0);
+                    while (number_states > 0) {
+                        if (price_tags[step + 1]->has_leaf_state(id, factor)){
+                            --number_states;
+                            if (op->is_applicable(id, factor)){
+                                int cost = price_tags[step + 1]->get_cost_of_state(id, factor);
+                                if (cost < best_price){
+                                    best_price = cost;
+                                    marked_leaf_states[factor] = id;
                                 }
                             }
-                            ++id;
                         }
-
-                        assert(marked_leaf_states[factor] != LeafStateHash::MAX);
+                        ++id;
                     }
+
+                    assert(marked_leaf_states[factor] != LeafStateHash::MAX);
                 }
             }
         }
@@ -497,7 +489,8 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
 
 #ifndef NDEBUG
     for (size_t i = 0; i < g_leaves.size(); ++i){
-        assert(marked_leaf_states[i] == LeafStateHash::MAX); // TODO check this
+        // all leaves are in initial state
+        assert(marked_leaf_states[i] == LeafStateHash::MAX);
     }
 #endif
 
@@ -548,7 +541,7 @@ void SearchSpace::trace_symmetric_path(vector<OperatorID> &path, vector<StateID>
 
 void SearchSpace::trace_symmetric_path(vector<OperatorID> &permuted_path,
                                        vector<StateID> &states,
-                                       vector<PathPriceTag> &cpgs,
+                                       vector<unique_ptr<PathPriceTag> > &cpgs,
                                        vector<unique_ptr<DecoupledPermutation> > &permutations) const {
                                            
     unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back()));
@@ -559,7 +552,7 @@ void SearchSpace::trace_symmetric_path(vector<OperatorID> &permuted_path,
 
     for (size_t i = 0; i < states.size(); ++i){
         const DecoupledPermutation &permutation = *permutations[i];
-        states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), cpgs[i], permutation).get_id();
+        states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), *cpgs[i], permutation).get_id();
     }
 
 #ifndef NDEBUG
@@ -578,26 +571,26 @@ void SearchSpace::trace_symmetric_path(vector<OperatorID> &permuted_path,
         for (size_t var : g_leaves[factor]) {
             tmp_initial_state.push_back(g_initial_state_data[var]);
         }
-        assert(cpgs.back().has_leaf_state(g_state_registry->get_leaf_state_hash(tmp_initial_state, factor), factor));
-        assert(g_goals_per_factor[factor].empty() || cpgs[0].get_goal_cost(factor) != CompliantPathGraph::INF);
+        assert(cpgs.back()->has_leaf_state(g_state_registry->get_leaf_state_hash(tmp_initial_state, factor), factor));
+        assert(g_goals_per_factor[factor].empty() || cpgs[0]->get_goal_cost(factor) != CompliantPathGraph::INF);
     }
 #endif
 
     for (size_t i = states.size() - 1; i > 0; --i) {
         vector<OperatorID> applicable_ops;
-        g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), &cpgs[i], applicable_ops);
+        g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), *cpgs[i], applicable_ops);
 
         permuted_path[i-1] = permutations[i]->find_matching_min_cost_permuted_op(g_operators[permuted_path[i-1]], applicable_ops);
 
 #ifndef NDEBUG
         // verify that applying permuted_path[i-1] is states[i] results in states[i-1]
-        PathPriceTag new_cpg(0);
-        new_cpg.apply_center_op_to_leaves(cpgs[i], g_operators[permuted_path[i-1]]);
+        PathPriceTag new_cpg;
+        new_cpg.apply_center_op_to_leaves(*cpgs[i], g_operators[permuted_path[i-1]]);
         State center_successor = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), g_operators[permuted_path[i-1]]);
-        new_cpg.update_price_tags(center_successor);
+        new_cpg.update(center_successor);
         // this check can fail in optimal planning, because the g-value adaption is done
         // in cpgs[i-1], but not in new_cpg
-        assert(is_equal(g_state_registry->lookup_state(states[i-1]), cpgs[i-1], center_successor, new_cpg) ||
+        assert(is_equal(g_state_registry->lookup_state(states[i-1]), *cpgs[i-1], center_successor, new_cpg) ||
                 g_factoring->get_search_type() == SDA ||
                 g_factoring->get_search_type() == ASDA);
 #endif

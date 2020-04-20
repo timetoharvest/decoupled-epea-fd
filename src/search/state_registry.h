@@ -265,7 +265,7 @@ public:
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
     */
-    State get_decoupled_state(const State &predecessor, int dup_counter);
+    State get_decoupled_state(const State &base_state, int dup_counter);
 
     State get_center_successor(const State &center, const Operator &op);
 

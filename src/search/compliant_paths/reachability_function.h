@@ -1,6 +1,7 @@
 #ifndef REACHABILITY_FUNCTION_H
 #define REACHABILITY_FUNCTION_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "compliant_path_graph.h"
 
 #include <vector>
@@ -13,7 +14,7 @@ class Reachable : public CompliantPathGraph {
     static ReachableStorage *cpg_storage;
     
     
-    Reachable(const Reachable *tag);
+    void resize();
     
     void handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor);
     
@@ -31,20 +32,28 @@ protected:
     // not already reached, before
     bool add_state(LeafStateHash id, LeafFactorID factor);
     
-    void apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op);
+    void apply_center_op_to_leaves(const Reachable &old_cpg, const Operator &op);
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
                                                                                 const Operator &op) const override;
 
-    virtual void update(const State &base_state) override;
+    void update(const State &new_center_state);
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed, int g_advantage) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_graph(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
     Reachable(){};
+
+    Reachable(const Reachable &cpg);
+
+    Reachable(Reachable &&other) = delete;
+
+    Reachable& operator=(const Reachable &other) = delete;
+
+    Reachable& operator=(Reachable &&other);
     
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
@@ -61,6 +70,8 @@ public:
     virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual uint64_t get_hash() const override;
 
     virtual size_t get_memory_footprint() const;
 

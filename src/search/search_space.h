@@ -47,6 +47,7 @@ public:
     void update_parent(const SearchNode &parent_node,
                        OperatorID parent_op);
     void increase_h(int h);
+    void decrease_h(int h); // needed for optimal decoupled search
     void close();
     void mark_as_dead_end();
 
@@ -68,7 +69,7 @@ class SearchSpace {
     
     void trace_symmetric_path(std::vector<OperatorID> &path,
                               std::vector<StateID> &states, 
-                              std::vector<PathPriceTag> &cpgs,
+                              std::vector<std::unique_ptr<PathPriceTag> > &cpgs,
                               std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
     
 public:

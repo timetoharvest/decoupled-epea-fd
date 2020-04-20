@@ -10,7 +10,7 @@ def configs_optimal_core():
         "astar_ipdb": [
             "--search",
             "astar(ipdb)"],
-        "astar_lmcount_lm_merged_rhw_hm": [
+        "bjolp": [
             "--evaluator",
             "lmc=lmcount(lm_merged([lm_rhw(),lm_hm(m=1)]),admissible=true)",
             "--search",
@@ -52,7 +52,13 @@ def configs_optimal_core():
             "label_reduction=exact(before_shrinking=true,"
             "before_merging=false),max_states=infinity,"
             "threshold_before_merge=1))"],
+        "blind-sss-simple": [
+            "--search",
+            "astar(blind(), pruning=stubborn_sets_simple())"],
+        "blind-sss-ec": [
+            "--search", "astar(blind(), pruning=stubborn_sets_ec())"],
     }
+
 
 def configs_satisficing_core():
     return {
@@ -126,6 +132,9 @@ def configs_optimal_extended():
         "astar_cegar": [
             "--search",
             "astar(cegar())"],
+        "pdb": [
+            "--search",
+            "astar(pdb())"],
     }
 
 
@@ -191,39 +200,26 @@ def configs_satisficing_extended():
     }
 
 
-def task_transformation_test_configs():
+def configs_optimal_lp():
     return {
-        "root_task": [
-            "--search", "lazy_greedy([ff()])"],
-        "root_task_no_transform": [
-            "--search", "lazy_greedy([ff(transform=no_transform())])"],
-        "adapt_costs": [
-            "--search", "lazy_greedy([ff(transform=adapt_costs(cost_type=plusone))])"],
-    }
-
-def regression_test_configs():
-    return {
-        "pdb": ["--search", "astar(pdb())"],
+        "divpot": ["--search", "astar(diverse_potentials())"],
+        "seq+lmcut": ["--search", "astar(operatorcounting([state_equation_constraints(), lmcut_constraints()]))"],
     }
 
 
-def default_configs_optimal(core=True, ipc=True, extended=False):
+def default_configs_optimal(core=True, extended=True):
     configs = {}
     if core:
         configs.update(configs_optimal_core())
-    if ipc:
-        configs.update(configs_optimal_ipc())
     if extended:
         configs.update(configs_optimal_extended())
     return configs
 
 
-def default_configs_satisficing(core=True, ipc=True, extended=False):
+def default_configs_satisficing(core=True, extended=True):
     configs = {}
     if core:
         configs.update(configs_satisficing_core())
-    if ipc:
-        configs.update(configs_satisficing_ipc())
     if extended:
         configs.update(configs_satisficing_extended())
     return configs

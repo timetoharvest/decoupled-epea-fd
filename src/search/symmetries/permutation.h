@@ -61,6 +61,15 @@ public:
     Permutation(const Permutation &perm1, const Permutation& perm2);
     ~Permutation() = default;
     
+    Permutation& operator=(const Permutation &other){
+        value = other.value;
+        inverse_value = other.inverse_value;
+        vars_affected = other.vars_affected;
+        affected = other.affected;
+        from_vars = other.from_vars;
+        affected_vars_cycles = other.affected_vars_cycles;
+        return *this;
+    }
 
     bool identity() const;
     

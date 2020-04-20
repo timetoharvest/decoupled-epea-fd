@@ -83,8 +83,6 @@ fast_downward_plugin(
         weighted_evaluator
           
         open_lists/open_list_buckets
-        
-        lp_solver_interface
 
         additive_heuristic
         blind_search_heuristic
@@ -151,10 +149,26 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME DYNAMIC_BITSET
+    HELP "Poor man's version of boost::dynamic_bitset"
+    SOURCES
+        algorithms/dynamic_bitset
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME EQUIVALENCE_RELATION
     HELP "Equivalence relation over [1, ..., n] that can be iteratively refined"
     SOURCES
         algorithms/equivalence_relation
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME INT_HASH_SET
+    HELP "Hash set storing non-negative integers"
+    SOURCES
+        algorithms/int_hash_set
     DEPENDENCY_ONLY
 )
 
@@ -167,10 +181,26 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME MAX_CLIQUES
+    HELP "Implementation of the Max Cliques algorithm by Tomita et al."
+    SOURCES
+        algorithms/max_cliques
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME PRIORITY_QUEUES
     HELP "Three implementations of priority queue: HeapQueue, BucketQueue and AdaptiveQueue"
     SOURCES
         algorithms/priority_queues
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME ORDERED_SET
+    HELP "Set of elements ordered by insertion time"
+    SOURCES
+        algorithms/ordered_set
     DEPENDENCY_ONLY
 )
 
@@ -249,6 +279,15 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME LP_SOLVER
+    HELP "Interface to an LP solver"
+    SOURCES
+        lp/lp_internals
+        lp/lp_solver
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME DOMAIN_TRANSITION_GRAPH
     HELP "DTGs"
     SOURCES
@@ -319,14 +358,14 @@ fast_downward_plugin(
         landmarks/landmark_factory_rpg_sasp
         landmarks/landmark_factory_zhu_givan
         landmarks/util
-    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH
+    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
 )
  
 fast_downward_plugin(
     NAME PDBS
     HELP "Plugin containing the code for PDBs"
     SOURCES
-		pdbs/canonical_pdbs_heuristic
+        pdbs/canonical_pdbs_heuristic
         pdbs/dominance_pruner
         pdbs/match_tree
         pdbs/max_cliques
@@ -344,30 +383,6 @@ fast_downward_plugin(
          "directed graph."
     SOURCES
         algorithms/sccs
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME DYNAMIC_BITSET
-    HELP "Dynamic bitset implementation."
-    SOURCES
-        algorithms/dynamic_bitset
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME INT_HASH_SET
-    HELP "Int hashset implementation."
-    SOURCES
-        algorithms/int_hash_set
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME ORDERED_SET
-    HELP "Ordered set implementation"
-    SOURCES
-        algorithms/ordered_set
     DEPENDENCY_ONLY
 )
 

@@ -18,7 +18,7 @@ namespace utils {
 */
 struct Log {
     template<typename T>
-    std::ostream &operator<<(const T &elem) {
+    std::ostream &operator<<(const T &elem) const {
         return std::cout << "[t=" << g_timer << ", "
                          << get_peak_memory_in_kb() << " KB] " << elem;
     }

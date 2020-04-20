@@ -3,6 +3,7 @@
 #include "successor_generator_factory.h"
 #include "successor_generator_internals.h"
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"
@@ -26,10 +27,10 @@ SuccessorGenerator::SuccessorGenerator(LeafFactorID factor, bool only_keep_all_l
 
 SuccessorGenerator::~SuccessorGenerator() = default;
 
-vector<size_t> counter;
-boost::dynamic_bitset<> is_applicable_leaf;
+static vector<size_t> counter;
+static boost::dynamic_bitset<> is_applicable_leaf;
 
-void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
+void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph &cpg,
                                                  vector<OperatorID> &applicable_ops) const {
     assert(g_factoring);
 
@@ -37,9 +38,14 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
         return;
     }
 
-    // TODO: for IFORK leaves that are invertible, there is no need to actually check
-    // the leaf preconditions. collecting all actions enabled by the current
-    // center state is enough.
+    if (g_factoring->get_profile() == FACTORING_PROFILE::IFORK && CompliantPathGraph::all_leaves_invertible()){
+        // for IFORK leaves that are invertible, there is no need to actually check
+        // the leaf preconditions. collecting all actions enabled by the current
+        // center state is enough.
+        // TODO: make this more fine-grained
+        // TODO: this also works for non-ifork leaves!
+        return;
+    }
 
     counter.assign(g_operators.size(), 0);
     is_applicable_leaf.resize(g_operators.size());
@@ -51,10 +57,10 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
 
         is_applicable_leaf.reset();
 
-        size_t number_states = cpg->get_number_states(factor);
+        size_t number_states = cpg.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0){
-            if (cpg->has_leaf_state(id, factor)){
+            if (cpg.has_leaf_state(id, factor)){
                 --number_states;
                 assert(id < CompliantPathGraph::center_successors[factor].size());
                 for (OperatorID index : CompliantPathGraph::center_successors[factor][id]){
@@ -95,12 +101,12 @@ void SuccessorGenerator::generate_applicable_ops(
     root->generate_applicable_ops(state, applicable_ops);
 
     if (g_factoring){
-        remove_inapplicable_ops(CPGStorage::storage->get_cpg(state), applicable_ops);
+        remove_inapplicable_ops(*CPGStorage::storage->get_cpg(state), applicable_ops);
     }
 }
 
 void SuccessorGenerator::generate_applicable_ops(const State &state,
-                                                 const CompliantPathGraph *cpg,
+                                                 const CompliantPathGraph &cpg,
                                                  vector<OperatorID> &applicable_ops) const {
     assert(g_factoring && g_symmetry_graph);
     root->generate_applicable_ops(state, applicable_ops);
@@ -117,5 +123,9 @@ void SuccessorGenerator::generate_applicable_ops_ignore_outside_pre(
     const LeafState &state, vector<OperatorID> &applicable_ops) const {
     assert(g_factoring);
     root->generate_applicable_ops_ignore_outside_pre(state, applicable_ops);
+}
+
+void SuccessorGenerator::remove_never_applicable_center_ops(LeafFactorID factor){
+    root->remove_never_applicable_center_ops(factor);
 }
 }
