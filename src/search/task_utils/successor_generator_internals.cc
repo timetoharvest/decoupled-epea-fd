@@ -371,7 +371,9 @@ void GeneratorLeafSingle::generate_applicable_ops_ignore_outside_pre(
 }
 
 void GeneratorLeafSingle::remove_never_applicable_center_ops(LeafFactorID factor) {
-    if (g_operators[applicable_operator].has_precondition_on(factor)){
+    if (applicable_operator != OperatorID::no_operator
+            && g_operators[applicable_operator].has_precondition_on(factor)){
+        // need to check if op was already removed by a previous call
         bool applicable = false;
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (g_operators[applicable_operator].is_applicable(id, factor)){
