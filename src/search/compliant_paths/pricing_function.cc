@@ -143,21 +143,28 @@ void Prices::update(const State &base_state) {
             // instead: do it once, cache which State has the same start leaf state
             // and copy everything from that state
             if (get_number_states(factor) == 1){
+                assert(prices[factor].back() >= 0); // it should always be the "last" state in prices
+
                 LeafStateHash leaf_id(0);
-#ifndef NDEBUG
                 bool found = false;
-#endif
-                for (;;){
+
+                assert(leaf_state_id_map[factor][prices[factor].size() - 1] >= 0);
+                if ((size_t) leaf_state_id_map[factor][prices[factor].size() - 1] == prices[factor].size() - 1){
+                    // maybe we are lucky
+                    found = true;
+                    leaf_id = LeafStateHash(prices[factor].size() - 1);
+                }
+
+                while (!found){
                     // TODO there should be a better way to find the state
-                    if (has_leaf_state(leaf_id, factor)){
-#ifndef NDEBUG
+                    assert(leaf_state_id_map[factor][leaf_id] >= 0);
+                    if ((size_t) leaf_state_id_map[factor][leaf_id] == prices[factor].size() - 1){
                         found = true;
-#endif
                         break;
                     }
                     ++leaf_id;
                 }
-                assert(found);
+
                 if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
                     const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
 
