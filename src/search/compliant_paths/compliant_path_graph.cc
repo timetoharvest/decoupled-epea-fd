@@ -316,191 +316,181 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
     }
 }
 
-void CompliantPathGraph::build_leaf_state_spaces() {
+void CompliantPathGraph::build_leaf_state_space(Prices &prices,
+                                                LeafStateHash first_state_id,
+                                                LeafFactorID factor,
+                                                bool compute_leaf_invertibility) {
 
-#ifdef DEBUG_PRECOMPUTE_GOAL_COST
-    cout << "building leaf state spaces" << endl;
-#endif
-      
-    leaf_state_id_map.resize(g_leaves.size(), vector<int>(1, -1));
-    curr_leaf_state_max_id.resize(g_leaves.size(), 0);
-    
-    is_leaf_state_space_scc.resize(g_leaves.size(), false);
+    assert(!compute_leaf_invertibility || first_state_id == LeafStateHash(0));
 
-    if (compute_leaf_backwards_graph){
-        leaf_state_predecessors.resize(g_leaves.size());
-        precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
-    }
-    
-    Prices goal_price_tag;
-    goal_price_tag.resize();
-    
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        goal_price_tag.add_state(LeafStateHash(0), factor, 0);
-    }
-    
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+    vector<int> best_prices;
+    bool change = true;
 
-        if (!precompute_leaf_state_spaces[factor]){
-            continue;
-        }
-        
-        if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
-            // TODO remove these leaves from g_leaves; then this can go away
-            // skip fork-leaf factor without a goal
-            continue;
-        }
+    vector<vector<int> > leaf_only_state_space_graph;
 
-        vector<vector<int> > leaf_only_state_space_graph;
+    while (change) {
 
-#ifdef DEBUG_PRECOMPUTE_GOAL_COST
-        cout << "       starting RPG for leaf factor " << factor << endl;
-        int number_states = goal_price_tag.get_number_states(factor);
-        size_t id = 0;
-        while (number_states > 0){
-            if (goal_price_tag.has_leaf_state(id, factor)){
-                --number_states;
-                g_state_registry->lookup_leaf_state(LeafStateID(id, factor)).dump_pddl();
+        change = false;
+
+        for (LeafStateHash id = first_state_id; id < g_state_registry->size(factor); ++id){
+            if (!prices.has_leaf_state(id, factor)){
+                assert(g_symmetry_graph && first_state_id != LeafStateHash(0));
+                // can only happen when handling new symmetric leaf state
+                continue;
             }
-            ++id;
-        }
-#endif
-        
-        vector<int> best_prices;
-        
-        bool change = true;
-        while (change) {
-
-            change = false;
-
-            for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                int cost = goal_price_tag.get_cost_of_state(id, factor);
-                if (id < best_prices.size()){
-                    if (cost >= best_prices[id]
-                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
-                            && best_prices[id] != numeric_limits<int>::max())){
-                        continue;
-                    }
-                } else {
-                    best_prices.resize(id + 1, numeric_limits<int>::max());
-                    leaf_only_state_space_graph.resize(id + 1);
-                }
-                
-                const LeafState curr_leaf_state = g_state_registry->lookup_leaf_state(id, factor);
-
-                bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
-                best_prices[id] = cost;
-                
-                if (id >= leaf_state_successors[factor].size()) {
-                    leaf_state_successors[factor].resize(id + 1);
-                }
-
-                if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
-                    // the goal states of fork leaves don't need successors
-                    if (compute_leaf_backwards_graph && id >= leaf_state_predecessors[factor].size()) {
-                        leaf_state_predecessors[factor].resize(id + 1);
-                    }
+            int cost = prices.get_cost_of_state(id, factor);
+            if (id < best_prices.size()){
+                if (cost >= best_prices[id]
+                                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
+                                                && best_prices[id] != numeric_limits<int>::max())){
+                    // no need to handle a state twice (unless it got cheaper and we do optimal planning)
                     continue;
                 }
+            } else {
+                best_prices.resize(id + 1, numeric_limits<int>::max());
+                if (compute_leaf_invertibility){
+                    leaf_only_state_space_graph.resize(id + 1);
+                }
+            }
 
-                
-                vector<OperatorID> applicable_ops;
-                
-                if (!g_factoring->is_fork_leaf(factor) &&
-                        (first_time_seen || !g_factoring->is_ifork_leaf(factor))){
+            const LeafState curr_leaf_state = g_state_registry->lookup_leaf_state(id, factor);
+            bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
+            best_prices[id] = cost;
 
-                    vector<OperatorID> center_ops;
-                    center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(curr_leaf_state, center_ops);
-
-                    if (id >= center_successors[factor].size()){
-                        center_successors[factor].resize(id+1);
-                    }
-                    for (OperatorID op_id : center_ops){
-                        if (first_time_seen && g_operators[op_id].has_precondition_on(factor)){
-                            // store center ops whose preconditions are satisfied by curr_leaf_state
-                            center_successors[factor][id].push_back(op_id);
-                        }
-                        if (!g_factoring->is_ifork_leaf(factor) && g_operators[op_id].has_effect_on(factor)){
-                            // no need to apply center ops if it does not change this leaf factor
-                            applicable_ops.push_back(op_id);
-                        }
-                    }
-                    if (first_time_seen){
-                        center_successors[factor][id].shrink_to_fit();
+            if (first_time_seen && g_symmetry_graph && first_state_id != LeafStateHash(0)){
+                // when adding the successors of a symmetric leaf state not reachable from the initial state
+                if (id < center_successors[factor].size() && !center_successors[factor][id].empty()){
+                    first_time_seen = false;
+                }
+                if (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty()){
+                    first_time_seen = false;
+                }
+                if (compute_leaf_backwards_graph){
+                    if (id < leaf_state_predecessors[factor].size() && !leaf_state_predecessors[factor][id].empty()){
+                        first_time_seen = false;
                     }
                 }
+            }
 
+            if (id >= leaf_state_successors[factor].size()) {
+                leaf_state_successors[factor].resize(id + 1);
+            }
+            if (compute_leaf_backwards_graph) {
+                // in case this state does not have a predecessor, e.g.,
+                // being a permutation of the initial leaf state, not
+                // increasing the size results in segfaults when doing
+                // goal price propagation, because this accesses the
+                // predecessors of all leaf states
+                if (id >= leaf_state_predecessors[factor].size()) {
+                    leaf_state_predecessors[factor].resize(id + 1);
+                }
+            }
+
+            if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
+                // the goal states of fork leaves don't need successors
+                continue;
+            }
+
+
+            vector<OperatorID> applicable_ops;
+
+            if (!g_factoring->is_fork_leaf(factor) &&
+                    (first_time_seen || !g_factoring->is_ifork_leaf(factor))){
+
+                vector<OperatorID> center_ops;
+                center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(curr_leaf_state, center_ops);
+
+                if (id >= center_successors[factor].size()){
+                    center_successors[factor].resize(id+1);
+                }
+                for (OperatorID op_id : center_ops){
+                    if (first_time_seen && g_operators[op_id].has_precondition_on(factor)){
+                        // store center ops whose preconditions are satisfied by curr_leaf_state
+                        center_successors[factor][id].push_back(op_id);
+                    }
+                    if (!g_factoring->is_ifork_leaf(factor) && g_operators[op_id].has_effect_on(factor)){
+                        // no need to apply center ops if it does not change this leaf factor
+                        applicable_ops.push_back(op_id);
+                    }
+                }
                 if (first_time_seen){
-                    leaf_successor_generators[factor]->generate_applicable_ops(curr_leaf_state, applicable_ops);
-                } else {
-                    size_t old_size = applicable_ops.size();
-                    applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
-                    for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
-                    }
+                    center_successors[factor][id].shrink_to_fit();
                 }
-                
+            }
+
+            if (first_time_seen){
+                leaf_successor_generators[factor]->generate_applicable_ops(curr_leaf_state, applicable_ops);
+            } else {
+                size_t old_size = applicable_ops.size();
+                applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
+                for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
+                    applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
+                }
+            }
+
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-                cout << "       generated " << applicable_ops.size() << " applicable operators" << endl;
+            cout << "       generated " << applicable_ops.size() << " applicable operators" << endl;
 #endif
 
-                // apply all applicable_ops to predecessor and store the outcome
-                for (OperatorID op_id : applicable_ops){
-                    const Operator &op = g_operators[op_id];
-                    if (op.has_effect_on(factor)){
-                        bool is_center_op = op.get_affected_factor() == LeafFactorID::CENTER;
-                        
-#ifdef DEBUG_PRECOMPUTE_GOAL_COST
-                        cout << "################ trying to apply " << op->get_name() << " in state " << curr_leaf_state.get_id() << endl;
-                        curr_leaf_state.dump_pddl();
-#endif
-                        LeafStateHash succ_id = g_state_registry->get_successor_leaf_state_hash(curr_leaf_state, op);
-
-                        if (id == succ_id){
-                            // this would induce a self-loop in the leaf state space
-                            continue;
-                        }
-
-                        if (!op.has_precondition_on(LeafFactorID::CENTER) && op.get_affected_factor() != LeafFactorID::CENTER){
-                            // is leaf action without center precondition
-                            leaf_only_state_space_graph[id].push_back(succ_id);
-                        }
+            // apply all applicable_ops to predecessor and store the outcome
+            for (OperatorID op_id : applicable_ops){
+                const Operator &op = g_operators[op_id];
+                if (op.has_effect_on(factor)){
+                    bool is_center_op = op.get_affected_factor() == LeafFactorID::CENTER;
 
 #ifdef DEBUG_PRECOMPUTE_GOAL_COST
-                        cout << "created leaf state " << succ_id << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
-                        g_state_registry->lookup_leaf_state(succ_id).dump_pddl();
+                    cout << "################ trying to apply " << op->get_name() << " in state " << curr_leaf_state.get_id() << endl;
+                    curr_leaf_state.dump_pddl();
 #endif
-                        int op_cost = 0;
-                        if (!is_center_op){
-                            op_cost = get_adjusted_action_cost(op, cost_type);
+                    LeafStateHash succ_id = g_state_registry->get_successor_leaf_state_hash(curr_leaf_state, op);
+
+                    if (id == succ_id){
+                        // this would induce a self-loop in the leaf state space
+                        continue;
+                    }
+
+                    if (compute_leaf_invertibility &&
+                        !op.has_precondition_on(LeafFactorID::CENTER) &&
+                        op.get_affected_factor() != LeafFactorID::CENTER){
+                        // is leaf action without center precondition
+                        leaf_only_state_space_graph[id].push_back(succ_id);
+                    }
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+                    cout << "created leaf state " << succ_id << " of cost " << (cost + get_adjusted_action_cost(*op, g_factoring->get_cost_type())) << endl;
+                    g_state_registry->lookup_leaf_state(succ_id).dump_pddl();
+#endif
+                    int op_cost = 0;
+                    if (!is_center_op){
+                        op_cost = get_adjusted_action_cost(op, cost_type);
+                    }
+
+                    if (succ_id >= leaf_state_id_map[factor].size()){
+                        leaf_state_id_map[factor].resize(succ_id + 1, -1);
+                    }
+
+                    change |= prices.add_state(succ_id, factor, cost + op_cost);
+
+                    if (compute_leaf_backwards_graph && first_time_seen){
+                        // this ensures that there is an entry leaf_state_predecessors[factor][lid]
+                        // even in case succ_id has been generated by a center action
+                        if (succ_id >= leaf_state_predecessors[factor].size()) {
+                            leaf_state_predecessors[factor].resize(succ_id + 1);
                         }
-                        
-                        if (succ_id >= leaf_state_id_map[factor].size()){
-                            leaf_state_id_map[factor].resize(succ_id + 1, -1);
-                        }
-                        
-                        change |= goal_price_tag.add_state(succ_id, factor, cost + op_cost);
-                        
-                        if (compute_leaf_backwards_graph && first_time_seen){
-                            // this ensures that there is an entry leaf_state_predecessors[factor][lid]
-                            // even in case lid has been generated by a center action
-                            if (succ_id >= leaf_state_predecessors[factor].size()) {
-                                leaf_state_predecessors[factor].resize(succ_id + 1);
-                            }
-                        }
-                        
-                        if (!is_center_op && first_time_seen){
-                            leaf_state_successors[factor][id].push_back(make_pair(op_id, succ_id));
-                            if (compute_leaf_backwards_graph){
-                                leaf_state_predecessors[factor][succ_id].push_back(make_pair(op_id, id));
-                            }
+                    }
+
+                    if (!is_center_op && first_time_seen){
+                        leaf_state_successors[factor][id].push_back(make_pair(op_id, succ_id));
+                        if (compute_leaf_backwards_graph){
+                            leaf_state_predecessors[factor][succ_id].push_back(make_pair(op_id, id));
                         }
                     }
                 }
             }
         }
-        
+    }
+    if (compute_leaf_invertibility){
         size_t num_sccs = sccs::compute_maximal_sccs(leaf_only_state_space_graph).size();
         if (num_sccs == 1){
             size_t prod_size = 1;
@@ -528,11 +518,42 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         } else if (num_sccs == g_state_registry->size(factor)){
             cout << "no non-trivial leaf-only SCC in state space of leaf " << factor << endl;
         }
+    }
+}
 
-#ifdef DEBUG_PRECOMPUTE_GOAL_COST
-    cout << "   RPG for leaf factor " << factor << " finished" << endl;
-#endif
+void CompliantPathGraph::build_leaf_state_spaces() {
+
+    leaf_state_id_map.resize(g_leaves.size(), vector<int>(1, -1));
+    curr_leaf_state_max_id.resize(g_leaves.size(), 0);
     
+    is_leaf_state_space_scc.resize(g_leaves.size(), false);
+
+    if (compute_leaf_backwards_graph){
+        leaf_state_predecessors.resize(g_leaves.size());
+        precompute_leaf_state_spaces = vector<bool>(g_leaves.size(), true);
+    }
+    
+    Prices goal_price_tag;
+    goal_price_tag.resize();
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        goal_price_tag.add_state(LeafStateHash(0), factor, 0);
+    }
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+
+        if (!precompute_leaf_state_spaces[factor]){
+            continue;
+        }
+        
+        if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
+            // TODO remove these leaves from g_leaves; then this can go away
+            // skip fork-leaf factor without a goal
+            // TODO need to be careful with orbit search; need to change PDG in this case, too
+            continue;
+        }
+
+        build_leaf_state_space(goal_price_tag, LeafStateHash(0), factor, true);
     }
     
     pruning->initialize();
@@ -592,10 +613,22 @@ void CompliantPathGraph::build_leaf_state_spaces() {
     
     bool all_built = true;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (precompute_leaf_state_spaces[factor] && !g_symmetry_graph){
-            // when doing orbit search, we need to keep the leaf successor
-            // generators to get the actions applicable in symmetric leaf states that
-            // are not reachable from the initial state
+        bool keep_sg_for_unreachable_symmetric_lstates = false;
+        if (g_symmetry_graph){
+            // in case not all leaf states are reachable, we need to
+            // keep the leaf successor generator because an unreachable
+            // state might be symmetric to a reachable one. we then need
+            // to construct the leaf state space under that state when it
+            // is encountered during the search
+            size_t prod_size = 1;
+            for (int var : g_leaves[factor]){
+                prod_size *= g_variable_domain[var];
+            }
+            if (prod_size != g_state_registry->size(factor)){
+                keep_sg_for_unreachable_symmetric_lstates = true;
+            }
+        }
+        if (precompute_leaf_state_spaces[factor] && !keep_sg_for_unreachable_symmetric_lstates){
             leaf_successor_generators[factor].reset();
         } else {
             all_built = false;
@@ -658,144 +691,7 @@ LeafStateHash CompliantPathGraph::get_leaf_state_hash(const vector<int> &new_lea
         
         goal_price_tag.add_state(new_state_id, factor, 0);
         
-        vector<int> best_prices;
-        
-        bool change = true;
-        while (change) {
-            // TODO refactor this. code is used in multiple places
-
-            change = false;
-
-            for (LeafStateHash id(num_leaf_states_before); id < g_state_registry->size(factor); ++id){
-                if (!goal_price_tag.has_leaf_state(id, factor)){
-                    continue;
-                }
-                int cost = goal_price_tag.get_cost_of_state(id, factor);
-                if (id < best_prices.size()){
-                    if (cost >= best_prices[id]
-                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
-                            && best_prices[id] != numeric_limits<int>::max())){
-                        continue;
-                    }
-                } else {
-                    best_prices.resize(id + 1, numeric_limits<int>::max());
-                }
-                
-                const LeafState curr_leaf_state = g_state_registry->lookup_leaf_state(id, factor);
-
-                bool first_time_seen = best_prices[id] == numeric_limits<int>::max();
-                if (id < center_successors[factor].size() && !center_successors[factor][id].empty()){
-                    first_time_seen = false;
-                }
-                if (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty()){
-                    first_time_seen = false;
-                }
-                if (compute_leaf_backwards_graph){
-                    if (id < leaf_state_predecessors[factor].size() && !leaf_state_predecessors[factor][id].empty()){
-                        first_time_seen = false;
-                    }
-                }
-
-                best_prices[id] = cost;
-
-                if (id >= leaf_state_successors[factor].size()) {
-                    leaf_state_successors[factor].resize(id + 1);
-                }
-                if (compute_leaf_backwards_graph) {
-                    // in case this state does not have a predecessor, e.g.,
-                    // being a permutation of the initial leaf state, not
-                    // increasing the size results in segfaults when doing
-                    // goal price propagation, because this accesses the
-                    // predecessors of all leaf states
-                    if (id >= leaf_state_predecessors[factor].size()) {
-                        leaf_state_predecessors[factor].resize(id + 1);
-                    }
-                }
-
-                if (g_factoring->is_fork_leaf(factor) && is_a_leaf_goal_state[factor][id]){
-                    // the goal states of fork leaves don't need successors
-                    continue;
-                }
-
-
-                vector<OperatorID> applicable_ops;
-                
-                if (!g_factoring->is_fork_leaf(factor) &&
-                        (first_time_seen || !g_factoring->is_ifork_leaf(factor))){
-
-                    vector<OperatorID> center_ops;
-                    center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(curr_leaf_state, center_ops);
-
-                    if (id >= center_successors[factor].size()){
-                        center_successors[factor].resize(id+1);
-                    }
-                    for (OperatorID op_id : center_ops){
-                        if (first_time_seen && g_operators[op_id].has_precondition_on(factor)){
-                            // store center ops whose preconditions are satisfied by curr_leaf_state
-                            center_successors[factor][id].push_back(op_id);
-                        }
-                        if (!g_factoring->is_ifork_leaf(factor) && g_operators[op_id].has_effect_on(factor)){
-                            // no need to apply center ops if it does not change this leaf factor
-                            applicable_ops.push_back(op_id);
-                        }
-                    }
-                    if (first_time_seen){
-                        center_successors[factor][id].shrink_to_fit();
-                    }
-                }
-
-                if (first_time_seen){
-                    leaf_successor_generators[factor]->generate_applicable_ops(curr_leaf_state, applicable_ops);
-                } else {
-                    size_t old_size = applicable_ops.size();
-                    applicable_ops.resize(applicable_ops.size() + leaf_state_successors[factor][id].size(), OperatorID::no_operator);
-                    for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        applicable_ops[old_size + o] = leaf_state_successors[factor][id][o].first;
-                    }
-                }
-
-                // apply all applicable_ops to predecessor and store the outcome
-                for (OperatorID op_id : applicable_ops){
-                    const Operator &op = g_operators[op_id];
-                    if (op.has_effect_on(factor)){
-                        bool is_center_op = op.get_affected_factor() == LeafFactorID::CENTER;
-                        
-                        LeafStateHash succ_id = g_state_registry->get_successor_leaf_state_hash(curr_leaf_state, op);
-
-                        if (succ_id == id){
-                            // this would induce a self-loop in the leaf state space
-                            continue;
-                        }
-
-                        int op_cost = 0;
-                        if (!is_center_op){
-                            op_cost = get_adjusted_action_cost(op, cost_type);
-                        }
-                        
-                        if (succ_id >= leaf_state_id_map[factor].size()){
-                            leaf_state_id_map[factor].resize(succ_id + 1, -1);
-                        }
-                        
-                        change |= goal_price_tag.add_state(succ_id, factor, cost + op_cost);
-                        
-                        if (compute_leaf_backwards_graph && first_time_seen){
-                            // this ensures that there is an entry leaf_state_predecessors[factor][lid]
-                            // even in case lid has been generated by a center action
-                            if (succ_id >= leaf_state_predecessors[factor].size()) {
-                                leaf_state_predecessors[factor].resize(succ_id + 1);
-                            }
-                        }
-
-                        if (!is_center_op && first_time_seen){
-                            leaf_state_successors[factor][id].push_back(make_pair(op_id, succ_id));
-                            if (compute_leaf_backwards_graph){
-                                leaf_state_predecessors[factor][succ_id].push_back(make_pair(op_id, id));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        build_leaf_state_space(goal_price_tag, new_state_id, factor, false);
     }
     
     return new_state_id;

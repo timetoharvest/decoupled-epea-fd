@@ -14,6 +14,7 @@
 class LeafState;
 class LeafStateID;
 class LeavesPermutation;
+class Prices;
 class SearchSpace;
 class State;
 class StateID;
@@ -30,6 +31,12 @@ class CompliantPathGraph {
     friend class successor_generator::SuccessorGenerator; // access to center_successors
     friend class SearchSpace; // init state cpg + get successors
     
+
+    static void build_leaf_state_space(Prices &prices,
+                                       LeafStateHash first_state_id,
+                                       LeafFactorID factor,
+                                       bool set_leaf_invertibility);
+
     /*
       this builds all entire leaf state spaces and stores them
     */
