@@ -1387,6 +1387,7 @@ Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const 
 }
 
 Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
+    // TODO rewrite this function, it's super inefficient!
     FactoredVars components;
 
     vector<bool> vars(g_variable_domain.size(), false);
