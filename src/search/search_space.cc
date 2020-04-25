@@ -242,7 +242,7 @@ void SearchSpace::trace_path(const State &goal_state,
                 
                 if (g_factoring){
                     new_state = g_state_registry->get_center_successor(parent_state, g_operators[op]);
-                    new_cpg = CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(parent_state, g_operators[op]);
+                    new_cpg = CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(new_state, g_operators[op]);
                     new_cpg->discard_new_cpg();
                 } else {
                     new_state = g_state_registry->get_successor_state(parent_state, g_operators[op], false);

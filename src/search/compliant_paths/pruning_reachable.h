@@ -59,7 +59,6 @@ public:
 
     virtual uint64_t get_hash() const override;
 
-    
 
     static void register_cpg_storage(PruningReachableStorage *storage);
  
