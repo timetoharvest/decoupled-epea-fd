@@ -568,9 +568,13 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
         }
     }
     
-    return leaves_permutation &&
-	   lex_ordering.produces_less(*leaves_permutation, leaves) && 
-	   leaves.apply_symmetry_permutation(*leaves_permutation);
+    if (leaves_permutation &&
+            lex_ordering.produces_less(*leaves_permutation, leaves)){
+        leaves.apply_symmetry_permutation(*leaves_permutation);
+        return true;
+    }
+
+    return false;
 }
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
@@ -584,10 +588,14 @@ cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center,
 }
 
 bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves, 
-                                                  const LexicographicOrdering &lex_ordering) const {   
-    return (leaves_permutation && 
-	    lex_ordering.produces_less(*leaves_permutation, leaves) && 
-	    leaves.apply_symmetry_permutation(*leaves_permutation));
+                                                  const LexicographicOrdering &lex_ordering) const {
+
+    if (leaves_permutation &&
+            lex_ordering.produces_less(*leaves_permutation, leaves)){
+        leaves.apply_symmetry_permutation(*leaves_permutation);
+        return true;
+    }
+    return false;
 }
 
 void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
