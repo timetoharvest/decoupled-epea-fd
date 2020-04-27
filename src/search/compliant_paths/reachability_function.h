@@ -1,6 +1,7 @@
 #ifndef REACHABILITY_FUNCTION_H
 #define REACHABILITY_FUNCTION_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "compliant_path_graph.h"
 
 #include <vector>

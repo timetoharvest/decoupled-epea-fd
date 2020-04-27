@@ -325,7 +325,7 @@ static Heuristic *_parse(OptionParser &parser) {
                             "(see OptionCaveats#Using_preferred_operators_"
                             "with_the_lmcount_heuristic)", "false");
     parser.add_option<bool>("alm", "use action landmarks", "true");
-    add_lp_solver_option_to_parser(parser);
+    lp::add_lp_solver_option_to_parser(parser);
     Heuristic::add_options_to_parser(parser);
     Options opts = parser.parse();
 

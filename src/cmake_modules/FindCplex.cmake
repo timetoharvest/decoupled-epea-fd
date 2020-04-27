@@ -79,6 +79,7 @@ elseif(UNIX)
         "lib/x86_linux/static_pic")
     set(CPLEX_LIBRARY_PATH_SUFFIX_DEBUG_32 ${CPLEX_LIBRARY_PATH_SUFFIX_RELEASE_32})
     set(CPLEX_LIBRARY_PATH_SUFFIX_RELEASE_64
+        "bin/x86-64_linux/"
         "lib/x86-64_sles10_4.1/static_pic"
         "lib/x86-64_linux/static_pic")
     set(CPLEX_LIBRARY_PATH_SUFFIX_DEBUG_64 ${CPLEX_LIBRARY_PATH_SUFFIX_RELEASE_64})
@@ -130,24 +131,30 @@ else()
     )
 endif()
 
+# CMake uses the first discovered library, searching in the order they
+# are mentioned here. We prefer dynamic libraries over static ones
+# (see issue925) and otherwise prefer the latest available version.
 find_library(CPLEX_LIBRARY_RELEASE
     NAMES
-    cplex
-    cplex1262
-    cplex1271
+    cplex1290
     cplex1280
+    cplex1271
+    cplex1262
+    cplex
     HINTS
     ${CPLEX_HINT_PATHS_RELEASE}
     PATH_SUFFIXES
     ${CPLEX_LIBRARY_PATH_SUFFIX_RELEASE}
 )
 
+# See above.
 find_library(CPLEX_LIBRARY_DEBUG
     NAMES
-    cplex
-    cplex1262
-    cplex1271
+    cplex1290
     cplex1280
+    cplex1271
+    cplex1262
+    cplex
     HINTS
     ${CPLEX_HINT_PATHS_DEBUG}
     PATH_SUFFIXES
