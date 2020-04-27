@@ -59,7 +59,6 @@ void LexicographicOrdering::print_ordering(const CompliantPathGraph &cpg) const 
         }
     }
 
-
     if(apply_prices) {
         for(LeafFactorID factor(0); factor < g_leaves.size(); ++ factor){
             for (LeafStateHash from_id(0); from_id < g_state_registry->size(factor); ++from_id){
