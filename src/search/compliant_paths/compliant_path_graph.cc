@@ -365,11 +365,6 @@ void CompliantPathGraph::build_leaf_state_space(Prices &prices,
                 if (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty()){
                     first_time_seen = false;
                 }
-                if (compute_leaf_backwards_graph){
-                    if (id < leaf_state_predecessors[factor].size() && !leaf_state_predecessors[factor][id].empty()){
-                        first_time_seen = false;
-                    }
-                }
             }
 
             if (id >= leaf_state_successors[factor].size()) {
