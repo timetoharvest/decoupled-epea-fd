@@ -615,9 +615,15 @@ uint64_t Reachable::get_hash() const {
 
 void Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
     vector<boost::dynamic_bitset<> > old_reachable(reachable);
+
+#ifndef NDEBUG
     boost::dynamic_bitset<> old_goal_reached(goal_reached);
+    old_reachable = reachable;
+#endif
 
     for (LeafFactorID factor : per.get_factors_affected()) {
+        old_reachable[factor] = reachable[factor];
+
         reachable[factor] = boost::dynamic_bitset<>();
         goal_reached[factor] = false;
     }
@@ -639,11 +645,11 @@ void Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
             }
 
             --num_states;
-            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-            assert(to_pair.second == to_factor);
-            LeafStateHash to_val = to_pair.first;
 
-            add_state(to_val, to_factor);
+            auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(t_factor == to_factor);
+
+            add_state(to_state, to_factor);
         }
     }
 

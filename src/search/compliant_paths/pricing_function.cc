@@ -565,14 +565,18 @@ void Prices::dump() const {
 
 void Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
-    vector<vector<int> > old_prices(prices);
-    vector<size_t> old_number_states(number_states);
+    vector<vector<int> > old_prices(g_leaves.size());
+    vector<size_t> old_number_states(g_leaves.size());
     
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
+    old_number_states = number_states;
 #endif
 
     for (LeafFactorID factor : per.get_factors_affected()) {
+        old_number_states[factor] = number_states[factor];
+        old_prices[factor] = prices[factor];
+
         number_states[factor] = 0;
         prices[factor] = vector<int>();
         goal_cost[factor] = INF;
@@ -589,24 +593,25 @@ void Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
                 per.get_factors_affected().end(), from_factor)
                 != per.get_factors_affected().end());
 
-        size_t num_states = old_number_states[from_factor]; 
-        for  (LeafStateHash id(0); num_states > 0; ++ id){
+        size_t num_states = old_number_states[from_factor];
+        for  (LeafStateHash id(0); num_states > 0; ++id){
             assert (id < leaf_state_id_map[from_factor].size());
             if (leaf_state_id_map[from_factor][id] == -1) {
                 continue;
             }
 
             size_t leaf_state = leaf_state_id_map[from_factor][id];
-            if (leaf_state >= old_prices[from_factor].size() || old_prices[from_factor][leaf_state] == INF) {
+            if (leaf_state >= old_prices[from_factor].size() ||
+                    old_prices[from_factor][leaf_state] == INF){
                 continue;
             }
 
-            num_states--;
-            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-            assert(to_pair.second == to_factor);
-            LeafStateHash to_val = to_pair.first;
+            --num_states;
 
-            add_state(to_val, to_factor, old_prices[from_factor][leaf_state]);
+            auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(t_factor == to_factor);
+
+            add_state(to_state, to_factor, old_prices[from_factor][leaf_state]);
         }
     }
 

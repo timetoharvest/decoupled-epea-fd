@@ -391,26 +391,37 @@ void EffectivePrices::propagate_dominance_prices() {
 
 void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
-    vector<vector<int> > old_prices(prices);
-    vector<size_t> old_number_states(number_states);
-    vector<vector<int> > old_effective_prices(effective_prices);
-    vector<size_t> old_number_effective_states(number_effective_states);
+    vector<vector<int> > old_prices(g_leaves.size());
+    vector<size_t> old_number_states(g_leaves.size());
+    vector<vector<int> > old_effective_prices(g_leaves.size());
+    vector<size_t> old_number_effective_states(g_leaves.size());
     
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
+
+    old_number_states = number_states;
+    old_number_effective_states = number_effective_states;
 #endif
 
     for (LeafFactorID factor : per.get_factors_affected()) {
+        old_number_states[factor] = number_states[factor];
+        old_prices[factor] = prices[factor];
+
         number_states[factor] = 0;
         prices[factor] = vector<int>();
         goal_cost[factor] = INF;
         if (!effective_prices.empty()){
+            old_effective_prices[factor] = effective_prices[factor];
+            old_number_effective_states[factor] = number_effective_states[factor];
+
             effective_prices[factor] = vector<int>();
             number_effective_states[factor] = 0;
         }
     }
     
     for(LeafFactorID to_factor : per.get_factors_affected()) {
+        assert(prices[to_factor].empty());
+
         LeafFactorID from_factor = per.get_from_factor(to_factor);
 
         assert(find(per.get_factors_affected().begin(),
@@ -435,11 +446,10 @@ void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
             }
 
             --num_states;
-            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-            assert(to_pair.second == to_factor);
-            LeafStateHash to_val = to_pair.first;
+            auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(t_factor == to_factor);
 
-            add_state(to_val, to_factor, old_prices[from_factor][leaf_state]);
+            add_state(to_state, to_factor, old_prices[from_factor][leaf_state]);
         }
 
         if (!effective_prices.empty()){
@@ -447,7 +457,7 @@ void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
             for  (LeafStateHash id(0); num_eff_states > 0; ++id){
                 assert (id < leaf_state_id_map[from_factor].size());
                 if (leaf_state_id_map[from_factor][id] == -1) {
-                    continue; 
+                    continue;
                 }
 
                 size_t leaf_state = leaf_state_id_map[from_factor][id];
@@ -457,11 +467,10 @@ void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
                 }
 
                 --num_eff_states;
-                pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
-                assert(to_pair.second == to_factor);
-                LeafStateHash to_val = to_pair.first;
+                auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+                assert(t_factor == to_factor);
 
-                add_effective_state(to_val, to_factor, old_effective_prices[from_factor][leaf_state]);
+                add_effective_state(to_state, to_factor, old_effective_prices[from_factor][leaf_state]);
             }
         }
     }
