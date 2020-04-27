@@ -262,12 +262,10 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOM
     return DOMINANCE::NONE;
 }
 
-bool FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
-    bool replaced = EffectivePrices::apply_symmetry_permutation(per);
-    // TODO only recompute frontier when replaced?
+void FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+    EffectivePrices::apply_symmetry_permutation(per);
     frontier.clear();
     compute_cost_frontier();
-    return replaced;
 }
 
 void FrontierPrices::store_new_cpg(const State &state) {

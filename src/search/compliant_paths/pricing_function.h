@@ -74,7 +74,7 @@ public:
 
     virtual uint64_t get_hash() const override;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
     virtual size_t get_memory_footprint() const;
 

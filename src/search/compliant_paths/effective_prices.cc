@@ -389,7 +389,7 @@ void EffectivePrices::propagate_dominance_prices() {
     }  
 }
 
-bool EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);
     vector<size_t> old_number_states(number_states);
@@ -469,12 +469,6 @@ bool EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
     assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
     assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
     assert(accumulate(number_effective_states.begin(), number_effective_states.end(), 0) == accumulate(old_number_effective_states.begin(), old_number_effective_states.end(), 0));
-
-    // We do not need to check whether the prices changed
-    // because the return value is only relevant if
-    // if_less is true and in that case we checked this in
-    // per.produce_less(prices)
-    return true;
 }
 
 void EffectivePrices::dump() const {

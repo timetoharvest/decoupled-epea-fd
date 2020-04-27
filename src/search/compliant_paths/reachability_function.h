@@ -67,7 +67,7 @@ public:
     
     virtual void dump() const override;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 

@@ -198,7 +198,7 @@ size_t PruningReachable::get_memory_footprint() const {
     return num_bytes;
 }
 
-bool PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
+void PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
     // TODO implement this
     cerr << "PruningReachable::apply_symmetry_permutation not implemented" << endl;
     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);

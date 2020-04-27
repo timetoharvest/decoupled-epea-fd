@@ -136,7 +136,7 @@ public:
     
     virtual int get_goal_cost(LeafFactorID factor) const = 0;
 
-    virtual bool apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;
     
     virtual void dump() const = 0;
 

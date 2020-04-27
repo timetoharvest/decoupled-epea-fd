@@ -613,7 +613,7 @@ uint64_t Reachable::get_hash() const {
     return hash_state.get_hash64();
 }
 
-bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
+void Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
     vector<boost::dynamic_bitset<> > old_reachable(reachable);
     boost::dynamic_bitset<> old_goal_reached(goal_reached);
 
@@ -656,12 +656,6 @@ bool Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
     assert(old == now);
     assert(goal_reached.count() == old_goal_reached.count());
 #endif
-
-    //We do not need to check whether the prices changed
-    //because the return value is only relevant if
-    //if_less is true and in that case we checked this in
-    //per.produce_less(prices)
-    return true;
 }
 
 size_t Reachable::get_memory_footprint() const {
