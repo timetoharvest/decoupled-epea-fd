@@ -5,6 +5,7 @@
 #include "../operator.h"
 #include "pruning_options.h"
 #include "../state_registry.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../task_utils/successor_generator.h"
 
 #include <limits>
@@ -449,11 +450,11 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
             // center op completely overwrites this leaf factor
                     
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
-            
+
             size_t size_before = g_state_registry->size(factor);
             
             LeafStateHash succ_id(g_state_registry->get_successor_leaf_state_hash(pred, op));
-            
+
             if (succ_id >= size_before){
                 // new leaf state, need to store applicable center actions
                 handle_new_leaf_state_from_center_op(succ_id, factor);
@@ -579,7 +580,7 @@ unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
         }
-        reach->update(g_initial_state());
+        reach->update(g_state_registry->get_center_state(g_initial_state_data));
         
         return reach;
     }
@@ -610,5 +611,72 @@ uint64_t Reachable::get_hash() const {
         feed(hash_state, reachable[factor]);
     }
     return hash_state.get_hash64();
+}
+
+void Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
+    vector<boost::dynamic_bitset<> > old_reachable(reachable);
+
+#ifndef NDEBUG
+    boost::dynamic_bitset<> old_goal_reached(goal_reached);
+    old_reachable = reachable;
+#endif
+
+    for (LeafFactorID factor : per.get_factors_affected()) {
+        old_reachable[factor] = reachable[factor];
+
+        reachable[factor] = boost::dynamic_bitset<>();
+        goal_reached[factor] = false;
+    }
+    
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
+
+        size_t num_states = old_reachable[from_factor].count();
+        for  (LeafStateHash id(0); num_states > 0; ++id){
+            assert(id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1) {
+                continue;
+            }
+
+            size_t leaf_state = leaf_state_id_map[from_factor][id];
+            if (leaf_state >= old_reachable[from_factor].size() ||
+                    !old_reachable[from_factor][leaf_state]){
+                continue;
+            }
+
+            --num_states;
+
+            auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(t_factor == to_factor);
+
+            add_state(to_state, to_factor);
+        }
+    }
+
+#ifndef NDEBUG
+    size_t old = 0, now = 0;
+    for (size_t factor = 0; factor < g_leaves.size(); ++factor){
+        old += old_reachable[factor].count();
+        now += reachable[factor].count();
+    }
+    assert(old == now);
+    assert(goal_reached.count() == old_goal_reached.count());
+#endif
+}
+
+size_t Reachable::get_memory_footprint() const {
+    size_t num_bytes = 0;
+    if (!reachable.empty()){
+        // we need the check because in decoupled orbit search
+        // there may be "empty" decoupled states
+        num_bytes += (1 + g_leaves.size()) * sizeof(vector<boost::dynamic_bitset<> >);
+        num_bytes += goal_reached.num_blocks() * sizeof(boost::dynamic_bitset<>::block_type);
+
+        num_bytes += sizeof(vector<boost::dynamic_bitset<> >);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += reachable[factor].num_blocks() * sizeof(boost::dynamic_bitset<>::block_type);
+        }
+    }
+    return num_bytes;
 }
 

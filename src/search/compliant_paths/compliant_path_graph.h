@@ -13,6 +13,8 @@
 
 class LeafState;
 class LeafStateID;
+class LeavesPermutation;
+class Prices;
 class SearchSpace;
 class State;
 class StateID;
@@ -27,7 +29,14 @@ class CompliantPathGraph {
     friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class successor_generator::SuccessorGenerator; // access to center_successors
+    friend class SearchSpace; // init state cpg + get successors
     
+
+    static void build_leaf_state_space(Prices &prices,
+                                       LeafStateHash first_state_id,
+                                       LeafFactorID factor,
+                                       bool set_leaf_invertibility);
+
     /*
       this builds all entire leaf state spaces and stores them
     */
@@ -126,11 +135,16 @@ public:
     virtual bool goal_reachable(LeafFactorID factor) const = 0;
     
     virtual int get_goal_cost(LeafFactorID factor) const = 0;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;
     
     virtual void dump() const = 0;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
     
+    // returns an approximation of the number of bytes stored in memory of this CPG for factor
+    virtual size_t get_memory_footprint() const = 0;
+
     virtual uint64_t get_hash() const = 0;
 
     // returns the duplicate counter for this base state and compliant path graph 
@@ -166,6 +180,8 @@ public:
     static bool is_leaf_goal_state(LeafStateHash id, LeafFactorID factor);
     
     static void store_is_leaf_goal_state(const LeafState &state);
+
+    static LeafStateHash get_leaf_state_hash(const std::vector<int> &new_leaf_state, LeafFactorID factor);
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;
@@ -178,7 +194,7 @@ public:
     static bool precompute_leaf_state_space(LeafFactorID factor) {
         return precompute_leaf_state_spaces[factor];
     }
-    
+
     static bool all_leaves_invertible() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             if (!is_leaf_state_space_scc[factor]){

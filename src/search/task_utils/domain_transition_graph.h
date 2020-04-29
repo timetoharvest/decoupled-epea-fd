@@ -37,7 +37,8 @@ struct ValueTransitionLabel {
     std::vector<LocalAssignment> precond;
     std::vector<LocalAssignment> effect;
 
-    ValueTransitionLabel(Operator *theOp, const std::vector<LocalAssignment> &precond_,
+    ValueTransitionLabel(Operator *theOp,
+                         const std::vector<LocalAssignment> &precond_,
                          const std::vector<LocalAssignment> &effect_)
         : op(theOp), precond(precond_), effect(effect_) {}
     void dump() const;

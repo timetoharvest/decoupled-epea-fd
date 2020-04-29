@@ -210,9 +210,9 @@ bool SimulationRelation::precondition_dominance(OpsLeafProps<Condition> pre,
 						OpsLeafProps<Condition> pre2) const {
     for (const auto &p : pre){
         if (find_if(begin(pre2), end(pre2), [p] (const Condition &p2){
-            return p2 == p;
-        }
-        ) == end(pre2)){
+		    return p2 == p;
+		}
+		) == end(pre2)){
             return false;
         }
     }

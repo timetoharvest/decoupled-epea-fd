@@ -59,9 +59,14 @@ public:
 
     EffectivePrices& operator=(EffectivePrices &&other);
     
+
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &per) override;
+
+    virtual size_t get_memory_footprint() const;
 
     virtual uint64_t get_hash() const override;
 

@@ -65,17 +65,28 @@ void PruningOptions::verify_options() const {
                 irrelevance != IRRELEVANCE::NO){
 
             cerr << "Advanced pruning methods are only supported for fork factorings!" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
             cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }        
         if (do_simulation){
             cout << "simulation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+    }
+    if (g_symmetry_graph){
+        if (irrelevance != IRRELEVANCE::NO){
+            cout << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (pruning_type == PRUNING_TYPE::FRONTIER && 
+               (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
+            cout << "Satisficing search with frontier pruning is not supported for decoupled orbit search!" << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
 }

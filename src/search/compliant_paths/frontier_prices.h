@@ -34,6 +34,7 @@ protected:
     
     std::vector<boost::dynamic_bitset<> > frontier;
     
+
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
                                                                                 const Operator &op) const override;
                                                                           
@@ -55,9 +56,14 @@ public:
 
     FrontierPrices& operator=(FrontierPrices &&other);
     
-    virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &per) override;
+
+    virtual void dump() const override;
+
+    virtual size_t get_memory_footprint() const;
 
     virtual uint64_t get_hash() const override;
 

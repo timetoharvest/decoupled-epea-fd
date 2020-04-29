@@ -229,8 +229,21 @@ fast_downward_plugin(
         compliant_paths/pruning_reachable
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
-    DEPENDS SCCS CAUSAL_GRAPH
+    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
     CORE_PLUGIN
+)
+
+fast_downward_plugin(
+    NAME SYMMETRIES
+    HELP "Classes relevant to use symmetry breaking"
+    SOURCES
+        symmetries/decoupled_group
+        symmetries/decoupled_permutation
+        symmetries/graph_creator
+        symmetries/group
+        symmetries/lexicographic_ordering
+        symmetries/permutation
+    DEPENDENCY_ONLY
 )
 
 fast_downward_plugin(

@@ -19,7 +19,7 @@ class SuccessorGenerator {
 
     // removes all operators from applicable_ops, whose leaf preconditions are not
     // reached in cpg
-    void remove_inapplicable_ops(const CompliantPathGraph *cpg, std::vector<OperatorID> &applicable_ops) const;
+    void remove_inapplicable_ops(const CompliantPathGraph &cpg, std::vector<OperatorID> &applicable_ops) const;
 
 public:
     explicit SuccessorGenerator();
@@ -34,6 +34,11 @@ public:
 
     void generate_applicable_ops(
             const State &state, std::vector<OperatorID> &applicable_ops) const;
+
+    // used to generate successors when reconstructing decoupled plans in orbit search
+    void generate_applicable_ops(
+                const State &state, const CompliantPathGraph &cpg,
+                std::vector<OperatorID> &applicable_ops) const;
 
     // used in decoupled search to compute leaf state spaces (leaf actions)
     void generate_applicable_ops(

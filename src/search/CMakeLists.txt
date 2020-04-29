@@ -78,3 +78,23 @@ if(PLUGIN_LP_SOLVER_ENABLED AND USE_LP)
         )
     endif()
 endif()
+
+
+# If any enabled plugin requires the bliss library, compile with it. 
+# If bliss is not installed, the planner will still compile, but 
+# using components that depend on bliss will cause an error. 
+# This behavior can be overwritten by setting the
+# option USE_BLISS to false.
+option(
+  USE_BLISS
+  "Compile with support for bliss if installed on this system."
+  TRUE)
+
+if(PLUGIN_SYMMETRIES_ENABLED AND USE_BLISS)
+    find_package(Bliss)
+    if(Bliss_FOUND)
+        add_definitions("-D USE_BLISS")
+        include_directories(${BLISS_INCLUDE_DIRS})
+        target_link_libraries(downward ${BLISS_LIBRARIES})
+    endif()
+endif()

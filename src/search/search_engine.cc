@@ -1,10 +1,11 @@
 #include "search_engine.h"
 
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "factoring.h"
 #include "globals.h"
 #include "option_parser.h"
-#include "compliant_paths/compliant_path_graph.h"
-#include "compliant_paths/cpg_storage.h"
+#include "symmetries/graph_creator.h"
 #include "utils/countdown_timer.h"
 #include "utils/timer.h"
 
@@ -29,7 +30,13 @@ SearchEngine::SearchEngine(const Options &opts)
     }
     bound = opts.get<int>("bound");
     if (g_factoring){
-	CompliantPathGraph::set_cost_type(cost_type);
+        CompliantPathGraph::set_cost_type(cost_type);
+    }
+    if (opts.contains("symmetry")) {
+        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator*>("symmetry"));
+        if (g_factoring){
+            CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
+        }
     }
 }
 
@@ -55,6 +62,16 @@ void SearchEngine::set_plan(const Plan &p) {
 }
 
 void SearchEngine::search() {
+    if(g_symmetry_graph){
+        g_state_registry->get_initial_state();
+        g_symmetry_graph->initialize();
+        if (!g_symmetry_graph->has_generators()){
+            g_symmetry_graph.reset();
+        } else {
+            g_state_registry->permute_initial_state();
+        }
+    }
+    
     initialize();
     
     utils::CountdownTimer timer(max_time);
@@ -97,7 +114,7 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 }
             }
             cout << "found a plan of cost " << solution_cost;
-            
+
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
@@ -136,10 +153,10 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
             }
             cout << " [t=" << utils::g_timer << "]" << endl;
             return true;
-	}
-	Plan plan;
+        }
+        Plan plan;
         search_space.trace_path(state, plan);
-	cout << "Solution found!" << endl;
+        cout << "Solution found!" << endl;
         set_plan(plan);
         return true;
     }
@@ -211,4 +228,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 }

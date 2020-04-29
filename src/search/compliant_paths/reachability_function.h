@@ -67,9 +67,13 @@ public:
     
     virtual void dump() const override;
 
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
     virtual uint64_t get_hash() const override;
+
+    virtual size_t get_memory_footprint() const;
 
     
     static void register_cpg_storage(ReachableStorage *storage);

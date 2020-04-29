@@ -143,7 +143,7 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("STD");
     search_types.push_back("STAR");
     search_types.push_back("CENTER");
-    // TODO rename this to heuristic_type
+    // TODO rename this to heuristic_type or just type?
     parser.add_enum_option(
         "search_type",
         search_types,
