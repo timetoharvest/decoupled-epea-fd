@@ -5,6 +5,7 @@
 #include "permutation.h"
 
 #include <memory>
+#include <vector>
 
 class CompliantPathGraph;
 class LexicographicOrdering;
@@ -149,8 +150,6 @@ public:
 
     void permute_decoupled_state(std::vector<int> &center,
                                  CompliantPathGraph &leaves) const;
-                                 
-    void permute_center_state(std::vector<int> &center) const;
     
     void print_cycle_notation() const;
     

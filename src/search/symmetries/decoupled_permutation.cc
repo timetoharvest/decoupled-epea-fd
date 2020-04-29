@@ -609,12 +609,6 @@ void DecoupledPermutation::permute_decoupled_state(vector<int> &center,
     }
 }
 
-void DecoupledPermutation::permute_center_state(vector<int> &center) const {
-    if(center_permutation){
-        center_permutation->permute(center);
-    }
-}
-
 inline bool are_equal(OpsLeafProps<Condition> preconds1, OpsLeafProps<Condition> preconds2) {
     if (preconds1.size() != preconds2.size()){
         return false;

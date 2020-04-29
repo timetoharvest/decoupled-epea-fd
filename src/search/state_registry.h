@@ -13,6 +13,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 /*
   Overview of classes relevant to storing and working with registered states.
@@ -245,8 +246,6 @@ public:
     const State &get_initial_state();
     
     State get_state_permutation(const State &state, const Permutation &permutation);
-    
-    State get_state_permutation(const State &state, const DecoupledPermutation &permutation);
     
     State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation);
 

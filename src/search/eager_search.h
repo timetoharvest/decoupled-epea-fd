@@ -9,6 +9,7 @@
 
 #include "open_lists/open_list.h"
 
+#include <memory>
 #include <vector>
 
 

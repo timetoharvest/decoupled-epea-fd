@@ -8,7 +8,7 @@
 #include "symmetries/graph_creator.h"
 
 #include <limits>
-#include <stdint.h>
+#include <cstdint>
 
 using namespace std;
 
@@ -224,28 +224,6 @@ State StateRegistry::get_state_permutation(const State &state, const Permutation
     for (size_t var = 0; var < permuted.size(); ++var) {
         g_state_packer->set(buffer, var, permuted[var]);
     }
-    
-    StateID id = insert_id_or_pop_state();
-    return lookup_state(id);
-}
-
-State StateRegistry::get_state_permutation(const State &state, const DecoupledPermutation &permutation) {
-    assert(g_symmetry_graph);
-    assert(g_factoring);
-    
-    vector<int> permuted(g_variable_domain.size(), -1);
-    for (int var : g_center){
-        permuted[var] = state[var];
-    }
-    permutation.permute_center_state(permuted);
-    
-    state_data_pool.push_back(state.get_packed_buffer());
-    PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
-    for (size_t var = 0; var < g_center.size(); ++var) {
-        g_state_packer->set(buffer, var, permuted[g_center[var]]);
-    }
-    g_state_packer->set(buffer, g_center.size(), 0);
     
     StateID id = insert_id_or_pop_state();
     return lookup_state(id);

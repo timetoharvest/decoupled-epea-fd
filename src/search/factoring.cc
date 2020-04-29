@@ -9,14 +9,13 @@
 #include "task_utils/causal_graph.h"
 #include "utils/timer.h"
 
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <map>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <sstream>
-#include <time.h>
 
 
 using namespace std;
