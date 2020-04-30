@@ -8,6 +8,7 @@
 #include "../symmetries/decoupled_permutation.h"
 #include "../task_utils/successor_generator.h"
 
+#include <cmath>
 #include <limits>
 
 
@@ -501,8 +502,7 @@ void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFacto
     
     assert(id >= center_successors[factor].size());
     
-    bool has_predecessors = !g_factoring->is_ifork_leaf(factor);
-    if (has_predecessors){
+    if (!g_factoring->is_ifork_leaf(factor)){
         // store center ops whose preconditions are satisfied by the new leaf state
         
         vector<OperatorID> center_ops;
@@ -678,5 +678,117 @@ size_t Reachable::get_memory_footprint() const {
         }
     }
     return num_bytes;
+}
+
+
+typedef vector<vector<LeafStateHash> > HyperCube;
+
+inline void enumerate(const HyperCube &covered, const HyperCube &not_covered,
+                      vector<HyperCube> &cubes,
+                      HyperCube &curr_cube,
+                      LeafFactorID factor) {
+
+    if (!not_covered[factor].empty()){
+        curr_cube[factor] = not_covered[factor];
+
+        if (factor < g_leaves.size() - 1){
+            enumerate(covered, not_covered, cubes, curr_cube, LeafFactorID(factor + 1));
+        } else {
+            cubes.push_back(curr_cube);
+        }
+    }
+
+    curr_cube[factor] = covered[factor];
+
+    if (factor < g_leaves.size() - 1){
+        enumerate(covered, not_covered, cubes, curr_cube, LeafFactorID(factor + 1));
+    } else {
+        cubes.push_back(curr_cube);
+    }
+}
+
+inline void substract_cube(const HyperCube &query, const HyperCube &evidence, vector<HyperCube> &resulting_cubes) {
+    HyperCube not_covered(g_leaves.size());
+    HyperCube covered(g_leaves.size());
+
+    bool has_non_covered_state = false;
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        set_intersection(query[factor].begin(), query[factor].end(),
+                         evidence[factor].begin(), evidence[factor].end(),
+                         std::inserter(covered[factor], covered[factor].end()));
+        if (covered[factor].empty()){
+            // no overlap in this leaf factor
+            resulting_cubes.push_back(query);
+            return;
+        }
+        set_difference(query[factor].begin(), query[factor].end(),
+                       evidence[factor].begin(), evidence[factor].end(),
+                       std::inserter(not_covered[factor], not_covered[factor].end()));
+        has_non_covered_state |= !not_covered[factor].empty();
+    }
+
+    if (!has_non_covered_state){
+        // this can happen if some intermediate cube is completely covered by evidence
+        return;
+    }
+
+    HyperCube tmp(g_leaves.size());
+    enumerate(covered, not_covered, resulting_cubes, tmp, LeafFactorID(0));
+
+#ifndef NDEBUG
+    // the last cube is always composed of covered[factor]
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        assert(resulting_cubes.back()[factor] == covered[factor]);
+    }
+#endif
+    resulting_cubes.pop_back();
+}
+
+inline HyperCube get_cube(const CompliantPathGraph *cpg) {
+    HyperCube cube(g_leaves.size());
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        cube[factor].reserve(cpg->get_number_states(factor));
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (cpg->has_leaf_state(id, factor)){
+                cube[factor].push_back(id);
+            }
+        }
+    }
+    return cube;
+}
+
+bool Reachable::is_hypercube_covered(const State &base_state, int curr_number_duplicates) const {
+    // cube elimination
+    vector<HyperCube> current_cubes;
+    current_cubes.push_back(get_cube(this));
+
+    for (int dup = 0; dup <= curr_number_duplicates; ++dup){
+        // get other state
+        State s = g_state_registry->get_decoupled_state(base_state, dup);
+
+        HyperCube evd_cube = get_cube(cpg_storage->get_cpg(s));
+
+        vector<HyperCube> new_cubes;
+
+        for (const HyperCube &query : current_cubes){
+#ifndef NDEBUG
+            size_t size_before = new_cubes.size();
+#endif
+            substract_cube(query, evd_cube, new_cubes);
+
+            // worst case, in every leaf of query there are states covered and states not covered
+            // by evd_cube. then, we get 2^#leaves many new cubes, for all combinations
+            // of covered/non-covered leaf state sets across the leaves.
+            assert(new_cubes.size() - size_before <= pow(2, g_leaves.size()));
+        }
+
+        current_cubes.swap(new_cubes);
+
+        if (current_cubes.empty()){
+            return true;
+        }
+    }
+
+    return false;
 }
 

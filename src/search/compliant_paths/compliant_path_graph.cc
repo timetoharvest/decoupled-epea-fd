@@ -312,6 +312,12 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
     if (replaced_state_dup != -1){
         return {replaced_state_dup, false};
     } else {
+        if (pruning->use_hypercube_pruning()){
+            if (is_hypercube_covered(base_state, curr_number_duplicates)){
+                PruningOptions::set_ignore_current_state();
+                return {0, false};
+            }
+        }
         return {curr_number_duplicates + 1, false};
     }
 }

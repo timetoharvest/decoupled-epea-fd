@@ -650,3 +650,9 @@ uint64_t Prices::get_hash() const {
     }
     return hash_state.get_hash64();
 }
+
+bool Prices::is_hypercube_covered(const State &, int ) const {
+    // TODO implement this
+    cout << "Hypercube pruning not yet implemented for optimal planning." << endl;
+    exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+}

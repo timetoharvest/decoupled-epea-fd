@@ -115,6 +115,8 @@ protected:
 
     virtual void discard_new_cpg() const;
     
+    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const = 0;
+
 public:
     
     static const int INF;

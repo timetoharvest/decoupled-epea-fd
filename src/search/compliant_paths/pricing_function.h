@@ -46,6 +46,8 @@ protected:
     
     virtual void store_new_cpg(const State &state) override;
     
+    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override;
+
 public:
     
     Prices(){};

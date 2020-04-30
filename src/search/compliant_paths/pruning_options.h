@@ -29,6 +29,8 @@ class PruningOptions {
 
     PRUNING_TYPE pruning_type;
     
+    bool hypercube_pruning;
+
     // use g_inc_g_by to increase the g-value of decoupled states
     // by the sum of minimum prices
     bool min_price_in_g;
@@ -56,6 +58,7 @@ class PruningOptions {
     
 public:
     PruningOptions() : pruning_type(PRUNING_TYPE::DOMINANCE),
+                       hypercube_pruning(false),
                        min_price_in_g(true),
                        g_in_dominance(true),
                        prices_in_dominance(true),
@@ -81,6 +84,10 @@ public:
         return pruning_type == PRUNING_TYPE::FRONTIER;
     }
     
+    bool use_hypercube_pruning() const {
+        return hypercube_pruning;
+    }
+
     bool include_min_price_in_g() const {
         return min_price_in_g;
     }
