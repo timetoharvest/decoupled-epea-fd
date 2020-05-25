@@ -237,9 +237,16 @@ fast_downward_plugin(
         compliant_paths/pruning_reachable
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
-        
+    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
+)
+
+fast_downward_plugin(
+    NAME MIS_FACTORING
+    HELP "Class relevant to use factoring strategies using an maximum indepedent sets"
+    SOURCES
         factorings/factoring_ranking
-    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES VARIABLE_INT MAXIMUM_INDEPENDENT_SET
+        factorings/mis_factoring
+    DEPENDS DECOUPLED_SEARCH MAXIMUM_INDEPENDENT_SET VARIABLE_INT
 )
 
 fast_downward_plugin(
