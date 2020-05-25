@@ -243,10 +243,10 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
-    NAME LP_FACTORINGS
+    NAME LP_FACTORING
     HELP "Class relevant to use factoring strategies using an LP solver"
     SOURCES
-        factorings/lp_factorings
+        factorings/lp_factoring
     DEPENDS DECOUPLED_SEARCH LP_SOLVER
 )
 
