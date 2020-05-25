@@ -262,11 +262,22 @@ SearchEngine *OptionParser::parse_cmd_line_aux(
             dp->print_all();
             cout << "Help output finished." << endl;
             exit(0);
-        } else if (arg.compare("--plan-file") == 0) {
-            if (is_last)
-                throw ArgError("missing argument after --plan-file");
+        } else if (arg.compare("--internal-plan-file") == 0) {
+            if (is_last){
+                throw ArgError("missing argument after --internal-plan-file");
+            }
             ++i;
             g_plan_filename = args[i];
+        } else if (arg == "--internal-previous-portfolio-plans") {
+            if (is_last){
+                throw ArgError("missing argument after --internal-previous-portfolio-plans");
+            }
+            ++i;
+            g_is_part_of_anytime_portfolio = true;
+            g_num_previously_generated_plans = atoi(args[i].c_str());
+            if (g_num_previously_generated_plans < 0){
+                throw ArgError("argument for --internal-previous-portfolio-plans must be positive");
+            }
         } else if (arg.compare("--decoupling") == 0) {
             // decoupled search settings have to be read in separately in parse_factored_search()
             // because factoring needs to be done within the read_everything function
@@ -294,8 +305,12 @@ string OptionParser::usage(string progname) {
         "--heuristic HEURISTIC_PREDEFINITION\n"
         "    Predefines a heuristic that can afterwards be referenced\n"
         "    by the name that is specified in the definition.\n"
-        "--plan-file FILENAME\n"
+        "--internal-plan-file FILENAME\n"
         "    Plan will be output to a file called FILENAME\n\n"
+        "--internal-previous-portfolio-plans COUNTER\n"
+        "    This planner call is part of a portfolio which already created\n"
+        "    plan files FILENAME.1 up to FILENAME.COUNTER.\n"
+        "    Start enumerating plan files with COUNTER+1, i.e. FILENAME.COUNTER+1\n\n"
         "See http://www.fast-downward.org/ for details.";
     return usage;
 }

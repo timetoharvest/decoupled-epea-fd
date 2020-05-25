@@ -342,7 +342,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                             // should never happen, as this case should have been resolved by dominance first
                             print_graph(g);
                             cout <<  "###############   INVALID FOLDING   ###############" << endl;
-                            exit_with(utils::ExitCode::CRITICAL_ERROR);
+                            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
                         }
                     } else {
                         // select v of maximum degree, which minimizes |E(N(v))|

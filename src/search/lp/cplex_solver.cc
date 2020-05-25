@@ -17,6 +17,7 @@ using namespace std;
 
 namespace lp {
 
+#ifdef COIN_HAS_CPX
 CPLEXSolver::~CPLEXSolver() {
     cplex.end();
     model.end();
@@ -28,16 +29,15 @@ CPLEXSolver::~CPLEXSolver() {
     env.end();
 }
 
-CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int time_limit)
-    : ilo_variables(IloNumVarArray(env,0)),
+CPLEXSolver::CPLEXSolver(int time_limit)
+    : LPSolver(LPSolverType::CPLEX, false),
+      ilo_variables(IloNumVarArray(env, 0)),
       ilo_objective(IloObjective(env)),
-      ilo_constraints(IloRangeArray(env,0)),
+      ilo_constraints(IloRangeArray(env, 0)),
       model(IloModel(env)),
       cplex(IloCplex(env)) {
-    is_initialized = false;
-    is_solved = false;
-    cplex.setParam(IloCplex::Param::Threads, max_num_threads);
-    cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, integrality_tolerance);
+    cplex.setParam(IloCplex::Param::Threads, 1);
+    cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, 0.0);
     if (time_limit > 0){
         cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
         cplex.setParam(IloCplex::Param::MIP::Limits::Populate, cplex.getParam(IloCplex::Param::MIP::Pool::Capacity));
@@ -48,50 +48,14 @@ CPLEXSolver::CPLEXSolver(int max_num_threads, double integrality_tolerance, int 
 void CPLEXSolver::load_problem(LPObjectiveSense sense,
                             const vector<LPVariable> &variables,
                             const vector<LPConstraint> &constraints) {
-    IloNumExpr ilo_obj_expr;
-    for (const LPVariable &var : variables) {
-        IloNumVar ilo_var(env, var.lower_bound, var.upper_bound, ILOFLOAT);
-        ilo_variables.add(ilo_var);
-        ilo_obj_expr += var.objective_coefficient * ilo_var;
-    }
-
-    if (sense == LPObjectiveSense::MINIMIZE) {
-        ilo_objective.setExpr(ilo_obj_expr);
-        ilo_objective.setSense(IloObjective::Minimize);
-        model.add(ilo_objective);
-    } else {
-        ilo_objective.setExpr(ilo_obj_expr);
-        ilo_objective.setSense(IloObjective::Maximize);
-        model.add(ilo_objective);
-    }
-    ilo_obj_expr.end();
-
-    for (const LPConstraint &constraint : constraints) {
-        const vector<int> &vars = constraint.get_variables();
-        const vector<double> &coeffs = constraint.get_coefficients();
-        assert(vars.size() == coeffs.size());
-        IloExpr ilo_constr_expr(env);
-        for (size_t i = 0; i < vars.size(); i++) {
-            ilo_constr_expr += coeffs[i] * ilo_variables[vars[i]];
-        }
-        IloRange ilo_constraint (env, constraint.get_lower_bound(), ilo_constr_expr, constraint.get_upper_bound());
-        ilo_constraints.add(ilo_constraint);
-        ilo_constr_expr.end();
-    }
-    model.add(ilo_constraints);
-}
-
-void CPLEXSolver::load_problem(LPObjectiveSense sense,
-                            const vector<MIPVariable> &variables,
-                            const vector<LPConstraint> &constraints) {
     IloNumExpr ilo_obj_expr(env);
-    for (const MIPVariable &var : variables) {
-        if (var.type == MIPVariableType::INT) {
-            IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOINT);
+    for (const LPVariable &var : variables) {
+        if (var.is_integer) {
+            IloNumVar ilo_var(env, var.lower_bound, var.upper_bound, ILOINT);
             ilo_variables.add(ilo_var);
             ilo_obj_expr += var.objective_coefficient * ilo_var;
         } else {
-            IloNumVar ilo_var (env, var.lower_bound, var.upper_bound, ILOFLOAT);
+            IloNumVar ilo_var(env, var.lower_bound, var.upper_bound, ILOFLOAT);
             ilo_variables.add(ilo_var);
             ilo_obj_expr += var.objective_coefficient * ilo_var;
         }
@@ -119,7 +83,6 @@ void CPLEXSolver::load_problem(LPObjectiveSense sense,
     }
     model.add(ilo_constraints);
 }
-
 
 double CPLEXSolver::get_infinity() const {
     return IloInfinity;
@@ -178,7 +141,7 @@ void CPLEXSolver::populate() {
 void CPLEXSolver::solveLPRelaxation() {
     IloModel relaxed_model(env);
     relaxed_model.add(model);
-    relaxed_model.add(IloConversion (env, ilo_variables, ILOFLOAT));
+    relaxed_model.add(IloConversion(env, ilo_variables, ILOFLOAT));
     cplex.extract(relaxed_model);
     cplex.solve();
     is_solved = true;
@@ -203,38 +166,16 @@ double CPLEXSolver::get_objective_value() const {
     return cplex.getObjValue();
 }
 
-vector<int> CPLEXSolver::extract_int_solution() const {
-    assert(has_optimal_solution());
-    cout << "CPLEX status: " << cplex.getStatus() << endl;
-    vector<int> solution;
-    for (int var = 0; var < get_num_variables(); var++) {
-        solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
-    }
-    return solution;
-}
-
-vector<int> CPLEXSolver::extract_best_int_solution() const {
-    assert(has_solution());
-    cout << "CPLEX status: " << cplex.getStatus() << endl;
-    int best = 0;
-    for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
-        if (cplex.getObjValue(i) > cplex.getObjValue(best)){
-            best = i;
-        }
-    }
-    vector<int> solution;
-    for (int var = 0; var < get_num_variables(); var++) {
-        solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
-    }
-    return solution;
-}
-
 vector<double> CPLEXSolver::extract_solution() const {
     assert(has_optimal_solution());
     cout << "CPLEX status: " << cplex.getStatus() << endl;
     vector<double> solution;
-    for (int var = 0; var < get_num_variables(); var++) {
-        solution.push_back(cplex.getValue(ilo_variables[var]));
+    for (int var = 0; var < get_num_variables(); ++var) {
+        if (ilo_variables[var].getType() == ILOFLOAT){
+            solution.push_back(cplex.getValue(ilo_variables[var]));
+        } else {
+            solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
+        }
     }
     return solution;
 }
@@ -250,7 +191,11 @@ vector<double> CPLEXSolver::extract_best_solution() const {
     }
     vector<double> solution;
     for (int var = 0; var < get_num_variables(); var++) {
-        solution.push_back(cplex.getValue(ilo_variables[var], best));
+        if (ilo_variables[var].getType() == ILOFLOAT){
+            solution.push_back(cplex.getValue(ilo_variables[var], best));
+        } else {
+            solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
+        }
     }
     return solution;
 }
@@ -262,4 +207,5 @@ int CPLEXSolver::get_num_variables() const {
 int CPLEXSolver::get_num_constraints() const {
     return ilo_constraints.getSize();
 }
+#endif
 }

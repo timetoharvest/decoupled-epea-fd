@@ -210,9 +210,9 @@ bool SimulationRelation::precondition_dominance(OpsLeafProps<Condition> pre,
 						OpsLeafProps<Condition> pre2) const {
     for (const auto &p : pre){
         if (find_if(begin(pre2), end(pre2), [p] (const Condition &p2){
-            return p2 == p;
-        }
-        ) == end(pre2)){
+		    return p2 == p;
+		}
+		) == end(pre2)){
             return false;
         }
     }
@@ -354,7 +354,6 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const utils::Co
     }
 }
 
-
 size_t SimulationRelation::num_equivalences(LeafFactorID factor) const {
     size_t num = 0;
     vector<bool> counted(relation[factor].size(), false);
@@ -495,7 +494,6 @@ void SimulationRelation::dump(LeafFactorID factor) const {
         }
     }
 }
-
 
 const string & SimulationRelation::get_name(LeafStateHash id, LeafFactorID factor) const {
     return g_fact_names[g_leaves[factor][0]][g_state_registry->lookup_leaf_state(id, factor)[g_leaves[factor][0]]];

@@ -12,6 +12,9 @@ LandmarkGraphMerged::LandmarkGraphMerged(const Options &opts)
       lm_graphs(opts.get_list<LandmarkGraph *>("lm_graphs")) {
 }
 
+LandmarkGraphMerged::~LandmarkGraphMerged() {
+}
+
 LandmarkNode *LandmarkGraphMerged::get_matching_landmark(const LandmarkNode &lm) const {
     if (!lm.disjunctive && !lm.conjunctive) {
         pair<int, int> lm_fact = make_pair(lm.vars[0], lm.vals[0]);
@@ -30,7 +33,7 @@ LandmarkNode *LandmarkGraphMerged::get_matching_landmark(const LandmarkNode &lm)
             return 0;
     } else if (lm.conjunctive) {
         cerr << "Don't know how to handle conjunctive landmarks yet" << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     return 0;
 }
@@ -75,7 +78,7 @@ void LandmarkGraphMerged::generate_landmarks() {
                 }
             } else if (node.conjunctive) {
                 cerr << "Don't know how to handle conjunctive landmarks yet" << endl;
-                exit_with(utils::ExitCode::UNSUPPORTED);
+                exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
             }
         }
     }

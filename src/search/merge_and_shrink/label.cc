@@ -43,7 +43,7 @@ void CompositeLabel::update_root(CompositeLabel *new_root) {
 }
 
 const vector<Label *> &OperatorLabel::get_parents() const {
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
 
 void Label::dump() const {

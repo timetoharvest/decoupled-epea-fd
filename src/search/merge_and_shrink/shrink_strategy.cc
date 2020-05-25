@@ -159,13 +159,13 @@ void ShrinkStrategy::handle_option_defaults(Options &opts) {
 
     if (max_states < 1) {
         cerr << "error: transition system size must be at least 1" << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
     if (max_states_before_merge < 1) {
         cerr << "error: transition system size before merge must be at least 1"
              << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
     opts.set<int>("max_states", max_states);

@@ -11,6 +11,7 @@
 #include "operator.h"
 #include "state.h"
 #include "state_registry.h"
+#include "symmetries/graph_creator.h"
 #include "task_utils/successor_generator.h"
 #include "utils/system.h"
 #include "utils/timer.h"
@@ -67,27 +68,30 @@ int calculate_plan_cost(const vector<OperatorID> &plan) {
     return plan_cost;
 }
 
-void save_plan(const vector<OperatorID> &plan, int iter) {
+void save_plan(const vector<OperatorID> &plan,
+               bool generates_multiple_plan_files) {
     // TODO: Refactor: this is only used by the SearchEngine classes
     //       and hence should maybe be moved into the SearchEngine.
-    ofstream outfile;
-    if (iter == 0) {
-        outfile.open(g_plan_filename.c_str(), ios::out);
+    ostringstream filename;
+    filename << g_plan_filename;
+    int plan_number = g_num_previously_generated_plans + 1;
+    if (generates_multiple_plan_files || g_is_part_of_anytime_portfolio) {
+        filename << "." << plan_number;
     } else {
-        ostringstream out;
-        out << g_plan_filename << "." << iter;
-        outfile.open(out.str().c_str(), ios::out);
+        assert(plan_number == 1);
     }
+    ofstream outfile(filename.str());
     for (OperatorID id : plan) {
         cout << g_operators[id].get_name() << " (" << g_operators[id].get_cost() << ")" << endl;
         outfile << "(" << g_operators[id].get_name() << ")" << endl;
     }
     int plan_cost = calculate_plan_cost(plan);
     outfile << "; cost = " << plan_cost << " ("
-            << (is_unit_cost() ? "unit-cost" : "general-cost") << ")" << endl;
+            << (is_unit_cost() ? "unit cost" : "general cost") << ")" << endl;
     outfile.close();
     cout << "Plan length: " << plan.size() << " step(s)." << endl;
     cout << "Plan cost: " << plan_cost << endl;
+    ++g_num_previously_generated_plans;
 }
 
 bool peek_magic(istream &in, string magic) {
@@ -110,7 +114,7 @@ void check_magic(istream &in, string magic) {
                  << "on a preprocessor file from " << endl
                  << "an older version." << endl;
         }
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 }
 
@@ -123,7 +127,7 @@ void read_and_verify_version(istream &in) {
         cerr << "Expected preprocessor file version " << PRE_FILE_VERSION
              << ", got " << version << "." << endl;
         cerr << "Exiting." << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 }
 
@@ -212,7 +216,7 @@ void read_goal(istream &in) {
     in >> count;
     if (count < 1) {
         cerr << "Task has no goal condition!" << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     for (int i = 0; i < count; ++i) {
         int var, val;
@@ -262,7 +266,6 @@ void read_everything(istream &in) {
     read_goal(in);
     read_operators(in);
     read_axioms(in);
-    check_magic(in, "begin_SG"); // ignore everything from here
 
     cout << "done reading input! [t=" << utils::g_timer << "]" << endl;
     
@@ -275,7 +278,7 @@ void read_everything(istream &in) {
     }
 
     assert(!g_variable_domain.empty());
-    if (g_factoring){        
+    if (g_factoring){
         vector<int> center_domains;
         vector<vector<int> > leaf_domains(g_leaves.size());
         for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
@@ -375,7 +378,7 @@ void verify_no_axioms() {
     if (has_axioms()) {
         cerr << "Heuristic does not support axioms!" << endl << "Terminating."
              << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
 }
 
@@ -401,7 +404,7 @@ void verify_no_conditional_effects() {
         cerr << "Heuristic does not support conditional effects "
              << "(operator " << g_operators[op_id].get_name() << ")" << endl
              << "Terminating." << endl;
-        exit_with(utils::ExitCode::UNSUPPORTED);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
 }
 
@@ -441,6 +444,8 @@ vector<vector<int> > g_leaves;
 vector<LeafFactorID> g_belongs_to_factor;
 vector<size_t> g_new_index;
 
+unique_ptr<GraphCreator> g_symmetry_graph;
+
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
 vector<int> g_default_axiom_values;
@@ -461,5 +466,7 @@ successor_generator::SuccessorGenerator *g_successor_generator;
 vector<DomainTransitionGraph *> g_transition_graphs;
 
 string g_plan_filename = "sas_plan";
+bool g_is_part_of_anytime_portfolio = false;
+int g_num_previously_generated_plans = 0;
 
 StateRegistry *g_state_registry = 0;

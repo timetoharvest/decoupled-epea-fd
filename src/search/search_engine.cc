@@ -1,10 +1,11 @@
 #include "search_engine.h"
 
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cpg_storage.h"
 #include "factoring.h"
 #include "globals.h"
 #include "option_parser.h"
-#include "compliant_paths/compliant_path_graph.h"
-#include "compliant_paths/cpg_storage.h"
+#include "symmetries/graph_creator.h"
 #include "utils/countdown_timer.h"
 #include "utils/timer.h"
 
@@ -25,11 +26,17 @@ SearchEngine::SearchEngine(const Options &opts)
       max_time(opts.get<double>("max_time")) {
     if (opts.get<int>("bound") < 0) {
         cerr << "error: negative cost bound " << opts.get<int>("bound") << endl;
-        exit_with(utils::ExitCode::INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     bound = opts.get<int>("bound");
     if (g_factoring){
-	CompliantPathGraph::set_cost_type(cost_type);
+        CompliantPathGraph::set_cost_type(cost_type);
+    }
+    if (opts.contains("symmetry")) {
+        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator*>("symmetry"));
+        if (g_factoring){
+            CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
+        }
     }
 }
 
@@ -55,6 +62,16 @@ void SearchEngine::set_plan(const Plan &p) {
 }
 
 void SearchEngine::search() {
+    if(g_symmetry_graph){
+        g_state_registry->get_initial_state();
+        g_symmetry_graph->initialize();
+        if (!g_symmetry_graph->has_generators()){
+            g_symmetry_graph.reset();
+        } else {
+            g_state_registry->permute_initial_state();
+        }
+    }
+    
     initialize();
     
     utils::CountdownTimer timer(max_time);
@@ -76,21 +93,35 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
         if (g_factoring){         
             const SearchNode &info = search_space.get_node(state);
             int solution_cost = info.get_g();
+
             const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 if (!g_goals_per_factor[factor].empty()){
                     solution_cost += cpg->get_goal_cost(factor);
+                } else if (!g_factoring->is_fork_leaf(factor)) {
+                    // for non-fork leaves, need to add minimum price of compliant leaf state
+                    // for fork leaves, the initial leaf state is always compliant at cost 0
+                    int min_compliant_state_cost = numeric_limits<int>::max();
+                    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                        if (cpg->has_leaf_state(id, factor)){
+                            min_compliant_state_cost = min(min_compliant_state_cost, cpg->get_cost_of_state(id, factor));
+                            if (min_compliant_state_cost == 0){
+                                break;
+                            }
+                        }
+                    }
+                    solution_cost += min_compliant_state_cost;
                 }
             }
             cout << "found a plan of cost " << solution_cost;
-            
+
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
                 if (!is_optimal_leaf_plan(state, *cpg)){
                     cout << ", cannot guarantee optimality => exit [t=" << utils::g_timer << "]" << endl;
-                    exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+                    exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
@@ -122,10 +153,10 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
             }
             cout << " [t=" << utils::g_timer << "]" << endl;
             return true;
-	}
-	Plan plan;
+        }
+        Plan plan;
         search_space.trace_path(state, plan);
-	cout << "Solution found!" << endl;
+        cout << "Solution found!" << endl;
         set_plan(plan);
         return true;
     }
@@ -134,6 +165,8 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 
 bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg) {
     int sum_goal_cost = search_space.get_node(state).get_leaf_part_g();
+    // when using g-value adjustment, part of the leaf goal cost might go into the center g value.
+    // also, cost of non-fork non-goal leaves might go into leaf_part_g, which is important to check
     for (LeafFactorID factor(0); factor < g_min_goal_cost.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
             assert(cpg.get_goal_cost(factor) >= 0);
@@ -141,11 +174,10 @@ bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathG
             if (sum_goal_cost > g_sum_min_goal_cost){
                 return false;
             }
-        } 
-#ifndef NDEBUG
-        // g-adjustment should ensure that there always exists a leaf state with cost 0 in non-fork leaves
-        // for fork leaves, it is trivially true
-        else {
+        } else if (!g_factoring->is_fork_leaf(factor)) {
+            // in case of non-fork leaves without goal, we do not know if the current goal is
+            // the cheapest possible, unless there is a compliant leaf state with price 0
+            // for fork leaves, it is trivially true
             int min_compliant_path_cost = numeric_limits<int>::max();
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (cpg.has_leaf_state(id, factor)){
@@ -156,9 +188,10 @@ bool SearchEngine::is_optimal_leaf_plan(const State &state, const CompliantPathG
                     }
                 }
             }
-            assert(min_compliant_path_cost == 0);
+            if (min_compliant_path_cost > 0) {
+                return false;
+            }
         }
-#endif
     }
     return true;
 }
@@ -168,7 +201,7 @@ void SearchEngine::save_plan_if_necessary() const {
         if (g_factoring){
             search_space.trace_path(g_state_registry->lookup_state(cheapest_goal_state), plan);
         }
-        save_plan(get_plan(), 0);
+        save_plan(get_plan(), false);
     }
 }
 
@@ -195,4 +228,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
+    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 }

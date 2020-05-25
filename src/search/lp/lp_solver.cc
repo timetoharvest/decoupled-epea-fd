@@ -39,6 +39,8 @@ void add_lp_solver_option_to_parser(OptionParser &parser) {
     lp_solvers_doc.push_back("commercial solver by IBM");
     lp_solvers.push_back("GUROBI");
     lp_solvers_doc.push_back("commercial solver");
+    lp_solvers.push_back("SOPLEX");
+    lp_solvers_doc.push_back("open source solver by ZIB");
     parser.add_enum_option(
         "lpsolver",
         lp_solvers,
@@ -47,17 +49,55 @@ void add_lp_solver_option_to_parser(OptionParser &parser) {
         lp_solvers_doc);
 }
 
+LPConstraint::LPConstraint(double lower_bound, double upper_bound)
+    : lower_bound(lower_bound),
+      upper_bound(upper_bound) {
+}
+
+void LPConstraint::clear() {
+    variables.clear();
+    coefficients.clear();
+}
+
+bool LPConstraint::empty() const {
+    return variables.empty();
+}
+
+void LPConstraint::insert(int index, double coefficient) {
+    variables.push_back(index);
+    coefficients.push_back(coefficient);
+}
+
+LPVariable::LPVariable(double lower_bound, double upper_bound,
+                       double objective_coefficient, bool is_integer)
+    : lower_bound(lower_bound),
+      upper_bound(upper_bound),
+      objective_coefficient(objective_coefficient),
+      is_integer(is_integer) {
+}
+
+#ifndef USE_LP
+LPSolver::LPSolver(){
+    ABORT("LP method called but the planner was compiled without LP support.\n" \
+          "See http://www.fast-downward.org/LPBuildInstructions\n" \
+          "to install an LP solver and use it in the planner."); \
+}
+#endif
+
 LPSolver::~LPSolver() {
 }
 
 #ifdef USE_LP
 
-LPSolver::LPSolver(LPSolverType solver_type) {
-    is_initialized = false;
-    is_solved = false;
-    num_permanent_constraints = 0;
-    has_temporary_constraints_ = false;
-    lp_solver = create_lp_solver(solver_type);
+LPSolver::LPSolver(LPSolverType solver_type, bool create_solver)
+    : is_initialized(false),
+      is_mip(false),
+      is_solved(false),
+      num_permanent_constraints(0),
+      has_temporary_constraints_(false) {
+    if (create_solver){
+        lp_solver = create_lp_solver(solver_type);
+    }
 }
 
 void LPSolver::clear_temporary_data() {
@@ -76,7 +116,7 @@ void LPSolver::load_problem(LPObjectiveSense sense,
                             const vector<LPVariable> &variables,
                             const vector<LPConstraint> &constraints) {
     clear_temporary_data();
-    int_vars.clear();
+    is_mip = false;
     is_initialized = false;
     num_permanent_constraints = constraints.size();
 
@@ -90,12 +130,6 @@ void LPSolver::load_problem(LPObjectiveSense sense,
         row_ub.push_back(constraint.get_upper_bound());
     }
 
-    if (sense == LPObjectiveSense::MINIMIZE) {
-        lp_solver->setObjSense(1);
-    } else {
-        lp_solver->setObjSense(-1);
-    }
-
     for (const LPConstraint &constraint : constraints) {
         const vector<int> &vars = constraint.get_variables();
         const vector<double> &coeffs = constraint.get_coefficients();
@@ -131,77 +165,22 @@ void LPSolver::load_problem(LPObjectiveSense sense,
                                objective.data(),
                                row_lb.data(),
                                row_ub.data());
-    } catch (CoinError &error) {
-        handle_coin_error(error);
-    }
-
-    clear_temporary_data();
-}
-
-void LPSolver::load_problem(LPObjectiveSense sense,
-                            const vector<MIPVariable> &variables,
-                            const vector<LPConstraint> &constraints) {
-    clear_temporary_data();
-    int_vars.clear();
-    is_initialized = false;
-    num_permanent_constraints = constraints.size();
-
-    for (vector<MIPVariable>::const_iterator it = variables.begin(); it != variables.end(); it++) {
-        col_lb.push_back(it->lower_bound);
-        col_ub.push_back(it->upper_bound);
-        objective.push_back(it->objective_coefficient);
-        if (it->type == MIPVariableType::INT) {
-            int_vars.push_back(it - variables.begin());
+        for (int i = 0; i < static_cast<int>(variables.size()); ++i) {
+            if (variables[i].is_integer) {
+                lp_solver->setInteger(i);
+                is_mip = true;
+            }
         }
-    }
-
-    for (const LPConstraint &constraint : constraints) {
-        row_lb.push_back(constraint.get_lower_bound());
-        row_ub.push_back(constraint.get_upper_bound());
-    }
-
-    if (sense == LPObjectiveSense::MINIMIZE) {
-        lp_solver->setObjSense(1);
-    } else {
-        lp_solver->setObjSense(-1);
-    }
-
-    for (const LPConstraint &constraint : constraints) {
-        const vector<int> &vars = constraint.get_variables();
-        const vector<double> &coeffs = constraint.get_coefficients();
-        assert(vars.size() == coeffs.size());
-        starts.push_back(elements.size());
-        indices.insert(indices.end(), vars.begin(), vars.end());
-        elements.insert(elements.end(), coeffs.begin(), coeffs.end());
-    }
-    /*
-      There are two ways to pass the lengths of vectors to a CoinMatrix:
-      1) 'starts' contains one entry per vector and we pass a separate array
-         of vector 'lengths' to the constructor.
-      2) If there are no gaps in the elements, we can also add elements.size()
-         as a last entry in the vector 'starts' and leave the parameter for
-         'lengths' at its default (0).
-      OSI recreates the 'lengths' array in any case and uses optimized code
-      for the second case, so we use it here.
-     */
-    starts.push_back(elements.size());
-
-    try {
-        CoinPackedMatrix matrix(false,
-                                variables.size(),
-                                constraints.size(),
-                                elements.size(),
-                                elements.data(),
-                                indices.data(),
-                                starts.data(),
-                                0);
-        lp_solver->loadProblem(matrix,
-                               col_lb.data(),
-                               col_ub.data(),
-                               objective.data(),
-                               row_lb.data(),
-                               row_ub.data());
-        lp_solver->setInteger(&int_vars.front(), int_vars.size());
+        /*
+          We set the objective sense after loading because the SoPlex
+          interfaces of all OSI versions <= 0.108.4 ignore it when it is
+          set earlier. See issue752 for details.
+        */
+        if (sense == LPObjectiveSense::MINIMIZE) {
+            lp_solver->setObjSense(1);
+        } else {
+            lp_solver->setObjSense(-1);
+        }
     } catch (CoinError &error) {
         handle_coin_error(error);
     }
@@ -324,44 +303,21 @@ void LPSolver::set_variable_upper_bound(int index, double bound) {
 
 void LPSolver::solve() {
     try {
-        if (int_vars.empty()) {
-          if (is_initialized) {
-              lp_solver->resolve();
-          } else {
-              lp_solver->initialSolve();
-              is_initialized = true;
-          }
-        } else {
-          lp_solver->branchAndBound();
-        }
-
-        if (lp_solver->isAbandoned()) {
-            // The documentation of OSI is not very clear here but memory seems
-            // to be the most common cause for this in our case.
-            cerr << "Abandoned LP during resolve. "
-                 << "Reasons include \"numerical difficulties\" and running out of memory." << endl;
-            utils::exit_with(ExitCode::CRITICAL_ERROR);
-        }
-        is_solved = true;
-    } catch (CoinError &error) {
-        handle_coin_error(error);
-    }
-}
-
-void LPSolver::solveLPRelaxation() {
-    try {
         if (is_initialized) {
             lp_solver->resolve();
         } else {
             lp_solver->initialSolve();
             is_initialized = true;
         }
+        if (is_mip) {
+            lp_solver->branchAndBound();
+        }
         if (lp_solver->isAbandoned()) {
             // The documentation of OSI is not very clear here but memory seems
             // to be the most common cause for this in our case.
             cerr << "Abandoned LP during resolve. "
                  << "Reasons include \"numerical difficulties\" and running out of memory." << endl;
-            utils::exit_with(ExitCode::CRITICAL_ERROR);
+            utils::exit_with(ExitCode::SEARCH_CRITICAL_ERROR);
         }
         is_solved = true;
     } catch (CoinError &error) {
@@ -417,6 +373,11 @@ int LPSolver::get_num_constraints() const {
 
 int LPSolver::has_temporary_constraints() const {
     return has_temporary_constraints_;
+}
+
+void LPSolver::print_statistics() const {
+    cout << "LP variables: " << get_num_variables() << endl;
+    cout << "LP constraints: " << get_num_constraints() << endl;
 }
 
 #endif

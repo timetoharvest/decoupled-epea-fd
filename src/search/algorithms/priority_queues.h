@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <limits>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -68,7 +69,8 @@ template <typename Value>
 struct compare_pair_first_greater {
     typedef typename AbstractQueue<Value>::Entry Entry;
     bool operator()(const Entry &lhs, const Entry &rhs) const {
-        return rhs.first == -1 || (rhs.first > lhs.first && lhs.first != -1);
+        // TODO -1 is used to encode infinity in EffectivePrices, fix this
+        return lhs.first != -1 && (rhs.first == -1 || rhs.first > lhs.first);
     }
 };
 
@@ -83,6 +85,12 @@ struct compare_pair_first_less {
 template<typename Value, typename compare_func = compare_pair_first_less<Value> >
 class HeapQueue : public AbstractQueue<Value> {
     typedef typename AbstractQueue<Value>::Entry Entry;
+
+    bool is_valid_key(int key) const {
+        int infinity = std::numeric_limits<int>::max();
+        return key != infinity;
+    }
+
     class Heap
         : public std::priority_queue<Entry, std::vector<Entry>, compare_func> {
         // We inherit since our friend needs access to the underlying
@@ -99,6 +107,7 @@ public:
     }
 
     virtual void push(int key, const Value &value) {
+        assert(is_valid_key(key));
         heap.push(std::make_pair(key, value));
     }
 
@@ -145,6 +154,11 @@ class BucketQueue : public AbstractQueue<Value> {
     int num_entries;
     int num_pushes;
 
+    bool is_valid_key(int key) const {
+        int infinity = std::numeric_limits<int>::max();
+        return key >= 0 && key != infinity;
+    }
+
     void update_current_bucket_no() const {
         int num_buckets = buckets.size();
         while (current_bucket_no < num_buckets &&
@@ -175,6 +189,7 @@ public:
     }
 
     virtual void push(int key, const Value &value) {
+        assert(is_valid_key(key));
         ++num_entries;
         ++num_pushes;
         assert(num_pushes > 0); // Check against overflow.
@@ -214,6 +229,7 @@ public:
     }
 
     virtual AbstractQueue<Value> *convert_if_necessary(int key) {
+        assert(is_valid_key(key));
         if (key >= MIN_BUCKETS_BEFORE_SWITCH && key > num_pushes) {
             if (DEBUG) {
                 std::cout << "Switch from bucket-based to heap-based queue "

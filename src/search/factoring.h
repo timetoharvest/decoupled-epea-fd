@@ -6,6 +6,7 @@
 #include "utils/countdown_timer.h"
 
 #include <set>
+#include <string>
 #include <vector>
 
 
@@ -23,9 +24,9 @@ enum FACTORING_PROFILE {
 };
 
 enum DECOUPLED_SEARCH_TYPE {
-    FRA,        // stop if leaf plan not optimal
-    ASDA,       // anytime search
-    SDA,        // fork-decoupled search
+    FRA,        // optimal fork-decoupled search; stop if leaf plan not optimal
+    ASDA,       // optimal anytime search with center heuristic
+    SDA,        // optimal decoupled search with star heuristic
     SAT,        // satisficing search
     UNSAT       // for proving unsolvability (SAT + optimizations)
 };

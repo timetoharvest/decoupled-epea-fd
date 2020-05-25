@@ -10,6 +10,7 @@
 
 
 class Operator;
+class PathPriceTag;
 
 class SearchNode {    
     StateID state_id;
@@ -46,6 +47,7 @@ public:
     void update_parent(const SearchNode &parent_node,
                        OperatorID parent_op);
     void increase_h(int h);
+    void decrease_h(int h); // needed for optimal decoupled search
     void close();
     void mark_as_dead_end();
 
@@ -57,6 +59,19 @@ class SearchSpace {
     PerStateInformation<SearchNodeInfo> search_node_infos;
 
     OperatorCost cost_type;
+    
+    void trace_decoupled_path(std::vector<OperatorID> &path,
+                              std::vector<StateID> &states) const;
+    
+    void trace_symmetric_path(std::vector<OperatorID> &path,
+                              std::vector<StateID> &states, 
+                              std::vector<Permutation> &permutations) const;
+    
+    void trace_symmetric_path(std::vector<OperatorID> &path,
+                              std::vector<StateID> &states, 
+                              std::vector<std::unique_ptr<PathPriceTag> > &cpgs,
+                              std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
+    
 public:
     SearchSpace(OperatorCost cost_type);
     SearchNode get_node(const State &state);

@@ -15,13 +15,12 @@
 
 
 using namespace std;
-using namespace lp;
 
 
 static const string CPLEX_ERROR_MEMORY_1 = "CPLEX Error  1001: Out of memory.\n";
 static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
 
-
+namespace lp_factoring {
 LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
         strategy(STRATEGY(opts.get_enum("strategy"))),
         factoring_type(FACTORING_TYPE(opts.get_enum("factoring_type"))),
@@ -29,7 +28,9 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
         min_flexibility(opts.get<float>("min_flexibility")),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         cplex_time_limit(opts.get<int>("cplex_time_limit")),
-        memory_limit(opts.get<int>("memory_limit")) {
+        memory_limit(opts.get<int>("memory_limit")),
+        lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
+        timer(utils::Timer()) {
     profile = STAR;
     cout << "using LP factoring strategy" << endl;
 }
@@ -38,6 +39,7 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
 Factoring::FactoredVars LPFactoring::get_factoring() {
 
     FactoredVars factoring;
+    timer.reset();
 
     switch (strategy) {
         case MIS: factoring = get_mip_factoring(); break;
@@ -49,11 +51,109 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
         case MM: factoring = get_max_mobile_leaves(); break;
         case MF: factoring = get_max_mobile_leaves(); break;
         case MMF: factoring = get_max_mobile_leaves(); break;
-        default: exit_with(utils::ExitCode::CRITICAL_ERROR);
+        default: exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
     return factoring;
 
+}
+
+vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
+        const vector<lp::LPVariable> &variables,
+        vector<lp::LPConstraint> &constraints,
+        bool fail_on_out_of_memory,
+        bool solve_lp_relaxation,
+        int time_limit) const {
+
+
+    if (solve_lp_relaxation && time_limit == -1){
+        cout << "WARNING: time limit not supported when solving LP relaxation, limit will be ignored." << endl;
+        time_limit = -1;
+    }
+
+#ifdef COIN_HAS_CPX
+    lp::CPLEXSolver solver(time_limit);
+#else
+    lp::LPSolver solver(lp_solver_type);
+    if (time_limit != -1){
+        cout << "WARNING: CPLEX not found, ignoring time limit." << endl;
+        time_limit = -1;
+    }
+    if (solve_lp_relaxation){
+        cout << "WARNING: LP relaxation only supported with CPLEX, ." << endl;
+        solve_lp_relaxation = false;
+        fail_on_out_of_memory = !fail_on_out_of_memory; // HACK: to prevent unused-parameter error
+    }
+#endif
+
+#ifdef COIN_HAS_CPX
+    try {
+#endif
+        solver.load_problem(sense, variables, constraints);
+
+        constraints = vector<lp::LPConstraint>(); // save memory TODO does this really make a difference?
+
+        solver.print_statistics();
+
+        cout << "LP construction time: " << timer << endl;
+
+        timer.reset();
+
+        if (time_limit == -1){
+#ifdef COIN_HAS_CPX
+            if (solve_lp_relaxation){
+                solver.solve_lp_relaxation();
+            } else
+#endif
+            solver.solve();
+        } else {
+#ifdef COIN_HAS_CPX
+            solver.populate();
+#endif
+        }
+#ifdef COIN_HAS_CPX
+    } catch (const IloException &excpt) {
+        string error_message = excpt.getMessage();
+        if (!fail_on_out_of_memory && error_message == CPLEX_ERROR_MEMORY_1 ||
+                error_message == CPLEX_ERROR_MEMORY_2) {
+            // TODO refine the check
+            cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
+            return FactoredVars();
+        } else {
+            cout << "CPLEX error : " << error_message << endl;
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
+    }
+#endif
+
+    cout << "LP solving time: " << timer << endl;
+
+    vector<double> solution;
+
+    if (time_limit == -1) {
+        if (!solver.has_optimal_solution()){
+            cout << "no optimal solution to LP found, factoring failed" << endl;
+            return solution;
+        }
+    } else {
+#ifdef COIN_HAS_CPX
+        if (!solver.has_solution()){
+            cout << "no solution to LP found, factoring failed" << endl;
+            return solution;
+        }
+#endif
+    }
+
+
+    if (time_limit == -1){
+        solution = solver.extract_solution();
+    } else {
+#ifdef COIN_HAS_CPX
+        solution = solver.extract_best_solution();
+#endif
+    }
+
+    return solution;
 }
 
 Factoring::FactoredVars LPFactoring::get_mip_factoring() const {
@@ -62,19 +162,19 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring() const {
         cout << "WARNING: CPLEX time limit is ignored for this type of factoring." << endl;
     }
 
-    vector<MIPVariable> variables;
-    vector<LPConstraint> constraints;
+    vector<lp::LPVariable> variables;
+    vector<lp::LPConstraint> constraints;
 
     if (strategy == MIS_MOBILE) {
         vector<bool> mobile_var = get_mobile_vars();
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             if (mobile_var[var]){
-                variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true));
             } else {
-                variables.push_back(MIPVariable(0.0,0.0,1.0,MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 0.0, 1.0, true));
             }
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                LPConstraint constraint (0.0,1.0);
+                lp::LPConstraint constraint (0.0,1.0);
                 constraint.insert(var,1.0);
                 constraint.insert(suc,1.0);
                 constraints.push_back(constraint);
@@ -82,28 +182,22 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring() const {
         }
     } else {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+            variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true));
             for (int suc : causal_graph::get_causal_graph().get_successors(var)) {
-                LPConstraint constraint (0.0,1.0);
-                constraint.insert(var,1.0);
-                constraint.insert(suc,1.0);
+                lp::LPConstraint constraint(0.0, 1.0);
+                constraint.insert(var, 1.0);
+                constraint.insert(suc, 1.0);
                 constraints.push_back(constraint);
             }
         }
     }
 
-    CPLEXSolver mip_solver;
-    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
-    if (strategy == MIS_LP_RELAX) {
-        mip_solver.solveLPRelaxation();
-    } else {
-        mip_solver.solve();
-    }
-
+    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+            variables, constraints, true, strategy == MIS_LP_RELAX);
 
     //extract solution
     FactoredVars factoring;
-    vector<double> solution = mip_solver.extract_solution();
+
     for (size_t var = 0; var < solution.size(); var++) {
         if (solution[var] > 0.5) {
             set<int> leaf;
@@ -119,8 +213,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
 
     utils::Timer timer;
 
-    vector<MIPVariable> variables;
-    vector<LPConstraint> constraints;
+    vector<lp::LPVariable> variables;
+    vector<lp::LPConstraint> constraints;
 
     vector<ActionSchema> action_schemas = get_action_schemas();
 
@@ -209,18 +303,18 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
             switch (strategy) {
             case MML:
-                variables.push_back(MIPVariable(0.0, 1.0, 1.0, MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true));
                 break;
             case MF:
-                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 1.0, potential_leaves[p_leaf].get_flexibility(), true));
                 break;
             case MM:
-                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions, MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions, true));
                 break;
             case MMF:
-                variables.push_back(MIPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), MIPVariableType::INT));
+                variables.push_back(lp::LPVariable(0.0, 1.0, potential_leaves[p_leaf].num_leaf_only_actions * potential_leaves[p_leaf].get_flexibility(), true));
                 break;
-            default: exit_with(utils::ExitCode::CRITICAL_ERROR);
+            default: exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
         }
 
@@ -248,7 +342,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
             for (size_t p_leaf_2 = p_leaf_1 + 1; p_leaf_2 < potential_leaves.size(); ++p_leaf_2) {
                 // we need p_leaf_1 < p_leaf_2
                 if (p_leaves_cg[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) {
-                    LPConstraint constraint(0.0, 1.0);
+                    lp::LPConstraint constraint(0.0, 1.0);
                     constraint.insert(p_leaf_1, 1.0);
                     constraint.insert(p_leaf_2, 1.0);
                     constraints.push_back(constraint);
@@ -279,7 +373,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
             if (relevant_p_leaves.size() < 2){
                 continue;
             }
-            LPConstraint constraint(0.0, act_schema.eff_vars.size() - 1);
+            lp::LPConstraint constraint(0.0, act_schema.eff_vars.size() - 1);
             // in contrast to the definition, where at least one potential leaf
             // of each hyperedge must belong to the center, this constraint encodes
             // that at least one variable from act_schema must belong to the center.
@@ -326,7 +420,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         // therefore, we only add it if we need strictly more than 2 leaves,
         // since 2 leaves are guaranteed by the elimination of potential leaves
         // in set_potential_leaves()
-        LPConstraint constraint(min_number_leaves, min(potential_leaves.size(), g_variable_domain.size()));
+        lp::LPConstraint constraint(min_number_leaves, min(potential_leaves.size(), g_variable_domain.size()));
         for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
             constraint.insert(p_leaf, 1.0);
         }
@@ -344,66 +438,20 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         cplex_limit = cplex_limit > 0 ? min(f_limit, cplex_limit) : f_limit;
     }
 
-    CPLEXSolver mip_solver(1, 0, cplex_limit);
-
-    try {
-
-        mip_solver.load_problem(LPObjectiveSense::MAXIMIZE, variables, constraints);
-
-        constraints = vector<LPConstraint>(); // save memory
-
-        mip_solver.print_statistics();
-
-        cout << "LP construction time: " << timer << endl;
-
-        timer = utils::Timer();
-
-        if (cplex_limit <= 0){
-            mip_solver.solve();
-        } else {
-            mip_solver.populate();
-        }
-
-    } catch (const IloException &excpt) {
-        string error_message = excpt.getMessage();
-        if (error_message == CPLEX_ERROR_MEMORY_1 ||
-                error_message == CPLEX_ERROR_MEMORY_2) {
-            cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
-            return FactoredVars();
-        } else {
-            cout << "CPLEX error : " << error_message << endl;
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
-        }
-    }
-
-    cout << "LP solving time: " << timer << endl;
+    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+            variables, constraints, false, false, cplex_limit);
 
     FactoredVars factoring;
 
-    if (cplex_limit <= 0) {
-        if (!mip_solver.has_optimal_solution()){
-            cout << "no optimal solution to LP found, factoring failed" << endl;
-            return factoring;
-        }
-    } else {
-        if (!mip_solver.has_solution()){
-            cout << "no solution to LP found, factoring failed" << endl;
-            return factoring;
-        }
-    }
-
-    vector<int> solution;
-    if (cplex_limit <= 0){
-        solution = mip_solver.extract_int_solution();
-    } else {
-        solution = mip_solver.extract_best_int_solution();
+    if (solution.empty()) {
+        return factoring;
     }
 
     // simple sanity check
     bool all_potential_leaves = true;
     bool leaves_overlap = false;
     vector<bool> leaf_variables(g_variable_domain.size(), false);
-    for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); p_leaf++) {
+    for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
         if (solution[p_leaf] == 1) {
             set<int> leaf;
             for (int var : potential_leaves[p_leaf].vars) {
@@ -438,8 +486,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
         cout << "WARNING: CPLEX time limit is ignored for this type of factoring." << endl;
     }
 
-    vector<MIPVariable> variables;
-    vector<LPConstraint> constraints;
+    utils::Timer timer;
+
+    vector<lp::LPVariable> variables;
+    vector<lp::LPConstraint> constraints;
 
     FactoredVars mip_factoring = get_mip_factoring();
 
@@ -465,24 +515,24 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
     //x_ij indicating whether variable v_j is contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
         }
     }
     //y_ik indicating whether action schema a_k affects only leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
-            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
         }
     }
     //z_i indicating whether leaf F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+        variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true));
     }
 
 
     //(1) every variable is contained in at most one leaf
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        LPConstraint constraint (0.0,1.0);
+        lp::LPConstraint constraint (0.0,1.0);
         for (int i = 0; i < max_number_leaves; i++) {
             constraint.insert(i * g_variable_domain.size() + var, 1.0);
         }
@@ -493,7 +543,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_vars;
-            LPConstraint constraint (0.0,eff_vars.size() - 1.0);
+            lp::LPConstraint constraint (0.0,eff_vars.size() - 1.0);
             for (const int &eff_var : eff_vars) {
                 constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
             }
@@ -528,7 +578,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
                         }
                     }
                     coefficients[i_1 * g_variable_domain.size() + eff_var_1] += eff_vars.size() + pre_vars.size();
-                    LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), 0);
+                    lp::LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), 0);
                     if (factoring_type == STRICT) {
                         constraint.set_upper_bound(eff_vars.size() + pre_vars.size());
                     }
@@ -555,7 +605,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
                             }
                         }
                         coefficients[i_1 * g_variable_domain.size() + pre_var_1] += eff_vars.size() + pre_vars.size();
-                        LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), pre_vars.size());
+                        lp::LPConstraint constraint (-1.0 * static_cast<int>(eff_vars.size() + pre_vars.size()), pre_vars.size());
                         for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
                             if (coefficients[x] != 0.0) {
                                 constraint.insert(x,coefficients[x]);
@@ -573,7 +623,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
         //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t schema = 0; schema < num_schemes; schema++) {
             const vector<int> &eff_vars = schemes[schema].eff_vars;
-            LPConstraint constraint (0.0,eff_vars.size()-1);
+            lp::LPConstraint constraint (0.0,eff_vars.size()-1);
             for (int i = 0; i < max_number_leaves; i++) {
                 for (const int &eff_var : eff_vars) {
                     constraint.insert(i * g_variable_domain.size() + eff_var, 1.0);
@@ -587,7 +637,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t schema = 0; schema < num_schemes; schema++) {
                 const vector<int> &pre_vars = schemes[schema].pre_vars;
-                LPConstraint constraint (0.0,pre_vars.size());
+                lp::LPConstraint constraint (0.0,pre_vars.size());
                 for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
                     if (i_1 == i_2) {
                         continue;
@@ -604,7 +654,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
 
     //(4) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        LPConstraint constraint (0.0, g_variable_domain.size()-1);
+        lp::LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             constraint.insert(i * g_variable_domain.size() + var, -1.0);
         }
@@ -615,7 +665,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
 
     //(5) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
-        LPConstraint constraint (0.0, num_schemes);
+        lp::LPConstraint constraint (0.0, num_schemes);
         for (size_t schema = 0; schema < num_schemes; schema++) {
             constraint.insert(max_number_leaves * g_variable_domain.size() + i * num_schemes + schema, 1.0);
         }
@@ -624,20 +674,14 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
     }
 
 
-    //solve problem
-    CPLEXSolver mip_solver;
-    mip_solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
-    mip_solver.solve();
-    mip_solver.print_statistics();
+    // solve problem
+    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
 
     FactoredVars factoring;
 
-    if (!mip_solver.has_optimal_solution()) {
+    if (solution.empty()) {
         return factoring;
     }
-
-    //extract solution
-    vector<double> solution = mip_solver.extract_solution();
 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
@@ -663,8 +707,8 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
         cout << "WARNING: CPLEX time limit is ignored for this type of factoring." << endl;
     }
 
-    vector<MIPVariable> variables;
-    vector<LPConstraint> constraints;
+    vector<lp::LPVariable> variables;
+    vector<lp::LPConstraint> constraints;
 
     FactoredVars mip_factoring = get_mip_factoring();
 
@@ -687,24 +731,24 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     //x_ij indicating whether variable v_j is contained in leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
-            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
         }
     }
     //y_ik indicating whether action a_k is a leaf only action and affects leaf F_i
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
-            variables.push_back(MIPVariable(0.0,1.0,0.0,MIPVariableType::INT));
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
         }
     }
     //z_i indicating whether leaf F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        variables.push_back(MIPVariable(0.0,1.0,1.0,MIPVariableType::INT));
+        variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true));
     }
 
 
     //(1) every variable is contained in at most one leaf
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
-        LPConstraint constraint (0.0,1.0);
+        lp::LPConstraint constraint (0.0, 1.0);
         for (int i = 0; i < max_number_leaves; i++) {
             constraint.insert(i * g_variable_domain.size() + var, 1.0);
         }
@@ -715,7 +759,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     for (int i = 0; i < max_number_leaves; i++) {
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            LPConstraint constraint (0.0,effects.size() - 1.0);
+            lp::LPConstraint constraint (0.0, effects.size() - 1.0);
             for (const Effect &eff : effects) {
                 constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
             }
@@ -750,7 +794,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
                         }
                     }
                     coefficients[i_1 * g_variable_domain.size() + eff_1.var] += effects.size() + preconditions.size();
-                    LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), 0);
+                    lp::LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), 0);
                     if (factoring_type == STRICT) {
                         constraint.set_upper_bound(effects.size() + preconditions.size());
                     }
@@ -777,7 +821,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
                             }
                         }
                         coefficients[i_1 * g_variable_domain.size() + pre_1.var] += effects.size() + preconditions.size();
-                        LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), preconditions.size());
+                        lp::LPConstraint constraint (-1.0 * static_cast<int>(effects.size() + preconditions.size()), preconditions.size());
                         for (size_t x = 0; x < max_number_leaves * g_variable_domain.size(); x++) {
                             if (coefficients[x] != 0.0) {
                                 constraint.insert(x,coefficients[x]);
@@ -794,7 +838,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
         //(3.1) if action a_k does not affect center it only affects a single leaf
         for (size_t op = 0; op < g_operators.size(); op++) {
             const vector<Effect> &effects = g_operators[op].get_effects();
-            LPConstraint constraint (0.0,effects.size()-1);
+            lp::LPConstraint constraint (0.0, effects.size()-1);
             for (int i = 0; i < max_number_leaves; i++) {
                 for (const Effect &eff : effects) {
                     constraint.insert(i * g_variable_domain.size() + eff.var, 1.0);
@@ -808,7 +852,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
         for (int i_1 = 0; i_1 < max_number_leaves; i_1++) {
             for (size_t op = 0; op < g_operators.size(); op++) {
                 const vector<Condition> &preconditions = g_operators[op].get_preconditions();
-                LPConstraint constraint (0.0,preconditions.size());
+                lp::LPConstraint constraint (0.0, preconditions.size());
                 for (int i_2 = 0; i_2 < max_number_leaves; i_2++) {
                     if (i_1 == i_2) {
                         continue;
@@ -826,7 +870,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
 
     //(4) z_i = 1 iff F_i contains at least a single variable
     for (int i = 0; i < max_number_leaves; i++) {
-        LPConstraint constraint (0.0, g_variable_domain.size()-1);
+        lp::LPConstraint constraint (0.0, g_variable_domain.size()-1);
         for (size_t var = 0; var < g_variable_domain.size(); var++) {
             constraint.insert(i * g_variable_domain.size() + var, -1.0);
         }
@@ -837,7 +881,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
 
     //(5) if z_i = 1 leaf F^L_i is mobile, i.e. their exists an leaf-only action that affects F^L_i
     for (int i = 0; i < max_number_leaves; i++) {
-        LPConstraint constraint (0.0, g_operators.size());
+        lp::LPConstraint constraint (0.0, g_operators.size());
         for (size_t op = 0; op < g_operators.size(); op++) {
             constraint.insert(max_number_leaves * g_variable_domain.size() + i * g_operators.size() + op, 1.0);
         }
@@ -846,20 +890,15 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular_no_schemes() 
     }
 
 
-    //solve problem
-    CPLEXSolver solver;
-    solver.load_problem(LPObjectiveSense::MAXIMIZE,variables,constraints);
-    solver.solve();
-    solver.print_statistics();
+    // solve problem
+    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+            variables, constraints);
 
     FactoredVars factoring;
 
-    if (!solver.has_optimal_solution()) {
+    if (solution.empty()) {
         return factoring;
     }
-
-    //extract solution
-    vector<double> solution = solver.extract_solution();
 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
@@ -928,7 +967,7 @@ vector<LPFactoring::ActionSchema> LPFactoring::get_action_schemas() const {
 }
 
 vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vector<ActionSchema> &action_schemas) const {
-    assert(!act_schemes.empty());
+    assert(!action_schemas.empty());
 
     vector<LPFactoring::PotentialLeaf> potential_leaves;
 
@@ -1404,6 +1443,7 @@ static Factoring *_parse_lp(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     LPFactoring::add_options_to_parser(parser);
+    lp::add_lp_solver_option_to_parser(parser);
 
     Options opts = parser.parse();
 
@@ -1415,5 +1455,5 @@ static Factoring *_parse_lp(OptionParser &parser) {
     return factoring;
 }
 
-
 static Plugin<Factoring> _plugin_lp("lp_factoring", _parse_lp);
+}

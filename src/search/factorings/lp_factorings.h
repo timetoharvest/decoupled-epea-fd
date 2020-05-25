@@ -4,6 +4,15 @@
 #include "../factoring.h"
 
 
+namespace lp {
+class LPConstraint;
+enum class LPObjectiveSense;
+enum class LPSolverType;
+class LPVariable;
+}
+
+
+namespace lp_factoring {
 class LPFactoring : public Factoring {
 
     enum STRATEGY {
@@ -72,6 +81,17 @@ class LPFactoring : public Factoring {
 
     int memory_limit;
 
+    lp::LPSolverType lp_solver_type;
+
+    mutable utils::Timer timer;
+
+    std::vector<double> solve_lp(lp::LPObjectiveSense sense,
+            const std::vector<lp::LPVariable> &vars,
+            std::vector<lp::LPConstraint> &constrs,
+            bool fail_on_out_of_memory = true,
+            bool solve_lp_relaxation = false,
+            int time_limit = -1) const;
+
     FactoredVars get_factoring() override;
 
     FactoredVars get_mip_factoring() const;
@@ -97,6 +117,6 @@ public:
     static void add_options_to_parser(OptionParser &parser);
 
 };
-
+}
 
 #endif

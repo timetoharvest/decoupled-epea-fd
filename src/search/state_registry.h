@@ -13,6 +13,7 @@
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 /*
   Overview of classes relevant to storing and working with registered states.
@@ -99,9 +100,13 @@
     to store for each state and each landmark whether it was reached in this state.
 */
 
+class CompliantPathGraph;
+class DecoupledPermutation;
+class Permutation;
 class PerStateInformationBase;
 
 class StateRegistry {
+    friend class SearchEngine; // to permute initial state
 
     struct StateIDSemanticHash {
         const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
@@ -215,6 +220,8 @@ class StateRegistry {
     StateID insert_id_or_pop_state();
     
     LeafStateHash insert_id_or_pop_leaf_state(LeafFactorID factor);
+
+    void permute_initial_state();
     
 public:
     StateRegistry();
@@ -237,18 +244,34 @@ public:
       done before. The result is cached internally so subsequent calls are cheap.
     */
     const State &get_initial_state();
+    
+    State get_state_permutation(const State &state, const Permutation &permutation);
+    
+    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
     */
-    State get_successor_state(const State &predecessor, const Operator &op);
+    State get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical = true);
+    
+    State get_state(const std::vector<int> &facts);
+    
+    State get_center_state(const std::vector<int> &facts);
+    
     /*
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
     */
-    State get_center_state(const State &predecessor, int dup_counter);
+    State get_decoupled_state(const State &base_state, int dup_counter);
+
+    State get_center_successor(const State &center, const Operator &op);
+
+    /**
+     * NOTE: At least one leaf state in this factor has to exist
+     */
+    LeafStateHash get_leaf_state_hash(const std::vector<int> &facts, LeafFactorID factor);
     
     LeafStateHash get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op);
 

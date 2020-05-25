@@ -21,6 +21,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const = 0;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const = 0;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) = 0;
 };
 
 class GeneratorForkBinary : public GeneratorBase {
@@ -36,6 +37,7 @@ public:
                 const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorForkMulti : public GeneratorBase {
@@ -48,6 +50,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorSwitchVector : public GeneratorBase {
@@ -63,6 +66,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorSwitchHash : public GeneratorBase {
@@ -78,6 +82,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorSwitchSingle : public GeneratorBase {
@@ -94,6 +99,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorLeafVector : public GeneratorBase {
@@ -106,6 +112,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 
 class GeneratorLeafSingle : public GeneratorBase {
@@ -118,6 +125,7 @@ public:
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
+    virtual void remove_never_applicable_center_ops(LeafFactorID factor) override;
 };
 }
 

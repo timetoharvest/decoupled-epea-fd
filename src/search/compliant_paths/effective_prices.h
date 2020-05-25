@@ -14,8 +14,7 @@ class EffectivePrices : public Prices {
     static EffectivePriceStorage *cpg_storage;
     
 
-    EffectivePrices(const EffectivePrices *tag);
-    
+    void resize();
     
     void goal_price_propagation();
 
@@ -39,22 +38,37 @@ protected:
 
     size_t get_number_effective_states(LeafFactorID factor) const;
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state,
                                                                                 const Operator &op) const override;
-    
-    virtual void update(const State &base_state) override;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed) override;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
     
-    virtual void store_new_graph(const State &state) const override;
+    virtual void store_new_cpg(const State &state) override;
     
 public:
     
-    EffectivePrices(){};
+    EffectivePrices(){
+        assert(g_factoring->get_profile() == FACTORING_PROFILE::FORK);
+    };
+
+    EffectivePrices(const EffectivePrices &cpg);
+
+    EffectivePrices(EffectivePrices &&other) = delete;
+
+    EffectivePrices& operator=(const EffectivePrices &other) = delete;
+
+    EffectivePrices& operator=(EffectivePrices &&other);
     
+
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &per) override;
+
+    virtual size_t get_memory_footprint() const;
+
+    virtual uint64_t get_hash() const override;
 
     
     static void register_cpg_storage(EffectivePriceStorage *storage);

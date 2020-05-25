@@ -58,7 +58,7 @@ inline boost::dynamic_bitset<> operator+(const boost::dynamic_bitset<> &first, c
         }
     }
     
-    return move(tmp);
+    return tmp;
 }
 
 void VarInt::operator*=(const VarInt &other) {
@@ -82,7 +82,7 @@ void VarInt::operator*=(const VarInt &other) {
 VarInt VarInt::operator*(const VarInt &other) const {
     VarInt tmp(*this);
     tmp *= other;
-    return move(tmp);
+    return tmp;
 }
 
 void VarInt::operator/=(const VarInt &other) {
@@ -111,7 +111,7 @@ void VarInt::operator/=(const VarInt &other) {
 VarInt VarInt::operator/(const VarInt &other) const {
     VarInt tmp(*this);
     tmp /= other;
-    return move(tmp);
+    return tmp;
 }
     
 

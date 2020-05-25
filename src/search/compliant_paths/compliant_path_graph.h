@@ -13,6 +13,8 @@
 
 class LeafState;
 class LeafStateID;
+class LeavesPermutation;
+class Prices;
 class SearchSpace;
 class State;
 class StateID;
@@ -27,7 +29,14 @@ class CompliantPathGraph {
     friend class SimulationRelation; // access to leaf_goal_states
     friend class StateRegistry; // build leaf state spaces + init state cpg
     friend class successor_generator::SuccessorGenerator; // access to center_successors
+    friend class SearchSpace; // init state cpg + get successors
     
+
+    static void build_leaf_state_space(Prices &prices,
+                                       LeafStateHash first_state_id,
+                                       LeafFactorID factor,
+                                       bool set_leaf_invertibility);
+
     /*
       this builds all entire leaf state spaces and stores them
     */
@@ -55,9 +64,19 @@ protected:
     
     static std::vector<bool> precompute_leaf_state_spaces;
     
-    static std::vector<std::vector<StateID> > leaf_price_cache;
+    // Stores for every leaf state the StateID of the decoupled state
+    // from which the CompliantPathGraph can be copied.
+    // In inverted-fork factorings, if the leaf state space is rebuilt
+    // from a single leaf state, we can save the reconstruction effort
+    // and simply copy the final CompliantPathGraph for that factor
+    // from a decoupled state that started reconstruction in the same
+    // leaf state
+    static std::vector<std::vector<StateID> > cpg_cache;
     
-    static std::vector<LeafStateID> leaf_tags_to_cache;
+    // temporary memory that keeps the leaf state IDs from which the
+    // current CompliantPathGraph started reconstruction of the leaf
+    // state spaces for inverted-fork leaves
+    static std::vector<LeafStateID> leaf_states_to_cache_for_current_cpg;
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
@@ -70,26 +89,34 @@ protected:
     
     static std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > leaf_state_predecessors;
     
+    static std::vector<bool> is_leaf_state_space_scc;
+
     static std::vector<std::vector<int> > leaf_state_id_map;
     
     static std::vector<size_t> curr_leaf_state_max_id;
     
-    static void cache_leaf_price_tags(const State &state);
+    static void cache_cpg(const State &state);
     
-    static void discard_leaf_price_cache();
+    // when overwriting the CompliantPathGraph of state, because the new
+    // decoupled state dominates the old one, we need to clear the cache
+    // for all leaf states that point to state, since it can happen that
+    // not the same leaf state is the starting point of construction of
+    // the leaf state space in the new CompliantPathGraph
+    static void clear_cpg_cache(const State &state);
+
+    static void discard_cpg_cache();
 
     
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &predecessor,
-                                                                                const Operator &op) const = 0;
-    
-    virtual void update(const State &base_state) = 0;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, DOMINANCE needed = DOMINANCE::NONE) = 0;
+    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
-    virtual void store_new_graph(const State &state) const = 0;
+    virtual void store_new_cpg(const State &state) = 0;
 
-    virtual void discard_new_graph() const;
+    virtual void discard_new_cpg() const;
     
+    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const = 0;
+
 public:
     
     static const int INF;
@@ -110,17 +137,24 @@ public:
     virtual bool goal_reachable(LeafFactorID factor) const = 0;
     
     virtual int get_goal_cost(LeafFactorID factor) const = 0;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;
     
     virtual void dump() const = 0;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
     
+    // returns an approximation of the number of bytes stored in memory of this CPG for factor
+    virtual size_t get_memory_footprint() const = 0;
+
+    virtual uint64_t get_hash() const = 0;
+
     // returns the duplicate counter for this base state and compliant path graph 
     // i.e. the counter of the state subsuming that or the current max + 1
-    int check_dominance(const State &base_state,
-                        int curr_number_duplicates,
-                        const State &predecessor,
-                        const Operator &op);
+    std::pair<int, bool> check_dominance(const State &base_state,
+                                         int curr_number_duplicates,
+                                         const State &predecessor,
+                                         const Operator &op);
     
 
     static void initialize();
@@ -148,6 +182,8 @@ public:
     static bool is_leaf_goal_state(LeafStateHash id, LeafFactorID factor);
     
     static void store_is_leaf_goal_state(const LeafState &state);
+
+    static LeafStateHash get_leaf_state_hash(const std::vector<int> &new_leaf_state, LeafFactorID factor);
     
     static void set_compute_leaf_backwards_graph() {
         compute_leaf_backwards_graph = true;
@@ -160,7 +196,16 @@ public:
     static bool precompute_leaf_state_space(LeafFactorID factor) {
         return precompute_leaf_state_spaces[factor];
     }
-    
+
+    static bool all_leaves_invertible() {
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (!is_leaf_state_space_scc[factor]){
+                return false;
+            }
+        }
+        return true;
+    }
+
 };
 
 #endif

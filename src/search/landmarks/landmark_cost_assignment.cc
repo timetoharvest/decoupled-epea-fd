@@ -147,7 +147,7 @@ double LandmarkUniformSharedCostAssignment::cost_sharing_h_value() {
 }
 
 LandmarkEfficientOptimalSharedCostAssignment::LandmarkEfficientOptimalSharedCostAssignment(
-    LandmarkGraph &graph, OperatorCost cost_type, LPSolverType solver_type)
+    LandmarkGraph &graph, OperatorCost cost_type, lp::LPSolverType solver_type)
     : LandmarkCostAssignment(graph, cost_type) {
 #ifdef USE_LP
     si = create_lp_solver(solver_type);
@@ -155,7 +155,7 @@ LandmarkEfficientOptimalSharedCostAssignment::LandmarkEfficientOptimalSharedCost
     // silence unused variable warning
     (void)solver_type;
     cerr << "You must build the planner with the USE_LP symbol defined" << endl;
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 #endif
 }
 
@@ -282,6 +282,6 @@ double LandmarkEfficientOptimalSharedCostAssignment::cost_sharing_h_value() {
     }
 #else
     // Should be unreachable if USE_LP is not set.
-    exit_with(utils::ExitCode::CRITICAL_ERROR);
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 #endif
 }

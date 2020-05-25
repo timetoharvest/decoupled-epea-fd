@@ -11,14 +11,13 @@
 #include "task_utils/causal_graph.h"
 #include "utils/timer.h"
 
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <map>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <sstream>
-#include <time.h>
 
 using namespace std;
 
@@ -66,7 +65,7 @@ Factoring::Factoring(const Options &opts) :
         case DECOUPLED_SEARCH_TYPE::SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case DECOUPLED_SEARCH_TYPE::SAT : cout << "performing decoupled satisficing search" << endl; break;
         case DECOUPLED_SEARCH_TYPE::UNSAT : cout << "trying to prove task unsolvable" << endl; break;
-        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::INPUT_ERROR);
+        default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
     if (opts.contains("max_leaf_size")){
         max_leaf_size = opts.get<int>("max_leaf_size");
@@ -77,7 +76,7 @@ Factoring::Factoring(const Options &opts) :
             cout << "maximum leaf factor size " << max_leaf_size << endl;
         }
     } else {
-        max_leaf_size = pow(2, 32);
+        max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
         CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
@@ -388,7 +387,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             }
 
             if (error){
-                exit_with(utils::ExitCode::CRITICAL_ERROR);
+                exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
         }
     }
@@ -630,7 +629,7 @@ void Factoring::print_factoring() const {
             for (int var : g_leaves[factor]){
                 cerr << g_fact_names[var][0] << endl;
             }
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
@@ -656,10 +655,20 @@ void Factoring::print_factoring() const {
 bool Factoring::is_factoring_possible() const {
     // if there exists a variable that is affected by all actions, then
     // no mobile factoring can exist.
-    vector<size_t> op_count(g_variable_domain.size());
-    for (const Operator &op : g_operators){
-        for (const Effect &eff : op.get_effects()){
-            ++op_count[eff.var];
+    vector<size_t> op_count(g_variable_domain.size(), 0);
+    vector<bool> var_not_affected_by_some_op(g_variable_domain.size(), false);
+    size_t num_vars_not_affected_by_some_op = 0;
+    for (size_t i = 0; i < g_operators.size(); ++i){
+        for (const Effect &eff : g_operators[i].get_effects()){
+            if (op_count[eff.var] == i){
+                ++op_count[eff.var];
+            } else if (!var_not_affected_by_some_op[eff.var]) {
+                var_not_affected_by_some_op[eff.var] = true;
+                ++num_vars_not_affected_by_some_op;
+                if (num_vars_not_affected_by_some_op == g_variable_domain.size()){
+                    return true;
+                }
+            }
         }
     }
     for (size_t i = 0; i < op_count.size(); ++i){
@@ -680,7 +689,7 @@ void Factoring::do_factoring_or_abstain() {
 
     FactoredVars best_factoring;
     if (is_factoring_possible()){
-        // simple sanity check to filter out tasks where no factoring exists
+        // simple sanity check to filter out tasks where no mobile factoring exists
         best_factoring = get_factoring();
     }
 
@@ -694,7 +703,7 @@ void Factoring::do_factoring_or_abstain() {
     if (best_factoring.size() < min_number_leaves){
         cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
         switch (abstain_type){
-            case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::ABSTAINED);
+            case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
             case ABSTAIN_TYPE::STANDARD_ON_FAILURE : return;
             case ABSTAIN_TYPE::NO_SEARCH : break;
         }
@@ -706,7 +715,7 @@ void Factoring::do_factoring_or_abstain() {
 
     if (abstain_type == ABSTAIN_TYPE::NO_SEARCH) {
         cout << "Factoring complete, do not perform search." << endl;
-        exit_with(utils::ExitCode::UNSOLVED_INCOMPLETE);
+        exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
 
@@ -908,6 +917,9 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
 
     FactoredVars best_factoring;
+    size_t best_number_leaves = 0;
+
+    vector<bool> discarded_leaves;
 
     set<int> leaf_vars;
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
@@ -934,26 +946,35 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
 
-            if (factoring.size() < best_factoring.size()){
+            size_t number_leaves = factoring.size();
+            if (number_leaves < best_number_leaves || number_leaves < min_number_leaves){
                 // no need to perform the expensive frozen leaf check if it cannot
-                // possibly result in more leaves
+                // possibly result in more (enough) leaves
                 continue;
             }
             vector<bool> discard_leaf = get_frozen_leaves(factoring);
-            // put frozen leaves back to center
-            for (int i = factoring.size() - 1; i >= 0; --i){
-                if (discard_leaf[i]){
-                    factoring.erase(factoring.begin() + i);
+            for (bool discard : discard_leaf){
+                if (discard){
+                    --number_leaves;
                 }
             }
 
-            if (factoring.size() >= best_factoring.size()){
+            if (number_leaves >= best_number_leaves && number_leaves >= min_number_leaves){
                 best_factoring = factoring;
+                discarded_leaves = discard_leaf;
+                best_number_leaves = number_leaves;
             }
 
             if (factoring_timer.is_expired()){
                 break;
             }
+        }
+    }
+
+    // put frozen leaves back to center
+    for (int i = best_factoring.size() - 1; i >= 0; --i){
+        if (discarded_leaves[i]){
+            best_factoring.erase(best_factoring.begin() + i);
         }
     }
 
@@ -1516,6 +1537,7 @@ Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const 
 }
 
 Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
+    // TODO rewrite this function, it's super inefficient!
     FactoredVars components;
 
     vector<bool> vars(g_variable_domain.size(), false);
@@ -1680,7 +1702,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         bool valid = check_factoring(max_ind_sets[i]);
         if (!valid) {
             cerr << "ERROR: illegal factoring" << endl;
-            exit_with(utils::ExitCode::CRITICAL_ERROR);
+            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
     }
     //max_ind_sets = minimize_center(max_ind_sets, cg_g);
@@ -1766,7 +1788,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     bool valid = check_factoring(final_factoring);
     if (!valid) {
         cerr << "ERROR: invalid factoring" << endl;
-        exit_with(utils::ExitCode::CRITICAL_ERROR);
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
     return final_factoring;
@@ -1776,7 +1798,7 @@ vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const
     vector<FactoredVars> factorings;
     for (const vector<FactoringRanking*> &ranking: rankings) {
         arg_rankings = ranking;
-        factorings.push_back(this->get_factoring());
+        factorings.push_back(get_factoring());
     }
     return factorings;
 }
@@ -1797,9 +1819,12 @@ NGraph MaxIndependentSetFactoring::generate_ngraph() const {
     return cg_g;
 }
 
-bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &f) const {
+bool MaxIndependentSetFactoring::check_factoring(const FactoredVars &
+#ifdef DEBUG_FACTORING
+f
+#endif
+) const {
     bool valid = true;
-    f.empty(); // to avoid unused-parameter compile warning
 #ifdef DEBUG_FACTORING
     vector<int> vars;
     for (size_t var = 0; var < g_variable_domain.size(); var++) {
