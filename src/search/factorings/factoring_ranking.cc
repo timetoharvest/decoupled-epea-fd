@@ -12,7 +12,7 @@ FactoringRanking::FactoringRanking(const Options &opts) :
     maximize(opts.get<bool>("maximize")) {
 }
 
-VarInt FactoringRanking::get_rank(const vector<set<int>> & factoring) {
+VarInt FactoringRanking::get_rank(const vector<set<int> > &factoring) {
     return rank(factoring);
 }
 

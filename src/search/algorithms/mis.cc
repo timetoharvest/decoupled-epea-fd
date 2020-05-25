@@ -15,7 +15,7 @@
 using namespace std;
 
 
-vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_find_all, const utils::CountdownTimer &timer, int arg_multiple_mis) const {
+vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, bool arg_find_all, const utils::CountdownTimer &timer, size_t arg_number_mis) const {
 
 #ifdef DEBUG_FACTORING
     cout << "find mis for graph of size: " << g.size() << endl;
@@ -181,7 +181,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
                         cout << endl;
                     }
 
-                    if (equal && arg_find_all == 1) {
+                    if (equal && arg_find_all){
                         assert(w != -1);
                         assert(v1 != -1);
                         NGraph g_without_v = remove_components(g, v1);
@@ -510,7 +510,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
     list<size_t> finalization_stack;
     // finalize all leaves
     for (size_t l:leaves) {
-        subgraphs[l].mis_finalized(vector<boost::dynamic_bitset<>>(),true, 0, arg_multiple_mis);
+        subgraphs[l].mis_finalized(vector<boost::dynamic_bitset<>>(),true, 0, arg_number_mis);
         finalization_stack.push_back(l);
     }
 
@@ -526,7 +526,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
         size_t parent_pos = hash_to_subgraph[current_hash];
         Subgraph *current_subgraph = &subgraphs[parent_pos];
         vector<boost::dynamic_bitset<>> m(g.size());
-        current_subgraph->mis_finalized(m, true, 0, (size_t)arg_multiple_mis);
+        current_subgraph->mis_finalized(m, true, 0, arg_number_mis);
         finalization_stack.push_back(parent_pos);
     }
 
@@ -542,7 +542,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
             for (size_t i = 0; i < parents.size(); ++i) {
                 size_t parent_pos = parents[i];
                 Subgraph &p_g = subgraphs[parent_pos];
-                p_g.mis_finalized(m, false, child_no[i], (size_t)arg_multiple_mis);
+                p_g.mis_finalized(m, false, child_no[i], arg_number_mis);
                 if (p_g.is_finalized()) {
                     finalization_stack.push_back(parent_pos);
                 }
@@ -581,15 +581,7 @@ vector<boost::dynamic_bitset<>> MIS::get_mis(const NGraph& g, int x, int arg_fin
 #endif
     vector<boost::dynamic_bitset<>> res_mis;
     if (!temp.empty()) {
-        cout << "Select x-th factoring, x: " << x << endl;
-
-        if (x >= (int) temp.size()) {
-            cout << "Factoring x found: 0" << endl;
-        }
-
-        cout << "Factoring x found: 1" << endl;
-        assert(x >= 0 && x < (int) temp.size());
-        res_mis.push_back(temp[x]);
+        res_mis.push_back(temp[0]);
     }
 #ifdef DEBUG_FACTORING
     for (boost::dynamic_bitset<> &m:res_mis) {
@@ -755,7 +747,7 @@ boost::dynamic_bitset<> ngraph_to_bitset (const NGraph &g) {
     return subelems;
 }
 
-void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool leaf, size_t no, size_t arg_multiple_mis) {
+void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool leaf, size_t no, size_t arg_number_mis) {
     if (!children.empty()) {
         --pending_mis;
         if (!is.empty()) {
@@ -825,7 +817,7 @@ void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool lea
                             child_mis_max.clear();
                             child_mis_max.push_back(make_pair(ch_mi,cm));
                         } else if (child_mis[ch_mi][cm].count() == max) {
-                            if (child_mis_max.size() < arg_multiple_mis) {
+                            if (child_mis_max.size() < arg_number_mis) {
                                 child_mis_max.push_back(make_pair(ch_mi, cm));
                             }
                         }
@@ -840,10 +832,10 @@ void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool lea
             // merge child_mis with current_subgraph's mis
             size_t i = 0;
             bool done = false;
-            while (mis.size() < arg_multiple_mis and !done) {
+            while (mis.size() < arg_number_mis and !done) {
                 done = true;
                 for (vector<boost::dynamic_bitset<>> &ch_mi : child_mis) {
-                    if (mis.size() == arg_multiple_mis) {
+                    if (mis.size() == arg_number_mis) {
                         break;
                     }
                     if (i < ch_mi.size()) {
@@ -856,7 +848,7 @@ void Subgraph::mis_finalized(const vector<boost::dynamic_bitset<>> &is, bool lea
                 }
                 ++i;
             }
-            assert(mis.size() <= arg_multiple_mis);
+            assert(mis.size() <= arg_number_mis);
         }
     } else {
         assert(mis.size() <= 1);

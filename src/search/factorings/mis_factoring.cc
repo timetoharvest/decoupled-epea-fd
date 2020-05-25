@@ -10,19 +10,20 @@ using namespace std;
 namespace mis_factoring {
 MaxIndependentSetFactoring::MaxIndependentSetFactoring(const Options &opts)
       : Factoring(opts),
-        arg_minimize_center(opts.get<int>("minimize_center")),
+        arg_minimize_center(opts.get<bool>("minimize_center")),
         arg_minimize_frozen(opts.get<bool>("minimize_frozen")),
-        arg_xth_factoring(opts.get<int>("xth_fact")),
-        arg_merge_leaves(opts.get<int>("merge_leaves")),
-        arg_find_all(opts.get<int>("find_all")),
-        arg_all_rankings(opts.get<bool>("all_rankings")),
-        arg_multiple_mis(opts.get<int>("multiple_mis")){
+        arg_merge_leaves_level(opts.get<int>("merge_leaves_level")),
+        arg_find_all_mis(opts.get<bool>("find_all_mis")),
+        arg_number_mis(opts.get<int>("number_mis")),
+        arg_print_all_rankings(opts.get<bool>("print_all_rankings")) {
     profile = STAR;
-    cout << "using maximum independet set factoring profile - find all MIS: "
-            << arg_find_all << " minimize_center " << arg_minimize_center << " all rankings: " << arg_all_rankings
-            << " minimize frozen " << arg_minimize_frozen << " select xth factoring: " << arg_xth_factoring
-            << " merge leaves level: " << arg_merge_leaves;
-    cout << " ranking_features: ";
+    cout << "using maximum independet set factoring profile - find all MIS: " << arg_find_all_mis
+            << " minimize_center " << arg_minimize_center
+            << " minimize frozen " << arg_minimize_frozen
+            << " merge leaves level: " << arg_merge_leaves_level
+            << " number MIS to consider: " << arg_number_mis
+            << " all rankings: " << arg_print_all_rankings
+            << " ranking_features: ";
     if (!opts.contains("rankings")) {
         cout << "None" << endl;
     } else {
@@ -40,10 +41,10 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     NGraph cg_g = generate_ngraph();
 
     MIS mis;
-    vector<boost::dynamic_bitset<>> found_mis;
+    vector<boost::dynamic_bitset<> > found_mis;
 
     utils::CountdownTimer mis_timer(factoring_timer.get_remaining_time() * 0.9);
-    found_mis = mis.get_mis(cg_g, arg_xth_factoring, arg_find_all, mis_timer, arg_multiple_mis);
+    found_mis = mis.get_mis(cg_g, arg_find_all_mis, mis_timer, arg_number_mis);
 
     // generate factoring
     vector<FactoredVars> max_ind_sets;
@@ -130,7 +131,7 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             arg_rankings[i]->get_rank(final_factoring).dump_number();
         }
     }
-    if (arg_all_rankings) {
+    if (arg_print_all_rankings) {
         cout << "All Rankings: " << endl;
 
         FactoringRanking::print_all_rankings(final_factoring);
@@ -158,15 +159,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
     }
 
     return final_factoring;
-}
-
-vector<Factoring::FactoredVars> MaxIndependentSetFactoring::get_factorings(const vector<vector<FactoringRanking*>> &rankings) {
-    vector<FactoredVars> factorings;
-    for (const vector<FactoringRanking*> &ranking: rankings) {
-        arg_rankings = ranking;
-        factorings.push_back(get_factoring());
-    }
-    return factorings;
 }
 
 NGraph MaxIndependentSetFactoring::generate_ngraph() const {
@@ -260,7 +252,7 @@ f
 }
 
 void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGraph &g, int &f_rm, int &c_rm, int &frozen_candidates) const {
-    if (arg_minimize_center == 0) {
+    if (!arg_minimize_center) {
         return;
     }
 
@@ -413,7 +405,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 best_f_rm = f_rm;
             }
         } else {
-            if (arg_merge_leaves > 0 && !removed_frozen_leaves) {
+            if (arg_merge_leaves_level > 0 && !removed_frozen_leaves) {
 
                 vector<int> merged_leaves_counter(mis.size(), 0);
 
@@ -436,7 +428,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                                 }
                             }
                         }
-                        if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves) {
+                        if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves_level) {
                             // check leaf factor size
                             uint64_t f_size = g_variable_domain[var];
                             for (int f : neighbour_leaves) {
@@ -647,51 +639,41 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
 
 void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
-    parser.add_option<int>(
+    parser.add_option<bool>(
             "minimize_center",
             "TODO",
-            "0");
+            "true");
+
     parser.add_option<bool>(
             "minimize_frozen",
             "TODO",
+            "true");
+
+    parser.add_option<int>(
+            "merge_leaves_level",
+            "TODO",
+            "0");
+
+    parser.add_option<bool>(
+            "find_all_mis",
+            "TODO",
             "false");
+
     parser.add_option<int>(
-            "xth_fact",
+            "number_mis",
             "TODO",
-            "0");
-    parser.add_option<int>(
-            "merge_leaves",
+            "1");
+
+    parser.add_option<bool>(
+            "print_all_rankings",
             "TODO",
-            "0");
-    parser.add_option<int>(
-            "find_all",
-            "TODO",
-            "0");
+            "false");
 
     parser.add_list_option<FactoringRanking *>(
             "rankings",
             "TODO",
             "",
             OptionFlags(false));
-
-    parser.add_list_option<size_t>(
-            "mis",
-            "TODO",
-            "",
-            OptionFlags(false));
-
-    parser.add_option<bool>(
-            "all_rankings",
-            "TODO",
-            "false");
-    parser.add_option<int>(
-            "timeout",
-            "TODO",
-            "0");
-    parser.add_option<int>(
-            "multiple_mis",
-            "TODO",
-            "1");
 }
 
 static Factoring *_parse_mis(OptionParser &parser) {

@@ -37,7 +37,7 @@ private:
     NGraph remove_components(const NGraph&, const std::set<int>&) const;
 public:
     MIS() {}
-    std::vector<boost::dynamic_bitset<>> get_mis(const NGraph&, int, int, const utils::CountdownTimer&, int) const;
+    std::vector<boost::dynamic_bitset<>> get_mis(const NGraph&, bool, const utils::CountdownTimer&, size_t) const;
     void print_graph(const NGraph&) const;
     bool check_mis(const NGraph&, const boost::dynamic_bitset<> &mis) const;
 };

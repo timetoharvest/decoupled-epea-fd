@@ -10,26 +10,22 @@
 namespace mis_factoring {
 class MaxIndependentSetFactoring : public Factoring {
 
-    int arg_minimize_center;
+    bool arg_minimize_center;
 
     bool arg_minimize_frozen;
 
+    int arg_merge_leaves_level;
+
+    bool arg_find_all_mis;
+
+    int arg_number_mis;
+
+    bool arg_print_all_rankings;
+
     std::vector<FactoringRanking* > arg_rankings;
 
-    int arg_xth_factoring = 0;
 
-    int arg_merge_leaves = 0;
-
-    int arg_find_all;
-
-    bool arg_all_rankings;
-
-    int arg_multiple_mis;
-
-
-    std::vector<FactoredVars> get_factorings(const std::vector<std::vector<FactoringRanking*> > &rankings);
-
-    void optimize_feature(FactoredVars &, const NGraph &,int &, int &, int &) const;
+    void optimize_feature(FactoredVars &, const NGraph &, int &, int &, int &) const;
 
     NGraph generate_ngraph() const;
 
