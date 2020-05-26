@@ -17,7 +17,7 @@ using namespace std;
 
 namespace lp {
 
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
 CPLEXSolver::~CPLEXSolver() {
     cplex.end();
     model.end();

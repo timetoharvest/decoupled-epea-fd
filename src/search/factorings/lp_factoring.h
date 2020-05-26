@@ -110,6 +110,8 @@ class LPFactoring : public Factoring {
 
     void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves) const;
 
+    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
+
 public:
 
     LPFactoring(const Options &opts);

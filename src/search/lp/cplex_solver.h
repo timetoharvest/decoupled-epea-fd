@@ -7,8 +7,8 @@
 #include <memory>
 #include <vector>
 
-#ifdef COIN_HAS_CPX
-#include <ilcplex/ilocplex.h>
+#ifdef COIN_HAS_CPX1
+#include <ilocplex.h>
 #endif
 
 
@@ -19,7 +19,7 @@ namespace lp {
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 class CPLEXSolver : public LPSolver {
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
     IloEnv env;
     IloNumVarArray ilo_variables;
     IloObjective ilo_objective;

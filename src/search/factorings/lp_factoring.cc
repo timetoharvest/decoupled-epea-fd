@@ -65,13 +65,24 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         bool solve_lp_relaxation,
         int time_limit) const {
 
+    if (constraints.empty()){
+        cout << "WARNING: no constraints specified. Adding dummy constraint to prevent errors." << endl;
+        lp::LPConstraint dummy(0, 1);
+        dummy.insert(0, 1);
+        constraints.push_back(dummy);
+    }
 
     if (solve_lp_relaxation && time_limit == -1){
         cout << "WARNING: time limit not supported when solving LP relaxation, limit will be ignored." << endl;
         time_limit = -1;
     }
 
-#ifdef COIN_HAS_CPX
+#ifndef NDEBUG
+    dump_lp(sense, variables, constraints);
+#endif
+
+
+#ifdef COIN_HAS_CPX1
     lp::CPLEXSolver solver(time_limit);
 #else
     lp::LPSolver solver(lp_solver_type);
@@ -86,7 +97,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
     }
 #endif
 
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
     try {
 #endif
         solver.load_problem(sense, variables, constraints);
@@ -100,18 +111,18 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         timer.reset();
 
         if (time_limit == -1){
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
             if (solve_lp_relaxation){
                 solver.solve_lp_relaxation();
             } else
 #endif
             solver.solve();
         } else {
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
             solver.populate();
 #endif
         }
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
     } catch (const IloException &excpt) {
         string error_message = excpt.getMessage();
         if (!fail_on_out_of_memory && error_message == CPLEX_ERROR_MEMORY_1 ||
@@ -136,7 +147,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
             return solution;
         }
     } else {
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
         if (!solver.has_solution()){
             cout << "no solution to LP found, factoring failed" << endl;
             return solution;
@@ -148,12 +159,43 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
     if (time_limit == -1){
         solution = solver.extract_solution();
     } else {
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_CPX1
         solution = solver.extract_best_solution();
 #endif
     }
 
     return solution;
+}
+
+void LPFactoring::dump_lp(lp::LPObjectiveSense sense, const vector<lp::LPVariable> &vars, const vector<lp::LPConstraint> &constrs) const {
+    if (sense == lp::LPObjectiveSense::MAXIMIZE){
+        cout << "Linear Program: maximize objective value" << endl;
+    } else {
+        cout << "Linear Program: minimize objective value" << endl;
+    }
+    cout << vars.size() << " variables" << endl;
+    cout << constrs.size() << " constraints" << endl;
+
+    if (vars.size() > 100 || constrs.size() > 100){
+        cout << "WARNING: not printing LP as it is too big" << endl;
+        return;
+    }
+
+    cout << "variables: " << endl;
+    int i = 0;
+    for (auto &var : vars){
+        cout << "x" << i++ << ": range " << var.lower_bound << " .. " << var.upper_bound << "; objective value " << var.objective_coefficient << (var.is_integer ? ", is integer variable" : "") << endl;
+    }
+
+    cout << endl;
+
+    for (auto &constr : constrs){
+        cout << constr.get_lower_bound() << " < ";
+        for (size_t i = 0; i < constr.get_variables().size(); ++i){
+             cout << constr.get_coefficients()[i] << " * x" << constr.get_variables()[i] << (i < constr.get_variables().size() - 1 ? " + " : "");
+        }
+        cout << " < " << constr.get_upper_bound() << endl;
+    }
 }
 
 Factoring::FactoredVars LPFactoring::get_mip_factoring() const {
