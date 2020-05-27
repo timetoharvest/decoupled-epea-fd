@@ -136,6 +136,7 @@ endif()
 # (see issue925) and otherwise prefer the latest available version.
 find_library(CPLEX_LIBRARY_RELEASE
     NAMES
+    cplex1210
     cplex1290
     cplex1280
     cplex1271
@@ -150,6 +151,7 @@ find_library(CPLEX_LIBRARY_RELEASE
 # See above.
 find_library(CPLEX_LIBRARY_DEBUG
     NAMES
+    cplex1210
     cplex1290
     cplex1280
     cplex1271
