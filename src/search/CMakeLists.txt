@@ -80,6 +80,26 @@ if(PLUGIN_LP_SOLVER_ENABLED AND USE_LP)
 endif()
 
 
+# If any enabled plugin requires CPLEX, compile with it. 
+# If CPLEX is not installed, the planner will still compile, but 
+# using components that depend on CPLEX will cause an error. 
+# This behavior can be overwritten by setting the
+# option USE_CPLEX to false.
+option(
+  USE_CPLEX
+  "Compile with support for CPLEX if installed on this system."
+  TRUE)
+
+if(PLUGIN_LP_FACTORING_ENABLED AND USE_CPLEX)
+    find_package(CplexStandalone)
+    if(CplexStandalone_FOUND)
+        add_definitions("-D IL_STD") # this fixes compiler errors for CPLEX 
+        add_definitions("-D USE_CPLEX")
+        include_directories(${CPLEX_STANDALONE_INCLUDE_DIRS})
+        target_link_libraries(downward ${CPLEX_STANDALONE_LIBRARIES})
+    endif()
+endif()
+
 # If any enabled plugin requires the bliss library, compile with it. 
 # If bliss is not installed, the planner will still compile, but 
 # using components that depend on bliss will cause an error. 
