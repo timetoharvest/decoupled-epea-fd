@@ -76,13 +76,6 @@ LPVariable::LPVariable(double lower_bound, double upper_bound,
       is_integer(is_integer) {
 }
 
-#ifndef USE_LP
-LPSolver::LPSolver(){
-    ABORT("LP method called but the planner was compiled without LP support.\n" \
-          "See http://www.fast-downward.org/LPBuildInstructions\n" \
-          "to install an LP solver and use it in the planner."); \
-}
-#endif
 
 LPSolver::~LPSolver() {
 }

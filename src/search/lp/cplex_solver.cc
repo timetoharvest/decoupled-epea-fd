@@ -2,14 +2,6 @@
 
 #include "../utils/system.h"
 
-#ifdef __GNUG__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#endif
-#ifdef __GNUG__
-#pragma GCC diagnostic pop
-#endif
-
 #include <cassert>
 #include <numeric>
 
@@ -17,7 +9,7 @@ using namespace std;
 
 namespace lp {
 
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
 CPLEXSolver::~CPLEXSolver() {
     cplex.end();
     model.end();
@@ -30,7 +22,7 @@ CPLEXSolver::~CPLEXSolver() {
 }
 
 CPLEXSolver::CPLEXSolver(int time_limit)
-    : LPSolver(LPSolverType::CPLEX, false),
+    : is_solved(false),
       ilo_variables(IloNumVarArray(env, 0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env, 0)),
@@ -138,15 +130,6 @@ void CPLEXSolver::populate() {
     is_solved = true;
 }
 
-void CPLEXSolver::solveLPRelaxation() {
-    IloModel relaxed_model(env);
-    relaxed_model.add(model);
-    relaxed_model.add(IloConversion(env, ilo_variables, ILOFLOAT));
-    cplex.extract(relaxed_model);
-    cplex.solve();
-    is_solved = true;
-}
-
 bool CPLEXSolver::has_optimal_solution() const {
     assert(is_solved);
     return cplex.getStatus() == IloAlgorithm::Optimal;
@@ -207,5 +190,11 @@ int CPLEXSolver::get_num_variables() const {
 int CPLEXSolver::get_num_constraints() const {
     return ilo_constraints.getSize();
 }
+
+void CPLEXSolver::print_statistics() const {
+    cout << "LP variables: " << get_num_variables() << endl;
+    cout << "LP constraints: " << get_num_constraints() << endl;
+}
+
 #endif
 }

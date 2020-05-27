@@ -7,8 +7,31 @@
 #include <memory>
 #include <vector>
 
-#ifdef COIN_HAS_CPX1
-#include <ilocplex.h>
+#ifdef USE_CPLEX
+#ifdef __GNUG__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+#include <ilcplex/ilocplex.h>
+#ifdef __GNUG__
+#pragma GCC diagnostic pop
+#endif
+#endif
+
+
+/*
+  All methods that use COIN specific classes only do something useful
+  if the planner is compiled with USE_LP. Otherwise, they just print
+  an error message and abort.
+*/
+#ifdef USE_CPLEX
+#define CPLEX_METHOD(X) X;
+#else
+#define CPLEX_METHOD(X) NO_RETURN X { \
+        ABORT("CPLEX method called but the planner was compiled without CPLEX support."); \
+}
 #endif
 
 
@@ -18,8 +41,9 @@ namespace lp {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
-class CPLEXSolver : public LPSolver {
-#ifdef COIN_HAS_CPX1
+class CPLEXSolver {
+    bool is_solved;
+#ifdef USE_CPLEX
     IloEnv env;
     IloNumVarArray ilo_variables;
     IloObjective ilo_objective;
@@ -28,27 +52,28 @@ class CPLEXSolver : public LPSolver {
     IloCplex cplex;
 #endif
 public:
-    LP_METHOD(explicit CPLEXSolver(int time_limit = -1))
+    CPLEX_METHOD(explicit CPLEXSolver(int time_limit = -1))
 
-    virtual ~CPLEXSolver();
+    ~CPLEXSolver();
 
-    LP_METHOD(virtual void load_problem(
+    CPLEX_METHOD(void load_problem(
             LPObjectiveSense sense,
             const std::vector<LPVariable> &variables,
-            const std::vector<LPConstraint> &constraints) override)
+            const std::vector<LPConstraint> &constraints))
 
-    LP_METHOD(virtual double get_infinity() const override)
-    LP_METHOD(virtual void set_objective_coefficients(const std::vector<double> &coefficients) override)
-    LP_METHOD(virtual void set_objective_coefficient(int index, double coefficient) override)
-    LP_METHOD(virtual void set_constraint_lower_bound(int index, double bound) override)
-    LP_METHOD(virtual void set_constraint_upper_bound(int index, double bound) override)
-    LP_METHOD(virtual void set_variable_lower_bound(int index, double bound) override)
-    LP_METHOD(virtual void set_variable_upper_bound(int index, double bound) override)
+    CPLEX_METHOD(double get_infinity() const)
 
-    LP_METHOD(virtual void solve() override)
+    CPLEX_METHOD(void set_objective_coefficients(const std::vector<double> &coefficients))
+    CPLEX_METHOD(void set_objective_coefficient(int index, double coefficient))
+    CPLEX_METHOD(void set_constraint_lower_bound(int index, double bound))
+    CPLEX_METHOD(void set_constraint_upper_bound(int index, double bound))
+    CPLEX_METHOD(void set_variable_lower_bound(int index, double bound))
+    CPLEX_METHOD(void set_variable_upper_bound(int index, double bound))
+
+    CPLEX_METHOD(void solve())
+
     // solves the LP, populating the solution pool
-    LP_METHOD(void populate())
-    LP_METHOD(void solveLPRelaxation())
+    CPLEX_METHOD(void populate())
 
     /*
       Return true if the solving the LP showed that it is bounded feasible and
@@ -57,20 +82,20 @@ public:
       solutions due to numerical difficulties.
       The LP has to be solved with a call to solve() before calling this method.
     */
-    LP_METHOD(virtual bool has_optimal_solution() const override)
+    CPLEX_METHOD(bool has_optimal_solution() const)
 
     /*
       Return true if the solving the LP showed that it is bounded feasible.
       The LP has to be solved with a call to solve() or populate() before calling this method.
      */
-    LP_METHOD(bool has_solution() const)
+    CPLEX_METHOD(bool has_solution() const)
 
     /*
       Return the objective value found after solving an LP.
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    LP_METHOD(virtual double get_objective_value() const override)
+    CPLEX_METHOD(double get_objective_value() const)
 
     /*
       Return the solution found after solving an LP as a vector with one entry
@@ -78,12 +103,13 @@ public:
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    LP_METHOD(virtual std::vector<double> extract_solution() const override)
+    CPLEX_METHOD(std::vector<double> extract_solution() const)
+    CPLEX_METHOD(std::vector<double> extract_best_solution() const)
 
-    LP_METHOD(std::vector<double> extract_best_solution() const)
+    CPLEX_METHOD(int get_num_variables() const)
+    CPLEX_METHOD(int get_num_constraints() const)
 
-    LP_METHOD(virtual int get_num_variables() const override)
-    LP_METHOD(virtual int get_num_constraints() const override)
+    CPLEX_METHOD(void print_statistics() const)
 };
 #ifdef __GNUG__
 #pragma GCC diagnostic pop

@@ -101,9 +101,6 @@ class LPSolver {
     std::vector<CoinPackedVectorBase *> rows;
     void clear_temporary_data();
 public:
-#ifndef USE_LP
-    LPSolver(); // HACK: need this for constructor of CPLEXSolver
-#endif
 
     LP_METHOD(explicit LPSolver(LPSolverType solver_type, bool create_solver = true))
     /*
@@ -112,24 +109,25 @@ public:
       destructor here (~LPSolver() = default;) because OsiSolverInterface
       is a forward declaration and the incomplete type cannot be destroyed.
     */
-    virtual ~LPSolver();
+    ~LPSolver();
 
-    LP_METHOD(virtual void load_problem(
+    LP_METHOD(void load_problem(
                   LPObjectiveSense sense,
                   const std::vector<LPVariable> &variables,
                   const std::vector<LPConstraint> &constraints))
+
     LP_METHOD(void add_temporary_constraints(const std::vector<LPConstraint> &constraints))
     LP_METHOD(void clear_temporary_constraints())
-    LP_METHOD(virtual double get_infinity() const)
+    LP_METHOD(double get_infinity() const)
 
-    LP_METHOD(virtual void set_objective_coefficients(const std::vector<double> &coefficients))
-    LP_METHOD(virtual void set_objective_coefficient(int index, double coefficient))
-    LP_METHOD(virtual void set_constraint_lower_bound(int index, double bound))
-    LP_METHOD(virtual void set_constraint_upper_bound(int index, double bound))
-    LP_METHOD(virtual void set_variable_lower_bound(int index, double bound))
-    LP_METHOD(virtual void set_variable_upper_bound(int index, double bound))
+    LP_METHOD(void set_objective_coefficients(const std::vector<double> &coefficients))
+    LP_METHOD(void set_objective_coefficient(int index, double coefficient))
+    LP_METHOD(void set_constraint_lower_bound(int index, double bound))
+    LP_METHOD(void set_constraint_upper_bound(int index, double bound))
+    LP_METHOD(void set_variable_lower_bound(int index, double bound))
+    LP_METHOD(void set_variable_upper_bound(int index, double bound))
 
-    LP_METHOD(virtual void solve())
+    LP_METHOD(void solve())
 
     /*
       Return true if the solving the LP showed that it is bounded feasible and
@@ -138,14 +136,14 @@ public:
       solutions due to numerical difficulties.
       The LP has to be solved with a call to solve() before calling this method.
     */
-    LP_METHOD(virtual bool has_optimal_solution() const)
+    LP_METHOD(bool has_optimal_solution() const)
 
     /*
       Return the objective value found after solving an LP.
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    LP_METHOD(virtual double get_objective_value() const)
+    LP_METHOD(double get_objective_value() const)
 
     /*
       Return the solution found after solving an LP as a vector with one entry
@@ -153,10 +151,10 @@ public:
       The LP has to be solved with a call to solve() and has to have an optimal
       solution before calling this method.
     */
-    LP_METHOD(virtual std::vector<double> extract_solution() const)
+    LP_METHOD(std::vector<double> extract_solution() const)
 
-    LP_METHOD(virtual int get_num_variables() const)
-    LP_METHOD(virtual int get_num_constraints() const)
+    LP_METHOD(int get_num_variables() const)
+    LP_METHOD(int get_num_constraints() const)
     LP_METHOD(int has_temporary_constraints() const)
     LP_METHOD(void print_statistics() const)
 };
