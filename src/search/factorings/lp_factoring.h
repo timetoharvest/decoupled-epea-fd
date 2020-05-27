@@ -86,7 +86,7 @@ class LPFactoring : public Factoring {
     mutable utils::Timer timer;
 
     std::vector<double> solve_lp(lp::LPObjectiveSense sense,
-            const std::vector<lp::LPVariable> &vars,
+            std::vector<lp::LPVariable> &vars,
             std::vector<lp::LPConstraint> &constrs,
             bool fail_on_out_of_memory = true,
             bool solve_lp_relaxation = false,

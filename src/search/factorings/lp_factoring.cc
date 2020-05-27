@@ -59,7 +59,7 @@ Factoring::FactoredVars LPFactoring::get_factoring() {
 }
 
 vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
-        const vector<lp::LPVariable> &variables,
+        vector<lp::LPVariable> &variables,
         vector<lp::LPConstraint> &constraints,
         bool fail_on_out_of_memory,
         bool solve_lp_relaxation,
@@ -82,7 +82,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
 #endif
 
 
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
     lp::CPLEXSolver solver(time_limit);
 #else
     lp::LPSolver solver(lp_solver_type);
@@ -90,14 +90,16 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         cout << "WARNING: CPLEX not found, ignoring time limit." << endl;
         time_limit = -1;
     }
-    if (solve_lp_relaxation){
-        cout << "WARNING: LP relaxation only supported with CPLEX, ." << endl;
-        solve_lp_relaxation = false;
-        fail_on_out_of_memory = !fail_on_out_of_memory; // HACK: to prevent unused-parameter error
-    }
+    fail_on_out_of_memory = !fail_on_out_of_memory; // HACK prevent unused variable error
 #endif
 
-#ifdef COIN_HAS_CPX1
+    if (solve_lp_relaxation){
+        for (auto &var : variables){
+            var.is_integer = false;
+        }
+    }
+
+#ifdef USE_CPLEX
     try {
 #endif
         solver.load_problem(sense, variables, constraints);
@@ -111,25 +113,20 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         timer.reset();
 
         if (time_limit == -1){
-#ifdef COIN_HAS_CPX1
-            if (solve_lp_relaxation){
-                solver.solve_lp_relaxation();
-            } else
-#endif
             solver.solve();
         } else {
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
             solver.populate();
 #endif
         }
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
     } catch (const IloException &excpt) {
         string error_message = excpt.getMessage();
-        if (!fail_on_out_of_memory && error_message == CPLEX_ERROR_MEMORY_1 ||
-                error_message == CPLEX_ERROR_MEMORY_2) {
+        if (!fail_on_out_of_memory && (error_message == CPLEX_ERROR_MEMORY_1 ||
+                error_message == CPLEX_ERROR_MEMORY_2)) {
             // TODO refine the check
             cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
-            return FactoredVars();
+            return vector<double>();
         } else {
             cout << "CPLEX error : " << error_message << endl;
             exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
@@ -147,7 +144,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
             return solution;
         }
     } else {
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
         if (!solver.has_solution()){
             cout << "no solution to LP found, factoring failed" << endl;
             return solution;
@@ -159,7 +156,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
     if (time_limit == -1){
         solution = solver.extract_solution();
     } else {
-#ifdef COIN_HAS_CPX1
+#ifdef USE_CPLEX
         solution = solver.extract_best_solution();
 #endif
     }
