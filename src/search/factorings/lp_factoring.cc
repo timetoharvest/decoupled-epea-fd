@@ -1124,7 +1124,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
         }
     }
 
-    if (min_number_leaves >= 2) {
+    if (min_number_leaves >= 2 && !potential_leaves.empty()) {
 
         if (factoring_type == STRICT){
             // HACK to avoid logging to get messy when
