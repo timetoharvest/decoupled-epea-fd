@@ -86,7 +86,7 @@ Factoring::Factoring(const Options &opts) :
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
 }
 
-class CenterFactoring : public Factoring {
+class RandomFactoring : public Factoring {
 
 protected:
 
@@ -94,10 +94,11 @@ protected:
 
 public:
 
-    CenterFactoring(const Options &opts)
+    RandomFactoring(const Options &opts)
             : Factoring(opts) {
         profile = STAR;
-        cout << "using random 2-factor factoring profile" << endl;
+        min_number_leaves = 1;
+        cout << "using random 2-factor (1 leaf + center) factoring profile" << endl;
     }
 
 };
@@ -750,23 +751,23 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
     return best_factoring;
 }
 
-Factoring::FactoredVars CenterFactoring::get_factoring() { //////////////////////////////  CENTER
+Factoring::FactoredVars RandomFactoring::get_factoring() { //////////////////////////////  RANDOM
     // TODO implement factoring
     FactoredVars best_factoring(1);
 
-    srand(time(NULL));
+    srand(time(NULL)); // TODO add support for getting seed via command line
 
     uint64_t current_size = 1;
 
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         if (rand() % 2 == 0){
             best_factoring[0].insert(var);
-	    current_size *= g_variable_domain[var];
+            current_size *= g_variable_domain[var];
         }
         if (max_leaf_size != 0 && current_size > max_leaf_size){
             best_factoring[0].erase(var);
-	    break;
-	}
+            break;
+        }
     }
 
     if (best_factoring[0].size() == g_variable_domain.size()){
@@ -776,54 +777,7 @@ Factoring::FactoredVars CenterFactoring::get_factoring() { /////////////////////
         best_factoring[0].insert(rand() % g_variable_name.size());
     }
 
-
-//     best_factoring[0].insert(0);
-//     best_factoring[0].insert(1);
-//     best_factoring[0].insert(2);
-//     best_factoring[0].insert(3);
-//     best_factoring[0].insert(4);
-//     best_factoring[0].insert(5);
-//     best_factoring[0].insert(6);
-//     best_factoring[0].insert(7);
-//     best_factoring[0].insert(8);
-//     best_factoring[0].insert(9);
-//     best_factoring[0].insert(10);
-//     best_factoring[0].insert(11);
-//     best_factoring[0].insert(12);
-//     best_factoring[0].insert(13);
-//     best_factoring[0].insert(14);
-//     best_factoring[0].insert(15);
-//     best_factoring[0].insert(16);
-//     best_factoring[0].insert(17);
-//     best_factoring[0].insert(18);
-//     best_factoring[0].insert(19);
-//     best_factoring[0].insert(20);
-//     best_factoring[0].insert(21);
-//     best_factoring[0].insert(22);
-//     best_factoring[0].insert(23);
-//      best_factoring[0].insert(24);
-//     best_factoring[0].insert(25);
-//     best_factoring[0].insert(26);
-//     best_factoring[0].insert(27);
-//     best_factoring[0].insert(28);
-//     best_factoring[0].insert(29);
-//     best_factoring[0].insert(30);
-//     best_factoring[0].insert(31);
-
-    cout << endl;
-    for (size_t var = 0; var < g_variable_domain.size(); var++){
-        bool is_leaf = false;
-        for (size_t l = 0; l < best_factoring.size(); l++){
-            if (best_factoring[l].find(var) != best_factoring[l].end()){
-                cout << "leaf " << l << ":    " << g_fact_names[var][0] << endl;
-                is_leaf = true;
-            }
-        }
-        if (!is_leaf){
-            cout << "center:    " << g_fact_names[var][0] << endl;
-        }
-    }
-    cout << endl;
+    // TODO check if factoring is mobile
 
     return best_factoring;
 }
@@ -1798,7 +1752,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "search_type",
         search_types,
         "TODO",
-        "sda",
+        "SDA",
         vector<string>(),
         OptionFlags(false));
 
@@ -1926,6 +1880,20 @@ static Factoring *_parse_incarcs(OptionParser &parser) {
     return factoring;
 }
 
+static Factoring *_parse_random(OptionParser &parser) {
+    // TODO docu
+    Factoring::add_options_to_parser(parser);
+
+    Options opts = parser.parse();
+
+    RandomFactoring *factoring = 0;
+    if (!parser.dry_run()) {
+        factoring = new RandomFactoring(opts);
+    }
+
+    return factoring;
+}
+
 //static Factoring *_parse_doctransfer(OptionParser &parser) {
 //    // TODO docu
 //    Factoring::add_options_to_parser(parser);
@@ -1958,7 +1926,7 @@ static Plugin<Factoring> _plugin_fork("fork", _parse_fork);
 static Plugin<Factoring> _plugin_ifork("ifork", _parse_ifork);
 static Plugin<Factoring> _plugin_xshape("xshape", _parse_xshape);
 static Plugin<Factoring> _plugin_incarcs("incarcs", _parse_incarcs);
-//static Plugin<Factoring> _plugin_rand("random", _parse_rand);
+static Plugin<Factoring> _plugin_random("random", _parse_random);
 
 //static Plugin<Factoring> _plugin_sokoban("sokoban", _parse_sokoban);
 //static Plugin<Factoring> _plugin_tpp_const("tpp_const", _parse_tpp_const);
