@@ -5,10 +5,12 @@
 #include "../operator_cost.h"
 #include "../state_registry.h"
 #include "../task_utils/successor_generator.h"
+#include "../symmetries/decoupled_permutation.h"
 #include "../utils/system.h"
 
 #include <limits>
 #include <iostream>
+#include <numeric>
 
 
 using namespace std;
@@ -35,8 +37,23 @@ PathPriceTag::PathPriceTag() : Prices() {
 PathPriceTag::PathPriceTag(const PathPriceTag &other) : Prices(other) {
     paths = other.paths;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        for (LeafStateHash state(0); state < prices[factor].size(); ++state){
+        for (LeafStateHash state(0); state < paths[factor].size(); ++state){
             paths[factor][state].reset_generating_op();
+        }
+    }
+}
+
+PathPriceTag::PathPriceTag(const CompliantPathGraph &cpg) {
+    number_states = vector<size_t>(g_leaves.size(), 0);
+    prices = vector<vector<int> >(g_leaves.size());
+    goal_cost = vector<int>(g_leaves.size(), INF);
+    paths = vector<vector<PathPriceInfo> >(g_leaves.size());
+    
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (cpg.has_leaf_state(id, factor)){
+                add_state(id, factor, cpg.get_cost_of_state(id, factor), OperatorID::no_operator, LeafStateHash::MAX);
+            }
         }
     }
 }
@@ -217,6 +234,57 @@ void PathPriceTag::apply_center_op_to_leaves(const PathPriceTag &old_tag, const 
             ++id;
         }
     }
+}
+
+void PathPriceTag::apply_symmetry_permutation(const LeavesPermutation &per) {
+    // Copy prices and reinitialize affected factors
+    vector<vector<int> > old_prices(prices);
+    vector<size_t> old_number_states(number_states);
+    vector<int> old_goal_cost(goal_cost); // only for debugging
+    vector<vector<PathPriceInfo> > old_paths(paths);
+
+    for (LeafFactorID factor : per.get_factors_affected()) {
+        number_states[factor] = 0;
+        prices[factor] = vector<int>();
+        goal_cost[factor] = INF;
+        paths[factor] = vector<PathPriceInfo>();
+    }
+    
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
+
+        assert(find(per.get_factors_affected().begin(), 
+                         per.get_factors_affected().end(), to_factor)
+               != per.get_factors_affected().end());
+
+        assert(find(per.get_factors_affected().begin(), 
+                         per.get_factors_affected().end(), from_factor)
+               != per.get_factors_affected().end());
+
+        size_t num_states = old_number_states[from_factor]; 
+        for  (LeafStateHash id(0); num_states > 0; ++id){
+            assert(id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1){
+                continue;
+            }
+
+            size_t from_state_index = leaf_state_id_map[from_factor][id];
+            if (from_state_index >= old_prices[from_factor].size() || old_prices[from_factor][from_state_index] == INF){
+                continue;
+            }
+
+            num_states--;
+            pair<LeafStateHash, LeafFactorID> to_pair = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(to_pair.second == to_factor);
+            LeafStateHash to_state = to_pair.first;
+
+            // best_supporter and predecessor need to be permuted too. this is not required for plan reconstruction, though.
+            add_state(to_state, to_factor, old_prices[from_factor][from_state_index], OperatorID::no_operator, LeafStateHash::MAX);
+        }
+    }
+
+    assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 }
 
 unique_ptr<CompliantPathGraph> PathPriceTag::clone() const {

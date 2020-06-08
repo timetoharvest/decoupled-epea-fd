@@ -146,7 +146,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_cpg() {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         reach->add_state(LeafStateHash(0), factor);
     }
-    reach->update(g_initial_state());
+    reach->update(g_state_registry->get_center_state(g_initial_state_data));
 
     return reach;
 }
@@ -185,3 +185,22 @@ uint64_t PruningReachable::get_hash() const {
     }
     return hash_state.get_hash64();
 }
+
+size_t PruningReachable::get_memory_footprint() const {
+    size_t num_bytes = Reachable::get_memory_footprint();
+    if (num_bytes != 0 && !frontier.empty()){
+        num_bytes += sizeof(vector<boost::dynamic_bitset<> >);
+
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += frontier[factor].num_blocks() * sizeof(boost::dynamic_bitset<>::block_type);
+        }
+    }
+    return num_bytes;
+}
+
+void PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
+    // TODO implement this
+    cerr << "PruningReachable::apply_symmetry_permutation not implemented" << endl;
+    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+}
+    

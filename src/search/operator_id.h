@@ -1,7 +1,7 @@
 #ifndef OPERATOR_ID_H
 #define OPERATOR_ID_H
 
-#include <assert.h>
+#include <cassert>
 #include <iostream>
 
 /*

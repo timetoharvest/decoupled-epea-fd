@@ -8,8 +8,10 @@
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
+#include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
+#include <numeric>
 
 
 using namespace std;
@@ -70,8 +72,6 @@ void FrontierPrices::update(const State &new_center_state) {
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING RPG" << endl;
 #endif
-    
-    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -262,6 +262,12 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOM
     return DOMINANCE::NONE;
 }
 
+void FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+    EffectivePrices::apply_symmetry_permutation(per);
+    frontier.clear();
+    compute_cost_frontier();
+}
+
 void FrontierPrices::store_new_cpg(const State &state) {
     cpg_storage->store_cpg(state, *this);
 }
@@ -277,7 +283,7 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_init_state_cpg() {
         init_frontierprices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
         init_frontierprices->frontier[factor][0] = true;
     }
-    init_frontierprices->update(g_initial_state());
+    init_frontierprices->update(g_state_registry->get_center_state(g_initial_state_data));
     
     return init_frontierprices;
 }
@@ -434,6 +440,18 @@ void FrontierPrices::dump() const {
             }
         }
     }
+}
+
+size_t FrontierPrices::get_memory_footprint() const {
+    size_t num_bytes = EffectivePrices::get_memory_footprint();
+    if (num_bytes != 0 && !frontier.empty()){
+        num_bytes += sizeof(vector<boost::dynamic_bitset<> >);
+
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += frontier[factor].num_blocks() * sizeof(boost::dynamic_bitset<>::block_type);
+        }
+    }
+    return num_bytes;
 }
 
 unique_ptr<CompliantPathGraph> FrontierPrices::clone() const {

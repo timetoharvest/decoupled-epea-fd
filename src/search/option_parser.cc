@@ -305,8 +305,6 @@ string OptionParser::usage(string progname) {
         "--heuristic HEURISTIC_PREDEFINITION\n"
         "    Predefines a heuristic that can afterwards be referenced\n"
         "    by the name that is specified in the definition.\n"
-        "--random-seed SEED\n"
-        "    Use random seed SEED\n\n"
         "--internal-plan-file FILENAME\n"
         "    Plan will be output to a file called FILENAME\n\n"
         "--internal-previous-portfolio-plans COUNTER\n"

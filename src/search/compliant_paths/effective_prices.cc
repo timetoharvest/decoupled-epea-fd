@@ -8,8 +8,10 @@
 #include "pruning_options.h"
 #include "simulation_relation.h"
 #include "../state_registry.h"
+#include "../symmetries/decoupled_permutation.h"
 
 #include <limits>
+#include <numeric>
 
 
 using namespace std;
@@ -315,7 +317,7 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         init_effprices->add_state(LeafStateHash(0), factor, 0);
     }
-    init_effprices->update(g_initial_state());
+    init_effprices->update(g_state_registry->get_center_state(g_initial_state_data));
     
     return init_effprices;
 }
@@ -387,6 +389,97 @@ void EffectivePrices::propagate_dominance_prices() {
     }  
 }
 
+void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+    // Copy prices and reinitialize affected factors
+    vector<vector<int> > old_prices(g_leaves.size());
+    vector<size_t> old_number_states(g_leaves.size());
+    vector<vector<int> > old_effective_prices(g_leaves.size());
+    vector<size_t> old_number_effective_states(g_leaves.size());
+    
+#ifndef NDEBUG
+    vector<int> old_goal_cost(goal_cost);
+
+    old_number_states = number_states;
+    old_number_effective_states = number_effective_states;
+#endif
+
+    for (LeafFactorID factor : per.get_factors_affected()) {
+        old_number_states[factor] = number_states[factor];
+        old_prices[factor] = prices[factor];
+
+        number_states[factor] = 0;
+        prices[factor] = vector<int>();
+        goal_cost[factor] = INF;
+        if (!effective_prices.empty()){
+            old_effective_prices[factor] = effective_prices[factor];
+            old_number_effective_states[factor] = number_effective_states[factor];
+
+            effective_prices[factor] = vector<int>();
+            number_effective_states[factor] = 0;
+        }
+    }
+    
+    for(LeafFactorID to_factor : per.get_factors_affected()) {
+        assert(prices[to_factor].empty());
+
+        LeafFactorID from_factor = per.get_from_factor(to_factor);
+
+        assert(find(per.get_factors_affected().begin(),
+                per.get_factors_affected().end(), to_factor)
+                != per.get_factors_affected().end());
+
+        assert(find(per.get_factors_affected().begin(),
+                per.get_factors_affected().end(), from_factor)
+                != per.get_factors_affected().end());
+
+        size_t num_states = old_number_states[from_factor];
+        for  (LeafStateHash id(0); num_states > 0; ++id){
+            assert (id < leaf_state_id_map[from_factor].size());
+            if (leaf_state_id_map[from_factor][id] == -1) {
+                continue;
+            }
+
+            size_t leaf_state = leaf_state_id_map[from_factor][id];
+            if (leaf_state >= old_prices[from_factor].size() ||
+                    old_prices[from_factor][leaf_state] == INF){
+                continue;
+            }
+
+            --num_states;
+            auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+            assert(t_factor == to_factor);
+
+            add_state(to_state, to_factor, old_prices[from_factor][leaf_state]);
+        }
+
+        if (!effective_prices.empty()){
+            size_t num_eff_states = old_number_effective_states[from_factor];
+            for  (LeafStateHash id(0); num_eff_states > 0; ++id){
+                assert (id < leaf_state_id_map[from_factor].size());
+                if (leaf_state_id_map[from_factor][id] == -1) {
+                    continue;
+                }
+
+                size_t leaf_state = leaf_state_id_map[from_factor][id];
+                if (leaf_state >= old_effective_prices[from_factor].size() ||
+                        old_effective_prices[from_factor][leaf_state] == INF){
+                    continue;
+                }
+
+                --num_eff_states;
+                auto [to_state, t_factor] = per.get_new_factor_state_by_old_factor_state(id, from_factor);
+                assert(t_factor == to_factor);
+
+                add_effective_state(to_state, to_factor, old_effective_prices[from_factor][leaf_state]);
+            }
+        }
+    }
+
+    assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
+    assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
+    assert(accumulate(number_effective_states.begin(), number_effective_states.end(), 0) == accumulate(old_number_effective_states.begin(), old_number_effective_states.end(), 0));
+}
+
 void EffectivePrices::dump() const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         cout << "factor " << factor << " goal_cost = " << goal_cost[factor] << endl;
@@ -420,5 +513,20 @@ uint64_t EffectivePrices::get_hash() const {
         }
     }
     return hash_state.get_hash64();
+}
+
+size_t EffectivePrices::get_memory_footprint() const {
+    size_t num_bytes = Prices::get_memory_footprint();
+    if (num_bytes != 0 && !effective_prices.empty()){
+        num_bytes += sizeof(vector<size_t>);
+        num_bytes += g_leaves.size() * sizeof(size_t);
+
+        num_bytes += sizeof(vector<vector<int> >);
+        num_bytes += g_leaves.size() * sizeof(vector<int>);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            num_bytes += effective_prices[factor].size() * sizeof(int);
+        }
+    }
+    return num_bytes;
 }
 

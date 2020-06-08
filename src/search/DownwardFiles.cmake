@@ -83,8 +83,6 @@ fast_downward_plugin(
         weighted_evaluator
           
         open_lists/open_list_buckets
-        
-        lp_solver_interface
 
         additive_heuristic
         blind_search_heuristic
@@ -151,10 +149,34 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME DYNAMIC_BITSET
+    HELP "Poor man's version of boost::dynamic_bitset"
+    SOURCES
+        algorithms/dynamic_bitset
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME MAXIMUM_INDEPENDENT_SET
+    HELP "Class that computes maximum independent sets"
+    SOURCES
+        algorithms/mis
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME EQUIVALENCE_RELATION
     HELP "Equivalence relation over [1, ..., n] that can be iteratively refined"
     SOURCES
         algorithms/equivalence_relation
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME INT_HASH_SET
+    HELP "Hash set storing non-negative integers"
+    SOURCES
+        algorithms/int_hash_set
     DEPENDENCY_ONLY
 )
 
@@ -167,10 +189,26 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME MAX_CLIQUES
+    HELP "Implementation of the Max Cliques algorithm by Tomita et al."
+    SOURCES
+        algorithms/max_cliques
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME PRIORITY_QUEUES
     HELP "Three implementations of priority queue: HeapQueue, BucketQueue and AdaptiveQueue"
     SOURCES
         algorithms/priority_queues
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME ORDERED_SET
+    HELP "Set of elements ordered by insertion time"
+    SOURCES
+        algorithms/ordered_set
     DEPENDENCY_ONLY
 )
 
@@ -199,8 +237,45 @@ fast_downward_plugin(
         compliant_paths/pruning_reachable
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
-    DEPENDS SCCS CAUSAL_GRAPH
-    CORE_PLUGIN
+    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
+)
+
+fast_downward_plugin(
+    NAME MIS_FACTORING
+    HELP "Class relevant to use factoring strategies using an maximum indepedent sets"
+    SOURCES
+        factorings/factoring_ranking
+        factorings/mis_factoring
+    DEPENDS DECOUPLED_SEARCH MAXIMUM_INDEPENDENT_SET VARIABLE_INT
+)
+
+fast_downward_plugin(
+    NAME LP_FACTORING
+    HELP "Class relevant to use factoring strategies using an LP solver"
+    SOURCES
+        factorings/lp_factoring
+    DEPENDS DECOUPLED_SEARCH LP_SOLVER
+)
+
+fast_downward_plugin(
+    NAME VARIABLE_INT
+    HELP "Class representing an integer with variable memory footprint"
+    SOURCES
+        utils/variable_int
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME SYMMETRIES
+    HELP "Classes relevant to use symmetry breaking"
+    SOURCES
+        symmetries/decoupled_group
+        symmetries/decoupled_permutation
+        symmetries/graph_creator
+        symmetries/group
+        symmetries/lexicographic_ordering
+        symmetries/permutation
+    DEPENDENCY_ONLY
 )
 
 fast_downward_plugin(
@@ -233,6 +308,16 @@ fast_downward_plugin(
     SOURCES
         pruning/stubborn_sets_decoupled
     DEPENDS STUBBORN_SETS_SIMPLE DECOUPLED_SEARCH
+)
+
+fast_downward_plugin(
+    NAME LP_SOLVER
+    HELP "Interface to an LP solver"
+    SOURCES
+        lp/cplex_solver
+        lp/lp_internals
+        lp/lp_solver
+    DEPENDENCY_ONLY
 )
 
 fast_downward_plugin(
@@ -306,14 +391,14 @@ fast_downward_plugin(
         landmarks/landmark_factory_rpg_sasp
         landmarks/landmark_factory_zhu_givan
         landmarks/util
-    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH
+    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
 )
  
 fast_downward_plugin(
     NAME PDBS
     HELP "Plugin containing the code for PDBs"
     SOURCES
-		pdbs/canonical_pdbs_heuristic
+        pdbs/canonical_pdbs_heuristic
         pdbs/dominance_pruner
         pdbs/match_tree
         pdbs/max_cliques
@@ -331,30 +416,6 @@ fast_downward_plugin(
          "directed graph."
     SOURCES
         algorithms/sccs
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME DYNAMIC_BITSET
-    HELP "Dynamic bitset implementation."
-    SOURCES
-        algorithms/dynamic_bitset
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME INT_HASH_SET
-    HELP "Int hashset implementation."
-    SOURCES
-        algorithms/int_hash_set
-    DEPENDENCY_ONLY
-)
-
-fast_downward_plugin(
-    NAME ORDERED_SET
-    HELP "Ordered set implementation"
-    SOURCES
-        algorithms/ordered_set
     DEPENDENCY_ONLY
 )
 

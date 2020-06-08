@@ -44,11 +44,13 @@ If NT shall be predefinable:
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
+class GraphCreator;
 class MergeStrategy;
 template<class Entry>
 class OpenList;
 class PruningMethod;
 class PruningOptions;
+class FactoringRanking;
 class SearchEngine;
 class ShrinkStrategy;
 
@@ -99,6 +101,12 @@ public:
 };
 
 template <>
+class TokenParser<GraphCreator *> {
+public:
+    static inline GraphCreator *parse(OptionParser &p);
+};
+
+template <>
 class TokenParser<ScalarEvaluator *> {
 public:
     static inline ScalarEvaluator *parse(OptionParser &p);
@@ -133,6 +141,12 @@ template <>
 class TokenParser<Factoring *> {
 public:
     static inline Factoring *parse(OptionParser &p);
+};
+
+template <>
+class TokenParser<FactoringRanking *> {
+public:
+    static inline FactoringRanking *parse(OptionParser &p);
 };
 
 template <>
@@ -401,6 +415,14 @@ LandmarkGraph *TokenParser<LandmarkGraph *>::parse(OptionParser &p) {
     return lookup_in_registry<LandmarkGraph>(p);
 }
 
+GraphCreator *TokenParser<GraphCreator *>::parse(OptionParser &p) {
+    bool predefined;
+    GraphCreator *result = lookup_in_predefinitions<GraphCreator>(p, predefined);
+    if (predefined)
+        return result;
+    return lookup_in_registry<GraphCreator>(p);
+}
+
 //TODO find a general way to handle parsing of superclasses (see also issue28)
 ScalarEvaluator *TokenParser<ScalarEvaluator *>::parse(OptionParser &p) {
     ParseTree::iterator pt = p.get_parse_tree()->begin();
@@ -444,6 +466,10 @@ Synergy *TokenParser<Synergy *>::parse(OptionParser &p) {
 
 Factoring *TokenParser<Factoring *>::parse(OptionParser &p) {
     return lookup_in_registry<Factoring>(p);
+}
+
+FactoringRanking *TokenParser<FactoringRanking *>::parse(OptionParser &p) {
+    return lookup_in_registry<FactoringRanking>(p);
 }
 
 PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {

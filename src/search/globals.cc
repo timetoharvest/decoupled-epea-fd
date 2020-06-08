@@ -11,6 +11,7 @@
 #include "operator.h"
 #include "state.h"
 #include "state_registry.h"
+#include "symmetries/graph_creator.h"
 #include "task_utils/successor_generator.h"
 #include "utils/system.h"
 #include "utils/timer.h"
@@ -270,13 +271,14 @@ void read_everything(istream &in) {
     
     
     if (g_factoring){
-        verify_no_axioms_no_conditional_effects(); // TODO move this to into Factoring
-        
         g_factoring->do_factoring_or_abstain();
+        if (g_factoring->run_standard_search_because_factoring_failed()){
+            g_factoring.reset();
+        }
     }
 
     assert(!g_variable_domain.empty());
-    if (g_factoring){        
+    if (g_factoring){
         vector<int> center_domains;
         vector<vector<int> > leaf_domains(g_leaves.size());
         for (size_t var = 0; var < g_belongs_to_factor.size(); var++){
@@ -441,6 +443,8 @@ vector<int> g_center;
 vector<vector<int> > g_leaves;
 vector<LeafFactorID> g_belongs_to_factor;
 vector<size_t> g_new_index;
+
+unique_ptr<GraphCreator> g_symmetry_graph;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;

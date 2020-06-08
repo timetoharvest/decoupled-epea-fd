@@ -1,6 +1,7 @@
 #ifndef REACHABILITY_FUNCTION_H
 #define REACHABILITY_FUNCTION_H
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "compliant_path_graph.h"
 
 #include <vector>
@@ -42,6 +43,8 @@ protected:
     
     virtual void store_new_cpg(const State &state) override;
     
+    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override;
+
 public:
     
     Reachable(){};
@@ -66,9 +69,13 @@ public:
     
     virtual void dump() const override;
 
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
     virtual uint64_t get_hash() const override;
+
+    virtual size_t get_memory_footprint() const;
 
     
     static void register_cpg_storage(ReachableStorage *storage);

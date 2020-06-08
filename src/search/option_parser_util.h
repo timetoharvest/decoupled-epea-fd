@@ -17,13 +17,15 @@
 
 
 class Factoring;
-class MergeStrategy;
-class ShrinkStrategy;
-class LandmarkGraph;
 class Heuristic;
+class LandmarkGraph;
+class MergeStrategy;
+class FactoringRanking;
+class GraphCreator;
 class ScalarEvaluator;
 class Synergy;
 class SearchEngine;
+class ShrinkStrategy;
 class OptionParser;
 template<class Entry>
 class OpenList;
@@ -218,6 +220,13 @@ struct TypeNamer<Factoring *> {
 };
 
 template <>
+struct TypeNamer<FactoringRanking *> {
+    static std::string name() {
+        return "FactoringRanking";
+    }
+};
+
+template <>
 struct TypeNamer<Heuristic *> {
     static std::string name() {
         return "Heuristic";
@@ -228,6 +237,13 @@ template <>
 struct TypeNamer<LandmarkGraph *> {
     static std::string name() {
         return "LandmarkGraph";
+    }
+};
+
+template <>
+struct TypeNamer<GraphCreator *> {
+    static std::string name() {
+        return "GraphCreator";
     }
 };
 

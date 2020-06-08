@@ -46,6 +46,8 @@ protected:
     
     virtual void store_new_cpg(const State &state) override;
     
+    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override;
+
 public:
     
     Prices(){};
@@ -73,6 +75,10 @@ public:
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
     virtual uint64_t get_hash() const override;
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+
+    virtual size_t get_memory_footprint() const;
 
 
     static void register_cpg_storage(PriceStorage *storage);

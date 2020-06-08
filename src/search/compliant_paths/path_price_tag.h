@@ -10,11 +10,11 @@ struct PathPriceInfo {
     bool is_new;
     
     PathPriceInfo() : generating_op(OperatorID::no_operator),
-                         predecessor(LeafStateHash::MAX),
-                         is_new(false) {}
+                      predecessor(LeafStateHash::MAX),
+                      is_new(false) {}
     
-    PathPriceInfo(OperatorID bs, LeafStateHash predecessor, bool is_new = false)
-            : generating_op(bs), predecessor(predecessor), is_new(is_new) {}
+    PathPriceInfo(OperatorID op, LeafStateHash predecessor, bool is_new = false)
+            : generating_op(op), predecessor(predecessor), is_new(is_new) {}
             
     void reset_generating_op() {
         is_new = false;
@@ -41,6 +41,8 @@ class PathPriceTag : public Prices { // TODO rename to PathPrices?
 
     PathPriceTag(const PathPriceTag &cpg);
 
+    PathPriceTag(const CompliantPathGraph &cpg);
+
     const PathPriceInfo &get_path_info(LeafStateHash id, LeafFactorID factor) const;
     
     void update(const State &new_center_state);
@@ -48,7 +50,9 @@ class PathPriceTag : public Prices { // TODO rename to PathPrices?
     void apply_center_op_to_leaves(const PathPriceTag &old_cpg, const Operator &op);
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
-    
+
+    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+
 };
 
 #endif

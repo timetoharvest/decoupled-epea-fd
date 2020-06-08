@@ -3,6 +3,7 @@
 #include "successor_generator_factory.h"
 #include "successor_generator_internals.h"
 
+#include "../ext/boost/dynamic_bitset.hpp"
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/compliant_path_graph.h"
 #include "../factoring.h"
@@ -29,7 +30,7 @@ SuccessorGenerator::~SuccessorGenerator() = default;
 static vector<size_t> counter;
 static boost::dynamic_bitset<> is_applicable_leaf;
 
-void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
+void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph &cpg,
                                                  vector<OperatorID> &applicable_ops) const {
     assert(g_factoring);
 
@@ -56,10 +57,10 @@ void SuccessorGenerator::remove_inapplicable_ops(const CompliantPathGraph *cpg,
 
         is_applicable_leaf.reset();
 
-        size_t number_states = cpg->get_number_states(factor);
+        size_t number_states = cpg.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0){
-            if (cpg->has_leaf_state(id, factor)){
+            if (cpg.has_leaf_state(id, factor)){
                 --number_states;
                 assert(id < CompliantPathGraph::center_successors[factor].size());
                 for (OperatorID index : CompliantPathGraph::center_successors[factor][id]){
@@ -100,8 +101,15 @@ void SuccessorGenerator::generate_applicable_ops(
     root->generate_applicable_ops(state, applicable_ops);
 
     if (g_factoring){
-        remove_inapplicable_ops(CPGStorage::storage->get_cpg(state), applicable_ops);
+        remove_inapplicable_ops(*CPGStorage::storage->get_cpg(state), applicable_ops);
     }
+}
+
+void SuccessorGenerator::generate_applicable_ops(const State &state,
+                                                 const CompliantPathGraph &cpg,
+                                                 vector<OperatorID> &applicable_ops) const {
+    root->generate_applicable_ops(state, applicable_ops);
+    remove_inapplicable_ops(cpg, applicable_ops);
 }
 
 void SuccessorGenerator::generate_applicable_ops(

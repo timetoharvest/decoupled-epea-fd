@@ -17,6 +17,7 @@ bool PruningOptions::reopen_closed_nodes = false;
 
 PruningOptions::PruningOptions(const Options &opts)
                     : pruning_type(PRUNING_TYPE(opts.get_enum("pruning_type"))),
+                      hypercube_pruning(opts.get<bool>("hypercube_pruning")),
                       min_price_in_g(opts.get<bool>("include_price_in_g")),
                       g_in_dominance(opts.get<bool>("include_g_in_dominance")),
                       prices_in_dominance(opts.get<bool>("trade_prices_in_dominance")),
@@ -54,6 +55,7 @@ PruningOptions::PruningOptions(const Options &opts)
         min_price_in_g = false;
         g_in_dominance = false;
         prices_in_dominance = false;
+        // TODO is there any reason to have this check here and not in verify_options?
     }
 }
 
@@ -65,17 +67,38 @@ void PruningOptions::verify_options() const {
                 irrelevance != IRRELEVANCE::NO){
 
             cerr << "Advanced pruning methods are only supported for fork factorings!" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
             cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }        
         if (do_simulation){
             cout << "simulation is not (yet) supported for satisficing search" << endl;
-            exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+    }
+    if (hypercube_pruning){
+        if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
+            cout << "Hypercube pruning is only supported for satisficing planning." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (pruning_type == PRUNING_TYPE::FRONTIER){
+            cout << "Hypercube pruning is not supported with frontier pruning." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+    }
+    if (g_symmetry_graph){
+        if (irrelevance != IRRELEVANCE::NO){
+            cout << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (pruning_type == PRUNING_TYPE::FRONTIER && 
+               (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
+            cout << "Satisficing search with frontier pruning is not supported for decoupled orbit search!" << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
 }
@@ -98,6 +121,10 @@ void PruningOptions::initialize() const {
 
 
 void PruningOptions::add_options_to_parser(OptionParser &parser){
+    parser.add_option<bool>("hypercube_pruning",
+                            "perform hypercube pruning",
+                            "false");
+
     parser.add_option<bool>("include_price_in_g",
                             "increase the g-value of decoupled states by the sum of minimum prices",
                             "true");
