@@ -10,6 +10,7 @@
 #include "state_id.h"
 #include "utils/hash.h"
 
+#include <chrono>
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
@@ -197,7 +198,9 @@ class StateRegistry {
                                               LeafStateIDSemanticEqual>;
                             
     using DupCounterTable = std::unordered_map<size_t, size_t>;
-                            
+
+
+    std::chrono::duration<double> dominance_pruning_timer;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
     

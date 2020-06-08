@@ -13,7 +13,8 @@
 using namespace std;
 
 StateRegistry::StateRegistry()
-    : state_data_pool(g_state_packer->get_num_bins()),
+    : dominance_pruning_timer(0.0),
+      state_data_pool(g_state_packer->get_num_bins()),
       leaf_state_data_pool(vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* >
                                 (g_leaves.size(), 0)),
       registered_states(0,
@@ -346,7 +347,9 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             new_cpg->store_new_cpg(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {
+            auto start = std::chrono::high_resolution_clock::now();
             auto [new_dup_counter, replace_old_cpg] = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
+            dominance_pruning_timer += std::chrono::high_resolution_clock::now() - start;
             assert((size_t) new_dup_counter < MAX_DUPLICATE_COUNTER);
             
             state_data_pool.push_back(s.get_packed_buffer());
@@ -528,6 +531,8 @@ void StateRegistry::output_decoupled_state_space_size() const {
         dec_size += CPGStorage::storage->get_cpg(lookup_state(StateID(i)))->get_memory_footprint();
     }
     cout << "decoupled state space size " << dec_size << endl;
+
+    cout << "Time spent on dominance pruning: " << dominance_pruning_timer.count() << "s" << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {
