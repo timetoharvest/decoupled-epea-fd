@@ -6,6 +6,7 @@
 #include "../globals.h"
 #include "../operator_cost.h"
 #include "../operator_id.h"
+#include "../per_state_information.h"
 #include "pruning_options.h"
 
 #include <vector>
@@ -32,6 +33,14 @@ class CompliantPathGraph {
     friend class SearchSpace; // init state cpg + get successors
     
 
+    // this stores for every decoupled base state (i.e. state with duplicate counter 0
+    // the set of decoupled states (in terms of their dup counter) that is dominated
+    // by another generated decoupled state. such states can be skipped in dominance
+    // pruning, since states that will by pruned by them will also be pruned by another
+    // states that dominates them
+    static PerStateInformation<boost::dynamic_bitset<> > is_dominated_state;
+
+
     static void build_leaf_state_space(Prices &prices,
                                        LeafStateHash first_state_id,
                                        LeafFactorID factor,
@@ -43,7 +52,7 @@ class CompliantPathGraph {
     static void build_leaf_state_spaces();
     
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
-    
+
 protected:
     
     // contains center actions only, keeping their leaf preconditions

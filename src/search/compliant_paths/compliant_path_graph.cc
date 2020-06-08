@@ -56,6 +56,8 @@ vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
     
 vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
 
+PerStateInformation<boost::dynamic_bitset<> > CompliantPathGraph::is_dominated_state;
+
 
 
 bool CompliantPathGraph::is_leaf_goal_state(LeafStateHash id, LeafFactorID factor) {
@@ -173,13 +175,18 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
     for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // check the price tags of all equal center states
         
+        if ((size_t) dup < is_dominated_state[base_state].size()
+                && is_dominated_state[base_state][dup]){
+            continue;
+        }
+
 #ifdef DEBUG_PRUNING
         cout << "current dup counter " << dup << endl;
 #endif
 
         // get other state
         const State s = g_state_registry->get_decoupled_state(base_state, dup);
-        
+
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
         CPGStorage::storage->get_mutable_cpg(s)->dump();
@@ -200,6 +207,10 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                 if (node.is_open()){
                     node.close();
                 }
+                if ((size_t) dup >= is_dominated_state[base_state].size()){
+                    is_dominated_state[base_state].resize(dup + 1, false);
+                }
+                is_dominated_state[base_state][dup] = true;
             } else if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL) {
                 // TODO could as well return duplicate right away; try this out
                 // TODO if it turns out not to make a difference, merge this with
@@ -233,6 +244,10 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                     if (node.is_open()){
                         node.close();
                     }
+                    if ((size_t) dup >= is_dominated_state[base_state].size()){
+                        is_dominated_state[base_state].resize(dup + 1, false);
+                    }
+                    is_dominated_state[base_state][dup] = true;
                 }
                 
             } else {
@@ -260,6 +275,10 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                             if (node.is_open()){
                                 node.close();
                             }
+                            if ((size_t) dup >= is_dominated_state[base_state].size()){
+                                is_dominated_state[base_state].resize(dup + 1, false);
+                            }
+                            is_dominated_state[base_state][dup] = true;
                         }
 
                     } else if (new_g < old_g) {
@@ -292,6 +311,10 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                             if (node.is_open()){
                                 node.close();
                             }
+                            if ((size_t) dup >= is_dominated_state[base_state].size()){
+                                is_dominated_state[base_state].resize(dup + 1, false);
+                            }
+                            is_dominated_state[base_state][dup] = true;
                         }
                     }
 
