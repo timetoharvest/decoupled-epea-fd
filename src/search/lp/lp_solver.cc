@@ -69,23 +69,28 @@ void LPConstraint::insert(int index, double coefficient) {
 }
 
 LPVariable::LPVariable(double lower_bound, double upper_bound,
-                       double objective_coefficient)
+                       double objective_coefficient, bool is_integer)
     : lower_bound(lower_bound),
       upper_bound(upper_bound),
-      objective_coefficient(objective_coefficient) {
+      objective_coefficient(objective_coefficient),
+      is_integer(is_integer) {
 }
+
 
 LPSolver::~LPSolver() {
 }
 
 #ifdef USE_LP
 
-LPSolver::LPSolver(LPSolverType solver_type)
+LPSolver::LPSolver(LPSolverType solver_type, bool create_solver)
     : is_initialized(false),
+      is_mip(false),
       is_solved(false),
       num_permanent_constraints(0),
       has_temporary_constraints_(false) {
-    lp_solver = create_lp_solver(solver_type);
+    if (create_solver){
+        lp_solver = create_lp_solver(solver_type);
+    }
 }
 
 void LPSolver::clear_temporary_data() {
@@ -104,6 +109,7 @@ void LPSolver::load_problem(LPObjectiveSense sense,
                             const vector<LPVariable> &variables,
                             const vector<LPConstraint> &constraints) {
     clear_temporary_data();
+    is_mip = false;
     is_initialized = false;
     num_permanent_constraints = constraints.size();
 
@@ -152,6 +158,12 @@ void LPSolver::load_problem(LPObjectiveSense sense,
                                objective.data(),
                                row_lb.data(),
                                row_ub.data());
+        for (int i = 0; i < static_cast<int>(variables.size()); ++i) {
+            if (variables[i].is_integer) {
+                lp_solver->setInteger(i);
+                is_mip = true;
+            }
+        }
         /*
           We set the objective sense after loading because the SoPlex
           interfaces of all OSI versions <= 0.108.4 ignore it when it is
@@ -289,6 +301,9 @@ void LPSolver::solve() {
         } else {
             lp_solver->initialSolve();
             is_initialized = true;
+        }
+        if (is_mip) {
+            lp_solver->branchAndBound();
         }
         if (lp_solver->isAbandoned()) {
             // The documentation of OSI is not very clear here but memory seems

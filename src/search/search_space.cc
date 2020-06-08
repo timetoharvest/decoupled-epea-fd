@@ -452,7 +452,7 @@ void SearchSpace::trace_decoupled_path(vector<OperatorID> &path, vector<StateID>
             }
 
             if (need_compliant_leaf_state || (op != nullptr && op->has_precondition_on(factor))){
-                // find and mark leaf precondition of center op
+                // collect and mark leaf precondition of center op
                 assert(marked_leaf_states[factor] == LeafStateHash::MAX || op->is_applicable(marked_leaf_states[factor], factor));
 
                 if (marked_leaf_states[factor] == LeafStateHash::MAX){

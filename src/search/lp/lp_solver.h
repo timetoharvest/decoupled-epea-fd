@@ -24,9 +24,8 @@
 #endif
 
 class CoinPackedVectorBase;
-class OsiSolverInterface;
-
 class OptionParser;
+class OsiSolverInterface;
 
 namespace lp {
 enum class LPSolverType {
@@ -65,10 +64,12 @@ struct LPVariable {
     double lower_bound;
     double upper_bound;
     double objective_coefficient;
+    bool is_integer;
 
     LPVariable(double lower_bound,
                double upper_bound,
-               double objective_coefficient);
+               double objective_coefficient,
+               bool is_integer = false);
 };
 
 #ifdef __GNUG__
@@ -77,6 +78,7 @@ struct LPVariable {
 #endif
 class LPSolver {
     bool is_initialized;
+    bool is_mip;
     bool is_solved;
     int num_permanent_constraints;
     bool has_temporary_constraints_;
@@ -99,7 +101,8 @@ class LPSolver {
     std::vector<CoinPackedVectorBase *> rows;
     void clear_temporary_data();
 public:
-    LP_METHOD(explicit LPSolver(LPSolverType solver_type))
+
+    LP_METHOD(explicit LPSolver(LPSolverType solver_type, bool create_solver = true))
     /*
       Note that the destructor does not use LP_METHOD because it should not
       have the attribute NO_RETURN. It also cannot be set to the default
@@ -112,6 +115,7 @@ public:
                   LPObjectiveSense sense,
                   const std::vector<LPVariable> &variables,
                   const std::vector<LPConstraint> &constraints))
+
     LP_METHOD(void add_temporary_constraints(const std::vector<LPConstraint> &constraints))
     LP_METHOD(void clear_temporary_constraints())
     LP_METHOD(double get_infinity() const)

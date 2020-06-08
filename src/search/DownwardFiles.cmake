@@ -157,6 +157,14 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME MAXIMUM_INDEPENDENT_SET
+    HELP "Class that computes maximum independent sets"
+    SOURCES
+        algorithms/mis
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME EQUIVALENCE_RELATION
     HELP "Equivalence relation over [1, ..., n] that can be iteratively refined"
     SOURCES
@@ -230,7 +238,31 @@ fast_downward_plugin(
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
     DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
-    CORE_PLUGIN
+)
+
+fast_downward_plugin(
+    NAME MIS_FACTORING
+    HELP "Class relevant to use factoring strategies using an maximum indepedent sets"
+    SOURCES
+        factorings/factoring_ranking
+        factorings/mis_factoring
+    DEPENDS DECOUPLED_SEARCH MAXIMUM_INDEPENDENT_SET VARIABLE_INT
+)
+
+fast_downward_plugin(
+    NAME LP_FACTORING
+    HELP "Class relevant to use factoring strategies using an LP solver"
+    SOURCES
+        factorings/lp_factoring
+    DEPENDS DECOUPLED_SEARCH LP_SOLVER
+)
+
+fast_downward_plugin(
+    NAME VARIABLE_INT
+    HELP "Class representing an integer with variable memory footprint"
+    SOURCES
+        utils/variable_int
+    DEPENDENCY_ONLY
 )
 
 fast_downward_plugin(
@@ -282,6 +314,7 @@ fast_downward_plugin(
     NAME LP_SOLVER
     HELP "Interface to an LP solver"
     SOURCES
+        lp/cplex_solver
         lp/lp_internals
         lp/lp_solver
     DEPENDENCY_ONLY

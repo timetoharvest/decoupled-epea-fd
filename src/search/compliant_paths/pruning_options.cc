@@ -55,6 +55,7 @@ PruningOptions::PruningOptions(const Options &opts)
         min_price_in_g = false;
         g_in_dominance = false;
         prices_in_dominance = false;
+        // TODO is there any reason to have this check here and not in verify_options?
     }
 }
 

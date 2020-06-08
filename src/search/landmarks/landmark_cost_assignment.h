@@ -34,17 +34,12 @@ public:
     virtual double cost_sharing_h_value();
 };
 
-#ifdef USE_LP
-class OsiSolverInterface;
-#endif
-
 class LandmarkEfficientOptimalSharedCostAssignment : public LandmarkCostAssignment {
-#ifdef USE_LP
-    OsiSolverInterface *si;
-#endif
+    lp::LPSolverType solver_type;
+
 public:
     LandmarkEfficientOptimalSharedCostAssignment(LandmarkGraph &graph, OperatorCost cost_type, lp::LPSolverType solver_type);
-    virtual ~LandmarkEfficientOptimalSharedCostAssignment();
+    virtual ~LandmarkEfficientOptimalSharedCostAssignment() = default;
 
     virtual double cost_sharing_h_value();
 };

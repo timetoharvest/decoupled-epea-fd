@@ -3,7 +3,7 @@
 
 #include "globals.h"
 #include "leaf_state_id.h"
-#include "utils/system.h"
+#include "utils/countdown_timer.h"
 
 #include <set>
 #include <string>
@@ -20,23 +20,15 @@
 enum FACTORING_PROFILE {
     FORK,
     IFORK,
-    XSHAPE,
     STAR,
-    SOKOBAN,    // domain dependent factoring
-    OPENSTACKS, // domain dependent factoring
-    TPP_CONSTRAINED, // domain dependent factoring
-    INV_TPP_CONSTRAINED, // domain dependent factoring
-    DOC_TRANSFER, // domain dependent factoring
-    PEGSOL, // domain dependent factoring
 };
 
-enum DECOUPLED_SEARCH_TYPE { // TODO rename this + add a type that starts standard search if no factoring was found
+enum DECOUPLED_SEARCH_TYPE {
     FRA,        // optimal fork-decoupled search; stop if leaf plan not optimal
     ASDA,       // optimal anytime search with center heuristic
     SDA,        // optimal decoupled search with star heuristic
     SAT,        // satisficing search
-    UNSAT,      // for proving unsolvability (SAT + optimizations)
-    NO_SEARCH   // stop after doing the factoring
+    UNSAT       // for proving unsolvability (SAT + optimizations)
 };
 
 
@@ -80,15 +72,35 @@ class Options;
 
 class Factoring {
     
+    enum ABSTAIN_TYPE {
+        ABSTAIN_ON_FAILURE, // default, if no factoring is found, the planner stops
+        STANDARD_ON_FAILURE, // run standard search if no factoring is found
+        NO_SEARCH   // stop after doing the factoring
+    };
+
     DECOUPLED_SEARCH_TYPE search_type;
+
+    ABSTAIN_TYPE abstain_type;
     
     size_t max_precompute_state_space_size;
     
+    int factoring_time_limit;
+
+    std::vector<bool> fork_leaf;
+
+    std::vector<bool> ifork_leaf;
+
+    void apply_factoring(const std::vector<std::set<int> > &factoring);
+
+    void print_factoring() const;
+
+    bool is_factoring_possible() const;
+
 protected:
     
-    typedef std::vector<std::set<int> > FactoredVars;
-    
-    static FactoredVars var_to_affecting_op;
+    using FactoredVars = std::vector<std::set<int> >;
+
+    static std::vector<std::set<int> > var_to_affecting_op;
 
     static void init_var_to_ops_map();
 
@@ -97,12 +109,11 @@ protected:
     
     size_t min_number_leaves;
     
+    // TODO so-far, this is only considered by LP-based, incident arcs, and MIS factorings; all other factorings ignore the limit
+    utils::CountdownTimer factoring_timer;
+
     FACTORING_PROFILE profile;
-    
-    std::vector<bool> fork_leaf;
-    
-    std::vector<bool> ifork_leaf;
-    
+
     virtual FactoredVars get_factoring() = 0;
     
     FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
@@ -111,11 +122,8 @@ protected:
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
-    void apply_factoring(const FactoredVars &factoring);
-    
-    void print_factoring() const;
-    
-    Factoring(const Options &ops);
+
+    Factoring(const Options &opts);
     
 public:
     
@@ -137,6 +145,11 @@ public:
     
     DECOUPLED_SEARCH_TYPE get_search_type() const {
         return search_type;
+    }
+
+    bool run_standard_search_because_factoring_failed() const {
+        // TODO hacky, fix this
+        return g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE;
     }
 
     
