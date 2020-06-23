@@ -34,6 +34,14 @@ public:
         return 1;
     }
 
+    bool has_leaf_precondition() const override {
+        return affected_factor != LeafFactorID::CENTER;
+    }
+
+    bool has_leaf_effect() const override {
+        return affected_factor != LeafFactorID::CENTER;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor != affected_factor){
             return OpsLeafProps<Condition>(preconditions.begin(), preconditions.begin());
@@ -54,6 +62,22 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        if (affected_factor == LeafFactorID::CENTER){
+            return vector<LeafFactorID>();
+        } else {
+            return vector<LeafFactorID>(1, affected_factor);
+        }
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        if (affected_factor == LeafFactorID::CENTER){
+            return vector<LeafFactorID>();
+        } else {
+            return vector<LeafFactorID>(1, affected_factor);
+        }
     }
 
     void dump() const override {
@@ -94,6 +118,14 @@ public:
         return 1;
     }
 
+    bool has_leaf_precondition() const override {
+        return leaf_pre != end_pre;
+    }
+
+    bool has_leaf_effect() const override {
+        return true;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == affected_factor){
             return OpsLeafProps<Condition>(leaf_pre, end_pre);
@@ -117,6 +149,18 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == affected_factor && !effects.empty();
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        if (leaf_pre != end_pre){
+            return vector<LeafFactorID>(1, affected_factor);
+        } else {
+            return vector<LeafFactorID>();
+        }
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        return vector<LeafFactorID>(1, affected_factor);
     }
 
     void dump() const override {
@@ -155,6 +199,14 @@ public:
         return 1;
     }
 
+    bool has_leaf_precondition() const override {
+        return true;
+    }
+
+    bool has_leaf_effect() const override {
+        return false;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == pre_factor){
             return OpsLeafProps<Condition>(leaf_pre, end_pre);
@@ -178,6 +230,14 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER && !effects.empty();
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        return vector<LeafFactorID>(1, pre_factor);
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        return vector<LeafFactorID>();
     }
 
     void dump() const override {
@@ -216,6 +276,14 @@ public:
         return 0;
     }
 
+    bool has_leaf_precondition() const override {
+        return false;
+    }
+
+    bool has_leaf_effect() const override {
+        return true;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == LeafFactorID::CENTER){
             return OpsLeafProps<Condition>(preconditions.begin(), preconditions.end());
@@ -239,6 +307,14 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == eff_factor || (factor == LeafFactorID::CENTER && center_eff != leaf_eff);
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        return vector<LeafFactorID>();
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        return vector<LeafFactorID>(1, eff_factor);
     }
 
     void dump() const override {
@@ -283,6 +359,14 @@ public:
         return 1;
     }
 
+    bool has_leaf_precondition() const override {
+        return true;
+    }
+
+    bool has_leaf_effect() const override {
+        return true;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == LeafFactorID::CENTER){
             return OpsLeafProps<Condition>(center_pre, leaf_pre);
@@ -309,6 +393,14 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == leaf_factor || (factor == LeafFactorID::CENTER && center_eff != leaf_eff);
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        return vector<LeafFactorID>(1, leaf_factor);
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        return vector<LeafFactorID>(1, leaf_factor);
     }
 
     void dump() const override {
@@ -346,6 +438,14 @@ public:
         return pre_factors;
     }
 
+    bool has_leaf_precondition() const override {
+        return true;
+    }
+
+    bool has_leaf_effect() const override {
+        return false;
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == LeafFactorID::CENTER){
             return OpsLeafProps<Condition>(pre_by_factor[0], pre_by_factor[1]);
@@ -375,6 +475,21 @@ public:
 
     bool has_effect_on(LeafFactorID factor) const override {
         return factor == LeafFactorID::CENTER && !effects.empty();
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        vector<LeafFactorID> pre_factors;
+        for (size_t i = 1; i < pre_by_factor.size() - 1; ++i){
+            // if pre_by_factor[i] == pre_by_factor[i+1] => no preconditions on factor i-1
+            if (pre_by_factor[i] != pre_by_factor[i+1]){
+                pre_factors.push_back(LeafFactorID(i - 1));
+            }
+        }
+        return pre_factors;
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        return vector<LeafFactorID>();
     }
 
     void dump() const override {
@@ -415,6 +530,14 @@ public:
         return pre_factors;
     }
 
+    bool has_leaf_precondition() const override {
+        return pre_by_factor[1] != pre_by_factor.back();
+    }
+
+    bool has_leaf_effect() const override {
+        return eff_by_factor[1] != eff_by_factor.back();
+    }
+
     OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const override {
         if (factor == LeafFactorID::CENTER){
             return OpsLeafProps<Condition>(pre_by_factor[0], pre_by_factor[1]);
@@ -453,6 +576,28 @@ public:
             return eff_by_factor[factor + 1] != eff_by_factor[factor + 2];
         }
         return false;
+    }
+
+    vector<LeafFactorID> get_leaf_pre_factors() const override {
+        vector<LeafFactorID> pre_factors;
+        for (size_t i = 1; i < pre_by_factor.size() - 1; ++i){
+            // if pre_by_factor[i] == pre_by_factor[i+1] => no preconditions on factor i-1
+            if (pre_by_factor[i] != pre_by_factor[i+1]){
+                pre_factors.push_back(LeafFactorID(i - 1));
+            }
+        }
+        return pre_factors;
+    }
+
+    vector<LeafFactorID> get_leaf_effect_factors() const override {
+        vector<LeafFactorID> eff_factors;
+        for (size_t i = 1; i < eff_by_factor.size() - 1; ++i){
+            // if eff_by_factor[i] == eff_by_factor[i+1] => no effects on factor i-1
+            if (eff_by_factor[i] != eff_by_factor[i+1]){
+                eff_factors.push_back(LeafFactorID(i - 1));
+            }
+        }
+        return eff_factors;
     }
 
     void dump() const override {
