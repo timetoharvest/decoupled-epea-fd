@@ -33,6 +33,7 @@ PruningOptions::PruningOptions(const Options &opts)
                                             
     if (goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
+        CompliantPathGraph::set_store_leaf_goal_states();
         
         if (goal_price_propagation){
             cout << "using goal price propagation" << endl;

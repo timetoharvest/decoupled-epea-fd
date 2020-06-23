@@ -144,6 +144,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
     if(goal_ingoing_transitions){
         CompliantPathGraph::set_compute_leaf_backwards_graph();
+        CompliantPathGraph::set_store_leaf_goal_states();
     }
     
     is_fork_factoring = false;
