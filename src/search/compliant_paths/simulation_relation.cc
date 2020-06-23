@@ -196,11 +196,11 @@ void SimulationRelation::perform_leaf_irrelevance_pruning(bool prune_bwd_graph, 
     }
 
     if (mark_dead_ops){
-        for (size_t op = 0; op < g_operators.size(); ++op) {
-            if (dead_ops[op]){
-                g_operators[op].set_dead();
-            }
-        }
+//        for (size_t op = 0; op < g_operators.size(); ++op) {
+//           if (dead_ops[op]){
+//                g_operators[op].set_dead(); // TODO check how to make use of this
+//            }
+//        }
     }
     
     cout << "Irrelevance pruning: " << num_transitions_before << " => " << num_transitions_after  << endl;
