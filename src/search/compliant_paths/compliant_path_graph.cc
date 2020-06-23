@@ -646,7 +646,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    cout << "done building leaf state spaces [t=" << utils::g_timer() << "s]" << endl;
+    cout << "done building leaf state spaces [t=" << utils::g_timer() << "]" << endl;
 }
 
 unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
