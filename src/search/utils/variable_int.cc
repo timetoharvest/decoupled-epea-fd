@@ -74,7 +74,7 @@ void VarInt::operator*=(const VarInt &other) {
         value >>= 1;
     }
     
-    value = move(tmp);
+    value = std::move(tmp);
     
     shrink_to_fit();
 }

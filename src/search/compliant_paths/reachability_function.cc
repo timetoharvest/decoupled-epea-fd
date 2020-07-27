@@ -27,8 +27,8 @@ Reachable::Reachable(const Reachable &other) {
 }
 
 Reachable& Reachable::operator=(Reachable &&other) {
-    reachable = move(other.reachable);
-    goal_reached = move(other.goal_reached);
+    reachable = std::move(other.reachable);
+    goal_reached = std::move(other.goal_reached);
     return *this;
 }
 

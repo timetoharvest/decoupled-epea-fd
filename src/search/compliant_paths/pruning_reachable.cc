@@ -24,9 +24,9 @@ PruningReachable::PruningReachable(const PruningReachable &other) : Reachable(ot
 }
 
 PruningReachable& PruningReachable::operator=(PruningReachable &&other) {
-    reachable = move(other.reachable);
-    goal_reached = move(other.goal_reached);
-    frontier = move(other.frontier);
+    reachable = std::move(other.reachable);
+    goal_reached = std::move(other.goal_reached);
+    frontier = std::move(other.frontier);
     return *this;
 }
 

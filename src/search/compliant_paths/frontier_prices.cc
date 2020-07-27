@@ -35,7 +35,7 @@ FrontierPrices& FrontierPrices::operator=(FrontierPrices &&other) {
     goal_cost = move(other.goal_cost);
     effective_prices = move(other.effective_prices);
     number_effective_states = move(other.number_effective_states);
-    frontier = move(other.frontier);
+    frontier = std::move(other.frontier);
     return *this;
 }
 
