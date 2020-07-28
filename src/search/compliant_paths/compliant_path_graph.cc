@@ -192,7 +192,6 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                     } else {
                         dup = (int) it->second.size();
                     }
-                    dup = (int) it->second.size();
                 } else {
                     dup = ind;
                 }
