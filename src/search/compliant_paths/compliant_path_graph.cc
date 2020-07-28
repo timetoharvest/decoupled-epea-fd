@@ -577,7 +577,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
             continue;
         }
 
-        build_leaf_state_space(goal_price_tag, LeafStateHash(0), factor, true);
+        build_leaf_state_space(goal_price_tag, LeafStateHash(0), factor, pruning->exploit_invertible_leaf_state_spaces());
     }
     
     pruning->initialize();
