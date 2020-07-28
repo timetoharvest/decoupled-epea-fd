@@ -298,7 +298,8 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
     bool new_is_larger = false;
     bool new_is_smaller = false;
     bool all_leaves_max_size = g_factoring->get_profile() != FORK;
-    bool all_goals_reached = g_factoring->get_profile() == FORK;
+    bool all_goals_reached = g_factoring->get_profile() == FORK
+            && g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT;
     
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     // its not so easy, because the second loop might detect one as dominating, although this
@@ -311,7 +312,8 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
         if (is_leaf_state_space_scc[factor]){
             continue;
         }
-        if (g_factoring->is_fork_leaf(factor)) {
+        if (g_factoring->is_fork_leaf(factor)
+                && g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT) {
             // in satisficing search, updating CPG stops if a goal 
             // is reached in fork leaves. thus cannot compare number of states 
             // in this case
