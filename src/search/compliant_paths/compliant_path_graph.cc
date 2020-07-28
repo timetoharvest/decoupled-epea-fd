@@ -56,7 +56,7 @@ vector<vector<int> > CompliantPathGraph::leaf_state_id_map;
     
 vector<size_t> CompliantPathGraph::curr_leaf_state_max_id;
 
-PerStateInformation<boost::dynamic_bitset<> > CompliantPathGraph::is_dominated_state;
+unordered_map<size_t, boost::dynamic_bitset<> > CompliantPathGraph::is_non_dominated_state;
 
 
 
@@ -154,8 +154,8 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
     
     vector<size_t> predecessors;
     
-    if (PruningOptions::are_closed_nodes_reopened() &&
-            !(g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
+    if (g_factoring->get_search_type() != DECOUPLED_SEARCH_TYPE::SAT
+            && g_factoring->get_search_type() != DECOUPLED_SEARCH_TYPE::UNSAT){
         StateID curr_id = predecessor.get_id();
         while (curr_id.hash() != 0){
 	    assert(find(predecessors.begin(), predecessors.end(), curr_id.hash()) == predecessors.end());
@@ -172,12 +172,31 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
         hash = get_hash();
     }
 
+    size_t base_state_id_hash = base_state.get_id().hash();
+
     for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // check the price tags of all equal center states
         
-        if ((size_t) dup < is_dominated_state[base_state].size()
-                && is_dominated_state[base_state][dup]){
-            continue;
+        if (pruning->use_transitivity()){
+            // skip existing states in the dominance check if they are
+            // dominated themselves by another existing state
+            const auto it = is_non_dominated_state.find(base_state_id_hash);
+            if (it != is_non_dominated_state.end()
+                    && (size_t) dup < it->second.size()
+                    && !it->second[dup]){
+                size_t ind = it->second.find_next(dup);
+                if (ind == boost::dynamic_bitset<>::npos){
+                    if (curr_number_duplicates < (int) it->second.size()){
+                        assert(curr_number_duplicates == (int) it->second.size() - 1);
+                        break;
+                    } else {
+                        dup = (int) it->second.size();
+                    }
+                    dup = (int) it->second.size();
+                } else {
+                    dup = ind;
+                }
+            }
         }
 
 #ifdef DEBUG_PRUNING
@@ -192,142 +211,118 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
         CPGStorage::storage->get_mutable_cpg(s)->dump();
 #endif
 
-        if (!PruningOptions::are_closed_nodes_reopened()){
-            // in greedy search, close nodes that are dominated by this one as cannot
-            // reach anything new from those that cannot be reached from this node
-            // if dominated => do not consider this state
-            // in this case, all dominated nodes are also dominated by the state
-            // that dominates this one
+
+        if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
+            // for non-optimal planning, we prune a state if it is dominated or equal to an existing one,
+            // ignoring the g-values; we need to pay attention to properly handle dominated states with
+            // lower g-value, though
 
             DOMINANCE res = check_dominance(s, hash);
-            
-            if (res == DOMINANCE::DOMINATES) {
+
+            if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
+                int old_g = search_space->get_node(s).get_g();
+                if (new_g < old_g){
+                    // otherwise, that existing state would be reopened, depending on the search engine
+                    PruningOptions::set_ignore_current_state();
+                }
+                return {dup, false};
+            } else if (res == DOMINANCE::DOMINATES){
                 // set dominated nodes to closed
                 SearchNode node = search_space->get_node(s);
                 if (node.is_open()){
                     node.close();
                 }
-                if ((size_t) dup >= is_dominated_state[base_state].size()){
-                    is_dominated_state[base_state].resize(dup + 1, false);
+                if (pruning->use_transitivity()){
+                    // no need to check against this state later on; the new state dominates it,
+                    // so checking against the new one is sufficient
+                    if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
+                        is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
+                    }
+                    is_non_dominated_state[base_state_id_hash][dup] = false;
                 }
-                is_dominated_state[base_state][dup] = true;
-            } else if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL) {
-                // TODO could as well return duplicate right away; try this out
-                // TODO if it turns out not to make a difference, merge this with
-                // the SAT/UNSAT case below
-                replaced_state_dup = dup;
-
-                // otherwise, the path to an existing state dominating this one
-                // might be updated (if reached with lower g), so that paths to leaf states that are not
-                // reachable in this state cannot be constructed
-                // this probably only happens in eager search, which updates the parent if
-                // new g is lower even if closed nodes are not reopened
-                PruningOptions::set_ignore_current_state();
             }
-            
+
         } else {
-            
-            if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-                
-                DOMINANCE res = check_dominance(s, hash);
-            
-                if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
-                    int old_g = search_space->get_node(s).get_g();
-                    if (new_g < old_g){
-                        // otherwise, that existing state would be reopened
+
+            // pruning for optimal search
+
+            int old_g = search_space->get_node(s).get_g();
+
+            if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
+                // we need the distinction between g-values here, to mimic the behaviour of A*
+                // TODO we could improve pruning power by e.g. allowing states with higher g-value
+                // to dominate existing states, but this requires an explicit way to tell the search
+                // engine what to do with the current state, independent of its g value.
+                if (new_g > old_g){
+
+                    DOMINANCE res = check_dominance(s, hash, old_g - new_g);
+
+                    if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
+                        // current state is dominated by or equal to a previously generated state
+                        return {dup, false};
+                    } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATES){
+                        // close dominated states if they are not parent of current state
+                        // cannot do anything else; search does not reopen nodes with higher g
+                        SearchNode node = search_space->get_node(s);
+                        if (node.is_open()){
+                            node.close();
+                        }
+                        if (pruning->use_transitivity()){
+                            if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
+                                is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
+                            }
+                            is_non_dominated_state[base_state_id_hash][dup] = false;
+                        }
+                    }
+
+                } else if (new_g < old_g) {
+
+                    DOMINANCE res = check_dominance(s, hash, old_g - new_g);
+
+                    if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
+                        // state will replace old state in search
+                        // need to set h dirty so the search evaluates the heuristic on the
+                        // new state, which can result in lower h value
+                        search_space->get_node(s).set_h_dirty();
+                        return {dup, true};
+                    } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATED){
+                        // treat as duplicate, need to tell search to not reopen/update parent
                         PruningOptions::set_ignore_current_state();
-                    }
-                    return {dup, false};
-                } else if (res == DOMINANCE::DOMINATES){
-                    // set dominated nodes to closed
-                    SearchNode node = search_space->get_node(s);
-                    if (node.is_open()){
-                        node.close();
-                    }
-                    if ((size_t) dup >= is_dominated_state[base_state].size()){
-                        is_dominated_state[base_state].resize(dup + 1, false);
-                    }
-                    is_dominated_state[base_state][dup] = true;
-                }
-                
-            } else {
-            
-                // pruning for optimal search
-                
-                int old_g = search_space->get_node(s).get_g();
-
-                if (find(predecessors.begin(), predecessors.end(), s.get_id().hash()) == predecessors.end()){
-                    // we need the distinction between g-values here, to mimic the behaviour of A*
-                    // TODO we could improve pruning power by e.g. allowing states with higher g-value
-                    // to dominate existing states, but this requires an explicit way to tell the search
-                    // engine what to do with the current state, independent of its g value.
-                    if (new_g > old_g){
-
-                        DOMINANCE res = check_dominance(s, hash, old_g - new_g);
-
-                        if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
-                            // current state is dominated by or equal to a previously generated state
-                            return {dup, false};
-                        } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATES){
-                            // close dominated states if they are not parent of current state
-                            // cannot do anything else; search does not reopen nodes with higher g
-                            SearchNode node = search_space->get_node(s);
-                            if (node.is_open()){
-                                node.close();
-                            }
-                            if ((size_t) dup >= is_dominated_state[base_state].size()){
-                                is_dominated_state[base_state].resize(dup + 1, false);
-                            }
-                            is_dominated_state[base_state][dup] = true;
-                        }
-
-                    } else if (new_g < old_g) {
-
-                        DOMINANCE res = check_dominance(s, hash, old_g - new_g);
-
-                        if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
-                            // state will replace old state in search
-                        	// need to set h dirty so the search evaluates the heuristic on the
-                        	// new state, which can result in lower h value
-                        	search_space->get_node(s).set_h_dirty();
-                        	return {dup, true};
-                        } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATED){
-                            // treat as duplicate, need to tell search to not reopen/update parent
-                            PruningOptions::set_ignore_current_state();
-                            return {dup, false};
-                        }
-
-                    } else {
-
-                        DOMINANCE res = check_dominance(s, hash);
-
-                        if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
-                            // current state is dominated by or equal to a previously generated state
-                            return {dup, false};
-                        } else if (res == DOMINANCE::DOMINATES){
-                            // close dominated states if they are not parent of current state
-                            // cannot do anything else; search does not reopen nodes with equal g
-                            SearchNode node = search_space->get_node(s);
-                            if (node.is_open()){
-                                node.close();
-                            }
-                            if ((size_t) dup >= is_dominated_state[base_state].size()){
-                                is_dominated_state[base_state].resize(dup + 1, false);
-                            }
-                            is_dominated_state[base_state][dup] = true;
-                        }
+                        return {dup, false};
                     }
 
                 } else {
-                    // current state is successor of the state compared to, so can only be
-                    // pruned if it is dominated by/equal to its predecessor
-                    assert(new_g >= old_g);
 
-                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
+                    DOMINANCE res = check_dominance(s, hash);
 
                     if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
+                        // current state is dominated by or equal to a previously generated state
                         return {dup, false};
+                    } else if (res == DOMINANCE::DOMINATES){
+                        // close dominated states if they are not parent of current state
+                        // cannot do anything else; search does not reopen nodes with equal g
+                        SearchNode node = search_space->get_node(s);
+                        if (node.is_open()){
+                            node.close();
+                        }
+                        if (pruning->use_transitivity()){
+                            if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
+                                is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
+                            }
+                            is_non_dominated_state[base_state_id_hash][dup] = false;
+                        }
                     }
+                }
+
+            } else {
+                // current state is successor of the state compared to, so can only be
+                // pruned if it is dominated by/equal to its predecessor
+                assert(new_g >= old_g);
+
+                DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
+
+                if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
+                    return {dup, false};
                 }
             }
         }

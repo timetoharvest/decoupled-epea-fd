@@ -9,6 +9,7 @@
 #include "../per_state_information.h"
 #include "pruning_options.h"
 
+#include <unordered_map>
 #include <vector>
 
 
@@ -34,11 +35,10 @@ class CompliantPathGraph {
     
 
     // this stores for every decoupled base state (i.e. state with duplicate counter 0
-    // the set of decoupled states (in terms of their dup counter) that is dominated
-    // by another generated decoupled state. such states can be skipped in dominance
-    // pruning, since states that will by pruned by them will also be pruned by another
-    // states that dominates them
-    static PerStateInformation<boost::dynamic_bitset<> > is_dominated_state;
+    // the set of decoupled states (in terms of their dup counter) that is not dominated
+    // by another generated decoupled state. such states have to be checked in dominance
+    // pruning, since they have the maximum pruning potential
+    static std::unordered_map<size_t, boost::dynamic_bitset<> > is_non_dominated_state;
 
 
     static void build_leaf_state_space(Prices &prices,
