@@ -91,7 +91,7 @@ void Reachable::update(const State &base_state) {
         if (g_factoring->is_fork_leaf(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
             if (g_goals_per_factor[factor].empty() || 
-                (g_factoring->get_search_type() == SAT && goal_reached[factor])){
+                (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT && goal_reached[factor])){
                 continue;
             }
         }
@@ -300,12 +300,12 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
     bool all_leaves_max_size = g_factoring->get_profile() != FORK;
     bool all_goals_reached = g_factoring->get_profile() == FORK;
     
-    vector<bool> skip_leaf(g_leaves.size(), false);
-    
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     // its not so easy, because the second loop might detect one as dominating, although this
     // is only due to stopping the update
     
+    vector<bool> need_to_check(g_leaves.size(), false);
+
     // check number of reachable leaf states
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (is_leaf_state_space_scc[factor]){
@@ -324,28 +324,43 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
                     new_is_smaller = true;
                     sizes_equal = false;
                 }
-                skip_leaf[factor] = true;
                 continue;
             } else if (other_cpg->goal_reachable(factor)){
                 all_goals_reached = false;
                 new_is_smaller = true;
                 new_is_larger = true;
                 sizes_equal = false;
-                skip_leaf[factor] = true;
                 continue;
             }
             all_goals_reached = false;
         }
-        if (other_cpg->get_number_states(factor) > get_number_states(factor)){
-            new_is_smaller = true;
-            sizes_equal = false;
-        } else if (other_cpg->get_number_states(factor) < get_number_states(factor)){
+        assert(reachable[factor][reachable[factor].size() - 1]);
+        assert(other_cpg->reachable[factor][other_cpg->reachable[factor].size() - 1]);
+        if (reachable[factor].size() > other_cpg->reachable[factor].size()){
             new_is_larger = true;
             sizes_equal = false;
+            need_to_check[factor] = true;
+        } else if (reachable[factor].size() < other_cpg->reachable[factor].size()){
+            new_is_smaller = true;
+            sizes_equal = false;
+            need_to_check[factor] = true;
+        } else {
+            if (reachable[factor].is_proper_subset_of(other_cpg->reachable[factor])){
+                new_is_smaller = true;
+                sizes_equal = false;
+            } else if (other_cpg->reachable[factor].is_proper_subset_of(reachable[factor])){
+                new_is_larger = true;
+                sizes_equal = false;
+            } else if (other_cpg->reachable[factor] != reachable[factor]){
+                new_is_smaller = true;
+                new_is_larger = true;
+                sizes_equal = false;
+                break;
+            }
         }
-        if (get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
-            all_leaves_max_size = false;
-        }
+       if (get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
+           all_leaves_max_size = false;
+       }
     }
     
     if (new_is_smaller && new_is_larger){
@@ -368,46 +383,38 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
     
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
-    
-    // compare reachability
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (is_leaf_state_space_scc[factor] || skip_leaf[factor]) { // is fork-leaf that reached its goal
+        if (!need_to_check[factor]){
             continue;
         }
-        size_t number_new_states = get_number_states(factor);
-        size_t number_old_states = other_cpg->get_number_states(factor);
-        LeafStateHash id(0);
-        while (number_new_states + number_old_states > 0){
-            assert(id < g_state_registry->size(factor));
-            // TODO probably introduce some kind of hash to compare leaves
-            // against each other in satisficing search
-            if (has_leaf_state(id, factor)){
-                --number_new_states;
-                if (other_cpg->has_leaf_state(id, factor)){
-                    --number_old_states;
-                } else {
+        if (reachable[factor].size() > other_cpg->reachable[factor].size()){
+            assert(dominates);
+            size_t index = 0;
+            while ((index = other_cpg->reachable[factor].find_next(index)) != boost::dynamic_bitset<>::npos){
+                if (!reachable[factor][index]){
+                    dominates = false;
+                    break;
+                }
+            }
+            if (!dominates){
+                break;
+            }
+        } else if (reachable[factor].size() < other_cpg->reachable[factor].size()){
+            assert(dominated);
+            size_t index = 0;
+            while ((index = reachable[factor].find_next(index)) != boost::dynamic_bitset<>::npos){
+                if (!other_cpg->reachable[factor][index]){
                     dominated = false;
-                }                
-            } else if (other_cpg->has_leaf_state(id, factor)){
-                --number_old_states;
-                dominates = false;
+                    break;
+                }
             }
-            if (!dominated && !dominates){
-                return DOMINANCE::NONE;
-            } else if (!dominated && needed == DOMINANCE::DOMINATED){
-                return DOMINANCE::NONE;
-            } else if (!dominates && needed == DOMINANCE::DOMINATES){
-                return DOMINANCE::NONE;
-            } else if (number_new_states == 0 && number_old_states > 0){
-                dominates = false;
-                break;
-            } else if (number_old_states == 0 && number_new_states > 0){
-                dominated = false;
+            if (!dominated){
                 break;
             }
-            ++id;
         }
     }
+
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
