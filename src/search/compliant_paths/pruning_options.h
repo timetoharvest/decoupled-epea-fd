@@ -43,6 +43,15 @@ class PruningOptions {
     // can be traded against lower prices in another leaf
     bool prices_in_dominance;
 
+    // make use of transitivity of dominance relation, i.e.,
+    // don't check dominance of a new state against a state
+    // s if there exists another state s' that dominates s
+    // and the dominance will check s' anyway
+    bool transitivity;
+
+    // in case a leaf state space is invertible,
+    bool exploit_leaf_invertibility;
+
     IRRELEVANCE irrelevance;
 
     bool do_simulation;
@@ -62,6 +71,8 @@ public:
                        min_price_in_g(true),
                        g_in_dominance(true),
                        prices_in_dominance(true),
+                       transitivity(true),
+                       exploit_leaf_invertibility(true),
                        irrelevance(IRRELEVANCE::NO),
                        do_simulation(false), 
                        goal_price_propagation(false) {}
@@ -98,6 +109,14 @@ public:
 
     bool trade_prices_in_dominance() const {
         return prices_in_dominance;
+    }
+
+    bool use_transitivity() const {
+        return transitivity;
+    }
+
+    bool exploit_invertible_leaf_state_spaces() const {
+        return exploit_leaf_invertibility;
     }
 
     bool do_advanced_pruning() const {

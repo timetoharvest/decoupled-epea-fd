@@ -21,6 +21,8 @@ PruningOptions::PruningOptions(const Options &opts)
                       min_price_in_g(opts.get<bool>("include_price_in_g")),
                       g_in_dominance(opts.get<bool>("include_g_in_dominance")),
                       prices_in_dominance(opts.get<bool>("trade_prices_in_dominance")),
+                      transitivity(opts.get<bool>("use_transitivity")),
+                      exploit_leaf_invertibility(opts.get<bool>("exploit_leaf_invertibility")),
                       irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
                       do_simulation(opts.get<bool>("simulation")),
                       goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
@@ -100,6 +102,9 @@ void PruningOptions::verify_options() const {
             cout << "Satisficing search with frontier pruning is not supported for decoupled orbit search!" << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
+        if (exploit_leaf_invertibility){
+            cout << "WARNING: exploiting leaf invertibility and symmetry state pruning are not fully compatible; probably exploiting invertibility will be switched off." << endl;
+        }
     }
 }
 
@@ -135,6 +140,14 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
 
     parser.add_option<bool>("trade_prices_in_dominance",
                             "trade prices across leaves in dominance checking",
+                            "true");
+
+    parser.add_option<bool>("use_transitivity",
+                            "exploit transitivity of dominance relation to avoid computational overhead",
+                            "true");
+
+    parser.add_option<bool>("exploit_leaf_invertibility",
+                            "compute and exploit invertibility of leaf state spaces",
                             "true");
 
     parser.add_option<bool>("goal_price_propagation",
