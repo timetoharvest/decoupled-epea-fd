@@ -11,8 +11,6 @@ using namespace std;
 
 bool PruningOptions::ignore_current_search_state = false;
 
-bool PruningOptions::reopen_closed_nodes = false;
-
 
 
 PruningOptions::PruningOptions(const Options &opts)

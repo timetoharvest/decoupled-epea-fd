@@ -25,9 +25,6 @@ LazySearch::LazySearch(const Options &opts)
       current_operator(OperatorID::no_operator),
       current_g(0),
       current_real_g(0) {
-    if (g_factoring && reopen_closed_nodes){
-        PruningOptions::set_reopen_closed_nodes();
-    }
 }
 
 LazySearch::~LazySearch() {

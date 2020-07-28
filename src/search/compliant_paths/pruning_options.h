@@ -63,8 +63,6 @@ class PruningOptions {
     
     static bool ignore_current_search_state; // TODO: get rid of this hack
 
-    static bool reopen_closed_nodes;
-    
 public:
     PruningOptions() : pruning_type(PRUNING_TYPE::DOMINANCE),
                        hypercube_pruning(false),
@@ -142,14 +140,6 @@ public:
     
     static bool ignore_current_state() {
         return ignore_current_search_state;
-    }
-
-    static void set_reopen_closed_nodes() {
-        reopen_closed_nodes = true;
-    }
-    
-    static bool are_closed_nodes_reopened() {
-        return reopen_closed_nodes;
     }
     
     static void add_options_to_parser(OptionParser &parser);

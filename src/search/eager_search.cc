@@ -42,9 +42,6 @@ EagerSearch::EagerSearch(
         preferred_operator_heuristics =
             opts.get_list<Heuristic *>("preferred");
     }
-    if (g_factoring && reopen_closed_nodes){
-        PruningOptions::set_reopen_closed_nodes();
-    }
 }
 
 void EagerSearch::initialize() {
