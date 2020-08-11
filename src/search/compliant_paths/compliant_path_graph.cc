@@ -252,14 +252,22 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                 // TODO we could improve pruning power by e.g. allowing states with higher g-value
                 // to dominate existing states, but this requires an explicit way to tell the search
                 // engine what to do with the current state, independent of its g value.
-                if (new_g > old_g){
+                if (new_g >= old_g){
 
-                    DOMINANCE res = check_dominance(s, hash, old_g - new_g);
+                    DOMINANCE needed = DOMINANCE::NONE;
+                    if (new_g > old_g && !pruning->include_g_in_dominance()){
+                        // if g-values are equal, or if we take into account the g-difference in
+                        // the dominance check, dominance in both directions is useful;
+                        // otherwise, we can only do something if the new state is dominated/equal
+                        needed = DOMINANCE::DOMINATED;
+                    }
+
+                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, needed);
 
                     if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                         // current state is dominated by or equal to a previously generated state
                         return {dup, false};
-                    } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATES){
+                    } else if ((new_g == old_g || pruning->include_g_in_dominance()) && res == DOMINANCE::DOMINATES){
                         // close dominated states if they are not parent of current state
                         // cannot do anything else; search does not reopen nodes with higher g
                         SearchNode node = search_space->get_node(s);
@@ -276,7 +284,15 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
 
                 } else if (new_g < old_g) {
 
-                    DOMINANCE res = check_dominance(s, hash, old_g - new_g);
+                    DOMINANCE needed = DOMINANCE::NONE;
+                    if (!pruning->include_g_in_dominance()){
+                        // if we take into account the g-difference in
+                        // the dominance check, dominance in both directions is useful;
+                        // otherwise, we can only do something if the new state dominates/is equal
+                        needed = DOMINANCE::DOMINATES;
+                    }
+
+                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, needed);
 
                     if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
                         // state will replace old state in search
@@ -290,27 +306,6 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                         return {dup, false};
                     }
 
-                } else {
-
-                    DOMINANCE res = check_dominance(s, hash);
-
-                    if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
-                        // current state is dominated by or equal to a previously generated state
-                        return {dup, false};
-                    } else if (res == DOMINANCE::DOMINATES){
-                        // close dominated states if they are not parent of current state
-                        // cannot do anything else; search does not reopen nodes with equal g
-                        SearchNode node = search_space->get_node(s);
-                        if (node.is_open()){
-                            node.close();
-                        }
-                        if (pruning->use_transitivity()){
-                            if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
-                                is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
-                            }
-                            is_non_dominated_state[base_state_id_hash][dup] = false;
-                        }
-                    }
                 }
 
             } else {
