@@ -55,7 +55,24 @@ PruningOptions::PruningOptions(const Options &opts)
         min_price_in_g = false;
         g_in_dominance = false;
         prices_in_dominance = false;
-        // TODO is there any reason to have this check here and not in verify_options?
+    }
+    if (pruning_type == PRUNING_TYPE::DUPLICATE){
+        if (hypercube_pruning){
+            hypercube_pruning = false;
+            cout << "Disabling hypercube pruning for exact duplicate checking." << endl;
+        }
+        if (g_in_dominance){
+            g_in_dominance = false;
+            cout << "Disabling incorporation of g-value difference into dominance check for exact duplicate checking." << endl;
+        }
+        if (prices_in_dominance){
+            prices_in_dominance = false;
+            cout << "Disabling trading of prices for exact duplicate checking." << endl;
+        }
+        if (transitivity){
+            transitivity = false;
+            cout << "Disabling exploitation of dominance transitivity for exact duplicate checking, this does not have any effect." << endl;
+        }
     }
 }
 
