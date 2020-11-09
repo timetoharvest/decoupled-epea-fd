@@ -71,6 +71,8 @@ protected:
     
     static bool compute_leaf_backwards_graph;
     
+    static bool store_leaf_goal_states;
+
     static std::vector<bool> precompute_leaf_state_spaces;
     
     // Stores for every leaf state the StateID of the decoupled state
@@ -89,7 +91,7 @@ protected:
     
     static std::vector<boost::dynamic_bitset<> > is_a_leaf_goal_state;
     
-    // these are only computed if compute_leaf_backwards_graph is true
+    // these are only computed if store_leaf_goal_states is true
     static std::vector<std::vector<LeafStateHash> > leaf_goal_states;
     
     static std::vector<std::vector<std::vector<OperatorID> > > center_successors;
@@ -198,6 +200,10 @@ public:
         compute_leaf_backwards_graph = true;
     }
     
+    static void set_store_leaf_goal_states() {
+        store_leaf_goal_states = true;
+    }
+
     static void set_precompute_leaf_state_spaces(const std::vector<bool> &precompute) {
         precompute_leaf_state_spaces = precompute;
     }

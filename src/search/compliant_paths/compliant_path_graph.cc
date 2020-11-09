@@ -26,6 +26,8 @@ const size_t CompliantPathGraph::MAX_LEAF_SPACE_STORE = 100000;
 
 bool CompliantPathGraph::compute_leaf_backwards_graph = false;
 
+bool CompliantPathGraph::store_leaf_goal_states = false;
+
 SearchSpace* CompliantPathGraph::search_space;
 
 OperatorCost CompliantPathGraph::cost_type;
@@ -656,7 +658,7 @@ void CompliantPathGraph::build_leaf_state_spaces() {
         curr_leaf_state_max_id[factor] = 0;
     }
     
-    cout << "done building leaf state spaces [t=" << utils::g_timer() << "s]" << endl;
+    cout << "done building leaf state spaces [t=" << utils::g_timer() << "]" << endl;
 }
 
 unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
@@ -681,7 +683,7 @@ void CompliantPathGraph::store_is_leaf_goal_state(const LeafState &state) {
         }
         assert(is_a_leaf_goal_state[factor].size() == state.get_id().hash());
         is_a_leaf_goal_state[factor].push_back(is_goal);
-        if (is_goal && compute_leaf_backwards_graph){
+        if (is_goal && store_leaf_goal_states){
             leaf_goal_states[factor].push_back(state.get_id().hash());
         }
     }

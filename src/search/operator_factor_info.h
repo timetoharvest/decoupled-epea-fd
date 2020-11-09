@@ -55,12 +55,17 @@ public:
     virtual LeafFactorID get_affected_factor() const = 0;
 
     virtual size_t get_number_leaf_pre_factors() const = 0;
+    virtual bool has_leaf_precondition() const = 0;
+    virtual bool has_leaf_effect() const = 0;
 
     virtual OpsLeafProps<Condition> get_preconditions(LeafFactorID factor) const = 0;
     virtual OpsLeafProps<Effect> get_effects(LeafFactorID factor) const = 0;
 
     virtual bool has_precondition_on(LeafFactorID factor) const = 0;
     virtual bool has_effect_on(LeafFactorID factor) const = 0;
+
+    virtual std::vector<LeafFactorID> get_leaf_pre_factors() const = 0;
+    virtual std::vector<LeafFactorID> get_leaf_effect_factors() const = 0;
 
     virtual void dump() const = 0;
 

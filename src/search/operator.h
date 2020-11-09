@@ -159,6 +159,22 @@ public:
         return factor_info->get_number_leaf_pre_factors();
     }
 
+    bool has_leaf_precondition() const {
+        return factor_info->has_leaf_precondition();
+    }
+
+    bool has_leaf_effect() const {
+        return factor_info->has_leaf_effect();
+    }
+
+    std::vector<LeafFactorID> get_leaf_pre_factors() const {
+        return factor_info->get_leaf_pre_factors();
+    }
+
+    std::vector<LeafFactorID> get_leaf_effect_factors() const {
+        return factor_info->get_leaf_effect_factors();
+    }
+
     int get_cost() const {
         return cost;
     }
