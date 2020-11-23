@@ -229,7 +229,9 @@ fast_downward_plugin(
 
         compliant_paths/compliant_path_graph
         compliant_paths/cpg_storage
+        compliant_paths/cudd_cpg
         compliant_paths/effective_prices
+        compliant_paths/explicit_state_cpg
         compliant_paths/frontier_prices
         compliant_paths/path_price_tag
         compliant_paths/pricing_function
@@ -237,6 +239,7 @@ fast_downward_plugin(
         compliant_paths/pruning_reachable
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
+        compliant_paths/symbolic_state_cpg
     DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
 )
 

@@ -13,9 +13,9 @@
 using namespace std;
 
 
-PruningReachableStorage* PruningReachable::cpg_storage;
+Storage<PruningReachable>* PruningReachable::cpg_storage;
 
-void PruningReachable::register_cpg_storage(PruningReachableStorage *storage) {
+void PruningReachable::register_cpg_storage(Storage<PruningReachable> *storage) {
     cpg_storage = storage;
 }
 
@@ -44,7 +44,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
 }
 
 DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
-    PruningReachable *other_cpg = &cpg_storage->pruning_reachable[other];
+    PruningReachable *other_cpg = &cpg_storage->cpgs[other];
 
     compute_frontier();
     other_cpg->compute_frontier();
@@ -70,7 +70,7 @@ DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, D
         }
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (g_goals_per_factor[factor].empty() || !CompliantPathGraph::is_leaf_goal_state(id, factor)){
+            if (g_goals_per_factor[factor].empty() || !ExplicitStateCPG::is_leaf_goal_state(id, factor)){
                 if (dominates && id < other_cpg->frontier[factor].size() && other_cpg->frontier[factor][id]){
                     // reg. second condition: in satisficing planning (in contrast to optimal), the leaf state spaces
                     // are not necessarily precomputed. thus, the frontier of a decoupled state created early during

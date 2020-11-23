@@ -4,7 +4,7 @@
 class Options;
 class OptionParser;
 class LeavesPermutation;
-class CompliantPathGraph;
+class ExplicitStateCPG;
 
 class LexicographicOrdering {
     
@@ -17,13 +17,13 @@ public:
     LexicographicOrdering(const Options &opts);
     
     bool produces_less(const LeavesPermutation &per, 
-		       const CompliantPathGraph &p) const;
+		       const ExplicitStateCPG &p) const;
 
     bool optimize_leaves() const {
         return apply_goal_cost || apply_num_states || apply_prices;
     }
 
-    void print_ordering(const CompliantPathGraph &p) const;
+    void print_ordering(const ExplicitStateCPG &p) const;
 
     static void add_options_to_parser(OptionParser &parser);
     

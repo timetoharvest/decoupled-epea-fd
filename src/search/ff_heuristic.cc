@@ -1,16 +1,17 @@
 #include "ff_heuristic.h"
 
-#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/explicit_state_cpg.h"
 #include "compliant_paths/cpg_storage.h"
 #include "state.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
 
-
 #include <cassert>
+#include <functional>
 
 using namespace std;
+
 
 namespace ff_heuristic {
 // construction and destruction
@@ -19,6 +20,11 @@ FFHeuristic::FFHeuristic(const Options &opts)
       relaxed_plan(g_operators.size(), false),
       current_leaf_cost(0) {
     cout << "Initializing FF heuristic..." << endl;
+    if (heuristic_type == HEURISTIC_TYPE::STAR &&
+                    g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
+        cerr << "Symbolic leaf representation is not supported for star heuristic." << endl;
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    }
 }
 
 void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
@@ -65,32 +71,35 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
 }
 
 void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
-    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    size_t total_leaf_state_counter = 0;
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        int number_states = tag->get_number_states(factor);
-        LeafStateHash id(0);
-        while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
-                --number_states;
-                int cost = 0;
-                OpID op_id = NO_OP;
-                if (heuristic_type == HEURISTIC_TYPE::STAR){
-                    op_id = -total_leaf_state_counter - 2;
-                    cost = tag->get_cost_of_state(id, factor);
+    if (heuristic_type == HEURISTIC_TYPE::CENTER){
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
+        cpg->populate_reached_leaf_facts(function<void(int, int)> ([&] (int var, int val) {
+            enqueue_if_necessary(get_prop_id(var, val), 0, NO_OP);
+        }));
+    } else {
+        const ExplicitStateCPG *cpg = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+        size_t total_leaf_state_counter = 0;
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            int number_states = cpg->get_number_states(factor);
+            LeafStateHash id(0);
+            while (number_states > 0){
+                if (cpg->has_leaf_state(id, factor)){
+                    --number_states;
+                    OpID op_id = -total_leaf_state_counter - 2;
+                    int cost = cpg->get_cost_of_state(id, factor);
                     if (total_leaf_state_counter >= leaf_state_costs.size()){
                         leaf_state_costs.push_back(cost);
                     } else {
                         leaf_state_costs[total_leaf_state_counter] = cost;
                     }
                     ++total_leaf_state_counter;
+                    LeafState f = g_state_registry->lookup_leaf_state(id, factor);
+                    for (int var : g_leaves[factor]) {
+                        enqueue_if_necessary(get_prop_id(var, f[var]), cost, op_id);
+                    }
                 }
-                LeafState f = g_state_registry->lookup_leaf_state(id, factor);
-                for (int var : g_leaves[factor]) {
-                    enqueue_if_necessary(get_prop_id(var, f[var]), cost, op_id);
-                }
+                ++id;
             }
-            ++id;
         }
     }
 }

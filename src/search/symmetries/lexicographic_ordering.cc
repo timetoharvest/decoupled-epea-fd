@@ -1,6 +1,6 @@
 #include "lexicographic_ordering.h" 
 
-#include "../compliant_paths/compliant_path_graph.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "decoupled_permutation.h"
 #include "../state_registry.h"
 #include "../option_parser.h"
@@ -15,7 +15,7 @@ LexicographicOrdering::LexicographicOrdering(const Options &opts) :
 }
 
 bool LexicographicOrdering::produces_less(const LeavesPermutation &per, 
-					  const CompliantPathGraph &p) const {
+					  const ExplicitStateCPG &p) const {
     if(apply_goal_cost) {
         cmp_t cmp = per.cmp_goal_cost(p);
         if(cmp == cmp_t::LESS) {
@@ -46,7 +46,7 @@ bool LexicographicOrdering::produces_less(const LeavesPermutation &per,
     return false;
 } 
 
-void LexicographicOrdering::print_ordering(const CompliantPathGraph &cpg) const { 
+void LexicographicOrdering::print_ordering(const ExplicitStateCPG &cpg) const {
     if(apply_goal_cost) {
         for(LeafFactorID factor(0); factor < g_leaves.size(); ++ factor){
             cout << cpg.get_goal_cost(factor) << " ";

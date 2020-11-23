@@ -1,17 +1,18 @@
 #ifndef PRICING_FUNCTION_H
 #define PRICING_FUNCTION_H
 
-#include "compliant_path_graph.h"
+#include "explicit_state_cpg.h"
 #include "../leaf_state_id.h"
 
 #include <vector>
 
-class PriceStorage;
+template<class T>
+class Storage;
 
-class Prices : public CompliantPathGraph {
-    friend class CompliantPathGraph;
+class Prices : public ExplicitStateCPG {
+    friend class ExplicitStateCPG;
     
-    static PriceStorage *cpg_storage;
+    static Storage<Prices> *cpg_storage;
     
 
     // used when including part of the leaf cost into the g-value
@@ -60,12 +61,17 @@ public:
 
     Prices& operator=(Prices &&other);
 
+
     virtual bool has_leaf_state(LeafStateHash id, LeafFactorID factor) const override;
     
     virtual int get_cost_of_state(LeafStateHash id, LeafFactorID factor) const override;
     
     virtual size_t get_number_states(LeafFactorID factor) const override;
     
+    virtual void populate_reached_leaf_facts(std::function<void(int, int)> f) const override;
+
+    virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const override;
+
     virtual int get_goal_cost(LeafFactorID factor) const override;
     
     virtual bool goal_reachable(LeafFactorID factor) const override;
@@ -78,10 +84,10 @@ public:
 
     virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
-    virtual size_t get_memory_footprint() const;
+    virtual size_t get_memory_footprint() const override;
 
 
-    static void register_cpg_storage(PriceStorage *storage);
+    static void register_cpg_storage(Storage<Prices> *storage);
     
 };
 

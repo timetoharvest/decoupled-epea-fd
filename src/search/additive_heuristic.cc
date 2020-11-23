@@ -62,25 +62,16 @@ void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
 }
 
 void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
-    const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        int number_states = tag->get_number_states(factor);
-        LeafStateHash id(0);
-        while (number_states > 0){
-            if (tag->has_leaf_state(id, factor)){
-                --number_states;
-                int base_cost = 0;
-                if (heuristic_type == HEURISTIC_TYPE::STAR){
-                    base_cost = tag->get_cost_of_state(id, factor);
-                }
-                LeafState f = g_state_registry->lookup_leaf_state(id, factor);
-                for (int var : g_leaves[factor]) {
-                    PropID prop_id = get_prop_id(var, f[var]);
-                    enqueue_if_necessary(prop_id, base_cost, 0);
-                }
-            }
-            ++id;
-        }
+    const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
+
+    if (heuristic_type == HEURISTIC_TYPE::CENTER){
+        cpg->populate_reached_leaf_facts(function<void(int, int)> ([&] (int var, int val) {
+            enqueue_if_necessary(get_prop_id(var, val), 0, NO_OP);
+        }));
+    } else {
+        cpg->populate_cost_of_leaf_facts(function<void(int, int, int)> ([&] (int var, int val, int cost) {
+            enqueue_if_necessary(get_prop_id(var, val), cost, NO_OP);
+        }));
     }
 }
 
@@ -162,7 +153,7 @@ int AdditiveHeuristic::compute_heuristic(const State &state) {
     if (heuristic_type != HEURISTIC_TYPE::STD){
         setup_exploration_queue_decoupled_leaf_states(state);
     }
-    
+
     int h = compute_add_and_ff(state);
     if (h != DEAD_END) {
         for (PropID goal_id : goal_propositions)

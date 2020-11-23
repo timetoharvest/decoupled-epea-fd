@@ -4,7 +4,7 @@
 #include <graph.hh>
 #endif
 
-#include "../compliant_paths/compliant_path_graph.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "lexicographic_ordering.h"
 #include "../operator.h"
 #include "permutation.h"
@@ -209,9 +209,9 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 
 unique_ptr<DecoupledPermutation> 
 GraphCreator::create_permutation_from_state_to_state(const State &state, 
-                                                     const CompliantPathGraph &cpg,
+                                                     const ExplicitStateCPG &cpg,
                                                      const State &succ_state,
-                                                     const CompliantPathGraph &succ_cpg) const {
+                                                     const ExplicitStateCPG &succ_cpg) const {
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);

@@ -7,6 +7,7 @@
 #include "plugin.h"
 
 #include <cassert>
+#include <functional>
 #include <vector>
 
 using namespace std;
@@ -88,25 +89,16 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     setup_exploration_queue();
 
     if (heuristic_type != HEURISTIC_TYPE::STD){
-        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            int number_states = tag->get_number_states(factor);
-            LeafStateHash id(0);
-            while (number_states > 0){
-                if (tag->has_leaf_state(id, factor)){
-                    --number_states;
-                    int base_cost = 0;
-                    if (heuristic_type == HEURISTIC_TYPE::STAR){
-                        base_cost = tag->get_cost_of_state(id, factor);
-                    }
-                    const LeafState &f = g_state_registry->lookup_leaf_state(id, factor);
-                    for (size_t v = 0; v < g_leaves[factor].size(); ++v) {
-                        int var = g_leaves[factor][v];
-                        enqueue_if_necessary(get_prop_id(var, f[var]), base_cost);
-                    }
-                }
-                ++id;
-            }
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
+
+        if (heuristic_type == HEURISTIC_TYPE::CENTER){
+            cpg->populate_reached_leaf_facts(function<void(int, int)> ([&] (int var, int val) {
+                enqueue_if_necessary(get_prop_id(var, val), 0);
+            }));
+        } else {
+            cpg->populate_cost_of_leaf_facts(function<void(int, int, int)> ([&] (int var, int val, int cost) {
+                enqueue_if_necessary(get_prop_id(var, val), cost);
+            }));
         }
     }
 

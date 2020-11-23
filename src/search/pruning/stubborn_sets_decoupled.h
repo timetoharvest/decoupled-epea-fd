@@ -6,7 +6,7 @@
 #include <vector>
 
 class Condition;
-class CompliantPathGraph;
+class ExplicitStateCPG;
 class LeafFactorID;
 class LeafStateHash;
 template<class T>
@@ -44,7 +44,7 @@ class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
     // center actions enabled by a leaf state
     std::vector<std::vector<std::vector<std::pair<OperatorID, LeafStateHash> > > > center_successors;
     
-    mutable const CompliantPathGraph *current_cpg;
+    mutable const ExplicitStateCPG *current_cpg;
     
     
     // a frontier action is an inapplicable leaf action that reduces 

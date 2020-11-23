@@ -1,6 +1,6 @@
 #include "decoupled_group.h"
 
-#include "../compliant_paths/compliant_path_graph.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "lexicographic_ordering.h"
 #include "group.h"
 #include "../state_registry.h"
@@ -42,7 +42,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
                     }
                     size_t size_before = g_state_registry->size(symm_factor);
 
-                    CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
+                    ExplicitStateCPG::get_leaf_state_hash(symm_leaf_state, symm_factor);
 
                     if (size_before != g_state_registry->size(symm_factor) && !has_new_states[symm_factor]){
                         has_new_states[symm_factor] = true;
@@ -69,7 +69,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &center, 
-                                                                  CompliantPathGraph &leaves,
+                                                                  ExplicitStateCPG &leaves,
                                                                   const LexicographicOrdering &lex_ordering) const {
 
     for (int var : g_center) {
@@ -135,12 +135,12 @@ void DecoupledGroup::statistics() const {
 
 
 DecoupledTrace DecoupledGroup::get_trace(const State &center, 
-                                const CompliantPathGraph &leaves, 
+                                const ExplicitStateCPG &leaves,
                                 const LexicographicOrdering &lex_ordering) const {
     
     DecoupledTrace res;
 
-    res.canonical_cpg = leaves.clone();
+    res.canonical_cpg = unique_ptr<ExplicitStateCPG>(static_cast<ExplicitStateCPG*>(leaves.clone().release()));
     res.canonical_center.resize(g_variable_domain.size(), -1);
     for (int var : g_center) {
         res.canonical_center[var] = center[var];

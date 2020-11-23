@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-class CompliantPathGraph;
+class ExplicitStateCPG;
 class LexicographicOrdering;
 class Operator;
 class OperatorID;
@@ -84,11 +84,11 @@ public:
                                                                 
     std::pair<LeafStateHash, LeafFactorID> get_old_factor_state_by_new_factor_state(LeafStateHash state,
                                                                                     LeafFactorID factor) const;
-    cmp_t cmp_num_states(const CompliantPathGraph &cpg) const;
+    cmp_t cmp_num_states(const ExplicitStateCPG &cpg) const;
     
-    cmp_t cmp_goal_cost(const CompliantPathGraph &cpg) const;
+    cmp_t cmp_goal_cost(const ExplicitStateCPG &cpg) const;
     
-    cmp_t cmp_prices(const CompliantPathGraph &cpg) const;
+    cmp_t cmp_prices(const ExplicitStateCPG &cpg) const;
     
     bool is_symmetric_op(const Operator &op, const Operator &op2) const;
     
@@ -137,19 +137,19 @@ public:
     }
 
     bool replace_if_less(std::vector<int> &center, 
-                         CompliantPathGraph &leaves, 
+            ExplicitStateCPG &leaves,
                          const LexicographicOrdering &lex_ordering) const;
 
     cmp_t replace_if_less_center(std::vector<int> &center, 
-				CompliantPathGraph &leaves) const;
+            ExplicitStateCPG &leaves) const;
     
-    bool replace_if_less_leaves(CompliantPathGraph &leaves, 
+    bool replace_if_less_leaves(ExplicitStateCPG &leaves,
 				const LexicographicOrdering &lex_ordering) const;
 
     bool stabilizes_center(const State &center) const;
 
     void permute_decoupled_state(std::vector<int> &center,
-                                 CompliantPathGraph &leaves) const;
+            ExplicitStateCPG &leaves) const;
     
     void print_cycle_notation() const;
     

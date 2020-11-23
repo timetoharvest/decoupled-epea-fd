@@ -1,6 +1,7 @@
 #include "pruning_options.h"
 
 #include "compliant_path_graph.h"
+#include "explicit_state_cpg.h"
 #include "../factoring.h"
 #include "../plugin.h"
 #include "simulation_relation.h"
@@ -32,21 +33,25 @@ PruningOptions::PruningOptions(const Options &opts)
     }                                            
                                             
     if (goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
-        CompliantPathGraph::set_compute_leaf_backwards_graph();
-        CompliantPathGraph::set_store_leaf_goal_states();
+        ExplicitStateCPG::set_compute_leaf_backwards_graph();
+        ExplicitStateCPG::set_store_leaf_goal_states();
         
         if (goal_price_propagation){
             cout << "using goal price propagation" << endl;
         }
-        
         if (do_simulation){
             cout << "using simulation within leaf factors" << endl;
         }
-
         if (irrelevance != IRRELEVANCE::NO){
             cout << "performing irrelevance analysis in leaf factors" << endl;
         }
     }
+    if (hypercube_pruning){
+        cout << "performing hypercube pruning" << endl;
+    }
+}
+
+void PruningOptions::verify_options() {
     if (pruning_type == PRUNING_TYPE::FRONTIER &&
             (min_price_in_g ||
                     g_in_dominance ||
@@ -75,9 +80,28 @@ PruningOptions::PruningOptions(const Options &opts)
             cout << "Disabling exploitation of dominance transitivity for exact duplicate checking, this does not have any effect." << endl;
         }
     }
-}
-
-void PruningOptions::verify_options() const {
+    if (g_factoring->get_leaf_representation_type() == LEAF_REPRESENTATION_TYPE::SYMBOLIC){
+        if (goal_price_propagation || do_simulation || irrelevance != IRRELEVANCE::NO){
+            cerr << "Goal price propagation, simulation, and irrelavance pruning are not supported with symbolic leaves." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (pruning_type == PRUNING_TYPE::FRONTIER){
+            cerr << "Frontier pruning is not supported with symbolic leaves." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (hypercube_pruning){
+            cerr << "Hypercube pruning is not supported with symbolic leaves." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (g_symmetry_graph){
+            cerr << "Symmetry breaking is not supported with symbolic leaves." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
+        if (exploit_leaf_invertibility){
+            exploit_leaf_invertibility = false;
+            cout << "WARNING: exploiting leaf invertibility and symbolic leaves are not compatible; exploiting invertibility will be switched off." << endl;
+        }
+    }
     if (g_factoring->get_profile() != FORK){
         if (pruning_type == PRUNING_TYPE::FRONTIER ||
                 goal_price_propagation ||
@@ -90,32 +114,32 @@ void PruningOptions::verify_options() const {
     }
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         if (goal_price_propagation){
-            cout << "goal price propagation is not (yet) supported for satisficing search" << endl;
+            cerr << "goal price propagation is not (yet) supported for satisficing search" << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }        
         if (do_simulation){
-            cout << "simulation is not (yet) supported for satisficing search" << endl;
+            cerr << "simulation is not (yet) supported for satisficing search" << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
     if (hypercube_pruning){
         if (g_factoring->get_search_type() != SAT && g_factoring->get_search_type() != UNSAT){
-            cout << "Hypercube pruning is only supported for satisficing planning." << endl;
+            cerr << "Hypercube pruning is only supported for satisficing planning." << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
         if (pruning_type == PRUNING_TYPE::FRONTIER){
-            cout << "Hypercube pruning is not supported with frontier pruning." << endl;
+            cerr << "Hypercube pruning is not supported with frontier pruning." << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
     }
     if (g_symmetry_graph){
         if (irrelevance != IRRELEVANCE::NO){
-            cout << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
+            cerr << "Irrelevance pruning is not supported for decoupled orbit search!" << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
         if (pruning_type == PRUNING_TYPE::FRONTIER && 
                (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)){
-            cout << "Satisficing search with frontier pruning is not supported for decoupled orbit search!" << endl;
+            cerr << "Satisficing search with frontier pruning is not supported for decoupled orbit search!" << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
         if (exploit_leaf_invertibility){
@@ -124,14 +148,13 @@ void PruningOptions::verify_options() const {
     }
 }
 
-void PruningOptions::initialize() const {
-    verify_options();
+void PruningOptions::apply_leaf_state_space_pruning() const {
     if (do_simulation || irrelevance != IRRELEVANCE::NO){
-        SimulationRelation rel(CompliantPathGraph::leaf_state_successors, CompliantPathGraph::leaf_state_predecessors);
+        SimulationRelation rel(ExplicitStateCPG::leaf_state_successors, ExplicitStateCPG::leaf_state_predecessors);
         rel.init();
         rel.statistics();
         if (irrelevance != IRRELEVANCE::NO) {
-            rel.perform_leaf_irrelevance_pruning(CompliantPathGraph::compute_leaf_backwards_graph, irrelevance == STATES, true);
+            rel.perform_leaf_irrelevance_pruning(ExplicitStateCPG::compute_leaf_backwards_graph, irrelevance == STATES, true);
         }
 
         if (do_simulation) {

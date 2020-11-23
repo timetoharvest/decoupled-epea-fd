@@ -31,6 +31,11 @@ enum DECOUPLED_SEARCH_TYPE {
     UNSAT       // for proving unsolvability (SAT + optimizations)
 };
 
+enum LEAF_REPRESENTATION_TYPE {
+    EXPLICIT,
+    SYMBOLIC
+};
+
 
 struct InteractionGraph {
     friend class Factoring;
@@ -82,6 +87,8 @@ class Factoring {
 
     ABSTAIN_TYPE abstain_type;
     
+    LEAF_REPRESENTATION_TYPE leaf_type;
+
     size_t max_precompute_state_space_size;
     
     int factoring_time_limit;
@@ -145,6 +152,10 @@ public:
     
     DECOUPLED_SEARCH_TYPE get_search_type() const {
         return search_type;
+    }
+
+    LEAF_REPRESENTATION_TYPE get_leaf_representation_type() const {
+        return leaf_type;
     }
 
     bool run_standard_search_because_factoring_failed() const {

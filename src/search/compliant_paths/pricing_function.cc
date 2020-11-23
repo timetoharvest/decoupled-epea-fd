@@ -16,9 +16,9 @@
 using namespace std;
 
 
-PriceStorage* Prices::cpg_storage;
+Storage<Prices>* Prices::cpg_storage;
 
-void Prices::register_cpg_storage(PriceStorage *storage) {
+void Prices::register_cpg_storage(Storage<Prices> *storage) {
     cpg_storage = storage;
 }
 
@@ -62,6 +62,9 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
+
+        // need to check for each new leaf state if it's a goal state
+        store_is_leaf_goal_state(g_state_registry->lookup_leaf_state(id, factor));
     }
     size_t leaf_id = leaf_state_id_map[factor][id];
 
@@ -107,10 +110,8 @@ unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const Sta
 void Prices::update(const State &base_state) {
 
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ STARTING RPG" << endl;
+    cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
-    
-    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -122,7 +123,7 @@ void Prices::update(const State &base_state) {
         size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
-        cout << "       starting RPG for leaf factor " << factor << endl;
+        cout << "       starting UPDATE for leaf factor " << factor << endl;
         const vector<PricesInfo*> &achieved_facts = new_tag.get_facts(factor);
         for (int i = 0; i < achieved_facts.size(); i++){
             if (achieved_facts[i] == 0){
@@ -132,61 +133,6 @@ void Prices::update(const State &base_state) {
         }
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
-        
-        bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
-
-        if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
-            // the two above conditions together prevent errors in case the CG is not connected.
-            // i.e. leaf_price_cache is empty for fork topologies
-
-            // no need to rebuild the reachable leaf state space every time
-            // instead: do it once, cache which State has the same start leaf state
-            // and copy everything from that state
-            if (get_number_states(factor) == 1){
-                assert(prices[factor].back() >= 0); // it should always be the "last" state in prices
-
-                LeafStateHash leaf_id(0);
-                bool found = false;
-
-                assert(leaf_state_id_map[factor][prices[factor].size() - 1] >= 0);
-                if ((size_t) leaf_state_id_map[factor][prices[factor].size() - 1] == prices[factor].size() - 1){
-                    // maybe we are lucky
-                    found = true;
-                    leaf_id = LeafStateHash(prices[factor].size() - 1);
-                }
-
-                while (!found){
-                    // TODO there should be a better way to find the state
-                    assert(leaf_state_id_map[factor][leaf_id] >= 0);
-                    if ((size_t) leaf_state_id_map[factor][leaf_id] == prices[factor].size() - 1){
-                        found = true;
-                        break;
-                    }
-                    ++leaf_id;
-                }
-
-                if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
-                    const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
-
-                    int cost_delta = get_cost_of_state(leaf_id, factor);
-                    cost_delta -= cpg_to_copy->get_cost_of_state(leaf_id, factor);
-
-                    size_t num_states = cpg_to_copy->get_number_states(factor) - 1;
-                    for (LeafStateHash id(0) ; id < number_leaf_states; ++id){
-                        if (id != leaf_id && cpg_to_copy->has_leaf_state(id, factor)){
-                            int cost = cpg_to_copy->get_cost_of_state(id, factor);
-                            add_state(id, factor, cost + cost_delta);
-                            if (--num_states == 0){
-                                break;
-                            }
-                        }
-                    }
-                    continue;
-                } else {
-                	leaf_states_to_cache_for_current_cpg.push_back(LeafStateID(leaf_id, factor));
-                }
-            }
-        }
         
         vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
         
@@ -212,7 +158,7 @@ void Prices::update(const State &base_state) {
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
                         const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
                         // TODO what about caching applicability per update?
-                        if (is_ifork_leaf || op.is_center_applicable(base_state)){
+                        if (g_factoring->is_ifork_leaf(factor) || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
                             change |= add_state(successor, factor, 
                                                 cost + get_adjusted_action_cost(op, cost_type));
@@ -232,13 +178,13 @@ void Prices::update(const State &base_state) {
         }
         
 #ifdef DEBUG_SEARCH
-    cout << "   RPG for leaf factor " << factor << " finished" << endl;
+    cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
 
     }
         
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ RPG FINISHED" << endl;
+    cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
 }
 
@@ -250,7 +196,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
         g_advantage = 0;
     }
 
-    const Prices *other_cpg = &cpg_storage->prices[other];
+    const Prices *other_cpg = &cpg_storage->cpgs[other];
 
     bool dominated = true;
     bool dominates = true;
@@ -520,8 +466,34 @@ bool Prices::goal_reachable(LeafFactorID factor) const {
     return goal_cost[factor] != INF;
 }
 
+void Prices::populate_reached_leaf_facts(function<void(int, int)> f) const {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
+                for (int var : g_leaves[factor]){
+                    f(var, l_state[var]);
+                }
+            }
+        }
+    }
+}
+
+void Prices::populate_cost_of_leaf_facts(function<void(int, int, int)> f) const {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
+                int cost = get_cost_of_state(id, factor);
+                for (int var : g_leaves[factor]){
+                    f(var, l_state[var], cost);
+                }
+            }
+        }
+    }
+}
+
 void Prices::store_new_cpg(const State &state) {
-    cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
 

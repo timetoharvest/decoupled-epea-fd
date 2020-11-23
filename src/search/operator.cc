@@ -87,7 +87,7 @@ Operator::Operator(istream &in, bool axiom) {
 }
 
 bool Operator::is_applicable(const State &state) const {
-    if (g_factoring){    // not really efficient, but how to do it better?
+    if (g_factoring){
         if (!is_center_applicable(state)){
             return false;
         }
@@ -95,27 +95,7 @@ bool Operator::is_applicable(const State &state) const {
             // in fork topology, center actions don't have leaf preconditions
             return true;
         }
-        const CompliantPathGraph *price_tag = CPGStorage::storage->get_cpg(state);
-        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-            if (has_precondition_on(factor)){
-                bool applicable = false;
-                size_t number_states = price_tag->get_number_states(factor);
-                LeafStateHash id(0);
-                while (number_states > 0){
-                    if (price_tag->has_leaf_state(id, factor)){
-                        --number_states;
-                        if (is_applicable(id, factor)){
-                            applicable = true;
-                            break;
-                        }
-                    }
-                    ++id;
-                }
-                if (!applicable){
-                    return false;
-                }
-            }
-        }
+        return CPGStorage::storage->get_cpg(state)->is_applicable(*this);
     } else {
         for (size_t i = 0; i < preconditions.size(); ++i){
             if (!preconditions[i].is_applicable(state)){

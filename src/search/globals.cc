@@ -4,6 +4,7 @@
 #include "axioms.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cpg_storage.h"
+#include "compliant_paths/explicit_state_cpg.h"
 #include "task_utils/domain_transition_graph.h"
 #include "factoring.h"
 #include "heuristic.h"
@@ -322,8 +323,8 @@ void read_everything(istream &in) {
     int peak_memory_before = utils::get_peak_memory_in_kb();
     utils::Timer successor_generator_timer;
     g_successor_generator = new successor_generator::SuccessorGenerator();
-    if (g_factoring){
-        CompliantPathGraph::build_leaf_successor_generators();
+    if (g_factoring && g_factoring->get_leaf_representation_type() == EXPLICIT){
+        ExplicitStateCPG::build_leaf_successor_generators();
     }
     successor_generator_timer.stop();
     cout << "done! [t=" << utils::g_timer << "]" << endl;
@@ -425,7 +426,6 @@ const State &g_initial_state() {
 
 bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
-vector<int> g_min_action_cost_per_factor;
 int g_max_action_cost = 0;
 
 // TODO adapt the size based on experiments
@@ -456,8 +456,6 @@ vector<int> g_initial_state_data;
 
 vector<pair<int, int> > g_goal;
 vector<vector<pair<int, int> > > g_goals_per_factor;
-vector<int> g_min_goal_cost;
-int g_sum_min_goal_cost = 0;
 
 vector<Operator> g_operators;
 vector<Operator> g_axioms;

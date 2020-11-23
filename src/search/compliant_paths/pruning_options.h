@@ -15,7 +15,6 @@ enum DOMINANCE {
 class PruningOptions {
     
     enum PRUNING_TYPE {
-        // TODO FRONTIER and DUPLICATE are actually orthogonal and can be combined
         DOMINANCE,
         DUPLICATE,
         FRONTIER
@@ -57,8 +56,6 @@ class PruningOptions {
     bool do_simulation;
     
     bool goal_price_propagation;
-    
-    void verify_options() const;
 
     
     static bool ignore_current_search_state; // TODO: get rid of this hack
@@ -79,7 +76,9 @@ public:
 
     ~PruningOptions() = default;
     
-    void initialize() const;
+    void verify_options();
+
+    void apply_leaf_state_space_pruning() const;
     
     bool use_dominance_pruning() const {
         return pruning_type == PRUNING_TYPE::DOMINANCE;

@@ -2,6 +2,7 @@
 
 #include "algorithms/sccs.h"
 #include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/explicit_state_cpg.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
@@ -53,6 +54,7 @@ void Factoring::init_var_to_ops_map() {
 Factoring::Factoring(const Options &opts) :
             search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))),
             abstain_type(ABSTAIN_TYPE(opts.get_enum("abstain_type"))),
+            leaf_type(LEAF_REPRESENTATION_TYPE(opts.get_enum("leaf_representation"))),
             factoring_time_limit(opts.get<int>("factoring_time_limit")),
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
     verify_no_axioms_no_conditional_effects();
@@ -446,8 +448,6 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     }
 #endif
 
-    CompliantPathGraph::initialize();
-
     // setup g_goals_per_factor
     // TODO check if each fork leaf contains a goal! what to do if not??
     // this should probably be assured by the get_factoring methods?!
@@ -493,7 +493,9 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             }
         }
     }
-    CompliantPathGraph::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
+    if (leaf_type == LEAF_REPRESENTATION_TYPE::EXPLICIT){
+        ExplicitStateCPG::set_precompute_leaf_state_spaces(precompute_leaf_state_space);
+    }
 }
 
 void Factoring::print_factoring() const {
@@ -1755,6 +1757,17 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         "SDA",
         vector<string>(),
         OptionFlags(false));
+
+    vector<string> leaf_types;
+    leaf_types.push_back("EXPLICIT");
+    leaf_types.push_back("SYMBOLIC");
+    parser.add_enum_option(
+            "leaf_representation",
+            leaf_types,
+            "TODO",
+            "EXPLICIT",
+            vector<string>(),
+            OptionFlags(false));
 
     vector<string> abstain_types;
     abstain_types.push_back("ABSTAIN_ON_FAILURE");

@@ -2,6 +2,7 @@
 
 #include "cpg_storage.h"
 #include "../factoring.h"
+#include "frontier_prices.h"
 #include "../globals.h"
 #include "../operator.h"
 #include "../algorithms/priority_queues.h"
@@ -17,9 +18,9 @@
 using namespace std;
 
 
-EffectivePriceStorage* EffectivePrices::cpg_storage;
+Storage<EffectivePrices>* EffectivePrices::cpg_storage;
 
-void EffectivePrices::register_cpg_storage(EffectivePriceStorage *storage) {
+void EffectivePrices::register_cpg_storage(Storage<EffectivePrices> *storage) {
     cpg_storage = storage;
 }
 
@@ -99,7 +100,7 @@ DOMINANCE EffectivePrices::check_dominance(const State &other, uint64_t hash, in
         g_advantage = 0;
     }
 
-    const EffectivePrices *other_cpg = &cpg_storage->effective_prices[other];
+    const EffectivePrices *other_cpg = &cpg_storage->cpgs[other];
 
     bool dominated = true;
     bool dominates = true;

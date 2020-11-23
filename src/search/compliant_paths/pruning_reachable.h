@@ -6,12 +6,13 @@
 
 #include <vector>
 
-class PruningReachableStorage;
+template<class T>
+class Storage;
 
 class PruningReachable : public Reachable {
     friend class Reachable; // to get init state cpg
     
-    static PruningReachableStorage *cpg_storage;
+    static Storage<PruningReachable> *cpg_storage;
 
     
     void resize();
@@ -52,15 +53,15 @@ public:
     virtual void dump() const override;
 
     virtual std::unique_ptr<CompliantPathGraph> clone() const override;
-    
+
     virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
 
-    virtual size_t get_memory_footprint() const;
+    virtual size_t get_memory_footprint() const override;
 
     virtual uint64_t get_hash() const override;
 
 
-    static void register_cpg_storage(PruningReachableStorage *storage);
+    static void register_cpg_storage(Storage<PruningReachable> *storage);
  
 };
 

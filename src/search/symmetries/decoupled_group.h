@@ -5,7 +5,7 @@
 
 #include <vector>
 
-class CompliantPathGraph;
+class ExplicitStateCPG;
 class DecoupledPermutation;
 class Group;
 class LexicographicOrdering;
@@ -15,7 +15,7 @@ class State;
 struct DecoupledTrace {
     std::vector<const DecoupledPermutation *> trace;
     std::vector<int> canonical_center;
-    std::unique_ptr<CompliantPathGraph> canonical_cpg;
+    std::unique_ptr<ExplicitStateCPG> canonical_cpg;
 };
 
 class DecoupledGroup {
@@ -32,13 +32,13 @@ public:
     ~DecoupledGroup() = default;
 
     DecoupledTrace get_trace(const State &center,
-                             const CompliantPathGraph &leaves,
+                             const ExplicitStateCPG &leaves,
                              const LexicographicOrdering &lex_ordering) const;
 
     std::unique_ptr<DecoupledPermutation> compose_permutation(const DecoupledTrace &trace) const;
 
     const std::vector<int> & get_canonical_decoupled_state(const State &center, 
-                                                           CompliantPathGraph &leaves,
+                                                           ExplicitStateCPG &leaves,
                                                            const LexicographicOrdering &lex_ordering) const;
 
     std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center) const;

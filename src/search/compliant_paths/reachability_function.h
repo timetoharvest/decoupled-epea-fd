@@ -2,16 +2,17 @@
 #define REACHABILITY_FUNCTION_H
 
 #include "../ext/boost/dynamic_bitset.hpp"
-#include "compliant_path_graph.h"
+#include "explicit_state_cpg.h"
 
 #include <vector>
 
-class ReachableStorage;
+template<class T>
+class Storage;
 
-class Reachable : public CompliantPathGraph {
-    friend class CompliantPathGraph; // to get init state cpg
+class Reachable : public ExplicitStateCPG {
+    friend class ExplicitStateCPG; // to get init state cpg
 
-    static ReachableStorage *cpg_storage;
+    static Storage<Reachable> *cpg_storage;
     
     
     void resize();
@@ -63,6 +64,10 @@ public:
     
     virtual size_t get_number_states(LeafFactorID factor) const override;
     
+    virtual void populate_reached_leaf_facts(std::function<void(int, int)> f) const override;
+
+    virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const override;
+
     virtual int get_goal_cost(LeafFactorID factor) const override;
     
     virtual bool goal_reachable(LeafFactorID factor) const override;
@@ -75,10 +80,10 @@ public:
 
     virtual uint64_t get_hash() const override;
 
-    virtual size_t get_memory_footprint() const;
+    virtual size_t get_memory_footprint() const override;
 
     
-    static void register_cpg_storage(ReachableStorage *storage);
+    static void register_cpg_storage(Storage<Reachable> *storage);
  
 };
 

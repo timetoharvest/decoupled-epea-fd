@@ -63,7 +63,7 @@ public:
 
     
     const std::vector<int> & get_canonical_decoupled_state(const State &center,
-							                               CompliantPathGraph &leaves) const {
+                                                           ExplicitStateCPG &leaves) const {
         assert(decoupled_group);
         return decoupled_group->get_canonical_decoupled_state(center, leaves, lex_ordering);
     }
@@ -72,9 +72,9 @@ public:
                                                        const State &to_state);
 
     std::unique_ptr<DecoupledPermutation> create_permutation_from_state_to_state(const State &state, 
-                                                                const CompliantPathGraph &cpg,
+                                                                const ExplicitStateCPG &cpg,
                                                                 const State &succ_state, 
-                                                                const CompliantPathGraph &succ_cpg) const;
+                                                                const ExplicitStateCPG &succ_cpg) const;
 
     bool has_generators() const {
         return group->get_num_generators() > 0;

@@ -10,7 +10,7 @@
 
 
 class Operator;
-class PathPriceTag;
+class Permutation;
 
 class SearchNode {    
     StateID state_id;
@@ -56,21 +56,15 @@ public:
 
 
 class SearchSpace {
+    friend class PathPrices; // to reconstruct leaf paths
+
     PerStateInformation<SearchNodeInfo> search_node_infos;
 
     OperatorCost cost_type;
     
-    void trace_decoupled_path(std::vector<OperatorID> &path,
-                              std::vector<StateID> &states) const;
-    
     void trace_symmetric_path(std::vector<OperatorID> &path,
                               std::vector<StateID> &states, 
                               std::vector<Permutation> &permutations) const;
-    
-    void trace_symmetric_path(std::vector<OperatorID> &path,
-                              std::vector<StateID> &states, 
-                              std::vector<std::unique_ptr<PathPriceTag> > &cpgs,
-                              std::vector<std::unique_ptr<DecoupledPermutation> > &permutations) const;
     
 public:
     SearchSpace(OperatorCost cost_type);

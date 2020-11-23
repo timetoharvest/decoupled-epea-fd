@@ -1,6 +1,6 @@
 #include "lm_cut_heuristic.h"
 
-#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/explicit_state_cpg.h"
 #include "compliant_paths/cpg_storage.h"
 #include "globals.h"
 #include "operator.h"
@@ -22,6 +22,11 @@ using namespace std;
 LandmarkCutHeuristic::LandmarkCutHeuristic(const Options &opts)
     : Heuristic(opts) {
     num_propositions = 2; // artificial goal and artificial precondition
+    if (heuristic_type != HEURISTIC_TYPE::STD &&
+                    g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
+        cerr << "Symbolic leaf representation is not supported for LMcut heuristic." << endl;
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    }
 }
 
 LandmarkCutHeuristic::~LandmarkCutHeuristic() {
@@ -392,7 +397,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
         
         dereference_ops();
         
-        const CompliantPathGraph *tag = CPGStorage::storage->get_cpg(state);
+        const ExplicitStateCPG *tag = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
         
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){

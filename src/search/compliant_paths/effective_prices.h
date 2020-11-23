@@ -6,12 +6,13 @@
 
 #include <vector>
 
-class EffectivePriceStorage;
+template<class T>
+class Storage;
 
 class EffectivePrices : public Prices {
     friend class Prices; // to get init state cpg
     
-    static EffectivePriceStorage *cpg_storage;
+    static Storage<EffectivePrices> *cpg_storage;
     
 
     void resize();
@@ -66,12 +67,12 @@ public:
 
     virtual void apply_symmetry_permutation(const LeavesPermutation &per) override;
 
-    virtual size_t get_memory_footprint() const;
+    virtual size_t get_memory_footprint() const override;
 
     virtual uint64_t get_hash() const override;
 
     
-    static void register_cpg_storage(EffectivePriceStorage *storage);
+    static void register_cpg_storage(Storage<EffectivePrices> *storage);
     
 };
 

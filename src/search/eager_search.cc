@@ -1,6 +1,6 @@
 #include "eager_search.h"
 
-#include "compliant_paths/pruning_options.h"
+#include "compliant_paths/compliant_path_graph.h"
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "globals.h"
@@ -168,7 +168,7 @@ SearchStatus EagerSearch::step() {
 
         // g-value upper bound pruning for decoupled search => g_sum_min_goal_cost
         // get_leaf_g might include part of leaf goal cost for non-fork leaves
-        int goal_cost = max(0, g_sum_min_goal_cost - node.get_leaf_part_g());
+        int goal_cost = max(0, CompliantPathGraph::get_min_leaf_goal_cost() - node.get_leaf_part_g());
         if (node.get_g() + get_adjusted_cost(op) + goal_cost >= bound) {
             continue;
         }
@@ -368,7 +368,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
         if (g_factoring && found_solution()){
             // prune states that cannot possibly result in a cheaper solution
             // g-value might include some goal cost
-            int goal_cost = max(0, g_sum_min_goal_cost - node.get_leaf_part_g());
+            int goal_cost = max(0, CompliantPathGraph::get_min_leaf_goal_cost() - node.get_leaf_part_g());
             if (node.get_g() + max(goal_cost, node.get_h()) >= bound) {
                 continue;
             }

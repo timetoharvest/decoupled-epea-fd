@@ -17,9 +17,9 @@
 using namespace std;
 
 
-FrontierPriceStorage* FrontierPrices::cpg_storage;
+Storage<FrontierPrices>* FrontierPrices::cpg_storage;
 
-void FrontierPrices::register_cpg_storage(FrontierPriceStorage *storage) {
+void FrontierPrices::register_cpg_storage(Storage<FrontierPrices> *storage) {
     cpg_storage = storage;
 }
 
@@ -70,7 +70,7 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
 void FrontierPrices::update(const State &new_center_state) {
 
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ STARTING RPG" << endl;
+    cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
@@ -83,7 +83,7 @@ void FrontierPrices::update(const State &new_center_state) {
         size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
-        cout << "       starting RPG for leaf factor " << factor << endl;
+        cout << "       starting UPDATE for leaf factor " << factor << endl;
         const vector<PricesInfo*> &achieved_facts = new_tag.get_facts(factor);
         for (int i = 0; i < achieved_facts.size(); i++){
             if (achieved_facts[i] == 0){
@@ -154,13 +154,13 @@ void FrontierPrices::update(const State &new_center_state) {
         }
         
 #ifdef DEBUG_SEARCH
-    cout << "   RPG for leaf factor " << factor << " finished" << endl;
+    cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
 
     }
         
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ RPG FINISHED" << endl;
+    cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
 
     if(pruning->propagate_simulation_prices()){
@@ -174,7 +174,7 @@ void FrontierPrices::update(const State &new_center_state) {
 
 DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
     // TODO implement g-values
-    FrontierPrices *other_cpg = &cpg_storage->frontier_prices[other];
+    FrontierPrices *other_cpg = &cpg_storage->cpgs[other];
 
     compute_cost_frontier();
     other_cpg->compute_cost_frontier();
@@ -207,7 +207,7 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOM
         }
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (!CompliantPathGraph::is_leaf_goal_state(id, factor)){
+            if (!ExplicitStateCPG::is_leaf_goal_state(id, factor)){
                 if (dominates && other_cpg->has_leaf_state(id, factor) && other_cpg->frontier[factor][id]){                    
                     if (has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_cost_of_state(id, factor);

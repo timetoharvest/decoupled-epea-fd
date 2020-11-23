@@ -7,12 +7,13 @@
 
 #include <vector>
 
-class FrontierPriceStorage;
+template<class T>
+class Storage;
 
 class FrontierPrices : public EffectivePrices {
     friend class EffectivePrices; // to get init state cpg
     
-    static FrontierPriceStorage *cpg_storage;
+    static Storage<FrontierPrices> *cpg_storage;
     
 
     void resize();
@@ -63,12 +64,12 @@ public:
 
     virtual void dump() const override;
 
-    virtual size_t get_memory_footprint() const;
+    virtual size_t get_memory_footprint() const override;
 
     virtual uint64_t get_hash() const override;
 
     
-    static void register_cpg_storage(FrontierPriceStorage *storage);
+    static void register_cpg_storage(Storage<FrontierPrices> *storage);
     
 };
 

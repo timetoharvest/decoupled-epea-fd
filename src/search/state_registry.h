@@ -101,8 +101,8 @@
     to store for each state and each landmark whether it was reached in this state.
 */
 
-class CompliantPathGraph;
 class DecoupledPermutation;
+class ExplicitStateCPG;
 class Permutation;
 class PerStateInformationBase;
 
@@ -250,7 +250,7 @@ public:
     
     State get_state_permutation(const State &state, const Permutation &permutation);
     
-    State get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation);
+    State get_decoupled_state_permutation(const State &state, ExplicitStateCPG &cpg, const DecoupledPermutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and

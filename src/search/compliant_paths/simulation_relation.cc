@@ -1,7 +1,7 @@
 #include "simulation_relation.h"
 
 #include "../algorithms/priority_queues.h"
-#include "compliant_path_graph.h" // TODO get rid of this
+#include "explicit_state_cpg.h" // TODO get rid of this
 #include "../operator.h"
 #include "../operator_id.h"
 #include "../state_registry.h" // TODO get rid of this
@@ -266,7 +266,7 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const utils::Co
     vector<int> goal_distances(num_states, numeric_limits<int>::max()); 
     priority_queues::BucketQueue<LeafStateHash> open;
 	
-    for (LeafStateHash s : CompliantPathGraph::leaf_goal_states[factor]) {
+    for (LeafStateHash s : ExplicitStateCPG::get_leaf_goal_states(factor)) {
         goal_distances[s] = 0;
         open.push(0, s);
     }
@@ -301,9 +301,9 @@ void SimulationRelation::compute_simulation(LeafFactorID factor, const utils::Co
             return;
         }
         relation[factor][i].resize(num_states, true);
-        if(!CompliantPathGraph::is_leaf_goal_state(i, factor)){
+        if(!ExplicitStateCPG::is_leaf_goal_state(i, factor)){
             for (LeafStateHash j(0); j < num_states; ++j){
-                if (CompliantPathGraph::is_leaf_goal_state(j, factor) || goal_distances[i] > goal_distances[j]){
+                if (ExplicitStateCPG::is_leaf_goal_state(j, factor) || goal_distances[i] > goal_distances[j]){
                     relation[factor][i][j] = false;
                 }
             }

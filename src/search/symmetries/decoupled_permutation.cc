@@ -1,7 +1,6 @@
 #include "decoupled_permutation.h"
 
-#include "../compliant_paths/compliant_path_graph.h"
-#include "../compliant_paths/pricing_function.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "../globals.h"
 #include "lexicographic_ordering.h"
 #include "../operator.h"
@@ -9,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
 
 using namespace std;
 
@@ -96,7 +96,7 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
             size_t size_before = g_state_registry->size(symm_factor);
 #endif
 
-            LeafStateHash symm_id = CompliantPathGraph::get_leaf_state_hash(symm_leaf_state, symm_factor);
+            LeafStateHash symm_id = ExplicitStateCPG::get_leaf_state_hash(symm_leaf_state, symm_factor);
 
             assert(size_before == g_state_registry->size(symm_factor));
 
@@ -158,11 +158,11 @@ pair<LeafStateHash, LeafFactorID> LeavesPermutation::get_old_factor_state_by_new
     return findex_leaves.get_leaf_state_by_index(old_ind);
 }
 
-cmp_t LeavesPermutation::cmp_num_states(const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_num_states(const ExplicitStateCPG &cpg) const {
     for(LeafFactorID to_factor : factors_affected) {
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor <= to_factor) {
-            // This has been compared in the other directionor or is the same factor
+            // This has been compared in the other direction or is the same factor
             // TODO the above if only works if the cycle involves <= 2 factors
             continue;
         }
@@ -177,7 +177,7 @@ cmp_t LeavesPermutation::cmp_num_states(const CompliantPathGraph &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_goal_cost(const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_goal_cost(const ExplicitStateCPG &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if (factors_affected.size() == 2 && from_factor <= to_factor) {
@@ -209,7 +209,7 @@ cmp_t LeavesPermutation::cmp_goal_cost(const CompliantPathGraph &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_prices(const CompliantPathGraph &cpg) const {
+cmp_t LeavesPermutation::cmp_prices(const ExplicitStateCPG &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor < to_factor) {
@@ -492,8 +492,8 @@ bool CenterPermutation::is_symmetric_op(const Operator &op, const Operator &op2)
     for (auto eff : effects) {
         auto new_var_val = get_new_var_val_by_old_var_val(eff.var, eff.val);
         if (find_if(effects2.begin(), effects2.end(), [new_var_val] (const Effect &eff2) {
-            return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
-        }) == effects2.end() ) {
+                        return eff2.var == new_var_val.first && eff2.val == new_var_val.second;
+                    }) == effects2.end()) {
             return false;
         }
     }
@@ -554,7 +554,7 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1,
     assert(has_valid_center_permutation());
 }
 
-bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGraph &leaves,
+bool DecoupledPermutation::replace_if_less(vector<int> &center, ExplicitStateCPG &leaves,
                                            const LexicographicOrdering &lex_ordering) const {
     if(center_permutation){
         cmp_t cmp = center_permutation->replace_if_less(center);
@@ -578,7 +578,7 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, CompliantPathGra
 }
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
-                                                   CompliantPathGraph &leaves) const {
+        ExplicitStateCPG &leaves) const {
     assert(center_permutation); 
     cmp_t cmp = center_permutation->replace_if_less(center);
     if (cmp == cmp_t::LESS && leaves_permutation){
@@ -587,7 +587,7 @@ cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center,
     return cmp;
 }
 
-bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves, 
+bool DecoupledPermutation::replace_if_less_leaves(ExplicitStateCPG &leaves,
                                                   const LexicographicOrdering &lex_ordering) const {
 
     if (leaves_permutation &&
@@ -599,7 +599,7 @@ bool DecoupledPermutation::replace_if_less_leaves(CompliantPathGraph &leaves,
 }
 
 void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
-						   CompliantPathGraph &leaves) const {
+        ExplicitStateCPG &leaves) const {
     if(center_permutation){
         center_permutation->permute(center);
     }

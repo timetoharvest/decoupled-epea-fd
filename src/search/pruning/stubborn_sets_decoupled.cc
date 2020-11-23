@@ -1,6 +1,7 @@
 #include "stubborn_sets_decoupled.h"
 
 #include "../compliant_paths/cpg_storage.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "../compliant_paths/simulation_relation.h"
 #include "../globals.h"
 #include "../operator.h"
@@ -18,7 +19,7 @@ namespace stubborn_sets_decoupled {
 
 
 inline vector<pair<int, int>> find_unsatisfied_preconditions(
-    const Operator &op, const State &state, const CompliantPathGraph *current_cpg) {
+    const Operator &op, const State &state, const ExplicitStateCPG *current_cpg) {
 
     vector<pair<int, int>> res;
     
@@ -131,20 +132,23 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
 
     if (!g_factoring){
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     } else if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT){
     	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+    	exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    } else if (g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
+    	cout << "Symbolic leaf representation is supported by decoupled strong stubborn sets!" << endl;
+    	exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
     
     if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::UNSAT){
-    	CompliantPathGraph::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
+        ExplicitStateCPG::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
     }
 
     if(goal_ingoing_transitions){
-        CompliantPathGraph::set_compute_leaf_backwards_graph();
-        CompliantPathGraph::set_store_leaf_goal_states();
+        ExplicitStateCPG::set_compute_leaf_backwards_graph();
+        ExplicitStateCPG::set_store_leaf_goal_states();
     }
     
     is_fork_factoring = false;
@@ -214,9 +218,9 @@ void StubbornSetsDecoupled::initialize() {
     if (special_case_optimizations && has_fork_leaf){
 
         // remove non-simple paths from leaf state spaces
-        reduced_leaf_state_spaces = CompliantPathGraph::leaf_state_successors;
+        reduced_leaf_state_spaces = ExplicitStateCPG::leaf_state_successors;
 
-        SimulationRelation rel(reduced_leaf_state_spaces, CompliantPathGraph::leaf_state_predecessors);
+        SimulationRelation rel(reduced_leaf_state_spaces, ExplicitStateCPG::leaf_state_predecessors);
         rel.init(10);
         rel.statistics();
         rel.perform_leaf_irrelevance_pruning(false, false, false);
@@ -227,7 +231,7 @@ void StubbornSetsDecoupled::initialize() {
                 min_cost_to_goal[factor].resize(g_state_registry->size(factor), numeric_limits<int>::max());
 
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                    if (CompliantPathGraph::is_leaf_goal_state(id, factor)){
+                    if (ExplicitStateCPG::is_leaf_goal_state(id, factor)){
                         min_cost_to_goal[factor][id] = 0;
                     }
                 }
@@ -283,7 +287,7 @@ void StubbornSetsDecoupled::initialize() {
 
 void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID factor) {
     assert(is_fork_leaf[factor]);
-    if (g_goals_per_factor[factor].empty() || current_cpg->get_goal_cost(factor) == g_min_goal_cost[factor]){
+    if (g_goals_per_factor[factor].empty() || current_cpg->get_goal_cost(factor) == CompliantPathGraph::get_min_leaf_goal_cost(factor)){
         // goal cannot become cheaper
         return;
     }
@@ -335,7 +339,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
                 }
             } else {
                 // add transitions that can reduce a leaf state's price
-                for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+                for (const auto &succ : ExplicitStateCPG::leaf_state_successors[factor][id]){
                     int new_price = curr_cost;
                     new_price += get_adjusted_action_cost(g_operators[succ.first], CompliantPathGraph::get_cost_type());
                     if (!current_cpg->has_leaf_state(succ.second, factor) || new_price < current_cpg->get_cost_of_state(succ.second, factor)){
@@ -363,7 +367,7 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
             if (satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), leaf_pre)){
                 continue;
             }
-            for (const auto &succ : CompliantPathGraph::leaf_state_successors[factor][id]){
+            for (const auto &succ : ExplicitStateCPG::leaf_state_successors[factor][id]){
                 mark_as_stubborn(succ.first);
             }
             if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_successors[factor].empty()){
@@ -450,7 +454,7 @@ bool StubbornSetsDecoupled::mark_as_stubborn(OperatorID op_no) {
 }
 
 void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
-    current_cpg = CPGStorage::storage->get_cpg(state);
+    current_cpg = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     
     if (special_case_optimizations && has_ifork_leaf){
         if (is_ifork_factoring && test_goal(state)){
@@ -474,9 +478,9 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             if (goal_ingoing_transitions){
                 // if goal in a factor not reached, mark all ingoing transition to all
                 // goal states as stubborn
-                for (LeafStateHash id : CompliantPathGraph::leaf_goal_states[factor]){
+                for (LeafStateHash id : ExplicitStateCPG::leaf_goal_states[factor]){
                     assert(!current_cpg->has_leaf_state(id, factor));
-                    for (auto &pred : CompliantPathGraph::leaf_state_predecessors[factor][id]){
+                    for (auto &pred : ExplicitStateCPG::leaf_state_predecessors[factor][id]){
                         mark_as_stubborn(pred.first);
                     }
                     if (!is_fork_leaf[factor] && !is_ifork_leaf[factor] && !center_predecessors[factor].empty()){
@@ -494,7 +498,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                     if (current_cpg->has_leaf_state(id, factor)){
-                        assert(!CompliantPathGraph::is_leaf_goal_state(id, factor));
+                        assert(!ExplicitStateCPG::is_leaf_goal_state(id, factor));
                         const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
                         for (size_t i = 0; i < g_goals_per_factor[factor].size(); ++i){
                             if (leaf_state[g_goals_per_factor[factor][i].first] != g_goals_per_factor[factor][i].second){
@@ -554,10 +558,10 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 mark_goal_frontier_actions_as_stubborn(factor);
             } else {
                 if (is_fork_leaf[factor]){
-                    if (current_cpg->get_goal_cost(factor) > g_min_goal_cost[factor]){
+                    if (current_cpg->get_goal_cost(factor) > CompliantPathGraph::get_min_leaf_goal_cost(factor)){
                         mark_goal_frontier_actions_as_stubborn(factor);
                     }
-                } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > g_min_goal_cost[factor]) {
+                } else if (!is_ifork_leaf[factor] && (leaf_part_g + current_cpg->get_goal_cost(factor)) > CompliantPathGraph::get_min_leaf_goal_cost(factor)) {
                     mark_goal_frontier_actions_as_stubborn(factor);
                 }
             }

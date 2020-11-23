@@ -2,6 +2,8 @@
 
 #include "axioms.h"
 #include "compliant_paths/cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/explicit_state_cpg.h"
 #include "factoring.h"
 #include "operator.h"
 #include "search_engine.h"
@@ -73,8 +75,6 @@ LeafStateHash StateRegistry::insert_id_or_pop_leaf_state(LeafFactorID factor) {
     if (!result.second) {
         // is known leaf state
         leaf_state_data_pool[factor]->pop_back();
-    } else {
-        CompliantPathGraph::store_is_leaf_goal_state(lookup_leaf_state(result.first->value, factor));
     }
     assert(registered_leaf_states[factor].size() == leaf_state_data_pool[factor]->size());
     return result.first->value;
@@ -135,10 +135,6 @@ const State &StateRegistry::get_initial_state() {
                 insert_id_or_pop_leaf_state(factor);
             }
             
-            CPGStorage::initialize();
-            
-            CompliantPathGraph::build_leaf_state_spaces();
-            
             unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
             
             init_state_cpg->store_new_cpg(*cached_initial_state);
@@ -157,7 +153,7 @@ const State &StateRegistry::get_initial_state() {
 void StateRegistry::permute_initial_state() {
     // TODO refactor this... what about having a decoupled state registry?
     if (g_factoring){
-        CompliantPathGraph *cpg = CPGStorage::storage->get_mutable_cpg(*cached_initial_state);
+        ExplicitStateCPG *cpg = static_cast<ExplicitStateCPG*>(CPGStorage::storage->get_mutable_cpg(*cached_initial_state));
         const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
 
         assert(new_center.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
@@ -230,7 +226,7 @@ State StateRegistry::get_state_permutation(const State &state, const Permutation
     return lookup_state(id);
 }
 
-State StateRegistry::get_decoupled_state_permutation(const State &state, CompliantPathGraph &cpg, const DecoupledPermutation &permutation) {
+State StateRegistry::get_decoupled_state_permutation(const State &state, ExplicitStateCPG &cpg, const DecoupledPermutation &permutation) {
     vector<int> permuted(g_variable_domain.size(), -1);
     for (int var : g_center){
         permuted[var] = state[var];
@@ -308,7 +304,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(s, op);
 
         if (g_symmetry_graph && compute_canonical){
-            const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, *new_cpg);
+            const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, static_cast<ExplicitStateCPG&>(*new_cpg));
 
             bool changed = false;
             for (size_t var : g_center){
@@ -365,16 +361,14 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 // is a new decoupled state
                 state_duplicate_counter[base_state_id] = new_dup_counter;
             }
-            if (replace_old_cpg){
-            	CompliantPathGraph::clear_cpg_cache(s);
-            }
+
             if (new_dup_counter > old_dup_counter || replace_old_cpg){
                 // new decoupled state, or new decoupled state dominates an existing one => replace cpg
                 new_cpg->store_new_cpg(s);
+            } else {
+                new_cpg->discard_new_cpg();
             }
         }
-        
-        new_cpg->discard_new_cpg();
         
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;

@@ -4,6 +4,7 @@
 #include "../factoring.h"
 #include "../operator.h"
 #include "pruning_options.h"
+#include "pruning_reachable.h"
 #include "../state_registry.h"
 #include "../symmetries/decoupled_permutation.h"
 #include "../task_utils/successor_generator.h"
@@ -15,9 +16,9 @@
 using namespace std;
 
 
-ReachableStorage* Reachable::cpg_storage;
+Storage<Reachable>* Reachable::cpg_storage;
 
-void Reachable::register_cpg_storage(ReachableStorage *storage) {
+void Reachable::register_cpg_storage(Storage<Reachable> *storage) {
     cpg_storage = storage;
 }
 
@@ -44,6 +45,9 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
+
+        // need to check for each new leaf state if it's a goal state
+        store_is_leaf_goal_state(g_state_registry->lookup_leaf_state(id, factor));
     }
     size_t leaf_id = leaf_state_id_map[factor][id];
 
@@ -77,10 +81,8 @@ unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const 
 void Reachable::update(const State &base_state) {
     
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ STARTING RPG" << endl;
+    cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
-
-    assert(leaf_states_to_cache_for_current_cpg.empty());
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         
@@ -97,7 +99,7 @@ void Reachable::update(const State &base_state) {
         }
 
 #ifdef DEBUG_SEARCH
-        cout << "       starting RPG for leaf factor " << factor << endl;
+        cout << "       starting UPDATE for leaf factor " << factor << endl;
         const vector<PriceTagInfo*> &achieved_facts = new_tag.get_facts(factor);
         for (int i = 0; i < achieved_facts.size(); i++){
             if (achieved_facts[i] == 0){
@@ -107,44 +109,6 @@ void Reachable::update(const State &base_state) {
         }
         cout << "       " << new_tag.get_number_facts(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
-        
-        bool is_ifork_leaf = g_factoring->is_ifork_leaf(factor);
-        
-        if (g_factoring->get_profile() != FORK && is_ifork_leaf){     // is inv-fork leaf
-            // TODO is it really still worth it with the invertible ifork leaf optimization?
-            // the two above conditions together prevent errors in case the CG is not connected.
-            // i.e. g_leaf_price_cache is empty for fork topologies
-            
-            // no need to rebuild the reachable leaf state space every time
-            // instead: do it once, cache which State has the same start leaf state
-            // and copy everything from that state
-            if (get_number_states(factor) == 1){
-                LeafStateHash leaf_id(0);
-                for (;;){
-                    // TODO there should be a better way to find the state
-                    if (has_leaf_state(leaf_id, factor)){
-                        break;
-                    }
-                    ++leaf_id;
-                }
-                if (cpg_cache[factor].size() > leaf_id && cpg_cache[factor][leaf_id] != StateID::no_state){
-                    const CompliantPathGraph *cpg_to_copy = CPGStorage::storage->get_cpg(g_state_registry->lookup_state(cpg_cache[factor][leaf_id]));
-                    
-                    size_t number_states = cpg_to_copy->get_number_states(factor) - 1;
-                    for (LeafStateHash id(0) ; id < g_state_registry->size(factor); ++id){
-                        if (id != leaf_id && cpg_to_copy->has_leaf_state(id, factor)){
-                            add_state(id, factor);
-                            if (--number_states == 0){
-                                break;
-                            }
-                        }
-                    }
-                    continue;
-                } else {
-                    leaf_states_to_cache_for_current_cpg.push_back(LeafStateID(leaf_id, factor));
-                }
-            }
-        }
         
         boost::dynamic_bitset<> handled(g_state_registry->size(factor), false);
         
@@ -191,7 +155,8 @@ void Reachable::update(const State &base_state) {
                         continue;
                     }
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
-                        if (is_ifork_leaf || g_operators[leaf_state_successors[factor][id][o].first].is_center_applicable(base_state)){
+                        if (g_factoring->is_ifork_leaf(factor) ||
+                                g_operators[leaf_state_successors[factor][id][o].first].is_center_applicable(base_state)){
                             if(add_state(leaf_state_successors[factor][id][o].second, factor)) {
                                 ++added;
                             }
@@ -277,13 +242,13 @@ void Reachable::update(const State &base_state) {
         }
         
 #ifdef DEBUG_SEARCH
-    cout << "   RPG for leaf factor " << factor << " finished" << endl;
+    cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
         assert((handled.count() == get_number_states(factor)) || goal_reached[factor]);
     }
         
 #ifdef DEBUG_SEARCH
-    cout << "+++++++++++++++ RPG FINISHED" << endl;
+    cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
 }
 
@@ -292,7 +257,7 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
         return DOMINANCE::NONE;
     }
 
-    const Reachable *other_cpg = &cpg_storage->reachable[other];
+    const Reachable *other_cpg = &cpg_storage->cpgs[other];
 
     bool sizes_equal = true;
     bool new_is_larger = false;
@@ -360,7 +325,7 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
                 break;
             }
         }
-       if (get_number_states(factor) < g_state_registry->size(factor) || !CompliantPathGraph::precompute_leaf_state_space(factor)){
+       if (get_number_states(factor) < g_state_registry->size(factor) || !ExplicitStateCPG::precompute_leaf_state_space(factor)){
            all_leaves_max_size = false;
        }
     }
@@ -542,12 +507,12 @@ bool Reachable::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
 
 int Reachable::get_cost_of_state(LeafStateHash id, LeafFactorID factor) const {
     assert(has_leaf_state(id, factor));
-    assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
     if (is_leaf_state_space_scc[factor]){
-        return g_min_action_cost_per_factor[factor];
+        return min_leaf_action_cost[factor];
     }
+    assert((size_t) leaf_state_id_map[factor][id] < reachable[factor].size());
     // TODO: this assumes that the initial state is not a goal state, otherwise need to return 0 for initial state e.g. for forks
-    return reachable[factor][leaf_state_id_map[factor][id]] ? g_min_action_cost_per_factor[factor] : INF;
+    return reachable[factor][leaf_state_id_map[factor][id]] ? min_leaf_action_cost[factor] : INF;
 }
 
 size_t Reachable::get_number_states(LeafFactorID factor) const {
@@ -559,7 +524,7 @@ size_t Reachable::get_number_states(LeafFactorID factor) const {
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
     if (goal_reached[factor]){
-        return g_min_action_cost_per_factor[factor]; // TODO: this assumes that the initial state is not a goal state
+        return min_leaf_action_cost[factor]; // TODO: this assumes that the initial state is not a goal state
     } else {
         return INF;
     }
@@ -574,8 +539,33 @@ bool Reachable::goal_reachable(LeafFactorID factor) const {
     return goal_reached[factor];
 }
 
+void Reachable::populate_reached_leaf_facts(function<void(int, int)> f) const {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
+                for (int var : g_leaves[factor]){
+                    f(var, l_state[var]);
+                }
+            }
+        }
+    }
+}
+
+void Reachable::populate_cost_of_leaf_facts(function<void(int, int, int)> f) const {
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+            if (has_leaf_state(id, factor)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
+                for (int var : g_leaves[factor]){
+                    f(var, l_state[var], min_leaf_action_cost[factor]); // TODO this is not actually true, cost can as well be 0
+                }
+            }
+        }
+    }
+}
+
 void Reachable::store_new_cpg(const State &state) {
-    cache_cpg(state);
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -753,12 +743,12 @@ inline void substract_cube(const HyperCube &query, const HyperCube &evidence, ve
     resulting_cubes.pop_back();
 }
 
-inline HyperCube get_cube(const CompliantPathGraph *cpg) {
+inline HyperCube get_cube(const ExplicitStateCPG &cpg) {
     HyperCube cube(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        cube[factor].reserve(cpg->get_number_states(factor));
+        cube[factor].reserve(cpg.get_number_states(factor));
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-            if (cpg->has_leaf_state(id, factor)){
+            if (cpg.has_leaf_state(id, factor)){
                 cube[factor].push_back(id);
             }
         }
@@ -769,13 +759,13 @@ inline HyperCube get_cube(const CompliantPathGraph *cpg) {
 bool Reachable::is_hypercube_covered(const State &base_state, int curr_number_duplicates) const {
     // cube elimination
     vector<HyperCube> current_cubes;
-    current_cubes.push_back(get_cube(this));
+    current_cubes.push_back(get_cube(*this));
 
     for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // get other state
         State s = g_state_registry->get_decoupled_state(base_state, dup);
 
-        HyperCube evd_cube = get_cube(cpg_storage->get_cpg(s));
+        HyperCube evd_cube = get_cube(cpg_storage->cpgs[s]);
 
         vector<HyperCube> new_cubes;
 

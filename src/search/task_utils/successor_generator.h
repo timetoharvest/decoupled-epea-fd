@@ -1,13 +1,13 @@
 #ifndef TASK_UTILS_SUCCESSOR_GENERATOR_H
 #define TASK_UTILS_SUCCESSOR_GENERATOR_H
 
-#include "../leaf_state_id.h"
 
 #include <memory>
 #include <vector>
 
 class CompliantPathGraph;
 class LeafState;
+class LeafFactorID;
 class OperatorID;
 class State;
 
@@ -16,10 +16,6 @@ class GeneratorBase;
 
 class SuccessorGenerator {
     std::unique_ptr<GeneratorBase> root;
-
-    // removes all operators from applicable_ops, whose leaf preconditions are not
-    // reached in cpg
-    void remove_inapplicable_ops(const CompliantPathGraph &cpg, std::vector<OperatorID> &applicable_ops) const;
 
 public:
     explicit SuccessorGenerator();

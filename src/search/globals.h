@@ -59,7 +59,6 @@ bool are_mutex(const std::pair<int, int> &a, const std::pair<int, int> &b);
 
 extern bool g_use_metric;
 extern int g_min_action_cost;
-extern std::vector<int> g_min_action_cost_per_factor;
 extern int g_max_action_cost;
 
 extern size_t MAX_DUPLICATE_COUNTER;
@@ -99,9 +98,6 @@ extern const State &g_initial_state();
 // in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
 extern std::vector<std::vector<std::pair<int, int> > > g_goals_per_factor;
-// contains the locally minimal goal cost per factor
-extern std::vector<int> g_min_goal_cost;
-extern int g_sum_min_goal_cost;
 
 extern std::vector<Operator> g_operators;
 extern std::vector<Operator> g_axioms;
