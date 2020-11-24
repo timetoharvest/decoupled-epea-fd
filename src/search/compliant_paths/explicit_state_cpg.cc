@@ -199,9 +199,9 @@ void ExplicitStateCPG::build_leaf_state_space(Prices &prices,
             }
             int cost = prices.get_cost_of_state(id, factor);
             if (id < best_prices.size()){
-                if (cost >= best_prices[id]
-                                        || ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
-                                                && best_prices[id] != numeric_limits<int>::max())){
+                if (cost >= best_prices[id] ||
+                        ((g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT)
+                                && best_prices[id] != numeric_limits<int>::max())){
                     // no need to handle a state twice (unless it got cheaper and we do optimal planning)
                     continue;
                 }
@@ -573,10 +573,14 @@ int ExplicitStateCPG::get_total_goal_price() const {
             // for non-fork leaves, need to add minimum price of compliant leaf state
             // for fork leaves, the initial leaf state is always compliant at cost 0
             int min_compliant_state_cost = numeric_limits<int>::max();
+            size_t num_leaf_states = get_number_states(factor);
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (has_leaf_state(id, factor)){
                     min_compliant_state_cost = min(min_compliant_state_cost, get_cost_of_state(id, factor));
                     if (min_compliant_state_cost == 0){
+                        break;
+                    }
+                    if (--num_leaf_states == 0){
                         break;
                     }
                 }
@@ -604,11 +608,15 @@ bool ExplicitStateCPG::is_optimal_leaf_plan(int leaf_part_g) const {
             // the cheapest possible, unless there is a compliant leaf state with price 0
             // for fork leaves, it is trivially true
             int min_compliant_path_cost = numeric_limits<int>::max();
+            size_t num_leaf_states = get_number_states(factor);
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (has_leaf_state(id, factor)){
                     assert(get_cost_of_state(id, factor) >= 0);
                     min_compliant_path_cost = min(min_compliant_path_cost, get_cost_of_state(id, factor));
                     if (min_compliant_path_cost == 0){
+                        break;
+                    }
+                    if (--num_leaf_states == 0){
                         break;
                     }
                 }

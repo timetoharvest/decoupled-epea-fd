@@ -541,11 +541,15 @@ bool Reachable::goal_reachable(LeafFactorID factor) const {
 
 void Reachable::populate_reached_leaf_facts(function<void(int, int)> f) const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        size_t num_leaf_states = get_number_states(factor);
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
                 for (int var : g_leaves[factor]){
                     f(var, l_state[var]);
+                }
+                if (--num_leaf_states == 0){
+                    break;
                 }
             }
         }
@@ -554,11 +558,15 @@ void Reachable::populate_reached_leaf_facts(function<void(int, int)> f) const {
 
 void Reachable::populate_cost_of_leaf_facts(function<void(int, int, int)> f) const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        size_t num_leaf_states = get_number_states(factor);
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
                 for (int var : g_leaves[factor]){
                     f(var, l_state[var], min_leaf_action_cost[factor]); // TODO this is not actually true, cost can as well be 0
+                }
+                if (--num_leaf_states == 0){
+                    break;
                 }
             }
         }
@@ -747,9 +755,13 @@ inline HyperCube get_cube(const ExplicitStateCPG &cpg) {
     HyperCube cube(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         cube[factor].reserve(cpg.get_number_states(factor));
+        size_t num_leaf_states = cpg.get_number_states(factor);
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (cpg.has_leaf_state(id, factor)){
                 cube[factor].push_back(id);
+                if (--num_leaf_states == 0){
+                    break;
+                }
             }
         }
     }

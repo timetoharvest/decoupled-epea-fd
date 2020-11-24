@@ -119,8 +119,6 @@ void Prices::update(const State &base_state) {
         if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
             continue;
         }
-        
-        size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
         cout << "       starting UPDATE for leaf factor " << factor << endl;
@@ -134,7 +132,7 @@ void Prices::update(const State &base_state) {
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
         
-        vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
+        vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
         
         bool change = true;
 
@@ -142,6 +140,8 @@ void Prices::update(const State &base_state) {
            
             change = false;
             
+            size_t num_states_handled = 0;
+
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 
                 if (has_leaf_state(id, factor)){
@@ -165,6 +165,10 @@ void Prices::update(const State &base_state) {
                         }
                     }
                     
+                    if (++num_states_handled == get_number_states(factor)){
+                        break;
+                    }
+
                     // TODO probably reintroduce this for optimal search again
                     // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPrices
                     // when introducing this, also have a shortcut at the beginning of the outmost for loop
@@ -468,11 +472,15 @@ bool Prices::goal_reachable(LeafFactorID factor) const {
 
 void Prices::populate_reached_leaf_facts(function<void(int, int)> f) const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        size_t num_leaf_states = get_number_states(factor);
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
                 for (int var : g_leaves[factor]){
                     f(var, l_state[var]);
+                }
+                if (--num_leaf_states == 0){
+                    break;
                 }
             }
         }
@@ -481,12 +489,16 @@ void Prices::populate_reached_leaf_facts(function<void(int, int)> f) const {
 
 void Prices::populate_cost_of_leaf_facts(function<void(int, int, int)> f) const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        size_t num_leaf_states = get_number_states(factor);
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (has_leaf_state(id, factor)){
                 LeafState l_state = g_state_registry->lookup_leaf_state(id, factor);
                 int cost = get_cost_of_state(id, factor);
                 for (int var : g_leaves[factor]){
                     f(var, l_state[var], cost);
+                }
+                if (--num_leaf_states == 0){
+                    break;
                 }
             }
         }

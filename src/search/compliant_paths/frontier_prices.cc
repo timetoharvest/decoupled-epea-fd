@@ -79,8 +79,6 @@ void FrontierPrices::update(const State &new_center_state) {
             // skip fork leaves that don't have a goal!
             continue;
         }
-        
-        size_t number_leaf_states = g_state_registry->size(factor);
 
 #ifdef DEBUG_SEARCH
         cout << "       starting UPDATE for leaf factor " << factor << endl;
@@ -94,7 +92,7 @@ void FrontierPrices::update(const State &new_center_state) {
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
 #endif 
              
-        vector<int> best_prices(number_leaf_states, numeric_limits<int>::max());
+        vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
         
         bool change = true;
 
@@ -102,12 +100,19 @@ void FrontierPrices::update(const State &new_center_state) {
            
             change = false;
             
+            size_t num_leaf_states = 0;
+
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 
                 if (has_leaf_state(id, factor)){
 
+                    ++num_leaf_states;
+
                     if (!frontier[factor][id]){
                         // TODO should probably only do this if simulation/propagation is disabled.. Why?
+                        if (num_leaf_states == get_number_states(factor)){
+                            break;
+                        }
                         continue;
                     }
                 
@@ -139,7 +144,11 @@ void FrontierPrices::update(const State &new_center_state) {
                     }
                     if (all_applicable){
                         frontier[factor][id] = false;
-                    }                    
+                    }
+
+                    if (num_leaf_states == get_number_states(factor)){
+                        break;
+                    }
                     
                     // TODO probably reintroduce this for optimal search again
                     // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPrices

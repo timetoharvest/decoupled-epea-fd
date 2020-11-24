@@ -37,6 +37,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
             
             bool applicable = false;
             
+            size_t num_leaf_states = current_cpg->get_number_states(factor);
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (current_cpg->has_leaf_state(id, factor)){
                     const LeafState &leaf_state = g_state_registry->lookup_leaf_state(id, factor);
@@ -51,6 +52,9 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
                     }
                     if (applicable_state){
                         applicable = true;
+                        break;
+                    }
+                    if (--num_leaf_states == 0){
                         break;
                     }
                 }
@@ -231,6 +235,7 @@ void StubbornSetsDecoupled::initialize() {
                 min_cost_to_goal[factor].resize(g_state_registry->size(factor), numeric_limits<int>::max());
 
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
+                    // TODO iterate over goal leaf state ids directly
                     if (ExplicitStateCPG::is_leaf_goal_state(id, factor)){
                         min_cost_to_goal[factor][id] = 0;
                     }
@@ -294,6 +299,7 @@ void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID 
     
     // add frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used as a fork-leaf precondition
+    size_t num_leaf_states = current_cpg->get_number_states(factor);
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             int curr_cost = current_cpg->get_cost_of_state(id, factor);
@@ -308,6 +314,9 @@ void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID 
                     }
                 }
             }
+            if (--num_leaf_states == 0){
+                break;
+            }
         }
     }
 }
@@ -319,6 +328,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
     
     // add goal frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used to achieve the goal
+    size_t num_leaf_states = current_cpg->get_number_states(factor);
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
             int curr_cost = current_cpg->get_cost_of_state(id, factor);
@@ -356,15 +366,24 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
                     }
                 }
             }
+
+            if (--num_leaf_states == 0){
+                break;
+            }
         }
     }
 }
 
 void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID factor, OpsLeafProps<Condition> leaf_pre) {
     // TODO add option to switch off satisfies_leaf_pre check => probably not necessary, the overhead should be negligible
+    size_t num_leaf_states = current_cpg->get_number_states(factor);
     for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
         if (current_cpg->has_leaf_state(id, factor)){
+            --num_leaf_states;
             if (satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), leaf_pre)){
+                if (num_leaf_states == 0){
+                    break;
+                }
                 continue;
             }
             for (const auto &succ : ExplicitStateCPG::leaf_state_successors[factor][id]){
@@ -374,6 +393,9 @@ void StubbornSetsDecoupled::mark_reached_enabling_set_as_stubborn(LeafFactorID f
                 for (auto &succ : center_successors[factor][id]){
                     mark_as_stubborn(succ.first);
                 }
+            }
+            if (num_leaf_states == 0){
+                break;
             }
         }
     }
@@ -438,10 +460,17 @@ bool StubbornSetsDecoupled::mark_as_stubborn(OperatorID op_no) {
             if (is_ifork_leaf[factor] && op.has_precondition_on(factor)){
                 bool reached = false;
                 OpsLeafProps<Condition> pre = op.get_preconditions(factor);
+                size_t num_leaf_states = current_cpg->get_number_states(factor);
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                    if (current_cpg->has_leaf_state(id, factor) && satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), pre)){
-                        reached = true;
-                        break;
+                    if (current_cpg->has_leaf_state(id, factor)){
+                        if (satisfies_leaf_pre(g_state_registry->lookup_leaf_state(id, factor), pre)){
+                            reached = true;
+                            break;
+                        }
+
+                        if (--num_leaf_states == 0){
+                            break;
+                        }
                     }
                 }
                 if (!reached){
@@ -496,6 +525,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 vector<bool> unsat(g_goals_per_factor[factor].size(), false);
                 vector<bool> sat(g_goals_per_factor[factor].size(), false);
                 
+                size_t num_leaf_states = current_cpg->get_number_states(factor);
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                     if (current_cpg->has_leaf_state(id, factor)){
                         assert(!ExplicitStateCPG::is_leaf_goal_state(id, factor));
@@ -506,6 +536,9 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                             } else {
                                 sat[i] = true;
                             }
+                        }
+                        if (--num_leaf_states == 0){
+                            break;
                         }
                     }
                 }

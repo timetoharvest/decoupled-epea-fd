@@ -121,12 +121,12 @@ void LandmarkCutHeuristic::initialize() {
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                const LeafState &f = g_state_registry->lookup_leaf_state(id, factor);
+                const LeafState &l_state = g_state_registry->lookup_leaf_state(id, factor);
                 
                 vector<RelaxedProposition*> effects;
                 for (size_t v = 0; v < g_leaves[factor].size(); ++v){
                     int var = g_leaves[factor][v];
-                    effects.push_back(&propositions[var][f[var]]);
+                    effects.push_back(&propositions[var][l_state[var]]);
                 }
                 relaxed_leaf_operators[factor].push_back(RelaxedOperator(precondition, effects, 0, 0));
             }
