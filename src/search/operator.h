@@ -36,6 +36,10 @@ struct Condition {
         return !(*this == other);
     }
 
+    bool operator<(const Condition &other) const {
+        return var < other.var || val < other.val;
+    }
+
     void dump() const;
 };
 
