@@ -80,6 +80,9 @@ struct RelaxedProposition {
     std::vector<RelaxedOperator *> precondition_of;
     std::vector<RelaxedOperator *> effect_of;
 
+    int var;
+    int val;
+
     PropositionStatus status;
     int h_max_cost;
     /* TODO: Also add the rpg depth? The Python implementation used
@@ -100,11 +103,13 @@ struct RelaxedProposition {
        without explicit depth tie-breaking, then decide.
     */
 
-    RelaxedProposition() : status(), h_max_cost() {
+    RelaxedProposition(int var, int val) : var(var), val(val), status(), h_max_cost() {
     }
 };
 
 class LandmarkCutHeuristic : public Heuristic {
+
+protected:
     std::vector<RelaxedOperator> relaxed_operators;
     std::vector<std::vector<RelaxedProposition> > propositions;
     RelaxedProposition artificial_precondition;
@@ -146,7 +151,7 @@ class LandmarkCutHeuristic : public Heuristic {
     void dereference_ops();
 public:
     LandmarkCutHeuristic(const Options &opts);
-    virtual ~LandmarkCutHeuristic();
+    virtual ~LandmarkCutHeuristic() = default;
 };
 
 inline void RelaxedOperator::update_h_max_supporter() {

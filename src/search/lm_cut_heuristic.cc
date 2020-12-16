@@ -20,21 +20,21 @@ using namespace std;
 
 // construction and destruction
 LandmarkCutHeuristic::LandmarkCutHeuristic(const Options &opts)
-    : Heuristic(opts) {
+: Heuristic(opts),
+  artificial_precondition(-1, -1),
+  artificial_goal(-1, -1) {
     num_propositions = 2; // artificial goal and artificial precondition
-    if (heuristic_type != HEURISTIC_TYPE::STD &&
-                    g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
-        cerr << "Symbolic leaf representation is not supported for LMcut heuristic." << endl;
-        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
-    }
-}
-
-LandmarkCutHeuristic::~LandmarkCutHeuristic() {
 }
 
 // initialization
 void LandmarkCutHeuristic::initialize() {
     cout << "Initializing landmark cut heuristic..." << endl;
+
+    if (heuristic_type != HEURISTIC_TYPE::STD &&
+            g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
+        cerr << "Symbolic leaf representation is not supported for LMcut heuristic." << endl;
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    }
 
     ::verify_no_axioms_no_conditional_effects();
 
@@ -43,15 +43,15 @@ void LandmarkCutHeuristic::initialize() {
     propositions.resize(g_variable_domain.size());
     for (size_t var = 0; var < g_variable_domain.size(); ++var) {
         for (int value = 0; value < g_variable_domain[var]; ++value){
-            propositions[var].push_back(RelaxedProposition());
+            propositions[var].push_back(RelaxedProposition(var, value));
         }
         num_propositions += g_variable_domain[var];
     }
 
     // Build relaxed operators for operators and axioms.
     for (size_t i = 0; i < g_operators.size(); ++i){
-	if(!g_operators[i].is_dead())
-	    build_relaxed_operator(g_operators[i]);
+        if(!g_operators[i].is_dead())
+            build_relaxed_operator(g_operators[i]);
     }
 
     // Simplify relaxed operators.
@@ -64,7 +64,7 @@ void LandmarkCutHeuristic::initialize() {
     vector<RelaxedProposition *> goal_op_pre, goal_op_eff;
     if (g_factoring){
         // this is to keep the goal variable order
-        
+
         vector<pair<int, int> > goal(g_variable_domain.size(), pair<int, int>(-1, -1));
         for (size_t i = 0; i < g_goal.size(); ++i) {
             goal[g_goal[i].first] = g_goal[i];
@@ -102,7 +102,7 @@ void LandmarkCutHeuristic::initialize() {
             op->effects[j]->effect_of.push_back(op);
         }
     }
-    
+
     if (g_factoring){
         number_center_effs.resize(propositions.size());
         for (size_t i = 0; i < propositions.size(); ++i){
@@ -114,15 +114,15 @@ void LandmarkCutHeuristic::initialize() {
         }
         num_art_center_pre_pre = artificial_precondition.precondition_of.size();
         num_art_center_goal_eff = artificial_goal.effect_of.size();
-        
+
         relaxed_leaf_operators.resize(g_leaves.size());
-        
+
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 const LeafState &l_state = g_state_registry->lookup_leaf_state(id, factor);
-                
+
                 vector<RelaxedProposition*> effects;
                 for (size_t v = 0; v < g_leaves[factor].size(); ++v){
                     int var = g_leaves[factor][v];
@@ -153,9 +153,9 @@ void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
 }
 
 void LandmarkCutHeuristic::add_relaxed_operator(
-    const vector<RelaxedProposition *> &precondition,
-    const vector<RelaxedProposition *> &effects,
-    const Operator *op, int base_cost) {
+        const vector<RelaxedProposition *> &precondition,
+        const vector<RelaxedProposition *> &effects,
+        const Operator *op, int base_cost) {
     RelaxedOperator relaxed_op(precondition, effects, op, base_cost);
     if (relaxed_op.precondition.empty()){
         relaxed_op.precondition.push_back(&artificial_precondition);
@@ -195,11 +195,11 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
 
 void LandmarkCutHeuristic::setup_exploration_queue_state(const State &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (heuristic_type == HEURISTIC_TYPE::STD ||
-	        g_belongs_to_factor[var] == LeafFactorID::CENTER){
-	    RelaxedProposition *init_prop = &propositions[var][state[var]];
-	    enqueue_if_necessary(init_prop, 0);
-	}
+        if (heuristic_type == HEURISTIC_TYPE::STD ||
+                g_belongs_to_factor[var] == LeafFactorID::CENTER){
+            RelaxedProposition *init_prop = &propositions[var][state[var]];
+            enqueue_if_necessary(init_prop, 0);
+        }
     }
     enqueue_if_necessary(&artificial_precondition, 0);
 }
@@ -217,7 +217,7 @@ void LandmarkCutHeuristic::first_exploration(const State &state) {
         if (prop_cost < popped_cost)
             continue;
         const vector<RelaxedOperator *> &triggered_operators =
-            prop->precondition_of;
+                prop->precondition_of;
         for (size_t i = 0; i < triggered_operators.size(); ++i) {
             RelaxedOperator *relaxed_op = triggered_operators[i];
             --relaxed_op->unsatisfied_preconditions;
@@ -236,13 +236,13 @@ void LandmarkCutHeuristic::first_exploration(const State &state) {
 }
 
 void LandmarkCutHeuristic::first_exploration_incremental(
-    vector<RelaxedOperator *> &cut) {
+        vector<RelaxedOperator *> &cut) {
     assert(priority_queue.empty());
     /* We pretend that this queue has had as many pushes already as we
        have propositions to avoid switching from bucket-based to
        heap-based too aggressively. This should prevent ever switching
        to heap-based in problems where action costs are at most 1.
-    */
+     */
     priority_queue.add_virtual_pushes(num_propositions);
     for (size_t i = 0; i < cut.size(); ++i) {
         RelaxedOperator *relaxed_op = cut[i];
@@ -261,7 +261,7 @@ void LandmarkCutHeuristic::first_exploration_incremental(
         if (prop_cost < popped_cost)
             continue;
         const vector<RelaxedOperator *> &triggered_operators =
-            prop->precondition_of;
+                prop->precondition_of;
         for (size_t i = 0; i < triggered_operators.size(); ++i) {
             RelaxedOperator *relaxed_op = triggered_operators[i];
             if (relaxed_op->h_max_supporter == prop) {
@@ -285,7 +285,7 @@ void LandmarkCutHeuristic::first_exploration_incremental(
 }
 
 void LandmarkCutHeuristic::second_exploration(
-    const State &state, vector<RelaxedProposition *> &second_exploration_queue, vector<RelaxedOperator *> &cut) {
+        const State &state, vector<RelaxedProposition *> &second_exploration_queue, vector<RelaxedOperator *> &cut) {
     assert(second_exploration_queue.empty());
     assert(cut.empty());
 
@@ -293,19 +293,19 @@ void LandmarkCutHeuristic::second_exploration(
     second_exploration_queue.push_back(&artificial_precondition);
 
     for (size_t var = 0; var < propositions.size(); ++var) {
-	if (heuristic_type == HEURISTIC_TYPE::STD || 
+        if (heuristic_type == HEURISTIC_TYPE::STD ||
                 g_belongs_to_factor[var] == LeafFactorID::CENTER){
-	    RelaxedProposition *init_prop = &propositions[var][state[var]];
-	    init_prop->status = BEFORE_GOAL_ZONE;
-	    second_exploration_queue.push_back(init_prop);
-	}
+            RelaxedProposition *init_prop = &propositions[var][state[var]];
+            init_prop->status = BEFORE_GOAL_ZONE;
+            second_exploration_queue.push_back(init_prop);
+        }
     }
 
     while (!second_exploration_queue.empty()) {
         RelaxedProposition *prop = second_exploration_queue.back();
         second_exploration_queue.pop_back();
         const vector<RelaxedOperator *> &triggered_operators =
-            prop->precondition_of;
+                prop->precondition_of;
         for (size_t i = 0; i < triggered_operators.size(); ++i) {
             RelaxedOperator *relaxed_op = triggered_operators[i];
             if (relaxed_op->h_max_supporter == prop) {
@@ -394,11 +394,11 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
     // TODO: Possibly put back in some kind of preferred operator mechanism.
     if (heuristic_type != HEURISTIC_TYPE::STD){
         // add virtual operators for factored search
-        
+
         dereference_ops();
-        
+
         const ExplicitStateCPG *tag = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-        
+
         vector<RelaxedProposition*> precondition(1, &artificial_precondition);
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
@@ -407,17 +407,17 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
             while (number_states > 0){
                 if (tag->has_leaf_state(id, factor)){
                     --number_states;
-                    
+
                     int cost = 0;
                     if (heuristic_type == HEURISTIC_TYPE::STAR){
                         cost = tag->get_cost_of_state(id, factor);
                         assert(cost >= 0);
                     }
-                    
+
                     if (id >= relaxed_leaf_operators[factor].size()){                        
                         for (LeafStateHash i(relaxed_leaf_operators[factor].size()); i <= id; ++i){
                             const LeafState &f = g_state_registry->lookup_leaf_state(i, factor);
-                    
+
                             vector<RelaxedProposition*> effects;
                             for (size_t v = 0; v < g_leaves[factor].size(); ++v){
                                 int var = g_leaves[factor][v];
@@ -428,9 +428,9 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                     } else {
                         relaxed_leaf_operators[factor][id].base_cost = cost;
                     }
-                    
+
                     relaxed_leaf_operators[factor][id].cost = cost;
-                    
+
                     RelaxedOperator &op = relaxed_leaf_operators[factor][id];
                     assert(op.precondition.size() == 1);
                     op.precondition[0]->precondition_of.push_back(&op);
@@ -442,7 +442,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
             }
         }
     }
-    
+
     for (size_t i = 0; i < relaxed_operators.size(); ++i) {
         RelaxedOperator &op = relaxed_operators[i];
         op.cost = op.base_cost * COST_MULTIPLIER;
@@ -494,7 +494,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                    doubt this would have a huge impact, and it would
                    only be applicable in the unit-cost (or zero- and
                    unit-cost) case.
-                */
+                 */
                 cut_cost = min(cut_cost, cut[i]->base_cost);
             }
         }
