@@ -1,4 +1,3 @@
-# TODO adapt docu
 # TODO check that the right version is installed? Do we need 3.0.0?
 # - Find the CUDD decision diagram library.
 # This code defines the following variables:
@@ -22,13 +21,9 @@ foreach(BUILDMODE "RELEASE" "DEBUG")
     find_path(CUDD_INCLUDE_DIRS
         NAMES cuddObj.hh
         HINTS ${_CMAKE_FIND_ROOT_PATH_${BUILDMODE}}
-        PATH_SUFFIXES cudd/cplusplus include
+        PATH_SUFFIXES cudd/cplusplus include cudd
     )
-#    find_path(CUDD_SOURCE_DIRS
-#        NAMES cudd.h
-#        HINTS ${_CMAKE_FIND_ROOT_PATH_${BUILDMODE}}
-#        PATH_SUFFIXES cudd/cudd include
-#    )
+
     find_library(CUDD_LIBRARY_${BUILDMODE}
         NAMES cudd
         HINTS ${_CMAKE_FIND_ROOT_PATH_${BUILDMODE}}
@@ -38,15 +33,22 @@ endforeach()
 
 set(CUDD_LIBRARIES optimized ${CUDD_LIBRARY_RELEASE}
     debug ${CUDD_LIBRARY_DEBUG})
-    
-get_filename_component(CUDD_ROOT_DIR ${CUDD_INCLUDE_DIRS} DIRECTORY)
 
-set(CUDD_CUDD_DIR ${CUDD_ROOT_DIR}/cudd)
-set(CUDD_ST_DIR ${CUDD_ROOT_DIR}/st)
-set(CUDD_MTR_DIR ${CUDD_ROOT_DIR}/mtr)
-set(CUDD_EPD_DIR ${CUDD_ROOT_DIR}/epd)
-    
-set(CUDD_INCLUDE_DIRS ${CUDD_ROOT_DIR} ${CUDD_CUDD_DIR} ${CUDD_ST_DIR} ${CUDD_EPD_DIR} ${CUDD_MTR_DIR} ${CUDD_INCLUDE_DIRS})
+if (CUDD_INCLUDE_DIRS)
+    get_filename_component(CUDD_DIR ${CUDD_INCLUDE_DIRS} NAME)
+    if ("${CUDD_DIR}" STREQUAL "cplusplus")
+        # this is needed for a manually installed CUDD, where header files are 
+        # distributed across several directories
+        get_filename_component(CUDD_ROOT_DIR ${CUDD_INCLUDE_DIRS} DIRECTORY)
+
+        set(CUDD_CUDD_DIR ${CUDD_ROOT_DIR}/cudd)
+        set(CUDD_ST_DIR ${CUDD_ROOT_DIR}/st)
+        set(CUDD_MTR_DIR ${CUDD_ROOT_DIR}/mtr)
+        set(CUDD_EPD_DIR ${CUDD_ROOT_DIR}/epd)
+
+        set(CUDD_INCLUDE_DIRS ${CUDD_ROOT_DIR} ${CUDD_CUDD_DIR} ${CUDD_ST_DIR} ${CUDD_EPD_DIR} ${CUDD_MTR_DIR} ${CUDD_INCLUDE_DIRS})
+    endif()
+endif()
 
 
 # Check if everything was found and set CUDD_FOUND.
