@@ -182,6 +182,7 @@ protected:
 
     bool arg_all_rankings;
     vector<FactoringRanking* > arg_rankings;
+    bool maximize_leaves;
 
     FactoredVars get_factoring() override;
 
@@ -189,7 +190,8 @@ public:
 
     IncidentArcsFactoring(const Options &opts)
             : Factoring(opts),
-              arg_all_rankings(opts.get<bool>("all_rankings")) {
+              arg_all_rankings(opts.get<bool>("all_rankings")),
+              maximize_leaves(opts.get<bool>("maximize_leaves")) {
         profile = STAR;
         cout << "using incident-arcs factoring profile" << endl;
         cout << "ranking_features: ";
@@ -848,6 +850,10 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     for (int arcs = variables.size() -1 ; arcs >= 0; --arcs){
         for (size_t cand = 0; cand < variables[arcs].size(); ++cand){
 
+            if (factoring_timer.is_expired()){
+                break;
+            }
+
             leaf_vars.erase(variables[arcs][cand]);
 
             FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
@@ -878,14 +884,22 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
 
-            if (number_leaves >= best_number_leaves && number_leaves >= min_number_leaves){
+            if (number_leaves < min_number_leaves){
+                continue;
+            }
+
+            bool replace = false;
+            // tie-breaking for larger/smaller leaves with same number of leaves
+            if (maximize_leaves && number_leaves > best_number_leaves){
+                replace = true;
+            } else if (!maximize_leaves && number_leaves >= best_number_leaves){
+                replace = true;
+            }
+
+            if (replace){
                 best_factoring = factoring;
                 discarded_leaves = discard_leaf;
                 best_number_leaves = number_leaves;
-            }
-
-            if (factoring_timer.is_expired()){
-                break;
             }
         }
     }
@@ -1853,6 +1867,12 @@ void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
 
     parser.add_option<bool>(
             "all_rankings",
+            "TODO",
+            "false"
+    );
+
+    parser.add_option<bool>(
+            "maximize_leaves",
             "TODO",
             "false"
     );
