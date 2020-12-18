@@ -2,16 +2,19 @@
 #define SYMMETRIES_DECOUPLED_PERMUTATION_H
 
 #include "../leaf_state_id.h"
+#include "../operator_cost.h"
 #include "permutation.h"
 
 #include <memory>
 #include <vector>
 
-class ExplicitStateCPG;
-class LexicographicOrdering;
 class Operator;
 class OperatorID;
-class Prices;
+
+namespace symmetries {
+
+class LexicographicOrdering;
+class SymmetryCPG;
 
 class DecoupledFactIndex {
 // Alvaro: Putting all the static data members in one class, so that it
@@ -84,11 +87,11 @@ public:
                                                                 
     std::pair<LeafStateHash, LeafFactorID> get_old_factor_state_by_new_factor_state(LeafStateHash state,
                                                                                     LeafFactorID factor) const;
-    cmp_t cmp_num_states(const ExplicitStateCPG &cpg) const;
+    cmp_t cmp_num_states(const SymmetryCPG &cpg) const;
     
-    cmp_t cmp_goal_cost(const ExplicitStateCPG &cpg) const;
+    cmp_t cmp_goal_cost(const SymmetryCPG &cpg) const;
     
-    cmp_t cmp_prices(const ExplicitStateCPG &cpg) const;
+    cmp_t cmp_prices(const SymmetryCPG &cpg) const;
     
     bool is_symmetric_op(const Operator &op, const Operator &op2) const;
     
@@ -137,24 +140,25 @@ public:
     }
 
     bool replace_if_less(std::vector<int> &center, 
-            ExplicitStateCPG &leaves,
+            SymmetryCPG &leaves,
                          const LexicographicOrdering &lex_ordering) const;
 
     cmp_t replace_if_less_center(std::vector<int> &center, 
-            ExplicitStateCPG &leaves) const;
+            SymmetryCPG &leaves) const;
     
-    bool replace_if_less_leaves(ExplicitStateCPG &leaves,
+    bool replace_if_less_leaves(SymmetryCPG &leaves,
 				const LexicographicOrdering &lex_ordering) const;
 
     bool stabilizes_center(const State &center) const;
 
     void permute_decoupled_state(std::vector<int> &center,
-            ExplicitStateCPG &leaves) const;
+            SymmetryCPG &leaves) const;
     
     void print_cycle_notation() const;
     
     OperatorID find_matching_min_cost_permuted_op(const Operator &op,
-						  const std::vector<OperatorID> &ops) const;
+						  const std::vector<OperatorID> &ops,
+						  OperatorCost cost_type) const;
     
     const LeavesPermutation & get_leaves_permutation() const {
         return *leaves_permutation;
@@ -166,5 +170,6 @@ public:
     }
 
 };
+}
 
 #endif

@@ -271,7 +271,7 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOM
     return DOMINANCE::NONE;
 }
 
-void FrontierPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+void FrontierPrices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
     EffectivePrices::apply_symmetry_permutation(per);
     frontier.clear();
     compute_cost_frontier();
@@ -463,8 +463,12 @@ size_t FrontierPrices::get_memory_footprint() const {
     return num_bytes;
 }
 
-unique_ptr<CompliantPathGraph> FrontierPrices::clone() const {
-    return unique_ptr<CompliantPathGraph>(new FrontierPrices(*this));
+symmetries::SymmetryCPG* FrontierPrices::get_init_sym_cpg() const {
+    return &cpg_storage->cpgs[g_initial_state()];
+}
+
+unique_ptr<symmetries::SymmetryCPG> FrontierPrices::clone() const {
+    return unique_ptr<symmetries::SymmetryCPG>(new FrontierPrices(*this));
 }
 
 uint64_t FrontierPrices::get_hash() const {

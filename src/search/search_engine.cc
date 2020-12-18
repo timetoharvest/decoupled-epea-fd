@@ -34,7 +34,7 @@ SearchEngine::SearchEngine(const Options &opts)
         CompliantPathGraph::set_cost_type(cost_type);
     }
     if (opts.contains("symmetry")) {
-        g_symmetry_graph = unique_ptr<GraphCreator>(opts.get<GraphCreator*>("symmetry"));
+        g_symmetry_graph = unique_ptr<symmetries::GraphCreator>(opts.get<symmetries::GraphCreator*>("symmetry"));
         if (g_factoring){
             ExplicitStateCPG::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
         }
@@ -65,7 +65,7 @@ void SearchEngine::set_plan(const Plan &p) {
 void SearchEngine::search() {
     if(g_symmetry_graph){
         g_state_registry->get_initial_state();
-        g_symmetry_graph->initialize();
+        g_symmetry_graph->initialize(cost_type);
         if (!g_symmetry_graph->has_generators()){
             g_symmetry_graph.reset();
         } else {
@@ -108,14 +108,14 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == FRA){
-                if (!cpg->is_optimal_leaf_plan(search_space.get_node(state).get_leaf_part_g())){
+                if (!cpg->is_optimal_leaf_plan(info.get_leaf_part_g())){
                     cout << ", cannot guarantee optimality => exit [t=" << utils::g_timer << "]" << endl;
                     exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
                 }
                 solution_found = true;
                 cheapest_goal_state = state.get_id();
             } else if (g_factoring->get_search_type() == ASDA){
-                if (cpg->is_optimal_leaf_plan(search_space.get_node(state).get_leaf_part_g())){
+                if (cpg->is_optimal_leaf_plan(info.get_leaf_part_g())){
                     solution_found = true;
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
@@ -184,5 +184,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
-    parser.add_option<GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
+    parser.add_option<symmetries::GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
 }

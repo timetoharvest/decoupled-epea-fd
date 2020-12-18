@@ -3,6 +3,7 @@
 
 #include "pricing_function.h"
 
+// TODO rename file to path_prices?
 
 struct PathPriceInfo {
     OperatorID generating_op;
@@ -25,7 +26,7 @@ struct PathPriceInfo {
 };
 
 
-class PathPrices : public Prices { // TODO rename to PathPrices?
+class PathPrices : public Prices {
     
     // path information
     std::vector<std::vector<PathPriceInfo> > paths;
@@ -46,9 +47,7 @@ class PathPrices : public Prices { // TODO rename to PathPrices?
     
     void apply_center_op_to_leaves(const PathPrices &old_cpg, const Operator &op);
 
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
-
-    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const symmetries::LeavesPermutation &permutation) override;
 
 
     static void symmetry_plan_reconstruction(std::vector<OperatorID> &ops, std::vector<StateID> &states);

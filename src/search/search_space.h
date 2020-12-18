@@ -10,7 +10,10 @@
 
 
 class Operator;
+
+namespace symmetries {
 class Permutation;
+}
 
 class SearchNode {    
     StateID state_id;
@@ -64,7 +67,7 @@ class SearchSpace {
     
     void trace_symmetric_path(std::vector<OperatorID> &path,
                               std::vector<StateID> &states, 
-                              std::vector<Permutation> &permutations) const;
+                              std::vector<symmetries::Permutation> &permutations) const;
     
 public:
     SearchSpace(OperatorCost cost_type);

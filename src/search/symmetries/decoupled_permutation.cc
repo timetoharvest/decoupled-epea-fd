@@ -5,6 +5,7 @@
 #include "lexicographic_ordering.h"
 #include "../operator.h"
 #include "../state_registry.h"
+#include "symmetry_cpg.h"
 
 #include <algorithm>
 #include <cassert>
@@ -12,7 +13,7 @@
 
 using namespace std;
 
-
+namespace symmetries {
 DecoupledFactIndex LeavesPermutation::findex_leaves;
 
 void DecoupledFactIndex::init() {
@@ -158,7 +159,7 @@ pair<LeafStateHash, LeafFactorID> LeavesPermutation::get_old_factor_state_by_new
     return findex_leaves.get_leaf_state_by_index(old_ind);
 }
 
-cmp_t LeavesPermutation::cmp_num_states(const ExplicitStateCPG &cpg) const {
+cmp_t LeavesPermutation::cmp_num_states(const SymmetryCPG &cpg) const {
     for(LeafFactorID to_factor : factors_affected) {
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor <= to_factor) {
@@ -177,7 +178,7 @@ cmp_t LeavesPermutation::cmp_num_states(const ExplicitStateCPG &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_goal_cost(const ExplicitStateCPG &cpg) const {
+cmp_t LeavesPermutation::cmp_goal_cost(const SymmetryCPG &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if (factors_affected.size() == 2 && from_factor <= to_factor) {
@@ -209,7 +210,7 @@ cmp_t LeavesPermutation::cmp_goal_cost(const ExplicitStateCPG &cpg) const {
     return cmp_t::EQUAL;
 }
 
-cmp_t LeavesPermutation::cmp_prices(const ExplicitStateCPG &cpg) const {
+cmp_t LeavesPermutation::cmp_prices(const SymmetryCPG &cpg) const {
     for (LeafFactorID to_factor : factors_affected){
         LeafFactorID from_factor = from_factors[to_factor];
         if(factors_affected.size() == 2 && from_factor < to_factor) {
@@ -554,7 +555,7 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1,
     assert(has_valid_center_permutation());
 }
 
-bool DecoupledPermutation::replace_if_less(vector<int> &center, ExplicitStateCPG &leaves,
+bool DecoupledPermutation::replace_if_less(vector<int> &center, SymmetryCPG &leaves,
                                            const LexicographicOrdering &lex_ordering) const {
     if(center_permutation){
         cmp_t cmp = center_permutation->replace_if_less(center);
@@ -578,7 +579,7 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, ExplicitStateCPG
 }
 
 cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
-        ExplicitStateCPG &leaves) const {
+        SymmetryCPG &leaves) const {
     assert(center_permutation); 
     cmp_t cmp = center_permutation->replace_if_less(center);
     if (cmp == cmp_t::LESS && leaves_permutation){
@@ -587,7 +588,7 @@ cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center,
     return cmp;
 }
 
-bool DecoupledPermutation::replace_if_less_leaves(ExplicitStateCPG &leaves,
+bool DecoupledPermutation::replace_if_less_leaves(SymmetryCPG &leaves,
                                                   const LexicographicOrdering &lex_ordering) const {
 
     if (leaves_permutation &&
@@ -599,7 +600,7 @@ bool DecoupledPermutation::replace_if_less_leaves(ExplicitStateCPG &leaves,
 }
 
 void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
-        ExplicitStateCPG &leaves) const {
+        SymmetryCPG &leaves) const {
     if(center_permutation){
         center_permutation->permute(center);
     }
@@ -648,7 +649,8 @@ inline bool are_equal(OpsLeafProps<Effect> effs1, OpsLeafProps<Effect> effs2) {
 }
 
 OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator &main_op,
-					                            const vector<OperatorID> &ops) const {
+					                            const vector<OperatorID> &ops,
+					                            OperatorCost cost_type) const {
 
     assert(!ops.empty());
 
@@ -656,8 +658,6 @@ OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operat
         assert(find(ops.begin(), ops.end(), main_op.get_id()) != ops.end());
         return main_op.get_id();
     }
-    
-    OperatorCost cost_type = CompliantPathGraph::get_cost_type();
 
     for(const auto op_id : ops) {
         const Operator &op = g_operators[op_id];
@@ -694,7 +694,7 @@ OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operat
         }
     }
 
-    cerr << "Error: no symmetric operator found in  DecoupledPermutation::find_matching_min_cost_permuted_op"  << endl;    
+    cerr << "Error: no symmetric operator found in DecoupledPermutation::find_matching_min_cost_permuted_op"  << endl;
     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
 
@@ -713,5 +713,6 @@ void DecoupledPermutation::print_cycle_notation() const {
     if (leaves_permutation){
         leaves_permutation->print_cycle_notation();
     }
+}
 }
 

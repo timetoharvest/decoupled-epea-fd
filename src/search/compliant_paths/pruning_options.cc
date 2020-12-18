@@ -89,6 +89,10 @@ void PruningOptions::verify_options() {
             cerr << "Frontier pruning is not supported with symbolic leaves." << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
         }
+        if (pruning_type == PRUNING_TYPE::DUPLICATE){
+            cerr << "Exact duplicate checking is not supported with symbolic leaves." << endl;
+            exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        }
         if (hypercube_pruning){
             cerr << "Hypercube pruning is not supported with symbolic leaves." << endl;
             exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
@@ -100,6 +104,11 @@ void PruningOptions::verify_options() {
         if (exploit_leaf_invertibility){
             exploit_leaf_invertibility = false;
             cout << "WARNING: exploiting leaf invertibility and symbolic leaves are not compatible; exploiting invertibility will be switched off." << endl;
+        }
+        if (g_in_dominance || prices_in_dominance){
+            g_in_dominance = false;
+            prices_in_dominance = false;
+            cout << "WARNING: cannot incorporate the g-value or price differences across leaves in dominance checking with symbolic leaves." <<  endl;
         }
     }
     if (g_factoring->get_profile() != FORK){

@@ -547,7 +547,7 @@ void Prices::dump() const {
     }
 }
 
-void Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
+void Prices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(g_leaves.size());
     vector<size_t> old_number_states(g_leaves.size());
@@ -603,6 +603,10 @@ void Prices::apply_symmetry_permutation(const LeavesPermutation &per) {
     assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
 }
 
+symmetries::SymmetryCPG* Prices::get_init_sym_cpg() const {
+    return &cpg_storage->cpgs[g_initial_state()];
+}
+
 size_t Prices::get_memory_footprint() const {
     size_t num_bytes = 0;
     if (!prices.empty()){
@@ -623,8 +627,8 @@ size_t Prices::get_memory_footprint() const {
     return num_bytes;
 }
 
-unique_ptr<CompliantPathGraph> Prices::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Prices(*this));
+unique_ptr<symmetries::SymmetryCPG> Prices::clone() const {
+    return unique_ptr<symmetries::SymmetryCPG>(new Prices(*this));
 }
 
 uint64_t Prices::get_hash() const {

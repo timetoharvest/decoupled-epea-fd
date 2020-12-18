@@ -118,3 +118,22 @@ if(PLUGIN_SYMMETRIES_ENABLED AND USE_BLISS)
         target_link_libraries(downward ${BLISS_LIBRARIES})
     endif()
 endif()
+
+# If any enabled plugin requires the CUDD library, compile with it. 
+# If CUDD is not installed, the planner will still compile, but 
+# using components that depend on CUDD will cause an error. 
+# This behavior can be overwritten by setting the
+# option USE_CUDD to false.
+option(
+  USE_CUDD
+  "Compile with support for CUDD if installed on this system."
+  TRUE)
+
+if(PLUGIN_SYMBOLIC_SEARCH_ENABLED AND USE_CUDD)
+    find_package(Cudd)
+    if(Cudd_FOUND)
+        add_definitions("-D USE_CUDD")
+        include_directories(${CUDD_INCLUDE_DIRS})
+        target_link_libraries(downward ${CUDD_LIBRARIES})
+    endif()
+endif()

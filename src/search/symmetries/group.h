@@ -7,6 +7,7 @@
 
 #include <vector>
 
+namespace symmetries {
 
 typedef std::vector<short int> Trace;
 
@@ -51,5 +52,7 @@ public:
     static void add_permutation(void*, unsigned int, const unsigned int *);
 
 };
+
+}
 
 #endif

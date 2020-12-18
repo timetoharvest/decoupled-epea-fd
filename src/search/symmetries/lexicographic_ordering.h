@@ -3,8 +3,11 @@
 
 class Options;
 class OptionParser;
+
+namespace symmetries {
+
 class LeavesPermutation;
-class ExplicitStateCPG;
+class SymmetryCPG;
 
 class LexicographicOrdering {
     
@@ -17,18 +20,18 @@ public:
     LexicographicOrdering(const Options &opts);
     
     bool produces_less(const LeavesPermutation &per, 
-		       const ExplicitStateCPG &p) const;
+		       const SymmetryCPG &p) const;
 
     bool optimize_leaves() const {
         return apply_goal_cost || apply_num_states || apply_prices;
     }
 
-    void print_ordering(const ExplicitStateCPG &p) const;
+    void print_ordering(const SymmetryCPG &p) const;
 
     static void add_options_to_parser(OptionParser &parser);
     
 };
 
-
+}
 
 #endif

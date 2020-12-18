@@ -3,13 +3,14 @@
 
 #include "../ext/boost/dynamic_bitset.hpp"
 #include "explicit_state_cpg.h"
+#include "../symmetries/symmetry_cpg.h"
 
 #include <vector>
 
 template<class T>
 class Storage;
 
-class Reachable : public ExplicitStateCPG {
+class Reachable : public ExplicitStateCPG, public symmetries::SymmetryCPG {
     friend class ExplicitStateCPG; // to get init state cpg
 
     static Storage<Reachable> *cpg_storage;
@@ -74,9 +75,11 @@ public:
     
     virtual void dump() const override;
 
-    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const symmetries::LeavesPermutation &permutation) override;
 
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+    virtual symmetries::SymmetryCPG* get_init_sym_cpg() const override;
+
+    virtual std::unique_ptr<symmetries::SymmetryCPG> clone() const override;
 
     virtual uint64_t get_hash() const override;
 

@@ -13,6 +13,7 @@
 
 using namespace std;
 
+namespace symmetries {
 
 FactIndex Permutation::findex;
 
@@ -393,4 +394,6 @@ int FactIndex::get_index_by_var_val_pair(int var, int val) const {
     assert (var >= 0 && var < (int) g_variable_domain.size());
     assert (val >= 0 && val < (int) g_variable_domain[var]);
     return dom_sum_by_var[var] + val;
+}
+
 }

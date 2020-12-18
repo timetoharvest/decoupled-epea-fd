@@ -1,13 +1,13 @@
 #include "lexicographic_ordering.h" 
 
-#include "../compliant_paths/explicit_state_cpg.h"
 #include "decoupled_permutation.h"
-#include "../state_registry.h"
 #include "../option_parser.h"
-
+#include "../state_registry.h"
+#include "symmetry_cpg.h"
 
 using namespace std;
 
+namespace symmetries {
 LexicographicOrdering::LexicographicOrdering(const Options &opts) : 
     apply_goal_cost(opts.get<bool>("lex_goal_cost")),
     apply_num_states(opts.get<bool>("lex_num_states")), 
@@ -15,7 +15,7 @@ LexicographicOrdering::LexicographicOrdering(const Options &opts) :
 }
 
 bool LexicographicOrdering::produces_less(const LeavesPermutation &per, 
-					  const ExplicitStateCPG &p) const {
+					  const SymmetryCPG &p) const {
     if(apply_goal_cost) {
         cmp_t cmp = per.cmp_goal_cost(p);
         if(cmp == cmp_t::LESS) {
@@ -46,7 +46,7 @@ bool LexicographicOrdering::produces_less(const LeavesPermutation &per,
     return false;
 } 
 
-void LexicographicOrdering::print_ordering(const ExplicitStateCPG &cpg) const {
+void LexicographicOrdering::print_ordering(const SymmetryCPG &cpg) const {
     if(apply_goal_cost) {
         for(LeafFactorID factor(0); factor < g_leaves.size(); ++ factor){
             cout << cpg.get_goal_cost(factor) << " ";
@@ -84,5 +84,7 @@ void LexicographicOrdering::add_options_to_parser(OptionParser &parser) {
     parser.add_option<bool>("lex_prices",
 			    "Apply lexicographic leaves ordering based on prices",
 			    "false");
+}
+
 }
 

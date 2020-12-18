@@ -7,15 +7,12 @@ class CompliantPathGraph;
 class PruningOptions;
 
 class CPGStorage {
-    friend class StateRegistry; // only needed to permute initial state for decoupled orbit search
     
 protected:
     
     PerStateInformation<uint64_t> hashes; // TODO: not sure if this is really the right place to store this
 
     virtual void register_at_compliant_path_graph() = 0;
-
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) = 0;
 
 public:
 
@@ -28,7 +25,7 @@ public:
     virtual size_t size(const StateRegistry *registry) const = 0;
 
 
-    static CPGStorage *storage;
+    static CPGStorage *storage; // TODO make this private and the access methods static?
 
     static void initialize(const PruningOptions &pruning_options);
 
@@ -47,10 +44,6 @@ class Storage : public CPGStorage {
 protected:
 
     virtual void register_at_compliant_path_graph() override;
-
-    virtual CompliantPathGraph* get_mutable_cpg(const State &state) override {
-        return &cpgs[state];
-    }
 
 public:
 

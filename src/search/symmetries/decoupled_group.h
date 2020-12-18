@@ -5,17 +5,18 @@
 
 #include <vector>
 
-class ExplicitStateCPG;
+class State;
+
+namespace symmetries {
+
 class DecoupledPermutation;
 class Group;
 class LexicographicOrdering;
-class State;
-
 
 struct DecoupledTrace {
     std::vector<const DecoupledPermutation *> trace;
     std::vector<int> canonical_center;
-    std::unique_ptr<ExplicitStateCPG> canonical_cpg;
+    std::unique_ptr<SymmetryCPG> canonical_cpg;
 };
 
 class DecoupledGroup {
@@ -32,13 +33,13 @@ public:
     ~DecoupledGroup() = default;
 
     DecoupledTrace get_trace(const State &center,
-                             const ExplicitStateCPG &leaves,
+                             const SymmetryCPG &leaves,
                              const LexicographicOrdering &lex_ordering) const;
 
     std::unique_ptr<DecoupledPermutation> compose_permutation(const DecoupledTrace &trace) const;
 
     const std::vector<int> & get_canonical_decoupled_state(const State &center, 
-                                                           ExplicitStateCPG &leaves,
+                                                           SymmetryCPG &leaves,
                                                            const LexicographicOrdering &lex_ordering) const;
 
     std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center) const;
@@ -46,5 +47,7 @@ public:
     void statistics () const;
     
 };
+
+}
 
 #endif

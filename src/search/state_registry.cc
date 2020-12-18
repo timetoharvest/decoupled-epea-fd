@@ -8,6 +8,7 @@
 #include "operator.h"
 #include "search_engine.h"
 #include "symmetries/graph_creator.h"
+#include "symmetries/symmetry_cpg.h"
 
 #include <limits>
 #include <cstdint>
@@ -153,7 +154,8 @@ const State &StateRegistry::get_initial_state() {
 void StateRegistry::permute_initial_state() {
     // TODO refactor this... what about having a decoupled state registry?
     if (g_factoring){
-        ExplicitStateCPG *cpg = static_cast<ExplicitStateCPG*>(CPGStorage::storage->get_mutable_cpg(*cached_initial_state));
+        // TODO this is really ugly!
+        symmetries::SymmetryCPG *cpg = dynamic_cast<const symmetries::SymmetryCPG*>(CPGStorage::storage->get_cpg(*cached_initial_state))->get_init_sym_cpg();
         const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(*cached_initial_state, *cpg);
 
         assert(new_center.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
@@ -208,7 +210,7 @@ void StateRegistry::permute_initial_state() {
     }
 }
 
-State StateRegistry::get_state_permutation(const State &state, const Permutation &permutation) {
+State StateRegistry::get_state_permutation(const State &state, const symmetries::Permutation &permutation) {
     assert(g_symmetry_graph);
     assert(!g_factoring);
     
@@ -226,7 +228,9 @@ State StateRegistry::get_state_permutation(const State &state, const Permutation
     return lookup_state(id);
 }
 
-State StateRegistry::get_decoupled_state_permutation(const State &state, ExplicitStateCPG &cpg, const DecoupledPermutation &permutation) {
+State StateRegistry::get_decoupled_state_permutation(const State &state,
+        symmetries::SymmetryCPG &cpg,
+        const symmetries::DecoupledPermutation &permutation) {
     vector<int> permuted(g_variable_domain.size(), -1);
     for (int var : g_center){
         permuted[var] = state[var];
@@ -304,7 +308,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(s, op);
 
         if (g_symmetry_graph && compute_canonical){
-            const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, static_cast<ExplicitStateCPG&>(*new_cpg));
+            const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, dynamic_cast<symmetries::SymmetryCPG &>(*new_cpg));
 
             bool changed = false;
             for (size_t var : g_center){
@@ -365,8 +369,6 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             if (new_dup_counter > old_dup_counter || replace_old_cpg){
                 // new decoupled state, or new decoupled state dominates an existing one => replace cpg
                 new_cpg->store_new_cpg(s);
-            } else {
-                new_cpg->discard_new_cpg();
             }
         }
         
@@ -505,15 +507,7 @@ LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafF
     return insert_id_or_pop_leaf_state(factor);
 }
 
-size_t StateRegistry::get_max_number_duplicates() const {
-    int m = 0;
-    for (DupCounterTable::const_iterator it = state_duplicate_counter.begin(); it != state_duplicate_counter.end(); ++it){
-        m = max(m, (int) it->second);
-    }
-    return m;
-}
-
-void StateRegistry::output_decoupled_state_space_size() const {
+void StateRegistry::print_decoupled_search_statistics() const {
     // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
     
@@ -527,6 +521,12 @@ void StateRegistry::output_decoupled_state_space_size() const {
     cout << "decoupled state space size " << dec_size << endl;
 
     cout << "Time spent on dominance pruning: " << dominance_pruning_timer.count() << "s" << endl;
+
+    int m = 0;
+    for (DupCounterTable::const_iterator it = state_duplicate_counter.begin(); it != state_duplicate_counter.end(); ++it){
+        m = max(m, (int) it->second);
+    }
+    cout << "maximum duplicate counter " << m << endl;
 }
 
 void StateRegistry::subscribe(PerStateInformationBase *psi) const {

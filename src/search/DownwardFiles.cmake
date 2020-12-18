@@ -240,7 +240,48 @@ fast_downward_plugin(
         compliant_paths/reachability_function
         compliant_paths/simulation_relation
         compliant_paths/symbolic_state_cpg
-    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES
+    DEPENDS SCCS CAUSAL_GRAPH SYMMETRIES SYMBOLIC_SEARCH
+)
+
+fast_downward_plugin(
+    NAME SYMBOLIC_SEARCH
+    HELP "Classes relevant to run symbolic search"
+    SOURCES
+        symbolic/breadth_first_search
+        symbolic/closed_list
+        symbolic/cudd_method
+        symbolic/debug_macros
+        symbolic/frontier
+        symbolic/leaf_state_space
+        symbolic/open_list
+        symbolic/opt_order
+        symbolic/solution_bound
+        symbolic/sym_bucket
+        symbolic/sym_controller
+        symbolic/sym_decoupled_manager
+        symbolic/sym_enums
+        symbolic/sym_estimate
+        symbolic/sym_params_search
+        symbolic/sym_pricing_function_debug
+        symbolic/sym_pricing_function
+        symbolic/sym_pricing_function_sat
+        symbolic/sym_search
+        symbolic/sym_solution
+        symbolic/sym_state_space_manager
+        symbolic/sym_util
+        symbolic/sym_variables
+        symbolic/transition_relation
+        symbolic/unidirectional_search
+        symbolic/uniform_cost_search
+    DEPENDS DECOUPLED_SEARCH
+)
+
+fast_downward_plugin(
+    NAME SYMBOLIC_DECOUPLED_LMCUT
+    HELP "A variant of the LM-cut heuristic for decoupled search with symbolic leaf representation"
+    SOURCES
+        lm_cut_heuristic_sym_dec
+    DEPENDS DECOUPLED_SEARCH SYMBOLIC_SEARCH
 )
 
 fast_downward_plugin(
@@ -278,6 +319,7 @@ fast_downward_plugin(
         symmetries/group
         symmetries/lexicographic_ordering
         symmetries/permutation
+        symmetries/symmetry_cpg
     DEPENDENCY_ONLY
 )
 

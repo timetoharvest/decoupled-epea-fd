@@ -99,11 +99,14 @@
   Solution:
     The heuristic object uses a field of type PerStateInformation<std::vector<bool> >
     to store for each state and each landmark whether it was reached in this state.
-*/
+ */
 
+namespace symmetries {
 class DecoupledPermutation;
-class ExplicitStateCPG;
 class Permutation;
+class SymmetryCPG;
+}
+
 class PerStateInformationBase;
 
 class StateRegistry {
@@ -113,10 +116,10 @@ class StateRegistry {
         const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
         int state_size;
         StateIDSemanticHash(
-            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
-            int state_size)
-            : state_data_pool(state_data_pool),
-              state_size(state_size) {
+                const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+                int state_size)
+        : state_data_pool(state_data_pool),
+          state_size(state_size) {
         }
 
         size_t operator()(StateID id) const {
@@ -133,10 +136,10 @@ class StateRegistry {
         const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool;
         int state_size;
         StateIDSemanticEqual(
-            const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
-            int state_size)
-            : state_data_pool(state_data_pool),
-              state_size(state_size) {
+                const segmented_vector::SegmentedArrayVector<PackedStateBin> &state_data_pool,
+                int state_size)
+        : state_data_pool(state_data_pool),
+          state_size(state_size) {
         }
 
         bool operator()(StateID lhs, StateID rhs) const {
@@ -145,12 +148,12 @@ class StateRegistry {
             return std::equal(lhs_data, lhs_data + state_size, rhs_data);
         }
     };
-    
+
     struct LeafStateIDSemanticHash {
         const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
         std::vector<int> state_sizes;
         LeafStateIDSemanticHash(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
-            : data_pool(state_data_pool_) {
+        : data_pool(state_data_pool_) {
             state_sizes.resize(g_leaves.size());
             for (size_t i = 0; i < g_leaves.size(); ++i){
                 state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
@@ -170,7 +173,7 @@ class StateRegistry {
         const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &data_pool;
         std::vector<int> state_sizes;
         LeafStateIDSemanticEqual(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
-            : data_pool(state_data_pool_) {
+        : data_pool(state_data_pool_) {
             state_sizes.resize(g_leaves.size());
             for (size_t i = 0; i < g_leaves.size(); ++i){
                 state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
@@ -189,43 +192,43 @@ class StateRegistry {
       Hash set of StateIDs used to detect states that are already registered in
       this registry and find their IDs. States are compared/hashed semantically,
       i.e. the actual state data is compared, not the memory location.
-    */
+     */
 
     using StateIDSet = std::unordered_set<StateID, StateIDSemanticHash, StateIDSemanticEqual>;
 
     using LeafStateIDSet = std::unordered_set<LeafStateID,
-                                              LeafStateIDSemanticHash,
-                                              LeafStateIDSemanticEqual>;
-                            
+            LeafStateIDSemanticHash,
+            LeafStateIDSemanticEqual>;
+
     using DupCounterTable = std::unordered_map<size_t, size_t>;
 
 
     std::chrono::duration<double> dominance_pruning_timer;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
-    
+
     std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > leaf_state_data_pool;
 
     StateIDSet registered_states;
-    
+
     std::vector<LeafStateIDSet> registered_leaf_states;
-    
+
     State *cached_initial_state;
-    
+
     /*
       maps the StateID of the base state to the number of different decoupled
       states that have the same center
-    */
+     */
     DupCounterTable state_duplicate_counter;
 
     mutable std::set<PerStateInformationBase *> subscribers;
-    
+
     StateID insert_id_or_pop_state();
-    
+
     LeafStateHash insert_id_or_pop_leaf_state(LeafFactorID factor);
 
     void permute_initial_state();
-    
+
 public:
     StateRegistry();
     ~StateRegistry();
@@ -233,40 +236,42 @@ public:
     /*
       Returns the state that was registered at the given ID. The ID must refer
       to a state in this registry. Do not mix IDs from from different registries.
-    */
+     */
     State lookup_state(StateID id) const;
-    
+
     /*
       Returns the redFact that was registered at the given ID. The ID must refer
       to a redFact in this registry. Do not mix IDs from from different registries.
-    */
+     */
     LeafState lookup_leaf_state(LeafStateHash id, LeafFactorID factor) const;
 
     /*
       Returns a reference to the initial state and registers it if this was not
       done before. The result is cached internally so subsequent calls are cheap.
-    */
+     */
     const State &get_initial_state();
-    
-    State get_state_permutation(const State &state, const Permutation &permutation);
-    
-    State get_decoupled_state_permutation(const State &state, ExplicitStateCPG &cpg, const DecoupledPermutation &permutation);
+
+    State get_state_permutation(const State &state, const symmetries::Permutation &permutation);
+
+    State get_decoupled_state_permutation(const State &state,
+            symmetries::SymmetryCPG &cpg,
+            const symmetries::DecoupledPermutation &permutation);
 
     /*
       Returns the state that results from applying op to predecessor and
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
-    */
+     */
     State get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical = true);
-    
+
     State get_state(const std::vector<int> &facts);
-    
+
     State get_center_state(const std::vector<int> &facts);
-    
+
     /*
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
-    */
+     */
     State get_decoupled_state(const State &base_state, int dup_counter);
 
     State get_center_successor(const State &center, const Operator &op);
@@ -275,33 +280,31 @@ public:
      * NOTE: At least one leaf state in this factor has to exist
      */
     LeafStateHash get_leaf_state_hash(const std::vector<int> &facts, LeafFactorID factor);
-    
+
     LeafStateHash get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op);
 
     /*
       Returns the number of states registered so far.
-    */
+     */
     size_t size() const {
         return registered_states.size();
     }
-    
+
     /*
      * Returns the number of states registered for the specified leaf factor
      */
     size_t size(LeafFactorID factor) const {
-	return registered_leaf_states[factor].size();
+        return registered_leaf_states[factor].size();
     }
-    
-    size_t get_max_number_duplicates() const;
-    
-    void output_decoupled_state_space_size() const;
+
+    void print_decoupled_search_statistics() const;
 
     /*
       Remembers the given PerStateInformation. If this StateRegistry is
       destroyed, it notifies all subscribed PerStateInformation objects.
       The information stored in them that relates to states from this
       registry is then destroyed as well.
-    */
+     */
     void subscribe(PerStateInformationBase *psi) const;
     void unsubscribe(PerStateInformationBase *psi) const;
 };

@@ -2,13 +2,13 @@
 
 #include "cpg_storage.h"
 #include "../factoring.h"
-#include "../symmetries/graph_creator.h"
 #include "../operator.h"
 #include "../operator_cost.h"
 #include "../search_space.h"
 #include "../state_registry.h"
 #include "../task_utils/successor_generator.h"
 #include "../symmetries/decoupled_permutation.h"
+#include "../symmetries/graph_creator.h"
 #include "../utils/system.h"
 
 #include <limits>
@@ -238,7 +238,7 @@ void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Oper
     }
 }
 
-void PathPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+void PathPrices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(prices);
     vector<size_t> old_number_states(number_states);
@@ -287,12 +287,6 @@ void PathPrices::apply_symmetry_permutation(const LeavesPermutation &per) {
 
     assert(accumulate(number_states.begin(), number_states.end(), 0) == accumulate(old_number_states.begin(), old_number_states.end(), 0));
     assert(accumulate(goal_cost.begin(), goal_cost.end(), 0) == accumulate(old_goal_cost.begin(), old_goal_cost.end(), 0));
-}
-
-unique_ptr<CompliantPathGraph> PathPrices::clone() const {
-    // TODO fix this
-    cerr << "this code must not be reached; path_price_tag.cc" << endl;
-    utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
 
 void PathPrices::insert_leaf_actions(vector<OperatorID> &path, vector<StateID> &states) {
@@ -493,8 +487,8 @@ void PathPrices::insert_leaf_actions(vector<OperatorID> &path, vector<StateID> &
     path.swap(decoupled_plan);
 }
 
-inline bool is_equal(const State &s1, const ExplicitStateCPG &cpg1,
-                     const State &s2, const ExplicitStateCPG &cpg2) {
+inline bool is_equal(const State &s1, const symmetries::SymmetryCPG &cpg1,
+                     const State &s2, const symmetries::SymmetryCPG &cpg2) {
 
     for (int var : g_center){
         if (s1[var] !=  s2[var]){
@@ -540,7 +534,7 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
 
     states.clear();
 
-    vector<unique_ptr<DecoupledPermutation> > permutations;
+    vector<unique_ptr<symmetries::DecoupledPermutation> > permutations;
     vector<unique_ptr<PathPrices> > cpgs;
 
     // Phase 1: backtrace center solution path
@@ -553,25 +547,24 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
         cpgs.push_back(unique_ptr<PathPrices>(new PathPrices(*static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(current_state)))));
 
         State new_state = g_initial_state();
-        unique_ptr<ExplicitStateCPG> new_cpg;
+        unique_ptr<SymmetryCPG> new_cpg;
         if (op != OperatorID::no_operator) {
             State parent_state = g_state_registry->lookup_state(info.parent_state_id);
 
             new_state = g_state_registry->get_center_successor(parent_state, g_operators[op]);
-            new_cpg = unique_ptr<ExplicitStateCPG>(static_cast<ExplicitStateCPG*>(CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(new_state, g_operators[op]).release()));
-            new_cpg->discard_new_cpg();
+            new_cpg = unique_ptr<symmetries::SymmetryCPG>(dynamic_cast<symmetries::SymmetryCPG*>(CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(new_state, g_operators[op]).release()));
         } else {
             new_state = g_state_registry->get_center_state(g_initial_state_data);
-            new_cpg = unique_ptr<ExplicitStateCPG>(static_cast<ExplicitStateCPG*>(ExplicitStateCPG::get_init_state_cpg().release()));
+            new_cpg = unique_ptr<symmetries::SymmetryCPG>(dynamic_cast<symmetries::SymmetryCPG*>(ExplicitStateCPG::get_init_state_cpg().release()));
         }
 
-        unique_ptr<DecoupledPermutation> dp;
-        const ExplicitStateCPG *current_cpg = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(current_state));
+        unique_ptr<symmetries::DecoupledPermutation> dp;
+        const symmetries::SymmetryCPG *current_cpg = dynamic_cast<const symmetries::SymmetryCPG*>(CPGStorage::storage->get_cpg(current_state));
         if (!is_equal(current_state, *current_cpg, new_state, *new_cpg)){
             dp = g_symmetry_graph->create_permutation_from_state_to_state(current_state, *current_cpg, new_state, *new_cpg);
-            permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation(*dp)));
+            permutations.push_back(unique_ptr<symmetries::DecoupledPermutation>(new symmetries::DecoupledPermutation(*dp)));
         } else {
-            permutations.push_back(unique_ptr<DecoupledPermutation>(new DecoupledPermutation()));
+            permutations.push_back(unique_ptr<symmetries::DecoupledPermutation>(new symmetries::DecoupledPermutation()));
         }
 
         if (op == OperatorID::no_operator) {  // reached initial state => done
@@ -585,14 +578,14 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
     }
 
     // Phase 2: backwards-apply the permutations to get the real center action sequence
-    unique_ptr<DecoupledPermutation> temp_p(new DecoupledPermutation(*permutations.back()));
+    unique_ptr<symmetries::DecoupledPermutation> temp_p(new symmetries::DecoupledPermutation(*permutations.back()));
     for (int i = permutations.size() - 2; i >= 0; --i) {
-        temp_p.reset(new DecoupledPermutation(*permutations[i], *temp_p));
-        permutations[i].reset(new DecoupledPermutation(*temp_p));
+        temp_p.reset(new symmetries::DecoupledPermutation(*permutations[i], *temp_p));
+        permutations[i].reset(new symmetries::DecoupledPermutation(*temp_p));
     }
 
     for (size_t i = 0; i < states.size(); ++i){
-        const DecoupledPermutation &permutation = *permutations[i];
+        const symmetries::DecoupledPermutation &permutation = *permutations[i];
         states[i] = g_state_registry->get_decoupled_state_permutation(g_state_registry->lookup_state(states[i]), *cpgs[i], permutation).get_id();
     }
 
@@ -621,7 +614,7 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
         vector<OperatorID> applicable_ops;
         g_successor_generator->generate_applicable_ops(g_state_registry->lookup_state(states[i]), *cpgs[i], applicable_ops);
 
-        ops[i-1] = permutations[i]->find_matching_min_cost_permuted_op(g_operators[ops[i-1]], applicable_ops);
+        ops[i-1] = permutations[i]->find_matching_min_cost_permuted_op(g_operators[ops[i-1]], applicable_ops, cost_type);
 
 #ifndef NDEBUG
         // verify that applying permuted_path[i-1] is states[i] results in states[i-1]

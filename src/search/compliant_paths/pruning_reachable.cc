@@ -173,8 +173,8 @@ void PruningReachable::dump() const {
     }
 }
 
-unique_ptr<CompliantPathGraph> PruningReachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new PruningReachable(*this));
+unique_ptr<symmetries::SymmetryCPG> PruningReachable::clone() const {
+    return unique_ptr<symmetries::SymmetryCPG>(new PruningReachable(*this));
 }
 
 uint64_t PruningReachable::get_hash() const {
@@ -198,9 +198,13 @@ size_t PruningReachable::get_memory_footprint() const {
     return num_bytes;
 }
 
-void PruningReachable::apply_symmetry_permutation(const LeavesPermutation &) {
+symmetries::SymmetryCPG* PruningReachable::get_init_sym_cpg() const {
+    return &cpg_storage->cpgs[g_initial_state()];
+}
+
+void PruningReachable::apply_symmetry_permutation(const symmetries::LeavesPermutation &) {
     // TODO implement this
-    cerr << "PruningReachable::apply_symmetry_permutation not implemented" << endl;
+    cerr << "PruningReachable::apply_symmetry_permutation not yet implemented" << endl;
     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
     

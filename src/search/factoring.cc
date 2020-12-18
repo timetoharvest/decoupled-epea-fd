@@ -2,11 +2,15 @@
 
 #include "algorithms/sccs.h"
 #include "compliant_paths/compliant_path_graph.h"
+#include "compliant_paths/cudd_cpg.h"
 #include "compliant_paths/explicit_state_cpg.h"
 #include "globals.h"
 #include "operator.h"
 #include "option_parser.h"
 #include "plugin.h"
+#include "symbolic/sym_decoupled_manager.h"
+#include "symbolic/sym_pricing_function.h"
+#include "symbolic/sym_pricing_function_sat.h"
 #include "task_utils/causal_graph.h"
 #include "utils/timer.h"
 
@@ -83,6 +87,21 @@ Factoring::Factoring(const Options &opts) :
     } else {
         CompliantPathGraph::set_pruning_options(new PruningOptions());
         cout << "using default pruning method: BasicPruning" << endl;
+    }
+#ifndef USE_CUDD
+    if (leaf_type == LEAF_REPRESENTATION_TYPE::SYMBOLIC){
+        cerr << "Fast Downward needs to be compiled with Cudd support "
+                "to run decoupled search with symbolic leaf representation." << endl;
+        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+    }
+#endif
+    if (leaf_type == LEAF_REPRESENTATION_TYPE::SYMBOLIC && opts.contains("cudd_options")){
+        const auto sym_opts = opts.get<symbolic::SymDecoupledManagerOptions*>("cudd_options");
+        if (search_type == SAT || search_type == UNSAT){
+            CuddCPG<symbolic::SymPricingFunctionSAT>::set_sym_manager(sym_opts);
+        } else {
+            CuddCPG<symbolic::SymPricingFunction>::set_sym_manager(sym_opts);
+        }
     }
     min_number_leaves = opts.get<int>("min_num_leaves");;
     max_precompute_state_space_size = opts.get<int>("build_state_space_size");
@@ -1768,6 +1787,12 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
             "EXPLICIT",
             vector<string>(),
             OptionFlags(false));
+
+    parser.add_option<symbolic::SymDecoupledManagerOptions*>(
+        "cudd_options",
+        "TODO",
+        "",
+        OptionFlags(false));
 
     vector<string> abstain_types;
     abstain_types.push_back("ABSTAIN_ON_FAILURE");

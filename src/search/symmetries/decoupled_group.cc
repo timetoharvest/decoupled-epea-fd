@@ -4,8 +4,11 @@
 #include "lexicographic_ordering.h"
 #include "group.h"
 #include "../state_registry.h"
+#include "symmetry_cpg.h"
 
 using namespace std;
+
+namespace symmetries {
 
 DecoupledGroup::DecoupledGroup(const Group &group) {
     // Ensure that all symmetry leaf states exists
@@ -69,7 +72,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 
 
 const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &center, 
-                                                                  ExplicitStateCPG &leaves,
+                                                                  SymmetryCPG &leaves,
                                                                   const LexicographicOrdering &lex_ordering) const {
 
     for (int var : g_center) {
@@ -135,12 +138,12 @@ void DecoupledGroup::statistics() const {
 
 
 DecoupledTrace DecoupledGroup::get_trace(const State &center, 
-                                const ExplicitStateCPG &leaves,
+                                const SymmetryCPG &leaves,
                                 const LexicographicOrdering &lex_ordering) const {
     
     DecoupledTrace res;
 
-    res.canonical_cpg = unique_ptr<ExplicitStateCPG>(static_cast<ExplicitStateCPG*>(leaves.clone().release()));
+    res.canonical_cpg = leaves.clone();
     res.canonical_center.resize(g_variable_domain.size(), -1);
     for (int var : g_center) {
         res.canonical_center[var] = center[var];
@@ -165,7 +168,6 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
 
     // Leaves optimization
     if(lex_ordering.optimize_leaves()){
-        // Leaves optimization
         bool changed = true;
         while (changed) {
             changed = false;
@@ -194,4 +196,6 @@ unique_ptr<DecoupledPermutation> DecoupledGroup::compose_permutation(const Decou
     }
     assert(new_perm->has_valid_center_permutation());
     return new_perm;
+}
+
 }

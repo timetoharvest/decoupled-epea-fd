@@ -62,12 +62,16 @@ const vector<LeafStateHash>& ExplicitStateCPG::get_leaf_goal_states(LeafFactorID
 }
 
 void ExplicitStateCPG::initialize() {
-    leaf_state_successors.resize(g_leaves.size());
-    center_successors.resize(g_leaves.size());
-    is_a_leaf_goal_state.resize(g_leaves.size());
-    leaf_goal_states.resize(g_leaves.size());
+    if (!initialized){
+        leaf_state_successors.resize(g_leaves.size());
+        center_successors.resize(g_leaves.size());
+        is_a_leaf_goal_state.resize(g_leaves.size());
+        leaf_goal_states.resize(g_leaves.size());
 
-    build_leaf_state_spaces();
+        build_leaf_state_spaces();
+
+        initialized = true;
+    }
 }
 
 void ExplicitStateCPG::build_leaf_successor_generators() {
@@ -78,13 +82,6 @@ void ExplicitStateCPG::build_leaf_successor_generators() {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         leaf_successor_generators.push_back(unique_ptr<successor_generator::SuccessorGenerator>(new successor_generator::SuccessorGenerator(factor)));
     }
-}
-
-vector<pair<int, int>> ExplicitStateCPG::get_leaf_fact_set(LeafStateHash , LeafFactorID ) const {
-    // TODO check if this is actually needed
-    cerr << "not implemented: ExplicitStateCPG::get_leaf_fact_set()" << endl;
-    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-    return vector<pair<int, int>>();
 }
 
 bool ExplicitStateCPG::is_applicable(const Operator &op) const {
@@ -503,10 +500,7 @@ void ExplicitStateCPG::build_leaf_state_spaces() {
 
 
 unique_ptr<CompliantPathGraph> ExplicitStateCPG::get_init_state_cpg() {
-    if (!initialized){
-        initialize();
-        initialized = true;
-    }
+    initialize();
 
     if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
         return Reachable::get_init_state_cpg();
@@ -650,11 +644,5 @@ void ExplicitStateCPG::print_statistics() {
         cout << "avg reachable leaf factor size "  << (int) (avg_leaf_factor_size/g_leaves.size()) << endl;
         cout << "max reachable leaf factor size "  << max_leaf_factor_size << endl;
     }
-    g_state_registry->output_decoupled_state_space_size();
-    cout << "maximum duplicate counter " << g_state_registry->get_max_number_duplicates() << endl;
-}
-
-void ExplicitStateCPG::discard_new_cpg() const {
-
 }
 

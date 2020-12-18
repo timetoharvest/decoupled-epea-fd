@@ -20,8 +20,6 @@ protected:
 
     virtual void store_new_cpg(const State &state) override = 0;
 
-    virtual void discard_new_cpg() const override = 0;
-
     virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override = 0;
 
 public:
@@ -33,8 +31,6 @@ public:
 
     virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const override = 0;
 
-    virtual std::vector<std::pair<int, int> > get_leaf_fact_set(LeafStateHash id, LeafFactorID factor) const override = 0;
-
     virtual bool goal_reachable(LeafFactorID factor) const override = 0;
 
     virtual int get_goal_cost(LeafFactorID factor) const override = 0;
@@ -44,8 +40,6 @@ public:
     virtual void remove_inapplicable_ops(std::vector<OperatorID> &ops) const override = 0;
 
     virtual uint64_t get_hash() const override = 0;
-
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override = 0;
 
     virtual void dump() const override = 0;
 

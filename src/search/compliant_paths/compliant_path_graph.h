@@ -35,6 +35,8 @@ class CompliantPathGraph {
     static std::unordered_map<size_t, boost::dynamic_bitset<> > is_non_dominated_state;
 
 
+    static void initialize();
+
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
     // returns the duplicate counter for this base state and compliant path graph
@@ -65,8 +67,6 @@ protected:
     virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
     virtual void store_new_cpg(const State &state) = 0;
-
-    virtual void discard_new_cpg() const = 0;
     
     virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const = 0;
 
@@ -81,8 +81,6 @@ public:
     virtual void populate_reached_leaf_facts(std::function<void(int, int)> f) const = 0;
 
     virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const = 0;
-
-    virtual std::vector<std::pair<int, int> > get_leaf_fact_set(LeafStateHash id, LeafFactorID factor) const = 0;
 
     virtual bool goal_reachable(LeafFactorID factor) const = 0;
     
@@ -100,8 +98,6 @@ public:
 
     virtual uint64_t get_hash() const = 0;
 
-    virtual std::unique_ptr<CompliantPathGraph> clone() const = 0;
-
 
     virtual void dump() const = 0;
     
@@ -115,10 +111,19 @@ public:
 
     static int get_min_leaf_goal_cost();
 
+    static int get_min_leaf_action_cost(LeafFactorID factor) {
+        assert(initialized && factor < min_leaf_action_cost.size());
+        return min_leaf_action_cost[factor];
+    }
+
     static void set_pruning_options(PruningOptions *p) {
         pruning.reset(p);
     }
     
+    static const PruningOptions& get_pruning_options() {
+        return *pruning;
+    }
+
     static void set_search_space(SearchSpace *sp) {
         search_space = sp;
     }

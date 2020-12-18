@@ -5,8 +5,10 @@
 
 #include <vector>
 
-enum class cmp_t {LESS, EQUAL, GREATER};
 
+namespace symmetries {
+
+enum class cmp_t {LESS, EQUAL, GREATER};
 
 class FactIndex {
 // Alvaro: Putting all the static data members in one class, so that it
@@ -105,5 +107,7 @@ public:
     size_t number_leaves_affected() const;
     
 };
+
+}
 
 #endif

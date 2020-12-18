@@ -608,8 +608,12 @@ void Reachable::dump() const {
     }
 }
 
-unique_ptr<CompliantPathGraph> Reachable::clone() const {
-    return unique_ptr<CompliantPathGraph>(new Reachable(*this));
+symmetries::SymmetryCPG* Reachable::get_init_sym_cpg() const {
+    return &cpg_storage->cpgs[g_initial_state()];
+}
+
+unique_ptr<symmetries::SymmetryCPG> Reachable::clone() const {
+    return unique_ptr<symmetries::SymmetryCPG>(new Reachable(*this));
 }
 
 uint64_t Reachable::get_hash() const {
@@ -620,7 +624,7 @@ uint64_t Reachable::get_hash() const {
     return hash_state.get_hash64();
 }
 
-void Reachable::apply_symmetry_permutation(const LeavesPermutation &per) {
+void Reachable::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
     vector<boost::dynamic_bitset<> > old_reachable(reachable);
 
 #ifndef NDEBUG

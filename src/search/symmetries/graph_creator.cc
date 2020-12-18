@@ -4,17 +4,17 @@
 #include <graph.hh>
 #endif
 
-#include "../compliant_paths/explicit_state_cpg.h"
 #include "lexicographic_ordering.h"
 #include "../operator.h"
 #include "permutation.h"
+#include "symmetry_cpg.h"
 #include "../utils/timer.h"
 
 #include <vector>
 
 using namespace std;
 
-
+namespace symmetries {
 GraphCreator::GraphCreator(const Options &opts) :
     initialized(false),
     time_bound(opts.get<int>("time_bound")),
@@ -24,7 +24,8 @@ GraphCreator::GraphCreator(const Options &opts) :
     verify_no_axioms_no_conditional_effects(); // TODO implement support
 }
 
-void GraphCreator::initialize() {
+void GraphCreator::initialize(OperatorCost cost_type) {
+    GraphCreator::cost_type = cost_type;
 #ifdef USE_BLISS
     if (initialized){
         return;
@@ -135,7 +136,7 @@ unique_ptr<bliss::Digraph> GraphCreator::create_bliss_directed_graph() const {
 //TODO: Use separate color for axioms
 //TODO: Change the order of vertices creation to support keeping actions in the permutation (no need for keeping conditional effect vertices).
 void GraphCreator::add_operator_directed_graph(unique_ptr<bliss::Digraph> &g, const Operator &op) const {
-    int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, CompliantPathGraph::get_cost_type());
+    int OP_COLOR = MAX_VALUE + get_adjusted_action_cost(op, cost_type);
 
     int op_idx = g->add_vertex(OP_COLOR);
 
@@ -209,9 +210,9 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 
 unique_ptr<DecoupledPermutation> 
 GraphCreator::create_permutation_from_state_to_state(const State &state, 
-                                                     const ExplicitStateCPG &cpg,
+                                                     const SymmetryCPG &cpg,
                                                      const State &succ_state,
-                                                     const ExplicitStateCPG &succ_cpg) const {
+                                                     const SymmetryCPG &succ_cpg) const {
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
@@ -252,3 +253,5 @@ static GraphCreator *_parse(OptionParser &parser) {
 }
 
 static Plugin<GraphCreator> _plugin("symmetry_state_pruning", _parse);
+
+}

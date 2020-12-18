@@ -52,9 +52,11 @@ public:
     
     virtual void dump() const override;
 
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+    virtual std::unique_ptr<SymmetryCPG> clone() const override;
 
-    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const symmetries::LeavesPermutation &permutation) override;
+
+    virtual symmetries::SymmetryCPG* get_init_sym_cpg() const override;
 
     virtual size_t get_memory_footprint() const override;
 

@@ -186,7 +186,7 @@ void SearchSpace::trace_path(const State &goal_state,
                                  
     State current_state = goal_state;
     
-    vector<Permutation> permutations; // needed for orbit search
+    vector<symmetries::Permutation> permutations; // needed for orbit search
     vector<StateID> states; // needed for decoupled search and orbit search
     
     assert(path.empty());
@@ -207,7 +207,7 @@ void SearchSpace::trace_path(const State &goal_state,
             } else {
                 new_state = g_state_registry->get_state(g_initial_state_data);
             }
-            Permutation p;
+            symmetries::Permutation p;
             if (new_state.get_id() != current_state.get_id()){
                 p = g_symmetry_graph->create_permutation_from_state_to_state(current_state, new_state);
             }
@@ -236,16 +236,19 @@ void SearchSpace::trace_path(const State &goal_state,
     reverse(path.begin(), path.end());
 }
 
-void SearchSpace::trace_symmetric_path(vector<OperatorID> &path, vector<StateID> &states, vector<Permutation> &permutations) const {
+void SearchSpace::trace_symmetric_path(vector<OperatorID> &path,
+        vector<StateID> &states,
+        vector<symmetries::Permutation> &permutations) const {
+
     path.resize(states.size() - 1, OperatorID::no_operator);
 
-    Permutation temp_p;
+    symmetries::Permutation temp_p;
     for (int i = permutations.size() - 1; i >= 0; --i) {
-        temp_p = Permutation(permutations[i], temp_p);
+        temp_p = symmetries::Permutation(permutations[i], temp_p);
         permutations[i] = temp_p;
     }
     for(size_t i = 0; i < states.size(); ++i){
-        const Permutation &permutation = permutations[i];
+        const symmetries::Permutation &permutation = permutations[i];
         states[i] = g_state_registry->get_state_permutation(g_state_registry->lookup_state(states[i]), permutation).get_id();
     }
     for (size_t i = states.size() - 1; i > 0; --i) {

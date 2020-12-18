@@ -390,7 +390,7 @@ void EffectivePrices::propagate_dominance_prices() {
     }  
 }
 
-void EffectivePrices::apply_symmetry_permutation(const LeavesPermutation &per) {
+void EffectivePrices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(g_leaves.size());
     vector<size_t> old_number_states(g_leaves.size());
@@ -498,8 +498,12 @@ void EffectivePrices::dump() const {
     }
 }
 
-unique_ptr<CompliantPathGraph> EffectivePrices::clone() const {
-    return unique_ptr<CompliantPathGraph>(new EffectivePrices(*this));
+unique_ptr<symmetries::SymmetryCPG> EffectivePrices::clone() const {
+    return unique_ptr<symmetries::SymmetryCPG>(new EffectivePrices(*this));
+}
+
+symmetries::SymmetryCPG* EffectivePrices::get_init_sym_cpg() const {
+    return &cpg_storage->cpgs[g_initial_state()];
 }
 
 uint64_t EffectivePrices::get_hash() const {

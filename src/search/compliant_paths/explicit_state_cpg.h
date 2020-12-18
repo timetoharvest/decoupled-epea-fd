@@ -4,7 +4,6 @@
 #include "compliant_path_graph.h"
 
 
-class LeavesPermutation;
 class Prices;
 
 namespace stubborn_sets_decoupled {
@@ -76,8 +75,6 @@ protected:
 
     virtual void store_new_cpg(const State &state) override = 0;
 
-    virtual void discard_new_cpg() const override;
-
     virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override = 0;
 
 public:
@@ -99,8 +96,6 @@ public:
 
     virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const override = 0;
 
-    virtual std::vector<std::pair<int, int> > get_leaf_fact_set(LeafStateHash id, LeafFactorID factor) const override;
-
     virtual bool goal_reachable(LeafFactorID factor) const override = 0;
 
     virtual int get_total_goal_price() const override;
@@ -113,12 +108,7 @@ public:
 
     virtual void remove_inapplicable_ops(std::vector<OperatorID> &ops) const override;
 
-    // TODO make this a member of a new interface that is used in symmetry classes?
-    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) = 0;
-
     virtual void dump() const override = 0;
-
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override = 0;
 
     // returns an approximation of the number of bytes stored in memory of this CPG for factor
     virtual size_t get_memory_footprint() const override = 0;

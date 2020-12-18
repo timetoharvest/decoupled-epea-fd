@@ -6,7 +6,7 @@
 
 using namespace std;
 
-
+namespace symmetries {
 bool Group::safe_to_add_generators;
 int Group::num_identity_generators;
 int Group::stop_after_false_generated;
@@ -127,4 +127,6 @@ void Group::get_trace(const State &state, Trace& full_trace) {
             }
         }
     }
+}
+
 }

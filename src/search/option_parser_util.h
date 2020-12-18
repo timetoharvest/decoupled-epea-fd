@@ -21,7 +21,9 @@ class Heuristic;
 class LandmarkGraph;
 class MergeStrategy;
 class FactoringRanking;
+namespace symmetries {
 class GraphCreator;
+}
 class ScalarEvaluator;
 class Synergy;
 class SearchEngine;
@@ -30,6 +32,9 @@ class OptionParser;
 template<class Entry>
 class OpenList;
 class Pruning;
+namespace symbolic {
+class SymDecoupledManagerOptions;
+}
 
 
 struct ParseNode {
@@ -241,7 +246,7 @@ struct TypeNamer<LandmarkGraph *> {
 };
 
 template <>
-struct TypeNamer<GraphCreator *> {
+struct TypeNamer<symmetries::GraphCreator *> {
     static std::string name() {
         return "GraphCreator";
     }
@@ -272,6 +277,13 @@ template <>
 struct TypeNamer<Pruning *> {
     static std::string name() {
         return "Pruning";
+    }
+};
+
+template <>
+struct TypeNamer<symbolic::SymDecoupledManagerOptions *> {
+    static std::string name() {
+        return "SymDecoupledManagerOptions";
     }
 };
 

@@ -1,19 +1,43 @@
 #ifndef CUDD_CPG_H
 #define CUDD_CPG_H
 
+#include "cpg_storage.h"
 #include "symbolic_state_cpg.h"
 
+namespace symbolic {
+template<class>
+class SymDecoupledManager;
+class SymDecoupledManagerOptions;
+}
 
-
+template<class T>
 class CuddCPG : public SymbolicStateCPG {
+    friend class Factoring; // to set sym_manager given command line options
     friend class SymbolicStateCPG;
+    template<class>
+    friend class symbolic::SymDecoupledManager;
+    friend class LandmarkCutHeuristicSymbolic;
+
+
+    std::vector<std::shared_ptr<T>> sym_leaf_info;
+
 
     static bool initialized;
+
+    static Storage<CuddCPG<T>> *cpg_storage;
+
+    static std::unique_ptr<symbolic::SymDecoupledManager<T>> sym_manager;
 
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
     static void initialize();
+
+    static void set_sym_manager(symbolic::SymDecoupledManagerOptions *options);
+
+    static void set_min_leaf_goal_cost(LeafFactorID factor, int cost);
+
+    static void set_min_leaf_goal_cost(int cost);
 
 protected:
 
@@ -23,34 +47,35 @@ protected:
 
     virtual void store_new_cpg(const State &state) override;
 
-    virtual void discard_new_cpg() const override;
-
     virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override;
 
 public:
 
-    virtual ~CuddCPG() = default;
+    CuddCPG<T>(){};
 
-    CuddCPG(){};
+    CuddCPG<T>(const CuddCPG &cpg);
 
-    CuddCPG(const CuddCPG &cpg);
+    CuddCPG<T>(CuddCPG &&other) = delete;
 
-    CuddCPG(CuddCPG &&other) = delete;
+    CuddCPG<T>& operator=(const CuddCPG<T> &other) = delete;
 
-    CuddCPG& operator=(const CuddCPG &other) = delete;
+    CuddCPG<T>& operator=(CuddCPG<T> &&other);
 
-    CuddCPG& operator=(CuddCPG &&other);
+    virtual ~CuddCPG<T>() = default;
 
 
     virtual void populate_reached_leaf_facts(std::function<void(int, int)> f) const override;
 
     virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const override;
 
-    virtual std::vector<std::pair<int, int> > get_leaf_fact_set(LeafStateHash id, LeafFactorID factor) const override;
-
     virtual bool goal_reachable(LeafFactorID factor) const override;
 
     virtual int get_goal_cost(LeafFactorID factor) const override;
+
+
+    virtual int get_total_goal_price() const override;
+
+    virtual bool is_optimal_leaf_plan(int leaf_part_g) const override;
 
 
     virtual bool is_applicable(const Operator &op) const override;
@@ -58,8 +83,6 @@ public:
     virtual void remove_inapplicable_ops(std::vector<OperatorID> &ops) const override;
 
     virtual uint64_t get_hash() const override;
-
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
 
 
     virtual void dump() const override;
@@ -71,6 +94,8 @@ public:
     static void fill_in_leaf_actions(std::vector<OperatorID> &ops, std::vector<StateID> &states);
 
     static void print_statistics();
+
+    static void register_cpg_storage(Storage<CuddCPG<T>> *storage);
 
 };
 

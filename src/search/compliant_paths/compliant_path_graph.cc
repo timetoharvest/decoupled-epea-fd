@@ -113,7 +113,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
 
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;
-        CPGStorage::storage->get_mutable_cpg(s)->dump();
+        CPGStorage::storage->get_cpg(s)->dump();
 #endif
 
 
@@ -256,12 +256,16 @@ int CompliantPathGraph::get_min_leaf_goal_cost() {
     return sum_min_leaf_goal_cost;
 }
 
-unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
+void CompliantPathGraph::initialize() {
     if (!initialized){
         pruning->verify_options();
         CPGStorage::initialize(*pruning);
         initialized = true;
     }
+}
+
+unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
+    initialize();
 
     if (g_factoring->get_leaf_representation_type() == LEAF_REPRESENTATION_TYPE::EXPLICIT){
         return ExplicitStateCPG::get_init_state_cpg();
@@ -271,7 +275,7 @@ unique_ptr<CompliantPathGraph> CompliantPathGraph::get_init_state_cpg() {
 }
 
 void CompliantPathGraph::print_statistics() {
-    // TODO print own statistics?
+    g_state_registry->print_decoupled_search_statistics();
     if (g_factoring->get_leaf_representation_type() == LEAF_REPRESENTATION_TYPE::EXPLICIT){
         return PathPrices::print_statistics();
     } else {

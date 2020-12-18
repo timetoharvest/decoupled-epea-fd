@@ -44,7 +44,9 @@ If NT shall be predefinable:
 class Factoring;
 class OptionParser;
 class LandmarkGraph;
+namespace symmetries {
 class GraphCreator;
+}
 class MergeStrategy;
 template<class Entry>
 class OpenList;
@@ -53,6 +55,9 @@ class PruningOptions;
 class FactoringRanking;
 class SearchEngine;
 class ShrinkStrategy;
+namespace symbolic {
+class SymDecoupledManagerOptions;
+}
 
 /*
 The TokenParser<T> wraps functions to parse supported types T.
@@ -101,9 +106,9 @@ public:
 };
 
 template <>
-class TokenParser<GraphCreator *> {
+class TokenParser<symmetries::GraphCreator *> {
 public:
-    static inline GraphCreator *parse(OptionParser &p);
+    static inline symmetries::GraphCreator *parse(OptionParser &p);
 };
 
 template <>
@@ -171,6 +176,12 @@ template <>
 class TokenParser<PruningMethod *> {
 public:
     static inline PruningMethod *parse(OptionParser &p);
+};
+
+template <>
+class TokenParser<symbolic::SymDecoupledManagerOptions *> {
+public:
+    static inline symbolic::SymDecoupledManagerOptions *parse(OptionParser &p);
 };
 
 
@@ -415,12 +426,12 @@ LandmarkGraph *TokenParser<LandmarkGraph *>::parse(OptionParser &p) {
     return lookup_in_registry<LandmarkGraph>(p);
 }
 
-GraphCreator *TokenParser<GraphCreator *>::parse(OptionParser &p) {
+symmetries::GraphCreator *TokenParser<symmetries::GraphCreator *>::parse(OptionParser &p) {
     bool predefined;
-    GraphCreator *result = lookup_in_predefinitions<GraphCreator>(p, predefined);
+    symmetries::GraphCreator *result = lookup_in_predefinitions<symmetries::GraphCreator>(p, predefined);
     if (predefined)
         return result;
-    return lookup_in_registry<GraphCreator>(p);
+    return lookup_in_registry<symmetries::GraphCreator>(p);
 }
 
 //TODO find a general way to handle parsing of superclasses (see also issue28)
@@ -474,6 +485,10 @@ FactoringRanking *TokenParser<FactoringRanking *>::parse(OptionParser &p) {
 
 PruningOptions *TokenParser<PruningOptions *>::parse(OptionParser &p) {
     return lookup_in_registry<PruningOptions>(p);
+}
+
+symbolic::SymDecoupledManagerOptions *TokenParser<symbolic::SymDecoupledManagerOptions *>::parse(OptionParser &p) {
+    return lookup_in_registry<symbolic::SymDecoupledManagerOptions>(p);
 }
 
 ParseTree TokenParser<ParseTree>::parse(OptionParser &p) {

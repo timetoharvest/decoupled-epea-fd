@@ -3,13 +3,14 @@
 
 #include "explicit_state_cpg.h"
 #include "../leaf_state_id.h"
+#include "../symmetries/symmetry_cpg.h"
 
 #include <vector>
 
 template<class T>
 class Storage;
 
-class Prices : public ExplicitStateCPG {
+class Prices : public ExplicitStateCPG, public symmetries::SymmetryCPG {
     friend class ExplicitStateCPG;
     
     static Storage<Prices> *cpg_storage;
@@ -53,7 +54,7 @@ public:
     
     Prices(){};
     
-    Prices(const Prices &tag);
+    Prices(const Prices &cpg);
 
     Prices(Prices &&other) = delete;
 
@@ -78,11 +79,13 @@ public:
     
     virtual void dump() const override;
 
-    virtual std::unique_ptr<CompliantPathGraph> clone() const override;
+    virtual std::unique_ptr<symmetries::SymmetryCPG> clone() const override;
 
     virtual uint64_t get_hash() const override;
 
-    virtual void apply_symmetry_permutation(const LeavesPermutation &permutation) override;
+    virtual void apply_symmetry_permutation(const symmetries::LeavesPermutation &permutation) override;
+
+    virtual symmetries::SymmetryCPG* get_init_sym_cpg() const override;
 
     virtual size_t get_memory_footprint() const override;
 

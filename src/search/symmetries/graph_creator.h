@@ -7,15 +7,17 @@
 #include "../plugin.h"
 #include "../state.h"
 
-//TODO: Add vertex for axioms.
-enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
-              GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
-              CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
-
 
 namespace bliss {
 class Digraph;
 }
+
+namespace symmetries {
+
+//TODO: Add vertex for axioms.
+enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
+              GOAL_VERTEX, INIT_VERTEX, CONDITIONAL_EFFECT_VERTEX,
+              CONDITIONAL_DELETE_EFFECT_VERTEX, CENTER_FACTOR_VERTEX, LEAF_FACTOR_VERTEX, MAX_VALUE};
 
 /**
  * This class will create a bliss graph which will be used to find the
@@ -25,6 +27,8 @@ class Digraph;
 class GraphCreator  {
     
     bool initialized;
+
+    OperatorCost cost_type;
 
     int time_bound;
 
@@ -50,7 +54,7 @@ public:
 
     ~GraphCreator() = default;
 
-    void initialize();
+    void initialize(OperatorCost cost_type);
 
     const std::vector<int> & get_canonical_state(const State &state)  {
         return group->get_canonical_state(state);
@@ -63,7 +67,7 @@ public:
 
     
     const std::vector<int> & get_canonical_decoupled_state(const State &center,
-                                                           ExplicitStateCPG &leaves) const {
+                                                           SymmetryCPG &leaves) const {
         assert(decoupled_group);
         return decoupled_group->get_canonical_decoupled_state(center, leaves, lex_ordering);
     }
@@ -72,9 +76,9 @@ public:
                                                        const State &to_state);
 
     std::unique_ptr<DecoupledPermutation> create_permutation_from_state_to_state(const State &state, 
-                                                                const ExplicitStateCPG &cpg,
+                                                                const SymmetryCPG &cpg,
                                                                 const State &succ_state, 
-                                                                const ExplicitStateCPG &succ_cpg) const;
+                                                                const SymmetryCPG &succ_cpg) const;
 
     bool has_generators() const {
         return group->get_num_generators() > 0;
@@ -84,5 +88,7 @@ public:
     static void add_options_to_parser(OptionParser &parser);
 
 };
+
+}
 
 #endif
