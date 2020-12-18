@@ -103,11 +103,9 @@ unique_ptr<CompliantPathGraph> CuddCPG<T>::get_successor_via_center_action(const
 }
 
 template<class T>
-DOMINANCE CuddCPG<T>::check_dominance(const State &other, uint64_t hash, int /*g_advantage*/, DOMINANCE needed) {
+DOMINANCE CuddCPG<T>::check_dominance(const State &other, int /*g_advantage*/, DOMINANCE needed) {
     // TODO incorporate g_advantage
-    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
-        return DOMINANCE::NONE;
-    }
+    // TODO implement better exact duplicate checking
 
     const auto &other_cpg = cpg_storage->cpgs[other];
 

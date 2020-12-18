@@ -45,11 +45,3 @@ template<class T>
 void Storage<T>::register_at_compliant_path_graph() {
     T::register_cpg_storage(this);
 }
-
-template<class T>
-uint64_t Storage<T>::get_decoupled_state_hash(const State &state) {
-    if (hashes[state] == 0){
-        hashes[state] = cpgs[state].get_hash();
-    }
-    return hashes[state];
-}

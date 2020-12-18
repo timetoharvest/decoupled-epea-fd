@@ -252,10 +252,7 @@ void Reachable::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOMINANCE needed) {
-    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
-        return DOMINANCE::NONE;
-    }
+DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) {
 
     const Reachable *other_cpg = &cpg_storage->cpgs[other];
 
@@ -332,10 +329,14 @@ DOMINANCE Reachable::check_dominance(const State &other, uint64_t hash, int, DOM
     
     if (new_is_smaller && new_is_larger){
         return DOMINANCE::NONE;
-    } else if (new_is_smaller && needed == DOMINANCE::DOMINATES){
-        return DOMINANCE::NONE;
-    } else if (new_is_larger && needed == DOMINANCE::DOMINATED){
-        return DOMINANCE::NONE;
+    } else if (new_is_smaller){
+        if (needed == DOMINANCE::DOMINATES || pruning->use_exact_duplicate_checking()){
+            return DOMINANCE::NONE;
+        }
+    } else if (new_is_larger){
+        if (needed == DOMINANCE::DOMINATED || pruning->use_exact_duplicate_checking()){
+            return DOMINANCE::NONE;
+        }
     }
     
     if (all_goals_reached){

@@ -181,7 +181,7 @@ void FrontierPrices::update(const State &new_center_state) {
     }
 }
 
-DOMINANCE FrontierPrices::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
+DOMINANCE FrontierPrices::check_dominance(const State &other, int, DOMINANCE needed) {
     // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->cpgs[other];
 

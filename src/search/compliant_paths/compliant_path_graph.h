@@ -28,16 +28,26 @@ class CompliantPathGraph {
 
     static bool initialized;
 
-    // this stores for every decoupled base state (i.e. state with duplicate counter 0
+    // when pruning->use_transitivity() is enabled:
+    // this stores for every decoupled base state (i.e. state with duplicate counter 0)
     // the set of decoupled states (in terms of their dup counter) that is not dominated
     // by another generated decoupled state. such states have to be checked in dominance
     // pruning, since they have the maximum pruning potential
-    static std::unordered_map<size_t, boost::dynamic_bitset<> > is_non_dominated_state;
+    static std::unordered_map<size_t, std::vector<int>> non_dominated_states;
+
+    // when pruning->use_exact_duplicate_checking() is enabled:
+    // this stores for every decoupled base state (i.e. state with duplicate counter 0)
+    // and CompliantPathGraph hash the set of decoupled states (in terms of their dup counter)
+    // with that hash. Such states have to be checked explicitly in dominance
+    // pruning, if they are indeed equal to a previously seen state.
+    static std::unordered_map<size_t, std::unordered_map<std::uint64_t, std::vector<int>>> duplicate_table;
 
 
     static void initialize();
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
+
+    static void notify_new_center_state(const State &state, const CompliantPathGraph &cpg);
 
     // returns the duplicate counter for this base state and compliant path graph
     // i.e. the counter of the state subsuming that or the current max + 1
@@ -64,7 +74,7 @@ protected:
     
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const = 0;
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
+    virtual DOMINANCE check_dominance(const State &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
     
     virtual void store_new_cpg(const State &state) = 0;
     

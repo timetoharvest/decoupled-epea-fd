@@ -9,8 +9,6 @@ class PruningOptions;
 class CPGStorage {
     
 protected:
-    
-    PerStateInformation<uint64_t> hashes; // TODO: not sure if this is really the right place to store this
 
     virtual void register_at_compliant_path_graph() = 0;
 
@@ -19,8 +17,6 @@ public:
     virtual ~CPGStorage() = default;
 
     virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
-
-    virtual uint64_t get_decoupled_state_hash(const State &state) = 0;
 
     virtual size_t size(const StateRegistry *registry) const = 0;
 
@@ -50,8 +46,6 @@ public:
     virtual const CompliantPathGraph* get_cpg(const State &state) const override {
         return &cpgs[state];
     }
-    
-    virtual uint64_t get_decoupled_state_hash(const State &state) override;
 
     virtual size_t size(const StateRegistry *registry) const override {
         return cpgs.size(registry);

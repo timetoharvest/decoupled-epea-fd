@@ -192,10 +192,8 @@ void Prices::update(const State &base_state) {
 #endif
 }
 
-DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) {
-    if (pruning->use_exact_duplicate_checking() && cpg_storage->get_decoupled_state_hash(other) != hash){
-        return DOMINANCE::NONE;
-    }
+DOMINANCE Prices::check_dominance(const State &other, int g_advantage, DOMINANCE needed) {
+
     if (!pruning->include_g_in_dominance()){
         g_advantage = 0;
     }
@@ -256,10 +254,14 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
 
     if (!dominates && !dominated){
         return DOMINANCE::NONE;
-    } else if (!dominates && needed == DOMINANCE::DOMINATES){
-        return DOMINANCE::NONE;
-    } else if (!dominated && needed == DOMINANCE::DOMINATED){
-        return DOMINANCE::NONE;
+    } else if (!dominates){
+        if (needed == DOMINANCE::DOMINATES || pruning->use_exact_duplicate_checking()){
+            return DOMINANCE::NONE;
+        }
+    } else if (!dominated){
+        if (needed == DOMINANCE::DOMINATED || pruning->use_exact_duplicate_checking()){
+            return DOMINANCE::NONE;
+        }
     }
 
     int sum_max_price_advantage = 0;
@@ -297,7 +299,9 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
                     }
                 } else {
                     dominated = false;
-                    if (!dominates || needed == DOMINANCE::DOMINATED){
+                    if (!dominates ||
+                            needed == DOMINANCE::DOMINATED ||
+                            pruning->use_exact_duplicate_checking()){
                         return DOMINANCE::NONE;
                     }
                 }
@@ -311,7 +315,9 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
             } else if (other_cpg->has_leaf_state(id, factor)){
                 --number_old_states;
                 dominates = false;
-                if (!dominated || needed == DOMINANCE::DOMINATES){
+                if (!dominated ||
+                        needed == DOMINANCE::DOMINATES ||
+                        pruning->use_exact_duplicate_checking()){
                     return DOMINANCE::NONE;
                 }
                 if (number_old_states == 0 && number_new_states > 0){
@@ -344,6 +350,9 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
         if (!dominated && !dominates){
             return DOMINANCE::NONE;
         }
+        if (pruning->use_exact_duplicate_checking() && (!dominated || !dominates)){
+            return DOMINANCE::NONE;
+        }
     }
 
     if (g_advantage + sum_max_price_advantage > 0){
@@ -359,7 +368,7 @@ DOMINANCE Prices::check_dominance(const State &other, uint64_t hash, int g_advan
 #endif
         return DOMINANCE::EQUAL;
     } else if (pruning->use_exact_duplicate_checking()){
-            return DOMINANCE::NONE;
+        return DOMINANCE::NONE;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;

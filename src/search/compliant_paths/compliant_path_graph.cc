@@ -32,7 +32,9 @@ SearchSpace* CompliantPathGraph::search_space;
 
 OperatorCost CompliantPathGraph::cost_type;
 
-unordered_map<size_t, boost::dynamic_bitset<> > CompliantPathGraph::is_non_dominated_state;
+unordered_map<size_t, vector<int>> CompliantPathGraph::non_dominated_states;
+
+unordered_map<size_t, unordered_map<uint64_t, vector<int>>> CompliantPathGraph::duplicate_table;
 
 
 void CompliantPathGraph::set_cost_type(OperatorCost ct) {
@@ -43,6 +45,30 @@ void CompliantPathGraph::set_cost_type(OperatorCost ct) {
         if (factor != LeafFactorID::CENTER){
             min_leaf_action_cost[factor] = min(min_leaf_action_cost[factor], get_adjusted_action_cost(op, cost_type));
         }
+    }
+}
+
+void CompliantPathGraph::notify_new_center_state(const State &state, const CompliantPathGraph &cpg) {
+    if (g_symmetry_graph && state.get_id().hash() == 0){
+        // need some cleanup for the special case of permuted initial state
+        if (pruning->use_exact_duplicate_checking() && duplicate_table[state.get_id().hash()].size() == 1){
+            assert(duplicate_table.find(state.get_id().hash()) == duplicate_table.end() ||
+                    duplicate_table[state.get_id().hash()].size() == 1);
+            duplicate_table.erase(state.get_id().hash());
+        } else if (pruning->use_transitivity() && non_dominated_states[state.get_id().hash()].size() == 1){
+            assert(non_dominated_states.find(state.get_id().hash()) == non_dominated_states.end() ||
+                    non_dominated_states[state.get_id().hash()].size() == 1);
+            non_dominated_states.erase(state.get_id().hash());
+        }
+    }
+    if (pruning->use_exact_duplicate_checking()){
+        assert(g_symmetry_graph || duplicate_table.find(state.get_id().hash()) == duplicate_table.end());
+        assert(!g_symmetry_graph || duplicate_table[state.get_id().hash()].size() == 0);
+        duplicate_table[state.get_id().hash()][cpg.get_hash()].push_back(0);
+    } else if (pruning->use_transitivity()){
+        assert(g_symmetry_graph || non_dominated_states.find(state.get_id().hash()) == non_dominated_states.end());
+        assert(!g_symmetry_graph || non_dominated_states[state.get_id().hash()].size() == 0);
+        non_dominated_states[state.get_id().hash()].push_back(0);
     }
 }
 
@@ -73,36 +99,36 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
     
     int replaced_state_dup = -1;
 
-    uint64_t hash = 0;
+    size_t base_state_id_hash = base_state.get_id().hash();
+    uint64_t leaf_hash = 0;
+    bool check_all = true;
+
+    vector<int> dup_state_indeces;
+
     if (pruning->use_exact_duplicate_checking()){
-        hash = get_hash();
+        leaf_hash = get_hash();
+        assert(duplicate_table.find(base_state_id_hash) != duplicate_table.end());
+        const auto it = duplicate_table[base_state_id_hash].find(leaf_hash);
+        if (it != duplicate_table[base_state_id_hash].end()){
+            dup_state_indeces = it->second;
+        }
+        check_all = false;
+    } else if (pruning->use_transitivity()){
+        const auto it = non_dominated_states.find(base_state_id_hash);
+        assert(it != non_dominated_states.end());
+        dup_state_indeces = it->second;
+        check_all = false;
     }
 
-    size_t base_state_id_hash = base_state.get_id().hash();
-
-    for (int dup = 0; dup <= curr_number_duplicates; ++dup){
-        // check the price tags of all equal center states
-        
-        if (pruning->use_transitivity()){
-            // skip existing states in the dominance check if they are
-            // dominated themselves by another existing state
-            const auto it = is_non_dominated_state.find(base_state_id_hash);
-            if (it != is_non_dominated_state.end()
-                    && (size_t) dup < it->second.size()
-                    && !it->second[dup]){
-                size_t ind = it->second.find_next(dup);
-                if (ind == boost::dynamic_bitset<>::npos){
-                    if (curr_number_duplicates < (int) it->second.size()){
-                        assert(curr_number_duplicates == (int) it->second.size() - 1);
-                        break;
-                    } else {
-                        dup = (int) it->second.size();
-                    }
-                } else {
-                    dup = ind;
-                }
-            }
+    if (check_all){
+        dup_state_indeces.reserve(curr_number_duplicates + 1);
+        for (int dup = 0; dup <= curr_number_duplicates; ++dup){
+            dup_state_indeces.push_back(dup);
         }
+    }
+
+    for (int dup : dup_state_indeces){
+        // check the price tags of all equal center states
 
 #ifdef DEBUG_PRUNING
         cout << "current dup counter " << dup << endl;
@@ -122,7 +148,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
             // ignoring the g-values; we need to pay attention to properly handle dominated states with
             // lower g-value, though
 
-            DOMINANCE res = check_dominance(s, hash);
+            DOMINANCE res = check_dominance(s);
 
             if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATED){
                 int old_g = search_space->get_node(s).get_g();
@@ -140,10 +166,11 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                 if (pruning->use_transitivity()){
                     // no need to check against this state later on; the new state dominates it,
                     // so checking against the new one is sufficient
-                    if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
-                        is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
-                    }
-                    is_non_dominated_state[base_state_id_hash][dup] = false;
+                    const auto it = find(non_dominated_states[base_state_id_hash].begin(),
+                                         non_dominated_states[base_state_id_hash].end(),
+                                         dup);
+                    assert(it != non_dominated_states[base_state_id_hash].end());
+                    non_dominated_states[base_state_id_hash].erase(it);
                 }
             }
 
@@ -168,7 +195,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                         needed = DOMINANCE::DOMINATED;
                     }
 
-                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, needed);
+                    DOMINANCE res = check_dominance(s, old_g - new_g, needed);
 
                     if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                         // current state is dominated by or equal to a previously generated state
@@ -181,10 +208,11 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                             node.close();
                         }
                         if (pruning->use_transitivity()){
-                            if ((size_t) dup >= is_non_dominated_state[base_state_id_hash].size()){
-                                is_non_dominated_state[base_state_id_hash].resize(dup + 1, true);
-                            }
-                            is_non_dominated_state[base_state_id_hash][dup] = false;
+                            const auto it = find(non_dominated_states[base_state_id_hash].begin(),
+                                    non_dominated_states[base_state_id_hash].end(),
+                                    dup);
+                            assert(it != non_dominated_states[base_state_id_hash].end());
+                            non_dominated_states[base_state_id_hash].erase(it);
                         }
                     }
 
@@ -198,7 +226,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                         needed = DOMINANCE::DOMINATES;
                     }
 
-                    DOMINANCE res = check_dominance(s, hash, old_g - new_g, needed);
+                    DOMINANCE res = check_dominance(s, old_g - new_g, needed);
 
                     if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
                         // state will replace old state in search
@@ -219,7 +247,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                 // pruned if it is dominated by/equal to its predecessor
                 assert(new_g >= old_g);
 
-                DOMINANCE res = check_dominance(s, hash, old_g - new_g, DOMINANCE::DOMINATED);
+                DOMINANCE res = check_dominance(s, old_g - new_g, DOMINANCE::DOMINATED);
 
                 if (res == DOMINANCE::DOMINATED || res == DOMINANCE::EQUAL){
                     return {dup, false};
@@ -235,6 +263,11 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
                 PruningOptions::set_ignore_current_state();
                 return {0, false};
             }
+        }
+        if (pruning->use_exact_duplicate_checking()){
+            duplicate_table[base_state_id_hash][leaf_hash].push_back(curr_number_duplicates + 1);
+        } else if (pruning->use_transitivity()){
+            non_dominated_states[base_state_id_hash].push_back(curr_number_duplicates + 1);
         }
         return {curr_number_duplicates + 1, false};
     }

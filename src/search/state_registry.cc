@@ -138,8 +138,10 @@ const State &StateRegistry::get_initial_state() {
             
             unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
             
+            CompliantPathGraph::notify_new_center_state(*cached_initial_state, *init_state_cpg);
+
             init_state_cpg->store_new_cpg(*cached_initial_state);
-            
+
             state_duplicate_counter[0] = 0;
         }
         
@@ -183,6 +185,7 @@ void StateRegistry::permute_initial_state() {
             delete cached_initial_state;
             cached_initial_state = new State(lookup_state(id));
         }
+        CompliantPathGraph::notify_new_center_state(*cached_initial_state, *CPGStorage::storage->get_cpg(*cached_initial_state));
     } else {
         const vector<int> &new_state = g_symmetry_graph->get_canonical_state(*cached_initial_state);
         
@@ -344,6 +347,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
         }
         
         if (old_dup_counter == -1){ // is new center state
+            CompliantPathGraph::notify_new_center_state(s, *new_cpg);
             new_cpg->store_new_cpg(s);
             state_duplicate_counter[id.hash()] = 0;
         } else {

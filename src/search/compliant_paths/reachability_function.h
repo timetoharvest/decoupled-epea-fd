@@ -41,7 +41,7 @@ protected:
 
     void update(const State &new_center_state);
                                                                           
-    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage, DOMINANCE needed) override;
+    virtual DOMINANCE check_dominance(const State &other, int g_advantage, DOMINANCE needed) override;
     
     virtual void store_new_cpg(const State &state) override;
     

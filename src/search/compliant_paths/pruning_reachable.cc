@@ -43,7 +43,7 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return p_reach;
 }
 
-DOMINANCE PruningReachable::check_dominance(const State &other, uint64_t, int, DOMINANCE needed) {
+DOMINANCE PruningReachable::check_dominance(const State &other, int, DOMINANCE needed) {
     PruningReachable *other_cpg = &cpg_storage->cpgs[other];
 
     compute_frontier();

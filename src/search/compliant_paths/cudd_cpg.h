@@ -43,7 +43,7 @@ protected:
 
     virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const override;
 
-    virtual DOMINANCE check_dominance(const State &other, uint64_t hash, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) override;
+    virtual DOMINANCE check_dominance(const State &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) override;
 
     virtual void store_new_cpg(const State &state) override;
 
