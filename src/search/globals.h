@@ -63,7 +63,7 @@ extern bool g_use_metric;
 extern int g_min_action_cost;
 extern int g_max_action_cost;
 
-extern size_t MAX_DUPLICATE_COUNTER;
+extern int MAX_DUPLICATE_COUNTER;
 
 extern std::unique_ptr<Factoring> g_factoring;
 

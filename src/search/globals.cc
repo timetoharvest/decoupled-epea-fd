@@ -294,6 +294,33 @@ void read_everything(istream &in) {
             }
         }
         
+        // TODO further adapt this based on experiments
+        if (CompliantPathGraph::get_pruning_options().use_exact_duplicate_checking()){
+            // numbers are slightly higher than so-far observed maximum
+            switch (g_factoring->get_search_type()){
+            case FRA:
+            case ASDA:
+            case SDA: MAX_DUPLICATE_COUNTER = 1000000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 100000; break;
+            case UNSAT: MAX_DUPLICATE_COUNTER = 2000000; break;
+
+            default: cerr << "Unknown decoupled search type." << endl;
+                     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
+        } else {
+            // numbers are roughly double than so-far observed maximum
+            switch (g_factoring->get_search_type()){
+            case FRA:
+            case ASDA:
+            case SDA: MAX_DUPLICATE_COUNTER = 50000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 10000; break;
+            case UNSAT: MAX_DUPLICATE_COUNTER = 20000; break;
+
+            default: cerr << "Unknown decoupled search type." << endl;
+                     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
+        }
+
         center_domains.push_back(MAX_DUPLICATE_COUNTER);
         
         cout << "packing state variables..." << flush;
@@ -428,9 +455,7 @@ bool g_use_metric;
 int g_min_action_cost = numeric_limits<int>::max();
 int g_max_action_cost = 0;
 
-// TODO adapt the size based on experiments
-// also take into account non-fork factorings and new pruning methods!
-size_t MAX_DUPLICATE_COUNTER = 100000;
+int MAX_DUPLICATE_COUNTER;
 
 unique_ptr<Factoring> g_factoring;
 

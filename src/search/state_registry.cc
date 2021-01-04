@@ -314,7 +314,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             const vector<int> &new_center = g_symmetry_graph->get_canonical_decoupled_state(s, dynamic_cast<symmetries::SymmetryCPG &>(*new_cpg));
 
             bool changed = false;
-            for (size_t var : g_center){
+            for (int var : g_center){
                 if (s[var] != new_center[var]){
                     changed = true;
                     break;
@@ -354,7 +354,10 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             auto start = std::chrono::high_resolution_clock::now();
             auto [new_dup_counter, replace_old_cpg] = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
             dominance_pruning_timer += std::chrono::high_resolution_clock::now() - start;
-            assert((size_t) new_dup_counter < MAX_DUPLICATE_COUNTER);
+            if (new_dup_counter >= MAX_DUPLICATE_COUNTER){
+                cerr << "Maximum number of decoupled states with the same center exceeded. Need to increase MAX_DUPLICATE_COUNTER in globals.cc and recompile." << endl;
+                exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
             
             state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
@@ -452,7 +455,7 @@ State StateRegistry::get_center_state(const vector<int> &facts) {
 
 State StateRegistry::get_decoupled_state(const State &base_state, int dup_counter) {
     assert(dup_counter >= 0);
-    assert((size_t) dup_counter < MAX_DUPLICATE_COUNTER);
+    assert(dup_counter < MAX_DUPLICATE_COUNTER);
     
     state_data_pool.push_back(base_state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
