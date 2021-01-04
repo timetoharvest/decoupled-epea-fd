@@ -37,7 +37,8 @@ struct Condition {
     }
 
     bool operator<(const Condition &other) const {
-        return var < other.var || val < other.val;
+	return var < other.var || 
+	    (var == other.var && val < other.val);
     }
 
     void dump() const;
