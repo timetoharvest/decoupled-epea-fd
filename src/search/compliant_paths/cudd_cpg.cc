@@ -309,7 +309,7 @@ void CuddCPG<T>::fill_in_leaf_actions(vector<OperatorID> &center_path, vector<St
 template<class T>
 void CuddCPG<T>::print_statistics() {
     // TODO: could use stateCount in LeafStateSpace
-    cerr << "TODO: print statistics in CuddCPG" << endl;
+    cout << "TODO: print statistics in CuddCPG" << endl;
 }
 
 template<class T>
