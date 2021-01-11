@@ -229,7 +229,7 @@ int SymDecoupledManager<T>::apply_leaf_precondition(const Operator & op, LeafFac
     map<int, BDD> new_prices;
     int inc_g = -1;
 
-    if(!op.get_effects(factor).empty()) {
+    if(op.has_effect_on(factor)) {
         const auto & tr = factor_managers[factor].get_tr(op);
 
         for(const auto & iter : prices) {
@@ -468,6 +468,8 @@ template<typename T>
 void SymDecoupledManager<T>::populate_cost_of_leaf_facts(const T & info, function<void(int, int, int)> f) const {
     factor_managers[info.get_factor()].populate_cost_of_leaf_facts(info, f);
 }
+
+
 
 template<typename T>
 void SymDecoupledManager<T>::
