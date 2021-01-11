@@ -369,7 +369,7 @@ std::pair<BDD, int> ClosedList::extract_partial_path(const map<int, vector<Trans
                     BDD intersection = succ * closed.at(newH);
                     if (!intersection.IsZero()) {
                         h = newH;
-                        target = succ;
+                        target = intersection;
                         steps0 = 0;
                         if (zeroCostClosed.count(h)) {
                             while (empty_intersection(target,zeroCostClosed.at(h)[steps0])) {
