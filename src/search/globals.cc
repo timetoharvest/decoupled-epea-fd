@@ -295,13 +295,15 @@ void read_everything(istream &in) {
         }
         
         // TODO further adapt this based on experiments
+	// TODO it can probably be somewhat aligned with the bin-packing, too.
+	// if we need a new bucket anyway, then we could as well use an entire int
         if (CompliantPathGraph::get_pruning_options().use_exact_duplicate_checking()){
             // numbers are slightly higher than so-far observed maximum
             switch (g_factoring->get_search_type()){
             case FRA:
             case ASDA:
-            case SDA: MAX_DUPLICATE_COUNTER = 1000000; break;
-            case SAT: MAX_DUPLICATE_COUNTER = 100000; break;
+            case SDA: MAX_DUPLICATE_COUNTER = 1500000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 400000; break;
             case UNSAT: MAX_DUPLICATE_COUNTER = 2000000; break;
 
             default: cerr << "Unknown decoupled search type." << endl;
@@ -313,8 +315,8 @@ void read_everything(istream &in) {
             case FRA:
             case ASDA:
             case SDA: MAX_DUPLICATE_COUNTER = 50000; break;
-            case SAT: MAX_DUPLICATE_COUNTER = 10000; break;
-            case UNSAT: MAX_DUPLICATE_COUNTER = 20000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 60000; break;
+            case UNSAT: MAX_DUPLICATE_COUNTER = 50000; break;
 
             default: cerr << "Unknown decoupled search type." << endl;
                      exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
