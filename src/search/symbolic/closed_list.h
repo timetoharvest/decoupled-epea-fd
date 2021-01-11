@@ -62,7 +62,6 @@ public:
             BDD target, int h, bool fw,
             std::vector <OperatorID> &path) const;
 
-
     inline BDD getClosed() const {
         return closedTotal;
     }
@@ -86,6 +85,7 @@ public:
     ADD getHeuristic(int previousMaxH = -1) const;
 
     ADD getHeuristicRealHNotClosed(int h_not_closed) const;
+
     ADD getHeuristicRealHNotClosed() const {
         return getHeuristicRealHNotClosed(hNotClosed);
     }
