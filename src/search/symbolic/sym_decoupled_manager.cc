@@ -501,7 +501,7 @@ get_leaf_compliant_plan(const vector<StateID> &center_states,
 
         auto closed_i = path_reconstructed[i]->getClosedList(); //Make copy
 
-        if (g_factoring->get_profile() != FORK && (op.has_precondition_on(factor) || !op.get_effects(factor).empty())) {
+        if (g_factoring->get_profile() != FORK && (op.has_precondition_on(factor) || op.has_effect_on(factor))) {
             inc_g[i] += apply_leaf_precondition(op, factor, closed_i);
         }
 
@@ -543,7 +543,7 @@ get_leaf_compliant_plan(const vector<StateID> &center_states,
         }
 
         vector<OperatorID> plan;
-        auto res = path_reconstructed[i]->extract_partial_path(trs,  goal_states, goal_cost, true, plan);
+        auto res = path_reconstructed[i]->extract_partial_path(trs, goal_states, goal_cost, true, plan);
         reverse(plan.begin(), plan.end());
         leaf_plans[i].insert(leaf_plans[i].end(), plan.begin(), plan.end());
         if(i > 0) {

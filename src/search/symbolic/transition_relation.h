@@ -89,6 +89,7 @@ public:
     }
 
     inline bool hasOp(std::set<const Operator *> ops) const {
+        // TODO what is this doing?!
         for (const auto &op : ops) {
             if (ops.count(op)) {
                 return true;
