@@ -441,18 +441,27 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
 
+    bool is_strict_star_factoring = true; // no dependencies between leaves
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        if (interaction_graph.get_successors(factor).empty()){
+        int num_successors = interaction_graph.get_successors(factor).size();
+        if (num_successors == 0){
             fork_leaf.push_back(true);
         } else {
             fork_leaf.push_back(false);
             assert(!is_fork_factoring);
+            if (num_successors > 1){
+                is_strict_star_factoring = false;
+            }
         }
-        if (interaction_graph.get_predecessors(factor).empty()){
+        int num_predecessors = interaction_graph.get_predecessors(factor).size();
+        if (num_predecessors == 0){
             ifork_leaf.push_back(true);
         } else {
             ifork_leaf.push_back(false);
             assert(!is_ifork_factoring);
+            if (num_predecessors > 1){
+                is_strict_star_factoring = false;
+            }
         }
     }
     if (is_fork_factoring){
@@ -461,6 +470,8 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     } else if (is_ifork_factoring){
         profile = IFORK;
         cout << "factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
+    } else if (is_strict_star_factoring){
+        cout << "factoring is strict-star factoring, no inter-leaf dependencies" << endl;
     }
 
 #ifdef DEBUG_FACTORING
@@ -621,6 +632,10 @@ void Factoring::print_factoring() const {
 }
 
 bool Factoring::is_factoring_possible() const {
+    // TODO this can be simplified:
+    // equivalently, we can check if there exists an action that
+    // does not affect *all* variables
+
     // if there exists a variable that is affected by all actions, then
     // no mobile factoring can exist.
     vector<size_t> op_count(g_variable_domain.size(), 0);
