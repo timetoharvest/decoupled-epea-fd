@@ -668,6 +668,8 @@ void Factoring::do_factoring_or_abstain() {
     // for calculating the factoring time
     if (factoring_time_limit > 0) {
         factoring_timer = utils::CountdownTimer(factoring_time_limit);
+    } else {
+        factoring_timer = utils::CountdownTimer(numeric_limits<double>::infinity());
     }
 
     FactoredVars best_factoring;
