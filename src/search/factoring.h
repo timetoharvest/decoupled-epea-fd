@@ -99,17 +99,39 @@ class Factoring {
 
     void apply_factoring(const std::vector<std::set<int> > &factoring);
 
-    void print_factoring() const;
+    void print_factoring_statistics() const;
 
     bool is_factoring_possible() const;
 
+    bool is_two_leaf_factoring_possible() const;
+
 protected:
     
+    struct ActionSchema {
+
+        int num_actions; // number of actions with the action schema
+        std::vector<int> pre_vars; // sorted
+        std::vector<int> eff_vars; // sorted
+
+        ActionSchema(int num_actions, const std::vector<int> &pre_vars, const std::vector<int> &eff_vars)
+        : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {
+        }
+
+        void incr_num_action() {
+            num_actions++;
+        }
+
+    };
+
     using FactoredVars = std::vector<std::set<int> >;
 
     static std::vector<std::set<int> > var_to_affecting_op;
 
+    static std::vector<ActionSchema> action_schemas;
+
     static void init_var_to_ops_map();
+
+    static void init_action_schemas();
 
 
     size_t max_leaf_size;

@@ -44,12 +44,43 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
 
 vector<set<int>> Factoring::var_to_affecting_op;
 
+vector<Factoring::ActionSchema> Factoring::action_schemas;
+
 void Factoring::init_var_to_ops_map() {
     if (var_to_affecting_op.empty()) {
         var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());
         for (size_t op = 0; op < g_operators.size(); ++op) {
             for (const Effect &eff : g_operators[op].get_effects()) {
                 var_to_affecting_op[eff.var].insert(op);
+            }
+        }
+    }
+}
+
+void Factoring::init_action_schemas() {
+    if (action_schemas.empty()){
+        utils::HashMap<std::vector<int>, utils::HashMap<std::vector<int>, size_t> > scheme_loockup;
+        for (const Operator &op : g_operators) {
+            vector<int> pre_vars;
+            for (const Condition &pre : op.get_preconditions()) {
+                pre_vars.push_back(pre.var);
+            }
+            sort(pre_vars.begin(), pre_vars.end());
+
+            vector<int> eff_vars;
+            for (const Effect &eff : op.get_effects()) {
+                eff_vars.push_back(eff.var);
+            }
+            sort(eff_vars.begin(), eff_vars.end());
+
+            if (scheme_loockup.find(pre_vars) == scheme_loockup.end()){
+                scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
+                action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
+            } else if (scheme_loockup[pre_vars].find(eff_vars) == scheme_loockup[pre_vars].end()){
+                scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
+                action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
+            } else {
+                action_schemas[scheme_loockup[pre_vars][eff_vars]].incr_num_action();
             }
         }
     }
@@ -530,7 +561,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     }
 }
 
-void Factoring::print_factoring() const {
+void Factoring::print_factoring_statistics() const {
 #ifdef DEBUG_FACTORING
     cout << "final factoring:" << endl;
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
@@ -632,10 +663,6 @@ void Factoring::print_factoring() const {
 }
 
 bool Factoring::is_factoring_possible() const {
-    // TODO this can be simplified:
-    // equivalently, we can check if there exists an action that
-    // does not affect *all* variables
-
     // if there exists a variable that is affected by all actions, then
     // no mobile factoring can exist.
     vector<size_t> op_count(g_variable_domain.size(), 0);
@@ -649,6 +676,7 @@ bool Factoring::is_factoring_possible() const {
                 var_not_affected_by_some_op[eff.var] = true;
                 ++num_vars_not_affected_by_some_op;
                 if (num_vars_not_affected_by_some_op == g_variable_domain.size()){
+                    // no variable is affected by all actions
                     return true;
                 }
             }
@@ -663,6 +691,46 @@ bool Factoring::is_factoring_possible() const {
     return true;
 }
 
+bool Factoring::is_two_leaf_factoring_possible() const {
+    init_action_schemas();
+    for (size_t i = 0; i < action_schemas.size(); ++i){
+        for (size_t j = 0; j < action_schemas.size(); ++j){
+            if (i < j){
+                const auto &a1 = action_schemas[i];
+                const auto &a2 = action_schemas[j];
+                set<int> all_effs;
+                all_effs.insert(a1.eff_vars.begin(), a1.eff_vars.end());
+                all_effs.insert(a2.eff_vars.begin(), a2.eff_vars.end());
+                if (all_effs.size() == g_variable_domain.size()){
+                    // the two potential leaves cover all variables => center empty
+                    continue;
+                }
+                vector<int> tmp(a1.eff_vars.size());
+                auto it = set_intersection(a1.eff_vars.begin(), a1.eff_vars.end(), a2.eff_vars.begin(), a2.eff_vars.end(), tmp.begin());
+                if (it != tmp.begin()){
+                    // potential leaves overlap
+                    continue;
+                }
+                tmp = vector<int>(a1.eff_vars.size());
+                it = set_intersection(a1.eff_vars.begin(), a1.eff_vars.end(), a2.pre_vars.begin(), a2.pre_vars.end(), tmp.begin());
+                if (it != tmp.begin()){
+                    // actions of one leaf are preconditioned by variables in the other leaf
+                    continue;
+                }
+                tmp = vector<int>(a1.pre_vars.size());
+                it = set_intersection(a1.pre_vars.begin(), a1.pre_vars.end(), a2.eff_vars.begin(), a2.eff_vars.end(), tmp.begin());
+                if (it != tmp.begin()){
+                    // actions of one leaf are preconditioned by variables in the other leaf
+                    continue;
+                }
+                // there exists a mobile factoring with at leaf two leaves: a1.eff_vars and a2.eff_vars
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void Factoring::do_factoring_or_abstain() {
 
     // for calculating the factoring time
@@ -673,7 +741,7 @@ void Factoring::do_factoring_or_abstain() {
     }
 
     FactoredVars best_factoring;
-    if (is_factoring_possible()){
+    if (is_factoring_possible() && (min_number_leaves < 2 || is_two_leaf_factoring_possible())){
         // simple sanity check to filter out tasks where no mobile factoring exists
         best_factoring = get_factoring();
     }
@@ -700,7 +768,7 @@ void Factoring::do_factoring_or_abstain() {
 
     apply_factoring(best_factoring);
 
-    print_factoring();
+    print_factoring_statistics();
 
     if (abstain_type == ABSTAIN_TYPE::NO_SEARCH) {
         cout << "Factoring complete, do not perform search." << endl;
