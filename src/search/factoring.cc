@@ -59,6 +59,7 @@ void Factoring::init_var_to_ops_map() {
 
 void Factoring::init_action_schemas() {
     if (action_schemas.empty()){
+        assert(!g_operators.empty());
         utils::HashMap<std::vector<int>, utils::HashMap<std::vector<int>, size_t> > scheme_loockup;
         for (const Operator &op : g_operators) {
             vector<int> pre_vars;
@@ -728,6 +729,7 @@ bool Factoring::is_two_leaf_factoring_possible() const {
             }
         }
     }
+    cout << "No mobile factoring with at least 2 leaves possible." << endl;
     return false;
 }
 
