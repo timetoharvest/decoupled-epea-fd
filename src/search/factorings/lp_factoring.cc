@@ -1250,7 +1250,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
                 // covers the entire action schema. in this case, the action schema would otherwise
                 // affect multiple leaves without affecting the center
                 // TODO: note that we could easily handle such actions by simply labeling them center
-                // actions, i.e. branch over them in the search. however, this goes beyong our
+                // actions, i.e. branch over them in the search. however, this goes beyond our
                 // definition of general-star factorings.
                 vector<size_t> p_leaf_counter(num_p_leaves, 0);
                 for (size_t index_1 : var_to_p_leaves[action_schema.eff_vars[0]]) {
@@ -1306,8 +1306,11 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
                 fully_connected_p_leaves[i_1] = true;
             }
         }
-        auto lambda_expr = [&](const PotentialLeaf &p_leaf){return fully_connected_p_leaves[p_leaf.id];};
-        potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
+        auto is_fully_connected = [&](const PotentialLeaf &p_leaf){return fully_connected_p_leaves[p_leaf.id];};
+        potential_leaves.erase(remove_if(potential_leaves.begin(),
+                                    potential_leaves.end(),
+                                    is_fully_connected),
+                               potential_leaves.end());
 
         //adjust IDs
         int id = 0;
