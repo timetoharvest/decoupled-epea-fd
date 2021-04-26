@@ -1174,7 +1174,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
 
             for (const PotentialLeaf &p_leaf : potential_leaves) {
                 // no precondition on another leaf for leaf-only actions
-                for (int action_schema : p_leaf.leaf_only_schemes) {
+                for (size_t action_schema : p_leaf.leaf_only_schemes) {
                     for (int pre : action_schemas[action_schema].pre_vars) {
                         for (size_t index : var_to_p_leaves[pre]) {
                             if (p_leaf.id < index){

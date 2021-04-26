@@ -761,10 +761,8 @@ void Factoring::do_factoring_or_abstain() {
             case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
             case ABSTAIN_TYPE::STANDARD_ON_FAILURE : return;
             case ABSTAIN_TYPE::NO_SEARCH :
-                if (best_factoring.empty()){
-                    cout << "Factoring failed, do not perform search." << endl;
-                    exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
-                }
+                cout << "Factoring failed, do not perform search." << endl;
+                exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
         }
     }
 
