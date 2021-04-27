@@ -692,41 +692,72 @@ bool Factoring::is_factoring_possible() const {
     return true;
 }
 
+inline bool is_intersection_empty(const vector<int> &x, const vector<int> &y) {
+    size_t i = 0;
+    for (int a : x){
+        for (; i < y.size(); ++i){
+            if (a < y[i]){
+                break;
+            } else if (a == y[i]){
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool Factoring::is_two_leaf_factoring_possible() const {
     init_action_schemas();
     for (size_t i = 0; i < action_schemas.size(); ++i){
-        for (size_t j = 0; j < action_schemas.size(); ++j){
-            if (i < j){
-                const auto &a1 = action_schemas[i];
-                const auto &a2 = action_schemas[j];
-                set<int> all_effs;
-                all_effs.insert(a1.eff_vars.begin(), a1.eff_vars.end());
-                all_effs.insert(a2.eff_vars.begin(), a2.eff_vars.end());
-                if (all_effs.size() == g_variable_domain.size()){
+        const auto &a1 = action_schemas[i];
+        for (size_t j = i+1; j < action_schemas.size(); ++j){
+            const auto &a2 = action_schemas[j];
+
+            if (a1.eff_vars.size() + a2.eff_vars.size() >= g_variable_domain.size()){
+                // check if effects cover all variables of the task
+                int var = 0;
+                size_t i1 = 0;
+                size_t i2 = 0;
+                bool all_vars_covered = true;
+
+                while (var < (int) g_variable_domain.size()){
+                    if (var == a1.eff_vars[i1]){
+                        ++var;
+                        ++i1;
+                        continue;
+                    } else if (var == a2.eff_vars[i2]){
+                        ++var;
+                        ++i2;
+                        continue;
+                    } else if (var > a1.eff_vars[i1]){
+                        ++i1;
+                        continue;
+                    } else if (var > a2.eff_vars[i2]){
+                        ++i2;
+                        continue;
+                    }
+                    all_vars_covered = false;
+                    break;
+                }
+                if (all_vars_covered){
                     // the two potential leaves cover all variables => center empty
                     continue;
                 }
-                vector<int> tmp(a1.eff_vars.size());
-                auto it = set_intersection(a1.eff_vars.begin(), a1.eff_vars.end(), a2.eff_vars.begin(), a2.eff_vars.end(), tmp.begin());
-                if (it != tmp.begin()){
-                    // potential leaves overlap
-                    continue;
-                }
-                tmp = vector<int>(a1.eff_vars.size());
-                it = set_intersection(a1.eff_vars.begin(), a1.eff_vars.end(), a2.pre_vars.begin(), a2.pre_vars.end(), tmp.begin());
-                if (it != tmp.begin()){
-                    // actions of one leaf are preconditioned by variables in the other leaf
-                    continue;
-                }
-                tmp = vector<int>(a1.pre_vars.size());
-                it = set_intersection(a1.pre_vars.begin(), a1.pre_vars.end(), a2.eff_vars.begin(), a2.eff_vars.end(), tmp.begin());
-                if (it != tmp.begin()){
-                    // actions of one leaf are preconditioned by variables in the other leaf
-                    continue;
-                }
-                // there exists a mobile factoring with at leaf two leaves: a1.eff_vars and a2.eff_vars
-                return true;
             }
+            if (!is_intersection_empty(a1.eff_vars, a2.eff_vars)){
+                // potential leaves overlap
+                continue;
+            }
+            if (!is_intersection_empty(a1.eff_vars, a2.pre_vars)){
+                // actions of one leaf are preconditioned by variables in the other leaf
+                continue;
+            }
+            if (!is_intersection_empty(a1.pre_vars, a2.eff_vars)){
+                // actions of one leaf are preconditioned by variables in the other leaf
+                continue;
+            }
+            // there exists a mobile factoring with at leaf two leaves: a1.eff_vars and a2.eff_vars
+            return true;
         }
     }
     cout << "No mobile factoring with at least 2 leaves possible." << endl;
