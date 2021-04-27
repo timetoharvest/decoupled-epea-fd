@@ -714,6 +714,10 @@ bool Factoring::is_two_leaf_factoring_possible() const {
             const auto &a2 = action_schemas[j];
 
             if (a1.eff_vars.size() + a2.eff_vars.size() >= g_variable_domain.size()){
+                // TODO if we relax the notion of general star factorings to allow
+                // for center actions without center effect, we can also get rid of this
+                // check, since there will be center actions anyway (assuming the CG is weakly connected)
+
                 // check if effects cover all variables of the task
                 int var = 0;
                 size_t i1 = 0;
