@@ -93,7 +93,6 @@ Factoring::Factoring(const Options &opts) :
             leaf_type(LEAF_REPRESENTATION_TYPE(opts.get_enum("leaf_representation"))),
             factoring_time_limit(opts.get<int>("factoring_time_limit")),
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
-    verify_no_axioms_no_conditional_effects();
 
     switch(search_type){
         case DECOUPLED_SEARCH_TYPE::FRA : cout << "performing Fork-Root A* search" << endl; break;
@@ -769,6 +768,7 @@ bool Factoring::is_two_leaf_factoring_possible() const {
 }
 
 void Factoring::do_factoring_or_abstain() {
+    verify_no_axioms_no_conditional_effects();
 
     // for calculating the factoring time
     if (factoring_time_limit > 0) {
