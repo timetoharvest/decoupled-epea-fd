@@ -675,6 +675,8 @@ static PruningMethod* _parse(OptionParser &parser) {
                             "TODO",
                             "false");
     
+    // even if this option is true, it will we overwritten by
+    // special_case_optimizations=false
     parser.add_option<bool>("check_ifork_applicable",
                             "TODO",
                             "true");
