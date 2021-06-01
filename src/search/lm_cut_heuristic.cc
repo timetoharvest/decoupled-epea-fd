@@ -147,7 +147,7 @@ void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
     int cost = get_adjusted_cost(op);
     if (heuristic_type == HEURISTIC_TYPE::CENTER && 
             op.get_affected_factor() != LeafFactorID::CENTER){
-        cost = 0;   // ADA*/FRA*/SAT => center heuristic
+        cost = 0;
     }
     add_relaxed_operator(precondition, effects, &op, cost);
 }
