@@ -89,6 +89,13 @@ void SearchEngine::search() {
          << " [t=" << utils::g_timer << "]" << endl;
 }
 
+inline void print_solution_cost(int cost) {
+    cout << "Found a plan of cost " << cost
+            << " [t=" << utils::g_timer
+            << ", " << utils::get_peak_memory_in_kb() << " KB]";
+    cout << endl;
+}
+
 bool SearchEngine::check_goal_and_set_plan(const State &state) {
     if (test_goal(state)) {
         if (g_factoring){
@@ -102,45 +109,26 @@ bool SearchEngine::check_goal_and_set_plan(const State &state) {
 
             solution_cost += leaf_goal_cost;
 
-            cout << "found a plan of cost " << solution_cost;
+            solution_found = true;
 
             if (g_factoring->get_search_type() == SAT || g_factoring->get_search_type() == UNSAT){
-                solution_found = true;
+                bound = solution_cost;
                 cheapest_goal_state = state.get_id();
-            } else if (g_factoring->get_search_type() == FRA){
-                if (!cpg->is_optimal_leaf_plan(info.get_leaf_part_g())){
-                    cout << ", cannot guarantee optimality => exit [t=" << utils::g_timer << "]" << endl;
-                    exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
-                }
-                solution_found = true;
+                print_solution_cost(solution_cost);
+            } else if (g_factoring->get_search_type() == ASDA &&
+                    cpg->is_optimal_leaf_plan(info.get_leaf_part_g())){
+                bound = solution_cost;
                 cheapest_goal_state = state.get_id();
-            } else if (g_factoring->get_search_type() == ASDA){
-                if (cpg->is_optimal_leaf_plan(info.get_leaf_part_g())){
-                    solution_found = true;
+                print_solution_cost(solution_cost);
+            } else {
+                assert(g_factoring->get_search_type() == ASDA || g_factoring->get_search_type() == SDA);
+                if (solution_cost < bound){
                     bound = solution_cost;
                     cheapest_goal_state = state.get_id();
-                } else {
-                    if (bound > solution_cost){
-                        solution_found = true;
-                        bound = solution_cost;
-                        cheapest_goal_state = state.get_id();
-                    }                    
-                    cout << ", not leaf-optimal => continue search [t=" << utils::g_timer << "]" << endl;
-                    return false;
+                    print_solution_cost(solution_cost);
                 }
-            } else if (g_factoring->get_search_type() == SDA){
-                if (!found_solution()){
-                    solution_found = true;
-                    bound = solution_cost;
-                    cheapest_goal_state = state.get_id();
-                } else if (solution_cost < bound){
-                    bound = solution_cost;
-                    cheapest_goal_state = state.get_id();
-                }
-                cout << " [t=" << utils::g_timer << "]" << endl;
                 return false;
             }
-            cout << " [t=" << utils::g_timer << "]" << endl;
             return true;
         }
         Plan plan;

@@ -95,7 +95,6 @@ Factoring::Factoring(const Options &opts) :
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
 
     switch(search_type){
-        case DECOUPLED_SEARCH_TYPE::FRA : cout << "performing Fork-Root A* search" << endl; break;
         case DECOUPLED_SEARCH_TYPE::ASDA : cout << "performing Anytime Star Decoupled A* search" << endl; break;
         case DECOUPLED_SEARCH_TYPE::SDA : cout << "performing Star Decoupled A* search" << endl; break;
         case DECOUPLED_SEARCH_TYPE::SAT : cout << "performing decoupled satisficing search" << endl; break;
@@ -1902,7 +1901,6 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
         OptionFlags(false));
 
     vector<string> search_types;
-    search_types.push_back("FRA");
     search_types.push_back("ASDA");
     search_types.push_back("SDA");
     search_types.push_back("SAT");
