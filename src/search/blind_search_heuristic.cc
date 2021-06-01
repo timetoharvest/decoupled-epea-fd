@@ -28,13 +28,6 @@ void BlindSearchHeuristic::initialize() {
 }
 
 int BlindSearchHeuristic::compute_heuristic(const State &state) {
-    /*if (g_search_type == FDA){  // TODO blind is much worse with these special settings - think of removing this stuff again!
-                                    // the reason for this not to work is the g-value pruning done in A*
-        return min_operator_cost;  // fork heuristic
-    }
-    if (g_search_type == AFRA || g_search_type == FRA || g_search_type == SAT){
-        return 0;       // root heuristic
-    }*/
     if (test_goal(state)){
         return 0;
     } else {
