@@ -362,7 +362,7 @@ void EffectivePrices::goal_price_propagation() {
                 add_effective_state(state, factor, value);
             }
 
-            for (const auto transition : leaf_state_predecessors[factor][state]) {
+            for (const auto &transition : leaf_state_predecessors[factor][state]) {
                 LeafStateHash t = transition.second;
                 
                 if (closed[t]) {
