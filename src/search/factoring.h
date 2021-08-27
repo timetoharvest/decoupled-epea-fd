@@ -42,14 +42,15 @@ struct InteractionGraph {
     // to handle the center factor, increase indexes by 1
     
 private:
+    bool fork, ifork, strict_star;
     std::vector<std::vector<LeafFactorID> > successors;
     std::vector<std::vector<LeafFactorID> > predecessors;
     
     void add_dependency(LeafFactorID from, LeafFactorID to);
     
-    InteractionGraph(){};
+    InteractionGraph(): fork(false), ifork(false), strict_star(false){};
 public:
-    InteractionGraph(size_t num_factors) {
+    InteractionGraph(size_t num_factors): fork(true), ifork(true), strict_star(true) {
         successors.resize(num_factors+1);
         predecessors.resize(num_factors+1);
     }
@@ -69,6 +70,12 @@ public:
         }
         return predecessors[factor+1];
     }
+
+    bool is_fork() const {return fork;}
+
+    bool is_ifork() const {return ifork;}
+
+    bool is_strict_star() const {return strict_star;}
 };
 
 class OptionParser;
