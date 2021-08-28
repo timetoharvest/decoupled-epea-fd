@@ -36,6 +36,7 @@ inline size_t get_num_leaves(const vector<bool> &center, const vector<vector<boo
 }
 
 Factoring::FactoredVars SchemaIAFactoring::get_factoring() {
+    // TODO allow empty center and do like now, but with action schema (pre+eff vars) and only intersection
 
     vector<EffectSchema> eff_schemas = get_effect_schemas();
 
@@ -90,21 +91,22 @@ Factoring::FactoredVars SchemaIAFactoring::get_factoring() {
         schemas_by_num_neighors[neighbors].push_back(s1);
     }
 
-    vector<bool> out(eff_schemas.size(), false);
     vector<bool> center(eff_schemas.size(), false);
     size_t max_num_leaves = get_num_leaves(center, schema_cg);
     for (int n = schemas_by_num_neighors.size() - 1; n >= 0; --n){
         for (size_t s : schemas_by_num_neighors[n]){
-            if (!out[s]){
+            if (!center[s]){
                 center[s] = true;
-                if (get_num_leaves(center, schema_cg) > max_num_leaves){
+                size_t new_num_leaves = get_num_leaves(center, schema_cg);
+                if (new_num_leaves > max_num_leaves){
+                    max_num_leaves = new_num_leaves;
+                } else {
+                    center[s] = false;
                     for (size_t s2 = 0; s2 < eff_schemas.size(); ++s2){
-                        if (schema_cg[s][s2]){
-                            out[s2] = true;
+                        if (schema_cg[s][s2] && s != s2){
+                            center[s2] = true;
                         }
                     }
-                } else {
-                    center[s] = true;
                 }
             }
         }
