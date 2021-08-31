@@ -368,8 +368,8 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     }
 
     // check if it is a proper general-star factoring
+    bool is_center_op = false;
     for (const Operator &op : g_operators){
-        bool is_center_op = false;
         for (const Effect &eff : op.get_effects()){
             if (g_belongs_to_factor[eff.var] == LeafFactorID::CENTER){
                 is_center_op = true;
@@ -382,19 +382,16 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             for (const Effect &eff : op.get_effects()){
                 if (g_belongs_to_factor[eff.var] != factor){
                     error = true;
-//                    cerr << "leaf action has effect on more than one leaf (" << factor << ", " << g_belongs_to_factor[eff.var] << "): " << op.get_name() << endl;
                 }
             }
             for (const Condition &pre : op.get_preconditions()){
                 if (g_belongs_to_factor[pre.var] != factor && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER){
                     error = true;
-//                    cerr << "leaf action has preconditions on more than one leaf(" << factor << ", " << g_belongs_to_factor[pre.var] << "): " << op.get_name() << endl;
                 }
             }
-
             if (error){
                 cout << "WARNING: not a general-star factoring" << endl;
-//                exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+                break;
             }
         }
     }
@@ -621,6 +618,7 @@ void Factoring::print_factoring_statistics() const {
     int sum_mobility = 0;
     int min_mobility = g_operators.size();
     int max_mobility = 0;
+    uint64_t product_mobility = 1;
     double sum_flexibility = 0;
     double min_flexibility = 1;
     double max_flexibility = 0;
@@ -640,6 +638,7 @@ void Factoring::print_factoring_statistics() const {
         sum_mobility += f_mobility;
         min_mobility = min(min_mobility, f_mobility);
         max_mobility = max(max_mobility, f_mobility);
+        product_mobility *= f_mobility;
 
         f_flexibility = (double) f_mobility / (double) (num_leaf_actions[factor]);
 
@@ -652,6 +651,7 @@ void Factoring::print_factoring_statistics() const {
     cout << "avg mobility: " <<  (double) sum_mobility / (double) g_leaves.size() << endl;
     cout << "max mobility: " << max_mobility << endl;
     cout << "sum mobility: " << sum_mobility << endl;
+    cout << "product mobility: " << product_mobility << endl;
     cout << "min flexibility: " << min_flexibility << endl;
     cout << "avg flexibility: " << (double) sum_flexibility / (double) g_leaves.size() << endl;
     cout << "max flexibility: " << max_flexibility << endl;
