@@ -250,8 +250,6 @@ Factoring::FactoredVars LPFactoring::get_mip_factoring() const {
 
 Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
 
-    utils::Timer timer;
-
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
 
