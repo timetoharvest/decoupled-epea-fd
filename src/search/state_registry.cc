@@ -355,7 +355,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
             auto [new_dup_counter, replace_old_cpg] = new_cpg->check_dominance(s, old_dup_counter, predecessor, op);
             dominance_pruning_timer += std::chrono::high_resolution_clock::now() - start;
             if (new_dup_counter >= MAX_DUPLICATE_COUNTER){
-                cerr << "Maximum number of decoupled states with the same center exceeded (" << MAX_DUPLICATE_COUNTER << "). Need to increase MAX_DUPLICATE_COUNTER in globals.cc and recompile." << endl;
+                cerr << "Maximum number of decoupled states with the same center exceeded (" << MAX_DUPLICATE_COUNTER << "). Need to increase MAX_DUPLICATE_COUNTER in globals.cc and recompile [t=" << utils::g_timer << "]" << endl;
                 exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
             
