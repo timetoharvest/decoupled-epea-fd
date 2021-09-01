@@ -313,7 +313,7 @@ void read_everything(istream &in) {
             switch (g_factoring->get_search_type()){
             case ASDA:
             case SDA: MAX_DUPLICATE_COUNTER = 50000; break;
-            case SAT: MAX_DUPLICATE_COUNTER = 60000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 100000; break;
             case UNSAT: MAX_DUPLICATE_COUNTER = 50000; break;
 
             default: cerr << "Unknown decoupled search type." << endl;
