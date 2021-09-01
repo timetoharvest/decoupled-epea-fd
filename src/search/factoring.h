@@ -159,6 +159,13 @@ protected:
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
+    void exit_if_timeout() const {
+        if (abstain_type != ABSTAIN_TYPE::STANDARD_ON_FAILURE){
+            std::cout << Factoring::TIME_OUT_MESSAGE << std::endl;
+            exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
+        }
+    }
+
 
     Factoring(const Options &opts);
     
