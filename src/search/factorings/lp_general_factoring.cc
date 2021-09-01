@@ -198,9 +198,7 @@ void LPGeneralFactoring::dump_lp(lp::LPObjectiveSense sense, const vector<lp::LP
     }
 }
 
-inline bool check_num_constraints_and_time(const vector<lp::LPConstraint> &constraints,
-        int memory_limit,
-        const utils::CountdownTimer &factoring_timer) {
+bool LPGeneralFactoring::check_num_constraints_and_time(const vector<lp::LPConstraint> &constraints) const {
     if (memory_limit != -1 && constraints.size() >= (size_t) memory_limit * 2500){
         // this limit corresponds to around 10 million constraints with 4GB memory limit
         // the maximum-sized ILP that could be solved in the experiments with this limit
@@ -209,6 +207,7 @@ inline bool check_num_constraints_and_time(const vector<lp::LPConstraint> &const
         return false;
     }
     if (factoring_timer.is_expired()){
+        exit_if_timeout();
         return false;
     }
     return true;
@@ -221,14 +220,24 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
 
     vector<ActionSchema> action_schemas = get_action_schemas();
 
-    if (action_schemas.empty() || factoring_timer.is_expired()){
-        // for trivially unsolvable task
+    if (action_schemas.empty()){
+        // mostly for trivially unsolvable task?
+        cerr << "No action schemas." << endl;
+        return FactoredVars();
+    }
+    if (factoring_timer.is_expired()){
+        exit_if_timeout();
         return FactoredVars();
     }
 
     vector<PotentialLeaf> potential_leaves = get_potential_leaves(action_schemas);
 
-    if (potential_leaves.empty() || factoring_timer.is_expired()){
+    if (potential_leaves.empty()){
+        cerr << "No potential leaves." << endl;
+        return FactoredVars();
+    }
+    if (factoring_timer.is_expired()){
+        exit_if_timeout();
         return FactoredVars();
     }
 
@@ -296,7 +305,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
         }
     }
 
-    if (!check_num_constraints_and_time(constraints, memory_limit, factoring_timer)){
+    if (!check_num_constraints_and_time(constraints)){
         return FactoredVars();
     }
 
@@ -322,7 +331,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
         constraints.push_back(constraint);
     }
 
-    if (!check_num_constraints_and_time(constraints, memory_limit, factoring_timer)){
+    if (!check_num_constraints_and_time(constraints)){
         return FactoredVars();
     }
 
@@ -363,7 +372,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
         }
     }
 
-    if (!check_num_constraints_and_time(constraints, memory_limit, factoring_timer)){
+    if (!check_num_constraints_and_time(constraints)){
         return FactoredVars();
     }
 
@@ -384,7 +393,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
         constraints.push_back(constraint);
     }
 
-    if (!check_num_constraints_and_time(constraints, memory_limit, factoring_timer)){
+    if (!check_num_constraints_and_time(constraints)){
         return FactoredVars();
     }
 
@@ -401,36 +410,34 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves() const {
     FactoredVars factoring;
 
     if (solution.empty()) {
-        return factoring;
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
-    // simple sanity check
-    bool all_potential_leaves = true;
     bool leaves_overlap = false;
-    vector<bool> leaf_variables(g_variable_domain.size(), false);
+    vector<bool> is_leaf_var(g_variable_domain.size(), false);
     for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
         if (solution[p_leaf] == 1) {
             set<int> leaf;
             for (int var : potential_leaves[p_leaf].vars) {
-                if (leaf_variables[var]){
+                if (is_leaf_var[var]){
                     leaves_overlap = true;
+                    // simple sanity check
                 }
-                leaf_variables[var] = true;
+                is_leaf_var[var] = true;
                 leaf.insert(var);
             }
             factoring.push_back(leaf);
-        } else {
-            all_potential_leaves = false;
         }
     }
 
-    if (all_potential_leaves && leaves_overlap){
+    if (leaves_overlap){
         // TODO: investigate this!
         // this tends to happen when CPLEX is running out of memory on the cluster,
         // when run with an external memory limit. could try to additionally set
         // the memory limit for CPLEX explicitly
-        cerr << "ERROR: solution returned by CPLEX is not a valid factoring; all potential leaves become leaves, but do overlap." << endl;
-        return FactoredVars();
+        cerr << "ERROR: solution returned by LP solver is not a valid factoring: leaves do overlap." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
 
     return factoring;
@@ -544,6 +551,7 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::get_potential_leav
             }
         }
         if (factoring_timer.is_expired()){
+            exit_if_timeout();
             return vector<PotentialLeaf>();
         }
     }

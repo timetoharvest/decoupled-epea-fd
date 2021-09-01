@@ -76,6 +76,8 @@ class LPGeneralFactoring : public Factoring {
 
     double infty;
 
+    bool check_num_constraints_and_time(const std::vector<lp::LPConstraint> &constraints) const;
+
     std::vector<double> solve_lp(lp::LPObjectiveSense sense,
             std::vector<lp::LPVariable> &vars,
             std::vector<lp::LPConstraint> &constrs,
