@@ -54,6 +54,8 @@ vector<set<int>> Factoring::var_to_affecting_op;
 
 vector<Factoring::ActionSchema> Factoring::action_schemas;
 
+const string Factoring::TIME_OUT_MESSAGE = "Factoring process timed out.";
+
 void Factoring::init_var_to_ops_map() {
     if (var_to_affecting_op.empty()) {
         var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());

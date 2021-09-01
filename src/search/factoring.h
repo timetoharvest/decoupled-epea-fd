@@ -139,6 +139,8 @@ protected:
 
     static void init_action_schemas();
 
+    const static std::string TIME_OUT_MESSAGE;
+
 
     size_t max_leaf_size;
     
