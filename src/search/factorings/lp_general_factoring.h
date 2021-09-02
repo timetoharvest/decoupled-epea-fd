@@ -26,11 +26,11 @@ class LPGeneralFactoring : public Factoring {
         size_t id;
         int num_actions; // number of actions with the effect schema
         std::vector<int> vars; // sorted
-        std::vector<size_t> leaf_only_schemes;
-        bool is_self_mobile; // has a leaf_only_scheme whose pre_vars are in vars
+        std::vector<size_t> action_schemes;
+        std::vector<size_t> self_mobile_as; // subset of leaf_only_scheme whose pre_vars are in vars
 
         PotentialLeaf(size_t id, int num_actions, const std::vector<int> &vars)
-        : id(id), num_actions(num_actions), vars(vars), is_self_mobile(false) {}
+        : id(id), num_actions(num_actions), vars(vars) {}
 
         void add_leaf_only_schema(size_t action_schema);
     };
