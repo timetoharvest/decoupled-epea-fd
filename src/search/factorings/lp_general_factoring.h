@@ -18,26 +18,21 @@ class LPGeneralFactoring : public Factoring {
     enum STRATEGY {
         MML,
         MM,
-        MF,
-        MMF,
-    };
-
-    enum FACTORING_TYPE {
-        GENERAL,
-        STRICT,
-        F,
-        IF,
+//        MF,
+//        MMF,
     };
 
     struct PotentialLeaf {
         size_t id;
         int num_actions; // number of actions with the effect schema
         std::vector<int> vars; // sorted
-        std::set<size_t> leaf_only_schemes;
+        std::vector<size_t> leaf_only_schemes;
+        bool is_self_mobile; // has a leaf_only_scheme whose pre_vars are in vars
 
         PotentialLeaf(size_t id, int num_actions, const std::vector<int> &vars)
-        : id(id), num_actions(num_actions), vars(vars) {}
+        : id(id), num_actions(num_actions), vars(vars), is_self_mobile(false) {}
 
+        void add_leaf_only_schema(size_t action_schema);
     };
 
     struct ActionSchema {
@@ -53,12 +48,9 @@ class LPGeneralFactoring : public Factoring {
         void incr_num_action() {
             num_actions++;
         }
-
     };
 
     STRATEGY strategy;
-
-    FACTORING_TYPE factoring_type;
 
     int min_mobility;
 
@@ -78,6 +70,7 @@ class LPGeneralFactoring : public Factoring {
 
     bool check_num_constraints_and_time(const std::vector<lp::LPConstraint> &constraints) const;
 
+    // TODO move this to a common base class
     std::vector<double> solve_lp(lp::LPObjectiveSense sense,
             std::vector<lp::LPVariable> &vars,
             std::vector<lp::LPConstraint> &constrs,
