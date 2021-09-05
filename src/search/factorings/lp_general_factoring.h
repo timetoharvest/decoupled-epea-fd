@@ -29,34 +29,27 @@ class LPGeneralFactoring : public Factoring {
         std::vector<size_t> action_schemes;
         std::vector<size_t> self_mobile_as; // subset of leaf_only_scheme whose pre_vars are in vars
 
-        PotentialLeaf(size_t id, int num_actions, const std::vector<int> &vars)
-        : id(id), num_actions(num_actions), vars(vars) {}
+        PotentialLeaf(size_t id, const std::vector<int> &vars)
+        : id(id), num_actions(0), vars(vars) {}
 
         void add_leaf_only_schema(size_t action_schema);
     };
 
-    struct ActionSchema {
-
-        int num_actions; // number of actions with the action schema
-        std::vector<int> pre_vars; // sorted
-        std::vector<int> eff_vars; // sorted
-
-        ActionSchema(int num_actions, const std::vector<int> &pre_vars, const std::vector<int> &eff_vars)
-            : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {
-        }
-
-        void incr_num_action() {
-            num_actions++;
-        }
-    };
-
     STRATEGY strategy;
+
+    bool approximate_mobility;
 
     int min_mobility;
 
     float min_flexibility;
 
+    bool add_cg_sccs_;
+
     int max_merge_steps;
+
+    bool merge_overlapping;
+
+    bool merge_dependent;
 
     int cplex_time_limit;
 
@@ -68,9 +61,11 @@ class LPGeneralFactoring : public Factoring {
 
     double infty;
 
+    mutable std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
+
     bool check_num_constraints_and_time(const std::vector<lp::LPConstraint> &constraints) const;
 
-    // TODO move this to a common base class
+    // TODO move these 2 to a common base class
     std::vector<double> solve_lp(lp::LPObjectiveSense sense,
             std::vector<lp::LPVariable> &vars,
             std::vector<lp::LPConstraint> &constrs,
@@ -78,17 +73,21 @@ class LPGeneralFactoring : public Factoring {
             bool solve_lp_relaxation = false,
             int time_limit = -1) const;
 
+    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
+
     FactoredVars get_factoring() override;
 
-    FactoredVars get_max_mobile_leaves() const;
+    FactoredVars get_max_mobile_leaves_or_approx_mobility() const;
 
-    std::vector<ActionSchema> get_action_schemas() const;
+    FactoredVars get_max_mobility() const;
 
-    std::vector<PotentialLeaf> get_potential_leaves(const std::vector<ActionSchema> &action_schemas) const;
+    void filter_action_schemas() const;
 
-    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves) const;
+    std::vector<PotentialLeaf> get_potential_leaves() const;
 
-    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
+    void add_cg_sccs(std::vector<PotentialLeaf> &potential_leaves) const;
+
+    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves) const;
 
 public:
 
