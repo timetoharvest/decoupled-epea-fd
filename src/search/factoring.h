@@ -114,7 +114,6 @@ class Factoring {
 protected:
     
     struct ActionSchema {
-
         int num_actions; // number of actions with the action schema
         std::vector<int> pre_vars; // sorted
         std::vector<int> eff_vars; // sorted
@@ -126,7 +125,6 @@ protected:
         void incr_num_action() {
             num_actions++;
         }
-
     };
 
     using FactoredVars = std::vector<std::set<int> >;
