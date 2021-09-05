@@ -253,11 +253,12 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
 
-    vector<ActionSchema> action_schemas = get_action_schemas();
+    init_action_schemas();
+    filter_action_schemas();
 
     if (action_schemas.empty()){
         // mostly for trivially unsolvable task?
-        cerr << "No action schemas." << endl;
+        cerr << "ERROR: No action schemas." << endl;
         return FactoredVars();
     }
     if (factoring_timer.is_expired()){
@@ -265,10 +266,10 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         return FactoredVars();
     }
 
-    vector<PotentialLeaf> potential_leaves = get_potential_leaves(action_schemas);
+    vector<PotentialLeaf> potential_leaves = get_potential_leaves();
 
     if (potential_leaves.empty()){
-        cerr << "No potential leaves." << endl;
+        cout << "No potential leaves." << endl;
         return FactoredVars();
     }
     if (factoring_timer.is_expired()){
@@ -276,7 +277,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
         return FactoredVars();
     }
 
-    vector<set<size_t> > var_to_p_leaves(g_variable_domain.size());
+    var_to_p_leaves = vector<set<size_t> >(g_variable_domain.size());
     for (const PotentialLeaf &p_leaf : potential_leaves) {
         for (int var : p_leaf.vars) {
             var_to_p_leaves[var].insert(p_leaf.id);
@@ -284,7 +285,7 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves() const {
     }
 
     if (max_merge_steps > 0) {
-        merge_potential_leaves(potential_leaves, var_to_p_leaves);
+        merge_potential_leaves(potential_leaves);
     }
 
 
@@ -557,7 +558,9 @@ Factoring::FactoredVars LPFactoring::get_max_mobile_leaves_modular() const {
 
     int max_number_leaves = mip_factoring.size();
 
-    vector<ActionSchema> schemes = get_action_schemas();
+    init_action_schemas();
+    filter_action_schemas();
+    vector<ActionSchema> &schemes = action_schemas;
     size_t num_schemes = schemes.size();
 
 
@@ -979,32 +982,7 @@ vector<bool> LPFactoring::get_mobile_vars() const {
     return mobile_var;
 }
 
-vector<LPFactoring::ActionSchema> LPFactoring::get_action_schemas() const {
-    vector<LPFactoring::ActionSchema> action_schemas;
-    utils::HashMap<std::vector<int>, utils::HashMap<std::vector<int>, size_t> > scheme_loockup;
-    for (const Operator &op : g_operators) {
-        vector<int> pre_vars;
-        for (const Condition &pre : op.get_preconditions()) {
-            pre_vars.push_back(pre.var);
-        }
-        sort(pre_vars.begin(), pre_vars.end());
-
-        vector<int> eff_vars;
-        for (const Effect &eff : op.get_effects()) {
-            eff_vars.push_back(eff.var);
-        }
-        sort(eff_vars.begin(), eff_vars.end());
-
-        if (scheme_loockup.find(pre_vars) == scheme_loockup.end()){
-            scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
-            action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
-        } else if (scheme_loockup[pre_vars].find(eff_vars) == scheme_loockup[pre_vars].end()){
-            scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
-            action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
-        } else {
-            action_schemas[scheme_loockup[pre_vars][eff_vars]].incr_num_action();
-        }
-    }
+void LPFactoring::filter_action_schemas() const {
     if (min_mobility > 1 && max_merge_steps > 0) {
         // erase schemes with num_actions < min_num_actions
         action_schemas.erase(remove_if(action_schemas.begin(),
@@ -1012,10 +990,9 @@ vector<LPFactoring::ActionSchema> LPFactoring::get_action_schemas() const {
                     [&](const ActionSchema &schema){return schema.num_actions < min_mobility;}),
                 action_schemas.end());
     }
-    return action_schemas;
 }
 
-vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vector<ActionSchema> &action_schemas) const {
+vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves() const {
     assert(!action_schemas.empty());
 
     vector<LPFactoring::PotentialLeaf> potential_leaves;
@@ -1050,7 +1027,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
     cout << action_schemas.size() << " action schemes" << endl;
     cout << potential_leaves.size() << " potential leaves" << endl;
 
-    vector<set<size_t> > var_to_p_leaves(g_variable_domain.size(), set<size_t>());
+    var_to_p_leaves = vector<set<size_t> >(g_variable_domain.size());
 
     for (const PotentialLeaf &p_leaf : potential_leaves) {
         for (int var : p_leaf.vars) {
@@ -1341,8 +1318,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
 }
 
 
-void LPFactoring::merge_potential_leaves(vector<PotentialLeaf> &potential_leaves,
-        vector<set<size_t> > &var_to_p_leaves) const {
+void LPFactoring::merge_potential_leaves(vector<PotentialLeaf> &potential_leaves) const {
 
     queue<PotentialLeaf> open;
     for (PotentialLeaf &p_leaf : potential_leaves) {

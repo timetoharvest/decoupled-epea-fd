@@ -51,22 +51,6 @@ class LPFactoring : public Factoring {
 
     };
 
-    struct ActionSchema {
-
-        int num_actions; // number of actions with the action schema
-        std::vector<int> pre_vars; // sorted
-        std::vector<int> eff_vars; // sorted
-
-        ActionSchema(int num_actions, const std::vector<int> &pre_vars, const std::vector<int> &eff_vars)
-            : num_actions(num_actions), pre_vars(pre_vars), eff_vars(eff_vars) {
-        }
-
-        void incr_num_action() {
-            num_actions++;
-        }
-
-    };
-
     STRATEGY strategy;
 
     FACTORING_TYPE factoring_type;
@@ -84,6 +68,8 @@ class LPFactoring : public Factoring {
     lp::LPSolverType lp_solver_type;
 
     mutable utils::Timer timer;
+
+    mutable std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
 
     std::vector<double> solve_lp(lp::LPObjectiveSense sense,
             std::vector<lp::LPVariable> &vars,
@@ -104,11 +90,11 @@ class LPFactoring : public Factoring {
 
     std::vector<bool> get_mobile_vars() const;
 
-    std::vector<ActionSchema> get_action_schemas() const;
+    void filter_action_schemas() const;
 
-    std::vector<PotentialLeaf> get_potential_leaves(const std::vector<ActionSchema> &action_schemas) const;
+    std::vector<PotentialLeaf> get_potential_leaves() const;
 
-    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves) const;
+    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves) const;
 
     void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
 
