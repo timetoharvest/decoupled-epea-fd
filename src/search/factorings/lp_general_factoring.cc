@@ -169,14 +169,14 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
             case MML: variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true)); break;
             case MM_OPT: variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true)); break;
             case MM_APPROX:
+                {double obj_v = 0.0;
                 if (find(pleaf.self_mobile_as.begin(), pleaf.self_mobile_as.end(), act_schema) == pleaf.self_mobile_as.end()){
-                    variables.push_back(lp::LPVariable(0.0,
-                            1.0,
-                            action_schemas[act_schema].num_actions *
+                    // otherwise, mobility is accounted for by the objective value of pleaf.id
+                    obj_v = action_schemas[act_schema].num_actions *
                             (get_log(pleaf.num_actions) - min_leaf_mobility[pleaf.id]) /
-                            non_self_mobile_leaf_actions[pleaf.id],
-                            true));
+                            non_self_mobile_leaf_actions[pleaf.id];
                 }
+                variables.push_back(lp::LPVariable(0.0, 1.0, obj_v, true));}
                 break;
                 //        MF: variables.push_back(lp::LPVariable(0.0, 1.0, , true)); break; // TODO
             default: cerr << "unknown strategy: " << strategy << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
