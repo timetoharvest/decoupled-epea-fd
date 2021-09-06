@@ -83,7 +83,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_factoring() {
     if (strategy == MML || approximate_mobility){
         factoring = get_max_mobile_leaves_or_approx_mobility();
     } else {
-        factoring = get_max_mobile_leaves_or_approx_mobility();
+        factoring = get_max_mobility();
     }
 
     return factoring;
@@ -242,12 +242,30 @@ bool LPGeneralFactoring::check_num_constraints_and_time(const vector<lp::LPConst
     return true;
 }
 
+inline void get_combinations(const vector<size_t> &act_schemas,
+        vector<vector<size_t> > &combinations,
+        vector<size_t> &current,
+        size_t i = 0) {
+    if (i == act_schemas.size()){
+        combinations.push_back(current);
+        current.pop_back();
+        return;
+    }
+    for (size_t as_num = i; as_num < act_schemas.size(); ++as_num){
+        current.push_back(act_schemas[as_num]);
+        get_combinations(act_schemas, combinations, current, as_num + 1);
+    }
+    if (i != 0){
+        combinations.push_back(current);
+        current.pop_back();
+    }
+}
+
+inline double get_log(size_t num_actions) {
+    return log(max(1.0001, (double) num_actions));
+}
+
 Factoring::FactoredVars LPGeneralFactoring::get_max_mobility() const {
-
-
-    cerr << "ERROR: this is not implemented, yet." << endl;
-    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-    // TODO implement this
 
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
@@ -281,9 +299,6 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobility() const {
     }
 
     if (max_merge_steps > 0) {
-        // TODO not supported, yet
-        cerr << "merging leaves is not supported, yet" << endl;
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         merge_potential_leaves(potential_leaves);
     }
 
@@ -292,48 +307,79 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobility() const {
 
     // LP variables
     size_t vars_offset;
+    // binary var for each potential leaf; 1 => becomes leaf, 0 => not
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
         variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
     }
     vector<vector<size_t>> mob_var_id(potential_leaves.size());
+    // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
     for (const PotentialLeaf &pleaf : potential_leaves){
-        double max_mob = log(max(1.00001, (double) pleaf.num_actions));
-        double min_mob = 0.0;
-        size_t num_non_self_mobile_actions = pleaf.num_actions;
-        if (!pleaf.self_mobile_as.empty() && strategy == MM){
-            size_t mob = 0;
-            for (size_t act_schema : pleaf.self_mobile_as){
-                mob += action_schemas[act_schema].num_actions;
-                num_non_self_mobile_actions -= action_schemas[act_schema].num_actions;
-            }
-            min_mob = log(max(1.00001, (double) mob));
-        }
-        for (size_t act_schema : pleaf.action_schemes){
+        for (size_t i = 0; i < pleaf.action_schemes.size(); ++i){
             mob_var_id[pleaf.id].push_back(variables.size());
             switch (strategy) {
             case MML: variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true)); break;
-            case MM:
-                if (!pleaf.self_mobile_as.empty()){
-                    variables.push_back(lp::LPVariable(0.0,
-                            1.0,
-                            min_mob + action_schemas[act_schema].num_actions * (max_mob - min_mob) / (pleaf.num_actions - num_non_self_mobile_actions),
-                            true));
-                } else {
-                    variables.push_back(lp::LPVariable(0.0,
-                            1.0,
-                            action_schemas[act_schema].num_actions * max_mob / pleaf.num_actions,
-                            true));
-                }
-                break;
+            case MM: variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true)); break;
                 //        MF: variables.push_back(lp::LPVariable(0.0, 1.0, , true)); break; // TODO
                 //        MMF: variables.push_back(lp::LPVariable(0.0, 1.0, , true)); break;
             default: cerr << "unknown strategy: " << strategy << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
             }
         }
     }
+    vector<vector<size_t>> as_combs(potential_leaves.size());
+    // binary var for each combination of mobile action schemas of each potential leaf; 1 => combination is mobile, 0 => not
+    for (const PotentialLeaf &pleaf : potential_leaves){
+        vector<vector<size_t>> combinations;
+        vector<size_t> tmp;
+        get_combinations(pleaf.action_schemes, combinations, tmp);
+        for (const auto &act_schemas : combinations){
+            as_combs[pleaf.id].push_back(variables.size());
+            size_t num_actions = 0;
+            for (size_t as : act_schemas){
+                num_actions += action_schemas[as].num_actions;
+            }
+            variables.push_back(lp::LPVariable(0.0, 1.0, get_log(num_actions), true));
+        }
+    }
     vars_offset = variables.size();
+    // binary var for each FDR variable; 1 => is in center, 0 => not
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+    }
+
+    // for each potential leaf, exactly one combination of its action schemas is mobile
+    for (const PotentialLeaf &pleaf : potential_leaves){
+        size_t i = 0;
+        vector<vector<size_t>> combinations;
+        vector<size_t> tmp;
+        get_combinations(pleaf.action_schemes, combinations, tmp);
+        for (size_t c = 0; c < combinations.size(); ++c){
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(pleaf.id, -1.0);
+            constraint.insert(as_combs[pleaf.id][i], 1.0 + combinations[c].size());
+            for (size_t as : combinations[c]){
+                // TODO build a map for this
+                size_t id = find(pleaf.action_schemes.begin(), pleaf.action_schemes.end(), as) - pleaf.action_schemes.begin();
+                constraint.insert(mob_var_id[pleaf.id][id], -1.0);
+            }
+            constraints.push_back(constraint);
+
+            if (combinations[c].size() < pleaf.action_schemes.size()){
+                lp::LPConstraint constraint1(-infty, pleaf.action_schemes.size() - combinations[c].size());
+                constraint1.insert(as_combs[pleaf.id][i], pleaf.action_schemes.size() - combinations[c].size());
+                for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
+                    // TODO avoid searching
+                    if (find(combinations[c].begin(), combinations[c].end(), pleaf.action_schemes[as_num]) == combinations[c].end()){
+                        constraint1.insert(mob_var_id[pleaf.id][as_num], 1.0);
+                    }
+                }
+                constraints.push_back(constraint1);
+            }
+            ++i;
+        }
+    }
+
+    if (!check_num_constraints_and_time(constraints)){
+        return FactoredVars();
     }
 
 
@@ -535,36 +581,37 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves_or_approx_mobi
 
     // LP variables
     size_t vars_offset;
-    for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
-        variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
-    }
-    vector<vector<size_t>> mob_var_id(potential_leaves.size());
-    for (const PotentialLeaf &pleaf : potential_leaves){
-        double max_mob = log(max(1.00001, (double) pleaf.num_actions));
+    vector<double> min_leaf_mobility(potential_leaves.size(), 0.0);
+    vector<size_t> non_self_mobile_leaf_actions(potential_leaves.size(), 0);
+    // binary var for each potential leaf; 1 => becomes leaf, 0 => not
+    for (const auto &pleaf : potential_leaves) {
         double min_mob = 0.0;
-        size_t num_non_self_mobile_actions = pleaf.num_actions;
+        non_self_mobile_leaf_actions[pleaf.id] = pleaf.num_actions;
         if (!pleaf.self_mobile_as.empty() && strategy == MM){
             size_t mob = 0;
             for (size_t act_schema : pleaf.self_mobile_as){
                 mob += action_schemas[act_schema].num_actions;
-                num_non_self_mobile_actions -= action_schemas[act_schema].num_actions;
+                non_self_mobile_leaf_actions[pleaf.id] -= action_schemas[act_schema].num_actions;
             }
-            min_mob = log(max(1.00001, (double) mob));
+            min_mob = get_log(mob);
+            min_leaf_mobility[pleaf.id] = min_mob;
         }
+        variables.push_back(lp::LPVariable(0.0, 1.0, min_mob, true));
+    }
+    vector<vector<size_t>> mob_var_id(potential_leaves.size());
+    // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
+    for (const PotentialLeaf &pleaf : potential_leaves){
         for (size_t act_schema : pleaf.action_schemes){
             mob_var_id[pleaf.id].push_back(variables.size());
             switch (strategy) {
             case MML: variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true)); break;
             case MM:
-                if (!pleaf.self_mobile_as.empty()){
+                if (find(pleaf.self_mobile_as.begin(), pleaf.self_mobile_as.end(), act_schema) == pleaf.self_mobile_as.end()){
                     variables.push_back(lp::LPVariable(0.0,
                             1.0,
-                            min_mob + action_schemas[act_schema].num_actions * (max_mob - min_mob) / (pleaf.num_actions - num_non_self_mobile_actions),
-                            true));
-                } else {
-                    variables.push_back(lp::LPVariable(0.0,
-                            1.0,
-                            action_schemas[act_schema].num_actions * max_mob / pleaf.num_actions,
+                            action_schemas[act_schema].num_actions *
+                            (get_log(pleaf.num_actions) - min_leaf_mobility[pleaf.id]) /
+                            non_self_mobile_leaf_actions[pleaf.id],
                             true));
                 }
                 break;
@@ -575,6 +622,7 @@ Factoring::FactoredVars LPGeneralFactoring::get_max_mobile_leaves_or_approx_mobi
         }
     }
     vars_offset = variables.size();
+    // binary var for each FDR variable; 1 => is in center, 0 => not
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
     }
