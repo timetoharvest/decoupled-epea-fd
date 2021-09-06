@@ -17,9 +17,9 @@ class LPGeneralFactoring : public Factoring {
 
     enum STRATEGY {
         MML,
-        MM,
+        MM_OPT,
+        MM_APPROX,
 //        MF,
-//        MMF,
     };
 
     struct PotentialLeaf {
@@ -36,8 +36,6 @@ class LPGeneralFactoring : public Factoring {
     };
 
     STRATEGY strategy;
-
-    bool approximate_mobility;
 
     int min_mobility;
 
@@ -77,9 +75,7 @@ class LPGeneralFactoring : public Factoring {
 
     FactoredVars get_factoring() override;
 
-    FactoredVars get_max_mobile_leaves_or_approx_mobility() const;
-
-    FactoredVars get_max_mobility() const;
+    FactoredVars compute_factoring() const;
 
     void filter_action_schemas() const;
 
