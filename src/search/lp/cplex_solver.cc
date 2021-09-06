@@ -145,7 +145,7 @@ bool CPLEXSolver::has_solution() const {
 }
 
 double CPLEXSolver::get_objective_value() const {
-    assert(has_optimal_solution());
+    assert(has_solution());
     return cplex.getObjValue();
 }
 
