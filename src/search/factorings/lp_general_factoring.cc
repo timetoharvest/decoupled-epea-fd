@@ -16,9 +16,8 @@
 
 
 using namespace std;
+using namespace lp_factoring;
 
-static const string CPLEX_ERROR_MEMORY_1 = "CPLEX Error  1001: Out of memory.\n";
-static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
 
 namespace lp_general_factoring {
 void LPGeneralFactoring::PotentialLeaf::add_leaf_only_schema(size_t action_schema) {
@@ -40,7 +39,7 @@ void LPGeneralFactoring::PotentialLeaf::add_leaf_only_schema(size_t action_schem
     }
 }
 
-LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : Factoring(opts),
+LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
         strategy(STRATEGY(opts.get_enum("strategy"))),
         min_mobility(opts.get<int>("min_mobility")),
         min_flexibility(opts.get<float>("min_flexibility")),
@@ -48,10 +47,6 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : Factoring(opts),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         merge_overlapping(opts.get<bool>("merge_overlapping")),
         merge_dependent(opts.get<bool>("merge_dependent")),
-        cplex_time_limit(opts.get<int>("cplex_time_limit")),
-        memory_limit(opts.get<int>("memory_limit")),
-        lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
-        timer(utils::Timer()),
         infty(-1) {
     profile = STAR;
     cout << "using LP factoring strategy" << endl;
@@ -78,159 +73,6 @@ Factoring::FactoredVars LPGeneralFactoring::get_factoring() {
     timer.reset();
 
     return compute_factoring();
-}
-
-vector<double> LPGeneralFactoring::solve_lp(lp::LPObjectiveSense sense,
-        vector<lp::LPVariable> &variables,
-        vector<lp::LPConstraint> &constraints,
-        bool fail_on_out_of_memory,
-        bool solve_lp_relaxation,
-        int time_limit) const {
-
-    if (constraints.empty()){
-        cout << "WARNING: no constraints specified. Adding dummy constraint to prevent errors." << endl;
-        lp::LPConstraint dummy(0, 1);
-        dummy.insert(0, 1);
-        constraints.push_back(dummy);
-    }
-
-    if (solve_lp_relaxation && time_limit == -1){
-        cout << "WARNING: time limit not supported when solving LP relaxation, limit will be ignored." << endl;
-        time_limit = -1;
-    }
-
-#ifndef NDEBUG
-    dump_lp(sense, variables, constraints);
-#endif
-
-
-#ifdef USE_CPLEX
-    lp::CPLEXSolver solver(time_limit);
-#else
-    lp::LPSolver solver(lp_solver_type);
-    if (time_limit != -1){
-        cout << "WARNING: CPLEX not found, ignoring time limit." << endl;
-        time_limit = -1;
-    }
-    fail_on_out_of_memory = !fail_on_out_of_memory; // HACK prevent unused variable error
-#endif
-
-    if (solve_lp_relaxation){
-        for (auto &var : variables){
-            var.is_integer = false;
-        }
-    }
-
-#ifdef USE_CPLEX
-    try {
-#endif
-        solver.load_problem(sense, variables, constraints);
-
-        constraints = vector<lp::LPConstraint>(); // save memory TODO does this really make a difference?
-
-        solver.print_statistics();
-
-        cout << "LP construction time: " << timer << endl;
-
-        timer.reset();
-
-        if (time_limit == -1){
-            solver.solve();
-        } else {
-#ifdef USE_CPLEX
-            solver.populate();
-#endif
-        }
-#ifdef USE_CPLEX
-    } catch (const IloException &excpt) {
-        string error_message = excpt.getMessage();
-        if (!fail_on_out_of_memory && (error_message == CPLEX_ERROR_MEMORY_1 ||
-                error_message == CPLEX_ERROR_MEMORY_2)) {
-            // TODO refine the check
-            cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
-            return vector<double>();
-        } else {
-            cout << "CPLEX error : " << error_message << endl;
-            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-        }
-    }
-#endif
-
-    cout << "LP solving time: " << timer << endl;
-
-    vector<double> solution;
-
-    if (time_limit == -1) {
-        if (!solver.has_optimal_solution()){
-            cout << "no optimal solution to LP found, factoring failed" << endl;
-            return solution;
-        }
-    } else {
-#ifdef USE_CPLEX
-        if (!solver.has_solution()){
-            cout << "no solution to LP found, factoring failed" << endl;
-            return solution;
-        }
-#endif
-    }
-
-    cout << "LP objective value: " << solver.get_objective_value() << endl;
-
-    if (time_limit == -1){
-        solution = solver.extract_solution();
-    } else {
-#ifdef USE_CPLEX
-        solution = solver.extract_best_solution();
-#endif
-    }
-
-    return solution;
-}
-
-void LPGeneralFactoring::dump_lp(lp::LPObjectiveSense sense, const vector<lp::LPVariable> &vars, const vector<lp::LPConstraint> &constrs) const {
-    if (sense == lp::LPObjectiveSense::MAXIMIZE){
-        cout << "Linear Program: maximize objective value" << endl;
-    } else {
-        cout << "Linear Program: minimize objective value" << endl;
-    }
-    cout << vars.size() << " variables" << endl;
-    cout << constrs.size() << " constraints" << endl;
-
-    if (vars.size() > 100 || constrs.size() > 100){
-        cout << "WARNING: not printing LP as it is too big" << endl;
-        return;
-    }
-
-    cout << "variables: " << endl;
-    int i = 0;
-    for (auto &var : vars){
-        cout << "x" << i++ << ": range " << var.lower_bound << " .. " << var.upper_bound << "; objective value " << var.objective_coefficient << (var.is_integer ? ", is integer variable" : "") << endl;
-    }
-
-    cout << endl;
-
-    for (auto &constr : constrs){
-        cout << constr.get_lower_bound() << " < ";
-        for (size_t i = 0; i < constr.get_variables().size(); ++i){
-             cout << constr.get_coefficients()[i] << " * x" << constr.get_variables()[i] << (i < constr.get_variables().size() - 1 ? " + " : "");
-        }
-        cout << " < " << constr.get_upper_bound() << endl;
-    }
-}
-
-bool LPGeneralFactoring::check_num_constraints_and_time(const vector<lp::LPConstraint> &constraints) const {
-    if (memory_limit != -1 && constraints.size() >= (size_t) memory_limit * 2500){
-        // this limit corresponds to around 10 million constraints with 4GB memory limit
-        // the maximum-sized ILP that could be solved in the experiments with this limit
-        // had around 5 million constraints
-        cerr << "Too many LP constraints, aborting: " << constraints.size() << endl;
-        return false;
-    }
-    if (factoring_timer.is_expired()){
-        exit_if_timeout();
-        return false;
-    }
-    return true;
 }
 
 inline void get_combinations(const vector<size_t> &act_schemas,
@@ -269,8 +111,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         cerr << "ERROR: No action schemas." << endl;
         return FactoredVars();
     }
-    if (factoring_timer.is_expired()){
-        exit_if_timeout();
+    if (!check_timeout()){
         return FactoredVars();
     }
 
@@ -280,8 +121,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         cout << "No potential leaves." << endl;
         return FactoredVars();
     }
-    if (factoring_timer.is_expired()){
-        exit_if_timeout();
+    if (!check_timeout()){
         return FactoredVars();
     }
 
@@ -401,7 +241,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         }
     }
 
-    if (!check_num_constraints_and_time(constraints)){
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
 
@@ -434,7 +274,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         }
     }
 
-    if (!check_num_constraints_and_time(constraints)){
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
 
@@ -460,7 +300,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         constraints.push_back(constraint);
     }
 
-    if (!check_num_constraints_and_time(constraints)){
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
 
@@ -492,7 +332,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         }
     }
 
-    if (!check_num_constraints_and_time(constraints)){
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
 
@@ -511,19 +351,15 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         constraints.push_back(constraint);
     }
 
-    if (!check_num_constraints_and_time(constraints)){
+    if (!check_lp_size(constraints.size(), variables.size())){
+        return FactoredVars();
+    }
+    if (!check_timeout()){
         return FactoredVars();
     }
 
-    int cplex_limit = cplex_time_limit > 0 ? cplex_time_limit : -1;
-    if (factoring_timer.get_remaining_time() != numeric_limits<double>::infinity()){
-        // TODO: this check seems to work; make sure that this is actually guaranteed by the standard
-        int f_limit = factoring_timer.get_remaining_time();
-        cplex_limit = cplex_limit > 0 ? min(f_limit, cplex_limit) : f_limit;
-    }
-
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-            variables, constraints, false, false, cplex_limit);
+            variables, constraints, false, false);
 
     if (solution.empty()) {
         cerr << "ERROR: no solution found by LP solver." << endl;
@@ -641,8 +477,7 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::get_potential_leav
                 potential_leaves[index].add_leaf_only_schema(leaf_only_schema);
             }
         }
-        if (factoring_timer.is_expired()){
-            exit_if_timeout();
+        if (!check_timeout()){
             return vector<PotentialLeaf>();
         }
     }
@@ -738,8 +573,7 @@ void LPGeneralFactoring::add_cg_sccs(vector<PotentialLeaf> &potential_leaves) co
 
             ++added;
         }
-        if (factoring_timer.is_expired()){
-            exit_if_timeout();
+        if (!check_timeout()){
             return;
         }
     }
@@ -957,23 +791,12 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
             "TODO",
             "false"
     );
-
-    parser.add_option<int>(
-            "cplex_time_limit",
-            "CPLEX time limit in seconds",
-            "-1"
-    );
-
-    parser.add_option<int>(
-            "memory_limit",
-            "CPLEX memory limit in MB",
-            "-1"
-    );
 }
 
 static Factoring *_parse_lp(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
+    LPFactoring::add_options_to_parser(parser);
     LPGeneralFactoring::add_options_to_parser(parser);
     lp::add_lp_solver_option_to_parser(parser);
 

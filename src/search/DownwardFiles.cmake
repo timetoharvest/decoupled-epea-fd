@@ -300,6 +300,7 @@ fast_downward_plugin(
         factorings/lp_factoring
         factorings/lp_general_factoring
         factorings/lp_no_center_factoring
+        factorings/lp_star_factoring
     DEPENDS DECOUPLED_SEARCH LP_SOLVER
 )
 

@@ -1,19 +1,11 @@
 #ifndef FACTORINGS_LP_NO_CENTER_FACTORINGS_H
 #define FACTORINGS_LP_NO_CENTER_FACTORINGS_H
 
-#include "../factoring.h"
-
-
-namespace lp {
-class LPConstraint;
-enum class LPObjectiveSense;
-enum class LPSolverType;
-class LPVariable;
-}
+#include "lp_factoring.h"
 
 
 namespace lp_no_center_factoring {
-class LPNoCenterFactoring : public Factoring {
+class LPNoCenterFactoring : public lp_factoring::LPFactoring {
 
     enum STRATEGY {
         MML,
@@ -70,21 +62,6 @@ class LPNoCenterFactoring : public Factoring {
 
     int max_merge_steps;
 
-    int cplex_time_limit;
-
-    int memory_limit;
-
-    lp::LPSolverType lp_solver_type;
-
-    mutable utils::Timer timer;
-
-    std::vector<double> solve_lp(lp::LPObjectiveSense sense,
-            std::vector<lp::LPVariable> &vars,
-            std::vector<lp::LPConstraint> &constrs,
-            bool fail_on_out_of_memory = true,
-            bool solve_lp_relaxation = false,
-            int time_limit = -1) const;
-
     FactoredVars get_factoring() override;
 
     FactoredVars get_max_mobile_leaves() const;
@@ -94,8 +71,6 @@ class LPNoCenterFactoring : public Factoring {
     std::vector<PotentialLeaf> get_potential_leaves(const std::vector<ActionSchema> &action_schemas) const;
 
     void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves, std::vector<std::set<size_t> > &var_to_p_leaves) const;
-
-    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
 
 public:
 

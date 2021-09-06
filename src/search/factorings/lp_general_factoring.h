@@ -1,19 +1,11 @@
-#ifndef FACTORINGS_LP_GENERAL_FACTORINGS_H
-#define FACTORINGS_LP_GENERAL_FACTORINGS_H
+#ifndef FACTORINGS_LP_GENERAL_FACTORING_H
+#define FACTORINGS_LP_GENERAL_FACTORING_H
 
-#include "../factoring.h"
-
-
-namespace lp {
-class LPConstraint;
-enum class LPObjectiveSense;
-enum class LPSolverType;
-class LPVariable;
-}
+#include "lp_factoring.h"
 
 
 namespace lp_general_factoring {
-class LPGeneralFactoring : public Factoring {
+class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     enum STRATEGY {
         MML,
@@ -49,29 +41,9 @@ class LPGeneralFactoring : public Factoring {
 
     bool merge_dependent;
 
-    int cplex_time_limit;
-
-    int memory_limit;
-
-    lp::LPSolverType lp_solver_type;
-
-    mutable utils::Timer timer;
-
     double infty;
 
     mutable std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
-
-    bool check_num_constraints_and_time(const std::vector<lp::LPConstraint> &constraints) const;
-
-    // TODO move these 2 to a common base class
-    std::vector<double> solve_lp(lp::LPObjectiveSense sense,
-            std::vector<lp::LPVariable> &vars,
-            std::vector<lp::LPConstraint> &constrs,
-            bool fail_on_out_of_memory = true,
-            bool solve_lp_relaxation = false,
-            int time_limit = -1) const;
-
-    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
 
     FactoredVars get_factoring() override;
 
