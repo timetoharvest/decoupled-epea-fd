@@ -322,7 +322,8 @@ void GeneratorLeafVector::generate_applicable_ops_ignore_outside_pre(
 }
 
 void GeneratorLeafVector::remove_never_applicable_center_ops(LeafFactorID factor) {
-    for (auto it = applicable_operators.begin(); it != applicable_operators.end(); ++it){
+    auto it = applicable_operators.begin();
+    while (it != applicable_operators.end()){
         if (g_operators[*it].has_precondition_on(factor)){
             bool applicable = false;
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
@@ -333,8 +334,10 @@ void GeneratorLeafVector::remove_never_applicable_center_ops(LeafFactorID factor
             }
             if (!applicable){
                 it = applicable_operators.erase(it);
+                continue;
             }
         }
+        ++it;
     }
 }
 
