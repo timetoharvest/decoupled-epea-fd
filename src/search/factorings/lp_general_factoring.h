@@ -43,19 +43,23 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     double infty;
 
-    mutable std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
+    std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
+
+    std::vector<PotentialLeaf> potential_leaves;
 
     FactoredVars get_factoring() override;
 
-    FactoredVars compute_factoring() const;
+    FactoredVars compute_factoring();
 
     void filter_action_schemas() const;
 
-    std::vector<PotentialLeaf> get_potential_leaves() const;
+    std::vector<PotentialLeaf> compute_potential_leaves();
 
-    void add_cg_sccs(std::vector<PotentialLeaf> &potential_leaves) const;
+    void add_cg_sccs();
 
-    void merge_potential_leaves(std::vector<PotentialLeaf> &potential_leaves) const;
+    void merge_potential_leaves();
+
+    void recompute_var_to_p_leaves();
 
 public:
 

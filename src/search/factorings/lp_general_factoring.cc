@@ -98,7 +98,7 @@ inline double get_log(size_t num_actions) {
     return log(max(1.0001, (double) num_actions));
 }
 
-Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
+Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
@@ -115,7 +115,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         return FactoredVars();
     }
 
-    vector<PotentialLeaf> potential_leaves = get_potential_leaves();
+    compute_potential_leaves();
 
     if (potential_leaves.empty()){
         cout << "No potential leaves." << endl;
@@ -126,11 +126,11 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
     }
 
     if (add_cg_sccs_){
-        add_cg_sccs(potential_leaves);
+        add_cg_sccs();
     }
 
     if (max_merge_steps > 0) {
-        merge_potential_leaves(potential_leaves);
+        merge_potential_leaves();
     }
 
 
@@ -351,10 +351,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() const {
         constraints.push_back(constraint);
     }
 
-    if (!check_lp_size(constraints.size(), variables.size())){
-        return FactoredVars();
-    }
-    if (!check_timeout()){
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
 
@@ -407,10 +404,22 @@ void LPGeneralFactoring::filter_action_schemas() const {
     }
 }
 
-vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::get_potential_leaves() const {
-    assert(!action_schemas.empty());
+void LPGeneralFactoring::recompute_var_to_p_leaves() {
+    if (var_to_p_leaves.size() != g_variable_domain.size()){
+        var_to_p_leaves = vector<set<size_t> >(g_variable_domain.size(), set<size_t>());
+    }
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        var_to_p_leaves[var].clear();
+    }
+    for (const PotentialLeaf &pleaf : potential_leaves) {
+        for (int var : pleaf.vars) {
+            var_to_p_leaves[var].insert(pleaf.id);
+        }
+    }
+}
 
-    vector<PotentialLeaf> potential_leaves;
+vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::compute_potential_leaves() {
+    assert(!action_schemas.empty());
 
     {
         utils::HashMap<std::vector<int>, size_t> leaf_lookup;
@@ -441,13 +450,7 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::get_potential_leav
     cout << action_schemas.size() << " action schemes" << endl;
     cout << potential_leaves.size() << " potential leaves" << endl;
 
-    var_to_p_leaves = vector<set<size_t> >(g_variable_domain.size(), set<size_t>());
-
-    for (const PotentialLeaf &p_leaf : potential_leaves) {
-        for (int var : p_leaf.vars) {
-            var_to_p_leaves[var].insert(p_leaf.id);
-        }
-    }
+    recompute_var_to_p_leaves();
 
     // set the number of leaf-only actions
     for (const PotentialLeaf &p_leaf : potential_leaves) {
@@ -492,20 +495,13 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::get_potential_leav
             p_leaf.id = id;
             id++;
         }
-        for (size_t var = 0; var < g_variable_domain.size(); ++var){
-            var_to_p_leaves[var].clear();
-        }
-        for (const PotentialLeaf &pleaf : potential_leaves) {
-            for (int var : pleaf.vars) {
-                var_to_p_leaves[var].insert(pleaf.id);
-            }
-        }
+        recompute_var_to_p_leaves();
     }
 
     return potential_leaves;
 }
 
-void LPGeneralFactoring::add_cg_sccs(vector<PotentialLeaf> &potential_leaves) const {
+void LPGeneralFactoring::add_cg_sccs() {
 
     FactoredVars sccs = get_sccs();
 
@@ -594,19 +590,12 @@ void LPGeneralFactoring::add_cg_sccs(vector<PotentialLeaf> &potential_leaves) co
             p_leaf.id = id;
             id++;
         }
-        for (size_t var = 0; var < g_variable_domain.size(); ++var){
-            var_to_p_leaves[var].clear();
-        }
-        for (const PotentialLeaf &pleaf : potential_leaves) {
-            for (int var : pleaf.vars) {
-                var_to_p_leaves[var].insert(pleaf.id);
-            }
-        }
+        recompute_var_to_p_leaves();
     }
 }
 
 
-void LPGeneralFactoring::merge_potential_leaves(vector<PotentialLeaf> &potential_leaves) const {
+void LPGeneralFactoring::merge_potential_leaves() {
 
     queue<size_t> open;
     for (const PotentialLeaf &p_leaf : potential_leaves) {
