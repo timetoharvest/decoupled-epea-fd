@@ -87,7 +87,7 @@ extern std::vector<int> g_axiom_layers;
 extern std::vector<int> g_default_axiom_values;
 
 extern int_packer::IntPacker *g_state_packer;
-extern std::vector<int_packer::IntPacker*> g_leaf_factor_packers;
+extern std::vector<int_packer::IntPacker*> g_leaf_state_packers;
 
 // This vector holds the initial values *before* the axioms have been evaluated.
 // Use the state registry to obtain the real initial state.

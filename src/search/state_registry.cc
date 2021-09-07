@@ -29,7 +29,7 @@ StateRegistry::StateRegistry()
       cached_initial_state(0) {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         leaf_state_data_pool[factor] = new segmented_vector::SegmentedArrayVector<PackedStateBin>
-                                    (g_leaf_factor_packers[factor]->get_num_bins());
+                                    (g_leaf_state_packers[factor]->get_num_bins());
     }
 }
 
@@ -55,8 +55,8 @@ StateID StateRegistry::insert_id_or_pop_state() {
     */
     StateID id(state_data_pool.size() - 1);
     pair<StateIDSet::iterator, bool> result = registered_states.insert(id);
-    bool is_new_entry = result.second;
-    if (!is_new_entry) {
+    if (!result.second) {
+        // is known state
         state_data_pool.pop_back();
     }
     assert(registered_states.size() == state_data_pool.size());
@@ -92,47 +92,45 @@ LeafState StateRegistry::lookup_leaf_state(LeafStateHash id, LeafFactorID factor
 const State &StateRegistry::get_initial_state() {
     if (cached_initial_state == 0) {
         
-        PackedStateBin *center_buffer = new PackedStateBin[g_state_packer->get_num_bins()];
-        vector<PackedStateBin*> leaf_buffers;
+        unique_ptr<PackedStateBin[]> center_buffer(new PackedStateBin[g_state_packer->get_num_bins()]);
+        fill_n(center_buffer.get(), g_state_packer->get_num_bins(), 0);
+
+        vector<unique_ptr<PackedStateBin[]>> leaf_buffers;
         
         if (g_factoring){
             leaf_buffers.resize(g_leaves.size());
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                leaf_buffers[factor] = new PackedStateBin[g_leaf_factor_packers[factor]->get_num_bins()];
+                leaf_buffers[factor].reset(new PackedStateBin[g_leaf_state_packers[factor]->get_num_bins()]);
+                fill_n(leaf_buffers[factor].get(), g_leaf_state_packers[factor]->get_num_bins(), 0);
             }
+            g_state_packer->set(center_buffer.get(), g_center.size(), 0);
         }
         
         for (size_t var = 0; var < g_initial_state_data.size(); ++var) {
-            int index = var;
             if (g_factoring){
-                index = g_new_index[var];
-                
-                LeafFactorID factor = g_belongs_to_factor[var];
-                if (factor != LeafFactorID::CENTER){
-                    g_leaf_factor_packers[factor]->set(leaf_buffers[factor], index, g_initial_state_data[var]);
-                    continue;
+                if (g_belongs_to_factor[var] == LeafFactorID::CENTER){
+                    g_state_packer->set(center_buffer.get(), g_new_index[var], g_initial_state_data[var]);
+                } else {
+                    g_leaf_state_packers[g_belongs_to_factor[var]]->set(leaf_buffers[g_belongs_to_factor[var]].get(),
+                            g_new_index[var],
+                            g_initial_state_data[var]);
                 }
+            } else {
+                g_state_packer->set(center_buffer.get(), var, g_initial_state_data[var]);
             }
-            g_state_packer->set(center_buffer, index, g_initial_state_data[var]);
         }
         
-        if (g_factoring){
-            g_state_packer->set(center_buffer, g_center.size(), 0);
-        } else {
-            g_axiom_evaluator->evaluate(center_buffer);
+        if (!g_factoring){
+            g_axiom_evaluator->evaluate(center_buffer.get());
         }
         
-        state_data_pool.push_back(center_buffer);
-        // buffer is copied by push_back
-        delete[] center_buffer;
+        state_data_pool.push_back(center_buffer.get());
         StateID id = insert_id_or_pop_state();
         cached_initial_state = new State(lookup_state(id));
         
         if (g_factoring){
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-                leaf_state_data_pool[factor]->push_back(leaf_buffers[factor]);
-                // buffer is copied by push_back
-                delete[] leaf_buffers[factor];
+                leaf_state_data_pool[factor]->push_back(leaf_buffers[factor].get());
                 insert_id_or_pop_leaf_state(factor);
             }
             
@@ -491,7 +489,7 @@ LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &pred
 
     for (const Effect &eff : op.get_effects(factor)){
         // no need to check does_fire here, because no conditional effects allowed (yet)
-        g_leaf_factor_packers[factor]->set(buffer, g_new_index[eff.var], eff.val);
+        g_leaf_state_packers[factor]->set(buffer, g_new_index[eff.var], eff.val);
     }
     
     // not supported (yet)
@@ -508,7 +506,7 @@ LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafF
 
     for (size_t var = 0; var < facts.size(); ++var){
         // no need to check does_fire here, because no conditional effects allowed (yet)
-        g_leaf_factor_packers[factor]->set(buffer, var, facts[var]);
+        g_leaf_state_packers[factor]->set(buffer, var, facts[var]);
     }
 
     return insert_id_or_pop_leaf_state(factor);
@@ -519,7 +517,7 @@ void StateRegistry::print_decoupled_search_statistics() const {
     size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
     
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        dec_size += sizeof(PackedStateBin) * g_leaf_factor_packers[factor]->get_num_bins() * size(factor);
+        dec_size += sizeof(PackedStateBin) * g_leaf_state_packers[factor]->get_num_bins() * size(factor);
     }
 
     for (size_t i = 0; i < CPGStorage::storage->size(this); ++i){
