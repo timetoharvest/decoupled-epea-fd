@@ -120,10 +120,10 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         if (!fail_on_out_of_memory && (error_message == CPLEX_ERROR_MEMORY_1 ||
                 error_message == CPLEX_ERROR_MEMORY_2)) {
             // TODO refine the check
-            cout << "Error while factoring planning task: CPLEX out of Memory" << endl;
+            cerr << "Error while factoring planning task: CPLEX out of Memory" << endl;
             return vector<double>();
         } else {
-            cout << "CPLEX error : " << error_message << endl;
+            cerr << "CPLEX error : " << error_message << endl;
             exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
     }
@@ -155,6 +155,8 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         solution = solver.extract_best_solution();
 #endif
     }
+
+    cout << "LP objective value: " << solver.get_objective_value() << endl;
 
     return solution;
 }
