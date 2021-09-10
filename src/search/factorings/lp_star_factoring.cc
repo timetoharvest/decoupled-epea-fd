@@ -87,6 +87,11 @@ Factoring::FactoredVars LPStarFactoring::get_mip_factoring() const {
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
             variables, constraints, true, strategy == MIS_LP_RELAX);
 
+    if (solution.empty()) {
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    }
+
     //extract solution
     FactoredVars factoring;
 
@@ -559,11 +564,12 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular() const {
     // solve problem
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
 
-    FactoredVars factoring;
-
     if (solution.empty()) {
-        return factoring;
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
+
+    FactoredVars factoring;
 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;
@@ -772,11 +778,12 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular_no_scheme
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
             variables, constraints);
 
-    FactoredVars factoring;
-
     if (solution.empty()) {
-        return factoring;
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
+
+    FactoredVars factoring;
 
     for (int i = 0; i < max_number_leaves; i++) {
         set<int> leaf;

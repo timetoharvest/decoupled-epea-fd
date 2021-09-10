@@ -169,11 +169,12 @@ Factoring::FactoredVars LPNoCenterFactoring::get_max_mobile_leaves() const {
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
             variables, constraints, false, false);
 
-    FactoredVars factoring;
-
     if (solution.empty()) {
-        return factoring;
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
+
+    FactoredVars factoring;
 
     // simple sanity check
     bool all_potential_leaves = true;
