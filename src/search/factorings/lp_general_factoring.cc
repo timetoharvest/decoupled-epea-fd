@@ -72,7 +72,14 @@ Factoring::FactoredVars LPGeneralFactoring::get_factoring() {
 
     timer.reset();
 
-    return compute_factoring();
+    FactoredVars factoring;
+    if (strategy == MFA){
+        factoring = compute_mobile_facts_factoring();
+    } else {
+        factoring = compute_factoring();
+    }
+
+    return factoring;
 }
 
 inline void get_combinations(const vector<size_t> &act_schemas,
@@ -340,6 +347,271 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             constraint.insert(mob_var_id[pleaf][as_num], outside_pre_vars.size() + 1.0);
             for (int var : outside_pre_vars){
                 constraint.insert(vars_offset + var, -1.0);
+            }
+            constraints.push_back(constraint);
+        }
+    }
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
+    // save memory
+    action_schemas = vector<ActionSchema>();
+
+    if (min_number_leaves >= 2) {
+        // adding the constraint typically increases runtime of CPLEX,
+        // therefore, we only add it if we need strictly more than 2 leaves,
+        // since 2 leaves are guaranteed by the elimination of potential leaves
+        // in set_potential_leaves()
+        lp::LPConstraint constraint(min_number_leaves, min(potential_leaves.size(), g_variable_domain.size()));
+        for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
+            constraint.insert(p_leaf, 1.0);
+        }
+        constraints.push_back(constraint);
+    }
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
+    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+            variables, constraints, false, false);
+
+    if (solution.empty()) {
+        cerr << "ERROR: no solution found by LP solver." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    }
+
+    FactoredVars factoring;
+
+    bool leaves_overlap = false;
+    vector<bool> is_leaf_var(g_variable_domain.size(), false);
+    for (size_t p_leaf = 0; p_leaf < potential_leaves.size(); ++p_leaf) {
+        if (solution[p_leaf] == 1) {
+            set<int> leaf;
+            for (int var : potential_leaves[p_leaf].vars) {
+                if (is_leaf_var[var]){
+                    leaves_overlap = true;
+                    // simple sanity check
+                }
+                is_leaf_var[var] = true;
+                leaf.insert(var);
+            }
+            factoring.push_back(leaf);
+        }
+    }
+
+    if (leaves_overlap){
+        // TODO: investigate this!
+        // this tends to happen when CPLEX is running out of memory on the cluster,
+        // when run with an external memory limit. could try to additionally set
+        // the memory limit for CPLEX explicitly
+        cerr << "ERROR: solution returned by LP solver is not a valid factoring: leaves do overlap." << endl;
+        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    }
+
+    return factoring;
+}
+
+Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
+
+    vector<lp::LPVariable> variables;
+    vector<lp::LPConstraint> constraints;
+
+    vector<vector<unordered_map<size_t, size_t>>> facts_to_mobility(g_variable_domain.size());
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        facts_to_mobility[var].resize(g_variable_domain[var]);
+    }
+
+    utils::HashMap<std::vector<int>, utils::HashMap<std::vector<int>, size_t> > scheme_loockup;
+    for (const Operator &op : g_operators) {
+        vector<int> pre_vars;
+        for (const Condition &pre : op.get_preconditions()) {
+            pre_vars.push_back(pre.var);
+        }
+        sort(pre_vars.begin(), pre_vars.end());
+
+        vector<int> eff_vars;
+        vector<pair<int, int>> eff_facts;
+        for (const Effect &eff : op.get_effects()) {
+            eff_vars.push_back(eff.var);
+            eff_facts.push_back(make_pair(eff.var, eff.val));
+        }
+        sort(eff_vars.begin(), eff_vars.end());
+
+        if (scheme_loockup.find(pre_vars) == scheme_loockup.end()){
+            scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
+            action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
+        } else if (scheme_loockup[pre_vars].find(eff_vars) == scheme_loockup[pre_vars].end()){
+            scheme_loockup[pre_vars][eff_vars] = action_schemas.size();
+            action_schemas.push_back(ActionSchema(1, pre_vars, eff_vars));
+        } else {
+            action_schemas[scheme_loockup[pre_vars][eff_vars]].incr_num_action();
+        }
+        size_t as = scheme_loockup[pre_vars][eff_vars];
+        for (const auto &fact : eff_facts){
+            facts_to_mobility[fact.first][fact.second][as]++;
+        }
+    }
+    // TODO use this data in the encoding
+
+//    filter_action_schemas();
+
+    if (action_schemas.empty()){
+        // mostly for trivially unsolvable task?
+        cerr << "ERROR: No action schemas." << endl;
+        return FactoredVars();
+    }
+    if (!check_timeout()){
+        return FactoredVars();
+    }
+
+    compute_potential_leaves();
+
+    if (potential_leaves.empty()){
+        cout << "No potential leaves." << endl;
+        return FactoredVars();
+    }
+    if (!check_timeout()){
+        return FactoredVars();
+    }
+
+    if (add_cg_sccs_){
+        add_cg_sccs();
+    }
+
+    if (max_merge_steps > 0) {
+        merge_potential_leaves();
+    }
+
+    // TODO check the estimate for the number of potential_leaf - action_schema combinations
+    variables.reserve(potential_leaves.size() + 1.5 * action_schemas.size() + 2 * g_variable_domain.size());
+
+    // LP variables
+    // binary var for each potential leaf; 1 => becomes leaf, 0 => not
+    for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
+        variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+    }
+    vector<vector<size_t>> mob_var_id(potential_leaves.size());
+    // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
+    for (const PotentialLeaf &pleaf : potential_leaves){
+        for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
+            mob_var_id[pleaf.id].push_back(variables.size());
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+        }
+    }
+    size_t c_vars_offset = variables.size();
+    // binary var for each FDR variable; 1 => is in center, 0 => not
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+    }
+    size_t mob_vars_offset = variables.size();
+    // binary var for each FDR variable; 1 => is mobile, 0 => not
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        variables.push_back(lp::LPVariable(0.0, 1.0, g_variable_domain[var], true));
+    }
+
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
+
+    // non-empty intersection between potential leaves
+    {
+        vector<vector<bool> > pleaf_intersect(potential_leaves.size() - 1);
+        for (size_t i = 0; i < pleaf_intersect.size(); ++i){
+            pleaf_intersect[i].resize(potential_leaves.size() - i - 1, false);
+        }
+        for (int var = 0; var < (int) g_variable_domain.size(); ++var){
+            for (int pot_leaf_1 : var_to_p_leaves[var]){
+                for (int pot_leaf_2 : var_to_p_leaves[var]){
+                    if (pot_leaf_1 < pot_leaf_2){
+                        pleaf_intersect[pot_leaf_1][pot_leaf_2 - pot_leaf_1 - 1] = true;
+                    }
+                }
+            }
+        }
+        for (size_t p_leaf_1 = 0; p_leaf_1 < potential_leaves.size(); ++p_leaf_1) {
+            for (size_t p_leaf_2 = p_leaf_1 + 1; p_leaf_2 < potential_leaves.size(); ++p_leaf_2) {
+                // we need p_leaf_1 < p_leaf_2
+                if (pleaf_intersect[p_leaf_1][p_leaf_2 - p_leaf_1 - 1]) {
+                    lp::LPConstraint constraint(0.0, 1.0);
+                    constraint.insert(p_leaf_1, 1.0);
+                    constraint.insert(p_leaf_2, 1.0);
+                    constraints.push_back(constraint);
+                }
+            }
+        }
+    }
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
+
+    // at least one action schema needs to be mobile in each leaf
+    for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
+        lp::LPConstraint constraint(-infty, 0.0);
+        constraint.insert(pleaf, 1.0);
+        for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
+            constraint.insert(mob_var_id[pleaf][as_num], -1.0);
+        }
+        constraints.push_back(constraint);
+    }
+
+
+    // set center vars if potential leaf is not a leaf
+    for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
+        lp::LPConstraint constraint(-infty, potential_leaves[pleaf].vars.size());
+        constraint.insert(pleaf, potential_leaves[pleaf].vars.size());
+        for (int var : potential_leaves[pleaf].vars) {
+            constraint.insert(c_vars_offset + var, 1.0);
+        }
+        constraints.push_back(constraint);
+    }
+
+    // set var mobile if an affecting action schema is mobile
+    for (const auto &pleaf : potential_leaves) {
+        for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
+            const auto &as = action_schemas[pleaf.action_schemes[as_num]];
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(mob_var_id[pleaf.id][as_num], as.eff_vars.size());
+            for (int var : as.eff_vars) {
+                constraint.insert(mob_vars_offset + var, -1.0);
+            }
+            constraints.push_back(constraint);
+        }
+    }
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
+
+    // set action schemas mobile if (1) it is part of a leaf, and
+    // (2) precondition variables outside the leaf are in the center
+    for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf){
+        if (strategy == MML && !potential_leaves[pleaf].self_mobile_as.empty()){
+            continue;
+        }
+        for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
+            set<int> outside_pre_vars;
+            for (int var : action_schemas[potential_leaves[pleaf].action_schemes[as_num]].pre_vars){
+                if (!binary_search(potential_leaves[pleaf].vars.begin(),
+                        potential_leaves[pleaf].vars.end(),
+                        var)){
+                    outside_pre_vars.insert(var);
+                }
+            }
+
+            // action schema is mobile only if it is a leaf and all pre variables are center
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(pleaf, -1.0);
+            constraint.insert(mob_var_id[pleaf][as_num], outside_pre_vars.size() + 1.0);
+            for (int var : outside_pre_vars){
+                constraint.insert(c_vars_offset + var, -1.0);
             }
             constraints.push_back(constraint);
         }
