@@ -145,8 +145,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     }
     // binary var for each potential leaf; 1 => becomes leaf, 0 => not
     for (const auto &pleaf : potential_leaves) {
-        double min_mob = 0.0;
+        double obj = 0.0;
         if (strategy == MM_APPROX){
+            // here obj is minimum leaf mobility
             non_self_mobile_leaf_actions[pleaf.id] = pleaf.num_actions;
             if (!pleaf.self_mobile_as.empty()){
                 size_t mob = 0;
@@ -154,19 +155,28 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
                     mob += action_schemas[act_schema].num_actions;
                     non_self_mobile_leaf_actions[pleaf.id] -= action_schemas[act_schema].num_actions;
                 }
-                min_mob = get_log(mob);
-                min_leaf_mobility[pleaf.id] = min_mob;
+                obj = get_log(mob);
+                min_leaf_mobility[pleaf.id] = obj;
             }
+        } else if (strategy == MML){
+            // here, obj is 1 for every potential leaf
+            obj = 1.0;
         }
-        variables.push_back(lp::LPVariable(0.0, 1.0, min_mob, true));
+        variables.push_back(lp::LPVariable(0.0, 1.0, obj, true));
     }
     vector<vector<size_t>> mob_var_id(potential_leaves.size());
     // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
     for (const PotentialLeaf &pleaf : potential_leaves){
+        if (strategy == MML && !pleaf.self_mobile_as.empty()){
+            // if the leaf is self-mobile, there is no need to force
+            // one of its action schemas to be mobile
+            continue;
+        }
         for (size_t act_schema : pleaf.action_schemes){
             mob_var_id[pleaf.id].push_back(variables.size());
             switch (strategy) {
-            case MML: variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true)); break;
+            case MMAS: variables.push_back(lp::LPVariable(0.0, 1.0, 1.0, true)); break;
+            case MML: // fall through
             case MM_OPT: variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true)); break;
             case MM_APPROX:
                 {double obj_v = 0.0;
@@ -281,6 +291,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
     // at least one action schema needs to be mobile in each leaf
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
+        if (strategy == MML && !potential_leaves[pleaf].self_mobile_as.empty()){
+            continue;
+        }
         lp::LPConstraint constraint(-infty, 0.0);
         constraint.insert(pleaf, 1.0);
         for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
@@ -734,8 +747,10 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
 
     vector<string> strategies;
     strategies.push_back("mml");
+    strategies.push_back("mmas");
     strategies.push_back("mm_opt");
     strategies.push_back("mm_approx");
+    strategies.push_back("mfa");
 //    strategies.push_back("mf");
     parser.add_enum_option(
             "strategy",

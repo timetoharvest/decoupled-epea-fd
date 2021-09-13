@@ -8,9 +8,11 @@ namespace lp_general_factoring {
 class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     enum STRATEGY {
-        MML,
-        MM_OPT,
+        MML, // maximize mobile leaves
+        MMAS, // maximize mobile action schemas
+        MM_OPT, // maximize mobility
         MM_APPROX,
+        MFA // maximize mobile facts
 //        MF,
     };
 
