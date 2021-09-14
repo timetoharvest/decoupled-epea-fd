@@ -525,6 +525,7 @@ size_t Reachable::get_number_states(LeafFactorID factor) const {
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
     if (goal_reached[factor]){
+        // TODO this should probably be min(min_leaf_goal_cost[factor], min_leaf_action_cost[factor])
         return min_leaf_action_cost[factor]; // TODO: this assumes that the initial state is not a goal state
     } else {
         return INF;
