@@ -12,6 +12,7 @@
 #include "symbolic/sym_pricing_function.h"
 #include "symbolic/sym_pricing_function_sat.h"
 #include "task_utils/causal_graph.h"
+#include "utils/hash.h"
 #include "utils/timer.h"
 
 #include <cstdint>
@@ -345,13 +346,33 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 
     InteractionGraph interaction_graph(factoring.size());
 
-    for (LeafFactorID factor(0); factor < factoring.size(); ++factor){
-        vector<int> variables(factoring[factor].begin(), factoring[factor].end());
-        for (size_t j = 0; j < variables.size(); ++j){
-            g_belongs_to_factor[variables[j]] = factor;
-            g_new_index[variables[j]] = j;
+    {
+        // create canonical factoring by sorting the leaves
+        vector<size_t> ordering(factoring.size(), 0);
+        size_t id = 0;
+        for (int var = 0; var < (int) g_variable_domain.size(); ++var){
+            for (LeafFactorID factor(0); factor < factoring.size(); ++factor){
+                if (*factoring[factor].begin() == var){
+                    ordering[factor] = id;
+                    ++id;
+                    break;
+                }
+            }
         }
-        g_leaves[factor] = variables;
+        assert(id == factoring.size());
+
+        for (size_t i = 0; i < factoring.size(); ++i){
+            LeafFactorID factor(ordering[i]);
+            vector<int> variables(factoring[factor].begin(), factoring[factor].end());
+            for (size_t j = 0; j < variables.size(); ++j){
+                g_belongs_to_factor[variables[j]] = factor;
+                g_new_index[variables[j]] = j;
+            }
+            g_leaves[factor] = variables;
+        }
+        utils::HashState hash_state;
+        feed(hash_state, g_leaves);
+        cout << "Factoring hash: " << hash_state.get_hash32() << endl;
     }
 
 #ifdef DEBUG_FACTORING
