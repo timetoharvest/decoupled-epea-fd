@@ -129,7 +129,7 @@ protected:
 
     using FactoredVars = std::vector<std::set<int> >;
 
-    static std::vector<std::set<int> > var_to_affecting_op;
+    static std::vector<std::set<size_t> > var_to_affecting_op;
 
     static std::vector<ActionSchema> action_schemas;
 
@@ -199,7 +199,7 @@ public:
     }
 
     
-    static const FactoredVars& get_var_to_affecting_op() {
+    static const std::vector<std::set<size_t>>& get_var_to_affecting_op() {
         init_var_to_ops_map();
         return var_to_affecting_op;
     }

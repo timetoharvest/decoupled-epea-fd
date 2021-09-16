@@ -57,6 +57,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     void filter_action_schemas() const;
 
+    void filter_potential_leaves();
+
     std::vector<PotentialLeaf> compute_potential_leaves();
 
     void add_cg_sccs();

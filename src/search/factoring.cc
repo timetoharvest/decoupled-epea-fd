@@ -51,7 +51,7 @@ void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
     }
 }
 
-vector<set<int>> Factoring::var_to_affecting_op;
+vector<set<size_t>> Factoring::var_to_affecting_op;
 
 vector<Factoring::ActionSchema> Factoring::action_schemas;
 
@@ -59,7 +59,7 @@ const string Factoring::TIME_OUT_MESSAGE = "Factoring process timed out.";
 
 void Factoring::init_var_to_ops_map() {
     if (var_to_affecting_op.empty()) {
-        var_to_affecting_op = vector<set<int> >(g_variable_domain.size(), set<int>());
+        var_to_affecting_op = vector<set<size_t> >(g_variable_domain.size(), set<size_t>());
         for (size_t op = 0; op < g_operators.size(); ++op) {
             for (const Effect &eff : g_operators[op].get_effects()) {
                 var_to_affecting_op[eff.var].insert(op);
@@ -805,7 +805,7 @@ void Factoring::do_factoring_or_abstain() {
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
 
     // save memory
-    var_to_affecting_op = vector<set<int> >();
+    var_to_affecting_op = vector<set<size_t> >();
 
     cout << "factoring time " << factoring_timer.get_elapsed_time() << endl;
 
@@ -1096,8 +1096,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
         uint64_t current_size = 1;
         bool is_leaf = true;
 
-        for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
-            int var = *it;
+        for (int var : sccs[i]){
             if (max_leaf_size == 0 || current_size <= max_leaf_size){
                 current_size *= g_variable_domain[var];
             }

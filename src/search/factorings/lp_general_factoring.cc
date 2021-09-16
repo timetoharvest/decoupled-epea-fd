@@ -66,7 +66,7 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
 
 
 Factoring::FactoredVars LPGeneralFactoring::get_factoring() {
-    if (min_flexibility > 0){
+    if (min_flexibility > 0){ // TODO remove this
         cout << "WARNING: minimum flexibility not supported, yet." << endl;
     }
 
@@ -123,6 +123,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     }
 
     compute_potential_leaves();
+    filter_potential_leaves();
 
     if (potential_leaves.empty()){
         cout << "No potential leaves." << endl;
@@ -139,7 +140,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     if (max_merge_steps > 0) {
         merge_potential_leaves();
     }
-
+    filter_potential_leaves();
 
     variables.reserve(potential_leaves.size() + 1.5 * action_schemas.size() + g_variable_domain.size());
 
@@ -311,13 +312,24 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
 
     // set center vars if potential leaf is not a leaf
+    // TODO check this beforehand and don't even create LP variables for these.. also need to re-check self-mobility
+    vector<bool> is_center_var(g_variable_domain.size(), true);
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
         lp::LPConstraint constraint(-infty, potential_leaves[pleaf].vars.size());
         constraint.insert(pleaf, potential_leaves[pleaf].vars.size());
         for (int var : potential_leaves[pleaf].vars) {
             constraint.insert(vars_offset + var, 1.0);
+            is_center_var[var] = false;
         }
         constraints.push_back(constraint);
+    }
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        // variables that cannot possibly become leaf variables
+        if (is_center_var[var]){
+            lp::LPConstraint constraint(1, 1);
+            constraint.insert(vars_offset + var, 1);
+            constraints.push_back(constraint);
+        }
     }
 
     if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
@@ -686,6 +698,39 @@ void LPGeneralFactoring::filter_action_schemas() const {
                     action_schemas.end(),
                     [&](const ActionSchema &schema){return schema.num_actions < min_mobility;}),
                 action_schemas.end());
+    }
+}
+
+void LPGeneralFactoring::filter_potential_leaves() {
+    if (min_flexibility > 0.0){
+        vector<size_t> erase_leaves;
+        init_var_to_ops_map();
+        for (const auto &pl : potential_leaves){
+            size_t num_ops = 0;
+            vector<bool> handled_op(g_operators.size(), false);
+            for (int var : pl.vars){
+                for (size_t op_id : var_to_affecting_op[var]){
+                    if (!handled_op[op_id]){
+                        handled_op[op_id] = true;
+                        ++num_ops;
+                    }
+                }
+            }
+            if ((float) pl.num_actions / num_ops < min_flexibility){
+                erase_leaves.push_back(pl.id);
+            }
+        }
+        cout << "Removed " << erase_leaves.size() << " potential leaves because of minimal flexibility." << endl;
+        for (size_t id : erase_leaves){
+            potential_leaves.erase(potential_leaves.begin() + id);
+        }
+        if (!erase_leaves.empty()){
+            size_t id = 0;
+            for (auto &pl : potential_leaves){
+                pl.id = id++;
+            }
+            recompute_var_to_p_leaves();
+        }
     }
 }
 
