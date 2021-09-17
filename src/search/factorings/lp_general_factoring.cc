@@ -107,7 +107,6 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     vector<lp::LPConstraint> constraints;
 
     init_action_schemas();
-    filter_action_schemas();
 
     if (action_schemas.empty()){
         // mostly for trivially unsolvable task?
@@ -119,6 +118,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     }
 
     compute_potential_leaves();
+
     if (max_merge_steps == 0){
         filter_potential_leaves();
     }
@@ -182,7 +182,8 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     for (const PotentialLeaf &pleaf : potential_leaves){
         if (strategy == MML &&
                 !pleaf.self_mobile_as.empty() &&
-                min_flexibility == 0.0){
+                min_flexibility == 0.0 &&
+                min_mobility <= 1){
             // if the leaf is self-mobile, there is no need to force
             // one of its action schemas to be mobile
             continue;
@@ -285,6 +286,21 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         }
     }
 
+    if (min_mobility > 1){
+        for (const PotentialLeaf &pleaf : potential_leaves){
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(pleaf.id, min_mobility);
+            for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
+                constraint.insert(mob_var_id[pleaf.id][as_num], -action_schemas[pleaf.action_schemes[as_num]].num_actions);
+            }
+            constraints.push_back(constraint);
+        }
+    }
+
+    if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
+        return FactoredVars();
+    }
+
     // non-empty intersection between potential leaves
     {
         vector<vector<bool> > pleaf_intersect(potential_leaves.size() - 1);
@@ -322,7 +338,8 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
         if (strategy == MML &&
                 !potential_leaves[pleaf].self_mobile_as.empty() &&
-                min_flexibility == 0.0){
+                min_flexibility == 0.0 &&
+                min_mobility <= 1){
             continue;
         }
         lp::LPConstraint constraint(-infty, 0.0);
@@ -361,7 +378,8 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf){
         if (strategy == MML &&
                 !potential_leaves[pleaf].self_mobile_as.empty() &&
-                min_flexibility == 0.0){
+                min_flexibility == 0.0 &&
+                min_mobility <= 1){
             continue;
         }
         for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
@@ -721,16 +739,6 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
     return factoring;
 }
 
-void LPGeneralFactoring::filter_action_schemas() const {
-    if (min_mobility > 1 && max_merge_steps == 0) {
-        // erase schemes with num_actions < min_num_actions
-        action_schemas.erase(remove_if(action_schemas.begin(),
-                    action_schemas.end(),
-                    [&](const ActionSchema &schema){return schema.num_actions < min_mobility;}),
-                action_schemas.end());
-    }
-}
-
 void LPGeneralFactoring::compute_leaf_flexibility() {
     init_var_to_ops_map();
     for (auto &pl : potential_leaves){
@@ -757,26 +765,33 @@ void LPGeneralFactoring::compute_leaf_flexibility() {
 }
 
 void LPGeneralFactoring::filter_potential_leaves() {
-    // filter leaves that cannot possible have more than the minimum flexibility
+    // filter leaves that cannot possible have more than the minimum flexibility or mobility
+    set<size_t> erase_leaves;
     if (min_flexibility > 0.0){
         compute_leaf_flexibility();
-        vector<size_t> erase_leaves;
         for (const auto &pl : potential_leaves){
             if (pl.max_flexibility < min_flexibility){
-                erase_leaves.push_back(pl.id);
+                erase_leaves.insert(pl.id);
             }
         }
-        cout << "Removed " << erase_leaves.size() << " potential leaves because of minimal flexibility." << endl;
-        for (size_t id : erase_leaves){
-            potential_leaves.erase(potential_leaves.begin() + id);
-        }
-        if (!erase_leaves.empty()){
-            size_t id = 0;
-            for (auto &pl : potential_leaves){
-                pl.id = id++;
+    }
+    if (min_mobility > 1) {
+        for (const auto &pl : potential_leaves){
+            if (pl.num_actions < min_mobility){
+                erase_leaves.insert(pl.id);
             }
-            recompute_var_to_p_leaves();
         }
+    }
+    cout << "Removed " << erase_leaves.size() << " potential leaves because of minimal flexibility/mobility." << endl;
+    for (size_t id : erase_leaves){
+        potential_leaves.erase(potential_leaves.begin() + id);
+    }
+    if (!erase_leaves.empty()){
+        size_t id = 0;
+        for (auto &pl : potential_leaves){
+            pl.id = id++;
+        }
+        recompute_var_to_p_leaves();
     }
 }
 
@@ -861,19 +876,6 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::compute_potential_
         }
     }
 
-    if (min_mobility > 1) {
-        // erase effect schemes that does not satisfy requirements
-        auto lambda_expr = [&](const PotentialLeaf &p_leaf){return p_leaf.num_actions < min_mobility;};
-        potential_leaves.erase(remove_if(potential_leaves.begin(), potential_leaves.end(), lambda_expr), potential_leaves.end());
-        // adjust IDs
-        size_t id = 0;
-        for (PotentialLeaf &p_leaf : potential_leaves) {
-            p_leaf.id = id;
-            id++;
-        }
-        recompute_var_to_p_leaves();
-    }
-
     return potential_leaves;
 }
 
@@ -951,23 +953,6 @@ void LPGeneralFactoring::add_cg_sccs() {
     }
 
     cout << "Added " << added << " causal-graph SCC potential leaves." << endl;
-
-    if (added == 0){
-        return;
-    }
-
-    if (min_mobility > 1) {
-        // erase effect schemes that does not satisfy requirements
-        auto lambda_expr = [&](const PotentialLeaf &pleaf){return pleaf.num_actions < min_mobility;};
-        potential_leaves.erase(remove_if(potential_leaves.end() - added, potential_leaves.end(), lambda_expr), potential_leaves.end());
-        // adjust IDs
-        size_t id = 0;
-        for (PotentialLeaf &p_leaf : potential_leaves) {
-            p_leaf.id = id;
-            id++;
-        }
-        recompute_var_to_p_leaves();
-    }
 }
 
 
