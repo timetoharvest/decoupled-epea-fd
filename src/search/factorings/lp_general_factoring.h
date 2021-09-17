@@ -19,12 +19,14 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
     struct PotentialLeaf {
         size_t id;
         int num_actions; // number of actions with the effect schema
+        double max_flexibility;
         std::vector<int> vars; // sorted
         std::vector<size_t> action_schemes;
         std::vector<size_t> self_mobile_as; // subset of leaf_only_scheme whose pre_vars are in vars
+        std::vector<double> as_flexibility;
 
         PotentialLeaf(size_t id, const std::vector<int> &vars)
-        : id(id), num_actions(0), vars(vars) {}
+        : id(id), num_actions(0), max_flexibility(0.0), vars(vars) {}
 
         void add_leaf_only_schema(size_t action_schema);
     };
@@ -58,6 +60,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
     void filter_action_schemas() const;
 
     void filter_potential_leaves();
+
+    void compute_leaf_flexibility();
 
     std::vector<PotentialLeaf> compute_potential_leaves();
 

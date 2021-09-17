@@ -66,10 +66,6 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
 
 
 Factoring::FactoredVars LPGeneralFactoring::get_factoring() {
-    if (min_flexibility > 0){ // TODO remove this
-        cout << "WARNING: minimum flexibility not supported, yet." << endl;
-    }
-
     timer.reset();
 
     FactoredVars factoring;
@@ -123,7 +119,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     }
 
     compute_potential_leaves();
-    filter_potential_leaves();
+    if (max_merge_steps == 0){
+        filter_potential_leaves();
+    }
 
     if (potential_leaves.empty()){
         cout << "No potential leaves." << endl;
@@ -140,8 +138,11 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     if (max_merge_steps > 0) {
         merge_potential_leaves();
     }
-    filter_potential_leaves();
+    if (add_cg_sccs_ || max_merge_steps > 0){
+        filter_potential_leaves();
+    }
 
+    // TODO check this number.. this is somewhat arbitrary..
     variables.reserve(potential_leaves.size() + 1.5 * action_schemas.size() + g_variable_domain.size());
 
     // LP variables
@@ -151,6 +152,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         min_leaf_mobility.resize(potential_leaves.size(), 0.0);
         non_self_mobile_leaf_actions.resize(potential_leaves.size(), 0);
     }
+    vector<bool> can_be_leaf_var(g_variable_domain.size(), false);
     // binary var for each potential leaf; 1 => becomes leaf, 0 => not
     for (const auto &pleaf : potential_leaves) {
         double obj = 0.0;
@@ -170,12 +172,17 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             // here, obj is 1 for every potential leaf
             obj = 1.0;
         }
+        for (int var : pleaf.vars){
+            can_be_leaf_var[var] = true;
+        }
         variables.push_back(lp::LPVariable(0.0, 1.0, obj, true));
     }
     vector<vector<size_t>> mob_var_id(potential_leaves.size());
     // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
     for (const PotentialLeaf &pleaf : potential_leaves){
-        if (strategy == MML && !pleaf.self_mobile_as.empty()){
+        if (strategy == MML &&
+                !pleaf.self_mobile_as.empty() &&
+                min_flexibility == 0.0){
             // if the leaf is self-mobile, there is no need to force
             // one of its action schemas to be mobile
             continue;
@@ -219,10 +226,13 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             }
         }
     }
-    size_t vars_offset = variables.size();
+    vector<size_t> var_offsets(variables.size(), -1);
     // binary var for each FDR variable; 1 => is in center, 0 => not
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
-        variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+        if (can_be_leaf_var[var]){
+            var_offsets[var] = variables.size();
+            variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+        }
     }
 
     if (strategy == MM_OPT){
@@ -264,6 +274,17 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     }
 
 
+    if (min_flexibility > 0.0){
+        for (const PotentialLeaf &pleaf : potential_leaves){
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(pleaf.id, min_flexibility);
+            for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
+                constraint.insert(mob_var_id[pleaf.id][as_num], -pleaf.as_flexibility[as_num]);
+            }
+            constraints.push_back(constraint);
+        }
+    }
+
     // non-empty intersection between potential leaves
     {
         vector<vector<bool> > pleaf_intersect(potential_leaves.size() - 1);
@@ -299,7 +320,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
     // at least one action schema needs to be mobile in each leaf
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
-        if (strategy == MML && !potential_leaves[pleaf].self_mobile_as.empty()){
+        if (strategy == MML &&
+                !potential_leaves[pleaf].self_mobile_as.empty() &&
+                min_flexibility == 0.0){
             continue;
         }
         lp::LPConstraint constraint(-infty, 0.0);
@@ -312,24 +335,20 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
 
     // set center vars if potential leaf is not a leaf
-    // TODO check this beforehand and don't even create LP variables for these.. also need to re-check self-mobility
-    vector<bool> is_center_var(g_variable_domain.size(), true);
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
-        lp::LPConstraint constraint(-infty, potential_leaves[pleaf].vars.size());
-        constraint.insert(pleaf, potential_leaves[pleaf].vars.size());
-        for (int var : potential_leaves[pleaf].vars) {
-            constraint.insert(vars_offset + var, 1.0);
-            is_center_var[var] = false;
+        // only consider the variables that can possibly be leaf variables
+        vector<int> vars;
+        for (int var : potential_leaves[pleaf].vars){
+            if (can_be_leaf_var[var]){
+                vars.push_back(var);
+            }
+        }
+        lp::LPConstraint constraint(-infty, vars.size());
+        constraint.insert(pleaf, vars.size());
+        for (int var : vars) {
+            constraint.insert(var_offsets[var], 1.0);
         }
         constraints.push_back(constraint);
-    }
-    for (size_t var = 0; var < g_variable_domain.size(); ++var){
-        // variables that cannot possibly become leaf variables
-        if (is_center_var[var]){
-            lp::LPConstraint constraint(1, 1);
-            constraint.insert(vars_offset + var, 1);
-            constraints.push_back(constraint);
-        }
     }
 
     if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
@@ -340,15 +359,18 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
     // set action schemas mobile if (1) it is part of a leaf, and
     // (2) precondition variables outside the leaf are in the center
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf){
-        if (strategy == MML && !potential_leaves[pleaf].self_mobile_as.empty()){
+        if (strategy == MML &&
+                !potential_leaves[pleaf].self_mobile_as.empty() &&
+                min_flexibility == 0.0){
             continue;
         }
         for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
             set<int> outside_pre_vars;
             for (int var : action_schemas[potential_leaves[pleaf].action_schemes[as_num]].pre_vars){
-                if (!binary_search(potential_leaves[pleaf].vars.begin(),
-                        potential_leaves[pleaf].vars.end(),
-                        var)){
+                if (can_be_leaf_var[var] &&
+                        !binary_search(potential_leaves[pleaf].vars.begin(),
+                                potential_leaves[pleaf].vars.end(),
+                                var)){
                     outside_pre_vars.insert(var);
                 }
             }
@@ -358,7 +380,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             constraint.insert(pleaf, -1.0);
             constraint.insert(mob_var_id[pleaf][as_num], outside_pre_vars.size() + 1.0);
             for (int var : outside_pre_vars){
-                constraint.insert(vars_offset + var, -1.0);
+                constraint.insert(var_offsets[var], -1.0);
             }
             constraints.push_back(constraint);
         }
@@ -427,6 +449,14 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 }
 
 Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
+
+    if (min_flexibility > 0){
+        cout << "WARNING: minimum flexibility not supported, yet." << endl;
+    }
+
+    // TODO implement this
+    cerr << "Not implemented LPGeneralFactoring::compute_mobile_facts_factoring()" << endl;
+    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
@@ -701,22 +731,38 @@ void LPGeneralFactoring::filter_action_schemas() const {
     }
 }
 
-void LPGeneralFactoring::filter_potential_leaves() {
-    if (min_flexibility > 0.0){
-        vector<size_t> erase_leaves;
-        init_var_to_ops_map();
-        for (const auto &pl : potential_leaves){
-            size_t num_ops = 0;
-            vector<bool> handled_op(g_operators.size(), false);
-            for (int var : pl.vars){
-                for (size_t op_id : var_to_affecting_op[var]){
-                    if (!handled_op[op_id]){
-                        handled_op[op_id] = true;
-                        ++num_ops;
-                    }
+void LPGeneralFactoring::compute_leaf_flexibility() {
+    init_var_to_ops_map();
+    for (auto &pl : potential_leaves){
+        if (!pl.as_flexibility.empty()){
+            continue;
+        }
+        size_t num_ops = 0;
+        vector<bool> handled_op(g_operators.size(), false);
+        for (int var : pl.vars){
+            for (size_t op_id : var_to_affecting_op[var]){
+                if (!handled_op[op_id]){
+                    handled_op[op_id] = true;
+                    ++num_ops;
                 }
             }
-            if ((float) pl.num_actions / num_ops < min_flexibility){
+        }
+        pl.as_flexibility = vector<double>(pl.action_schemes.size(), 0.0);
+        for (size_t as_num = 0; as_num < pl.action_schemes.size(); ++as_num){
+            double as_flex = (double) action_schemas[pl.action_schemes[as_num]].num_actions / num_ops;
+            pl.as_flexibility[as_num] = as_flex;
+            pl.max_flexibility += as_flex;
+        }
+    }
+}
+
+void LPGeneralFactoring::filter_potential_leaves() {
+    // filter leaves that cannot possible have more than the minimum flexibility
+    if (min_flexibility > 0.0){
+        compute_leaf_flexibility();
+        vector<size_t> erase_leaves;
+        for (const auto &pl : potential_leaves){
+            if (pl.max_flexibility < min_flexibility){
                 erase_leaves.push_back(pl.id);
             }
         }
