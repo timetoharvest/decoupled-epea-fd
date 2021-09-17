@@ -26,28 +26,28 @@
 using namespace std;
 
 
-void InteractionGraph::add_dependency(LeafFactorID from_, LeafFactorID to_) {
-    assert(from_ != to_);
-    LeafFactorID from(from_ + 1);
-    if (from_ == LeafFactorID::CENTER){
-        from = LeafFactorID(0);
+void InteractionGraph::add_dependency(LeafFactorID from, LeafFactorID to) {
+    assert(from != to);
+    size_t from_id = from + 1; // shift by 1 for center
+    if (from == LeafFactorID::CENTER){
+        from_id = 0;
         ifork = false;
     }
-    LeafFactorID to(to_ + 1);
-    if (to_ == LeafFactorID::CENTER){
-        to = LeafFactorID(0);
+    size_t to_id = to + 1; // shift by 1 for center
+    if (to == LeafFactorID::CENTER){
+        to_id = 0;
         fork = false;
     }
-    if (from_ != LeafFactorID::CENTER && to_ != LeafFactorID::CENTER){
+    if (from != LeafFactorID::CENTER && to != LeafFactorID::CENTER){
         fork = false;
         ifork = false;
         strict_star = false;
     }
-    if (find(successors[from].begin(), successors[from].end(), to) == successors[from].end()){
-        successors[from].push_back(to);
+    if (find(successors[from_id].begin(), successors[from_id].end(), to) == successors[from_id].end()){
+        successors[from_id].push_back(to);
     }
-    if (find(predecessors[to].begin(), predecessors[to].end(), from) == predecessors[to].end()){
-        predecessors[to].push_back(from);
+    if (find(predecessors[to_id].begin(), predecessors[to_id].end(), from) == predecessors[to_id].end()){
+        predecessors[to_id].push_back(from);
     }
 }
 
@@ -391,8 +391,8 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     }
 
     // check if it is a proper general-star factoring
-    bool is_center_op = false;
     for (const Operator &op : g_operators){
+        bool is_center_op = false;
         for (const Effect &eff : op.get_effects()){
             if (g_belongs_to_factor[eff.var] == LeafFactorID::CENTER){
                 is_center_op = true;
@@ -405,11 +405,13 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             for (const Effect &eff : op.get_effects()){
                 if (g_belongs_to_factor[eff.var] != factor){
                     error = true;
+                    break;
                 }
             }
             for (const Condition &pre : op.get_preconditions()){
                 if (g_belongs_to_factor[pre.var] != factor && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER){
                     error = true;
+                    break;
                 }
             }
             if (error){
@@ -471,6 +473,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             }
         }
         if (!is_center_op){
+            assert(eff_factors.size() == 1);
             LeafFactorID factor = *eff_factors.begin();
 #ifdef DEBUG_FACTORING
             ++num_ops_per_factor[factor];
@@ -481,25 +484,29 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
 
+    fork_leaf = vector<bool>(g_leaves.size(), true);
+    ifork_leaf = vector<bool>(g_leaves.size(), true);
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        int num_successors = interaction_graph.get_successors(factor).size();
-        if (num_successors == 0){
-            fork_leaf.push_back(true);
-        } else {
-            fork_leaf.push_back(false);
+        size_t num_succ = interaction_graph.get_successors(factor).size();
+        size_t num_pred = interaction_graph.get_predecessors(factor).size();
+        if (num_succ > 0){
+            fork_leaf[factor] = false;
             assert(!interaction_graph.is_fork());
-            if (num_successors > 1){
+            if (num_succ > 1 || interaction_graph.get_successors(factor).front() != LeafFactorID::CENTER){
+                // dependency to at least one leaf factor
+                assert(!interaction_graph.is_ifork());
                 assert(!interaction_graph.is_strict_star());
+                ifork_leaf[factor] = false;
             }
         }
-        int num_predecessors = interaction_graph.get_predecessors(factor).size();
-        if (num_predecessors == 0){
-            ifork_leaf.push_back(true);
-        } else {
-            ifork_leaf.push_back(false);
+        if (num_pred > 0){
+            ifork_leaf[factor] = false;
             assert(!interaction_graph.is_ifork());
-            if (num_predecessors > 1){
+            if (num_pred > 1 || interaction_graph.get_predecessors(factor).front() != LeafFactorID::CENTER){
+                // dependency to at least one leaf factor
+                assert(!interaction_graph.is_fork());
                 assert(!interaction_graph.is_strict_star());
+                fork_leaf[factor] = false;
             }
         }
     }
@@ -515,7 +522,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 
 #ifdef DEBUG_FACTORING
     for (size_t i = 0; i < num_ops_per_factor.size(); i++) {
-        cout << num_ops_per_factor[i] << " operators used in RPG of factor " << i << endl;
+        cout << num_ops_per_factor[i] << " leaf-only actions in factor " << i << endl;
     }
 #endif
 
