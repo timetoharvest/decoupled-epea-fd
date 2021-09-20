@@ -783,8 +783,8 @@ void LPGeneralFactoring::filter_potential_leaves() {
         }
     }
     cout << "Removed " << erase_leaves.size() << " potential leaves because of minimal flexibility/mobility." << endl;
-    for (size_t id : erase_leaves){
-        potential_leaves.erase(potential_leaves.begin() + id);
+    for (set<size_t>::reverse_iterator rit = erase_leaves.rbegin(); rit != erase_leaves.rend(); ++rit){
+        potential_leaves.erase(potential_leaves.begin() + *rit);
     }
     if (!erase_leaves.empty()){
         size_t id = 0;
