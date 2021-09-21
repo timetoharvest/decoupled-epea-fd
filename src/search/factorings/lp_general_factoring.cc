@@ -113,11 +113,16 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         cerr << "ERROR: No action schemas." << endl;
         return FactoredVars();
     }
+
+    compute_potential_leaves();
+
     if (!check_timeout()){
         return FactoredVars();
     }
 
-    compute_potential_leaves();
+    if (add_cg_sccs_){
+        add_cg_sccs();
+    }
 
     if (max_merge_steps == 0){
         filter_potential_leaves();
@@ -127,19 +132,15 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         cout << "No potential leaves." << endl;
         return FactoredVars();
     }
-    if (!check_timeout()){
-        return FactoredVars();
-    }
-
-    if (add_cg_sccs_){
-        add_cg_sccs();
-    }
 
     if (max_merge_steps > 0) {
         merge_potential_leaves();
-    }
-    if (add_cg_sccs_ || max_merge_steps > 0){
         filter_potential_leaves();
+    }
+
+    if (potential_leaves.empty()){
+        cout << "No potential leaves left." << endl;
+        return FactoredVars();
     }
 
     // TODO check this number.. this is somewhat arbitrary..
@@ -788,7 +789,8 @@ void LPGeneralFactoring::filter_potential_leaves() {
             potential_leaves.end(),
             [&erase_leaves](const PotentialLeaf &pl){return find(erase_leaves.begin(),
                     erase_leaves.end(),
-                    pl.id) != erase_leaves.end();}));
+                    pl.id) != erase_leaves.end();}),
+            potential_leaves.end());
 
     if (!erase_leaves.empty()){
         size_t id = 0;
