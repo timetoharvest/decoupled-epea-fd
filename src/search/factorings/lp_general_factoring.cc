@@ -228,7 +228,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             }
         }
     }
-    vector<size_t> var_offsets(variables.size(), -1);
+    vector<size_t> var_offsets(g_variable_domain.size(), -1);
     // binary var for each FDR variable; 1 => is in center, 0 => not
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         if (can_be_leaf_var[var]){
