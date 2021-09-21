@@ -138,8 +138,10 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         filter_potential_leaves();
     }
 
-    if (potential_leaves.empty()){
-        cout << "No potential leaves left." << endl;
+    if (potential_leaves.size() < min_number_leaves){
+        cout << "Only " << potential_leaves.size() <<
+                " potential leaves left, but minimum number of leaves is " <<
+                min_number_leaves << "." << endl;
         return FactoredVars();
     }
 
