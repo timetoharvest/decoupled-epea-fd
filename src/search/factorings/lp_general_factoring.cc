@@ -54,6 +54,8 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
     if (max_merge_steps > 0 && !merge_dependent && !merge_overlapping){
         cerr << "At least one of \"merge_dependent\" or \"merge_overlapping\" needs to be set when merging leaves." << endl;
         exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+    } else if (max_merge_steps == 0 && (merge_dependent || merge_overlapping)){
+        cerr << "WARNING: Option max_merge_steps needs to be set > 0 for \"merge_dependent\" or \"merge_overlapping\" to have an effect." << endl;
     }
 
 #ifdef USE_CPLEX
