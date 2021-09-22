@@ -473,13 +473,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
 Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
 
-    if (min_flexibility > 0){
-        cout << "WARNING: minimum flexibility not supported, yet." << endl;
+    if (min_flexibility > 0 || min_mobility > 1){
+        cout << "WARNING: minimum flexibility/mobility not supported, yet, with MFA." << endl;
     }
-
-    // TODO implement this
-    cerr << "Not implemented LPGeneralFactoring::compute_mobile_facts_factoring()" << endl;
-    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 
     vector<lp::LPVariable> variables;
     vector<lp::LPConstraint> constraints;
@@ -519,9 +515,15 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
             facts_to_mobility[fact.first][fact.second][as]++;
         }
     }
-    // TODO use this data in the encoding
-
-//    filter_action_schemas();
+    vector<vector<size_t>> sum_fact_mobility(g_variable_domain.size());
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        sum_fact_mobility[var].resize(g_variable_domain[var]);
+        for (int val = 0; val < g_variable_domain[var]; ++val){
+            for (const auto& [as, num] : facts_to_mobility[var][val]){
+                sum_fact_mobility[var][val] += num;
+            }
+        }
+    }
 
     if (action_schemas.empty()){
         // mostly for trivially unsolvable task?
@@ -558,11 +560,17 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
     for (size_t pleaf = 0; pleaf < potential_leaves.size(); ++pleaf) {
         variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
     }
-    vector<vector<size_t>> mob_var_id(potential_leaves.size());
+    size_t act_schema_offset = variables.size();
+    for (size_t as = 0; as < action_schemas.size(); ++as) {
+        variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+    }
+    vector<vector<size_t>> mob_as_var_id(potential_leaves.size());
     // binary var for each action schema of each potential leaf; 1 => is mobile, 0 => not
+    vector<vector<size_t>> as_var_ids(action_schemas.size());
     for (const PotentialLeaf &pleaf : potential_leaves){
         for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
-            mob_var_id[pleaf.id].push_back(variables.size());
+            as_var_ids[pleaf.action_schemes[as_num]].push_back(variables.size());
+            mob_as_var_id[pleaf.id].push_back(variables.size());
             variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
         }
     }
@@ -571,15 +579,38 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
     }
-    size_t mob_vars_offset = variables.size();
-    // binary var for each FDR variable; 1 => is mobile, 0 => not
+    vector<size_t> mob_vars_offsets(g_variable_domain.size());
+    // float var for each FDR fact; 1 => fully mobile, 0 => not mobile
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
-        variables.push_back(lp::LPVariable(0.0, 1.0, g_variable_domain[var], true));
+        mob_vars_offsets[var] = variables.size();
+        for (int val = 0; val < g_variable_domain[var]; ++val){
+            variables.push_back(lp::LPVariable(0.0, 1.0, 1.0));
+        }
     }
-
 
     if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
+    }
+
+
+    for (size_t as_id = 0; as_id < action_schemas.size(); ++as_id){
+        lp::LPConstraint constraint(-infty, 0.0);
+        constraint.insert(act_schema_offset + as_id, 1.0);
+        for (size_t as_mob_id : as_var_ids[as_id]){
+            constraint.insert(as_mob_id, -1.0);
+        }
+        constraints.push_back(constraint);
+    }
+
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        for (int val = 0; val < g_variable_domain[var]; ++val){
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(mob_vars_offsets[var] + val, 1.0);
+            for (const auto& [as, num] : facts_to_mobility[var][val]){
+                constraint.insert(act_schema_offset + as, -(double) num / sum_fact_mobility[var][val]);
+            }
+            constraints.push_back(constraint);
+        }
     }
 
 
@@ -621,7 +652,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
         lp::LPConstraint constraint(-infty, 0.0);
         constraint.insert(pleaf, 1.0);
         for (size_t as_num = 0; as_num < potential_leaves[pleaf].action_schemes.size(); ++as_num) {
-            constraint.insert(mob_var_id[pleaf][as_num], -1.0);
+            constraint.insert(mob_as_var_id[pleaf][as_num], -1.0);
         }
         constraints.push_back(constraint);
     }
@@ -635,19 +666,6 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
             constraint.insert(c_vars_offset + var, 1.0);
         }
         constraints.push_back(constraint);
-    }
-
-    // set var mobile if an affecting action schema is mobile
-    for (const auto &pleaf : potential_leaves) {
-        for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num){
-            const auto &as = action_schemas[pleaf.action_schemes[as_num]];
-            lp::LPConstraint constraint(-infty, 0.0);
-            constraint.insert(mob_var_id[pleaf.id][as_num], as.eff_vars.size());
-            for (int var : as.eff_vars) {
-                constraint.insert(mob_vars_offset + var, -1.0);
-            }
-            constraints.push_back(constraint);
-        }
     }
 
     if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
@@ -674,7 +692,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_mobile_facts_factoring() {
             // action schema is mobile only if it is a leaf and all pre variables are center
             lp::LPConstraint constraint(-infty, 0.0);
             constraint.insert(pleaf, -1.0);
-            constraint.insert(mob_var_id[pleaf][as_num], outside_pre_vars.size() + 1.0);
+            constraint.insert(mob_as_var_id[pleaf][as_num], outside_pre_vars.size() + 1.0);
             for (int var : outside_pre_vars){
                 constraint.insert(c_vars_offset + var, -1.0);
             }
