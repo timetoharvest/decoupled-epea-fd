@@ -23,6 +23,8 @@ class LPFactoring : public Factoring {
 
 protected:
 
+    double infty;
+
     mutable utils::Timer timer;
 
     LPFactoring(const Options &opts);

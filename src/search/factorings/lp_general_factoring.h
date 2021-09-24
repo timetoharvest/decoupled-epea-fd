@@ -45,8 +45,6 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     bool merge_dependent;
 
-    double infty;
-
     std::vector<std::set<size_t> > var_to_p_leaves; // maps variables to potential leaf ids
 
     std::vector<PotentialLeaf> potential_leaves;

@@ -46,8 +46,7 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
         add_cg_sccs_(opts.get<bool>("add_cg_sccs")),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         merge_overlapping(opts.get<bool>("merge_overlapping")),
-        merge_dependent(opts.get<bool>("merge_dependent")),
-        infty(-1) {
+        merge_dependent(opts.get<bool>("merge_dependent")) {
     profile = STAR;
     cout << "using LP factoring strategy" << endl;
 
@@ -57,13 +56,6 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
     } else if (max_merge_steps == 0 && (merge_dependent || merge_overlapping)){
         cerr << "WARNING: Option max_merge_steps needs to be set > 0 for \"merge_dependent\" or \"merge_overlapping\" to have an effect." << endl;
     }
-
-#ifdef USE_CPLEX
-    lp::CPLEXSolver solver;
-#else
-    lp::LPSolver solver(lp_solver_type);
-#endif
-    infty = solver.get_infinity();
 }
 
 

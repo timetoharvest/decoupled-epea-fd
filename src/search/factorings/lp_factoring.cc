@@ -26,6 +26,12 @@ LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
         memory_limit(opts.get<int>("memory_limit")),
         lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
         timer(utils::Timer()) {
+#ifdef USE_CPLEX
+    lp::CPLEXSolver solver;
+#else
+    lp::LPSolver solver(lp_solver_type);
+#endif
+    infty = solver.get_infinity();
 }
 
 bool LPFactoring::check_lp_size(size_t num_constraints, size_t /*num_variables*/) const {
