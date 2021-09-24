@@ -82,6 +82,7 @@ class OptionParser;
 class Options;
 
 class Factoring {
+    friend class FactoringRanking; // to access var_to_affecting_op
     
     enum ABSTAIN_TYPE {
         ABSTAIN_ON_FAILURE, // default, if no factoring is found, the planner stops
@@ -157,6 +158,11 @@ protected:
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
+    static const std::vector<std::set<size_t>>& get_var_to_affecting_op() {
+        init_var_to_ops_map();
+        return var_to_affecting_op;
+    }
+
     void exit_if_timeout() const {
         if (abstain_type != ABSTAIN_TYPE::STANDARD_ON_FAILURE){
             std::cout << Factoring::TIME_OUT_MESSAGE << std::endl;
@@ -198,11 +204,6 @@ public:
         return g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE;
     }
 
-    
-    static const std::vector<std::set<size_t>>& get_var_to_affecting_op() {
-        init_var_to_ops_map();
-        return var_to_affecting_op;
-    }
 
     static void add_options_to_parser(OptionParser &parser);
     

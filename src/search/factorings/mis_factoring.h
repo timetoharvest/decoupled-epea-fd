@@ -20,8 +20,6 @@ class MaxIndependentSetFactoring : public Factoring {
 
     int arg_number_mis;
 
-    bool arg_print_all_rankings;
-
     std::vector<FactoringRanking* > arg_rankings;
 
 
