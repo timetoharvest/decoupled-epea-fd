@@ -48,6 +48,8 @@ Factoring::FactoredVars LPStarFactoring::get_factoring() {
         default: exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
+    vector<set<size_t>>().swap(var_to_p_leaves);
+
     return factoring;
 
 }
