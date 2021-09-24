@@ -812,7 +812,8 @@ void Factoring::do_factoring_or_abstain() {
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
 
     // save memory
-    var_to_affecting_op = vector<set<size_t> >();
+    vector<set<size_t> >().swap(var_to_affecting_op);
+    vector<ActionSchema>().swap(action_schemas);
 
     cout << "factoring time " << factoring_timer.get_elapsed_time() << endl;
 
