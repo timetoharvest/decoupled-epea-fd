@@ -53,8 +53,6 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     FactoredVars compute_factoring();
 
-    FactoredVars compute_mobile_facts_factoring();
-
     void filter_potential_leaves();
 
     void compute_leaf_flexibility();
