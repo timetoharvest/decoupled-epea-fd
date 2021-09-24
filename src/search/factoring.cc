@@ -370,23 +370,13 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
             }
             g_leaves[factor] = variables;
         }
-        utils::HashState hash_state;
-        feed(hash_state, g_leaves);
-        cout << "Factoring hash: " << hash_state.get_hash32() << endl;
     }
-
-#ifdef DEBUG_FACTORING
-    cout << "center factor:" << endl;
-#endif
 
     for (size_t i = 0; i < g_variable_domain.size(); ++i){
         LeafFactorID affected_factor = g_belongs_to_factor[i];
         if (affected_factor == LeafFactorID::CENTER){
             g_center.push_back(i);
             g_new_index[i] = g_center.size() - 1;
-#ifdef DEBUG_FACTORING
-            cout << "   variable " << i << " :" << g_fact_names[i][0] << endl;
-#endif
         }
     }
 
@@ -421,11 +411,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
 
-    // assign operators to their factors
-#ifdef DEBUG_FACTORING
-    vector<int> num_ops_per_factor(g_leaves.size());
-#endif
-
+    // determine factor of each operator
     for (Operator &op : g_operators){
 
         set<LeafFactorID> pre_factors;
@@ -474,11 +460,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
         if (!is_center_op){
             assert(eff_factors.size() == 1);
-            LeafFactorID factor = *eff_factors.begin();
-#ifdef DEBUG_FACTORING
-            ++num_ops_per_factor[factor];
-#endif
-            op.set_affected_factor(factor);
+            op.set_affected_factor(*eff_factors.begin());
         } else {
             op.set_affected_factor(LeafFactorID::CENTER);
         }
@@ -519,12 +501,6 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
     } else if (interaction_graph.is_strict_star()){
         cout << "factoring is strict-star factoring, no inter-leaf dependencies" << endl;
     }
-
-#ifdef DEBUG_FACTORING
-    for (size_t i = 0; i < num_ops_per_factor.size(); i++) {
-        cout << num_ops_per_factor[i] << " leaf-only actions in factor " << i << endl;
-    }
-#endif
 
     // setup g_goals_per_factor
     // TODO check if each fork leaf contains a goal! what to do if not??
@@ -599,6 +575,10 @@ void Factoring::print_factoring_statistics() const {
     }
 #endif
 
+    utils::HashState hash_state;
+    feed(hash_state, g_leaves);
+    cout << "Factoring hash: " << hash_state.get_hash32() << endl;
+
     cout << "number leaf factors: " << g_leaves.size() << endl;
 
     cout << g_center.size() << " variables in center factor" << endl;
@@ -628,6 +608,13 @@ void Factoring::print_factoring_statistics() const {
     vector<int> num_leaf_only_actions(g_leaves.size(), 0);
     vector<int> num_leaf_actions(g_leaves.size(), 0);
 
+
+    // first in pair is number leaf actions, second is total number of affecting actions
+    vector<vector<pair<size_t,size_t>>> fact_flexibility(g_variable_domain.size());
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        fact_flexibility[var].resize(g_variable_domain[var], make_pair(0, 0));
+    }
+
     for (const Operator &op : g_operators) {
         if (op.get_affected_factor() == LeafFactorID::CENTER) {
             set<LeafFactorID> affected_leaf_factors;
@@ -635,6 +622,7 @@ void Factoring::print_factoring_statistics() const {
                 if (g_belongs_to_factor[eff.var] != LeafFactorID::CENTER) {
                     affected_leaf_factors.insert(g_belongs_to_factor[eff.var]);
                 }
+                fact_flexibility[eff.var][eff.val].second++;
             }
             for (LeafFactorID factor : affected_leaf_factors) {
                 num_leaf_actions[factor] += 1;
@@ -642,8 +630,27 @@ void Factoring::print_factoring_statistics() const {
         } else {
             num_leaf_actions[op.get_affected_factor()] += 1;
             num_leaf_only_actions[op.get_affected_factor()] += 1;
+            for (const Effect &eff : op.get_effects()){
+                fact_flexibility[eff.var][eff.val].first++;
+                fact_flexibility[eff.var][eff.val].second++;
+            }
         }
     }
+
+    double sum_f_flex = 0.0;
+    for (LeafFactorID lid(0); lid < g_leaves.size(); ++lid){
+        double l_f_flex = 0.0;
+        for (int var : g_leaves[lid]){
+            for (int val = 0; val < g_variable_domain[var]; ++val){
+                if (fact_flexibility[var][val].first > 0 && fact_flexibility[var][val].second > 0){
+                    l_f_flex += (double) fact_flexibility[var][val].first / fact_flexibility[var][val].second;
+                    sum_f_flex += (double) fact_flexibility[var][val].first / fact_flexibility[var][val].second;
+                }
+            }
+        }
+        cout << "sum fact flexibility for leaf " << lid << ": " << l_f_flex << endl;
+    }
+    cout << "sum fact flexibility: " << sum_f_flex << endl;
 
     int sum_mobility = 0;
     int min_mobility = g_operators.size();
@@ -659,6 +666,7 @@ void Factoring::print_factoring_statistics() const {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
         f_mobility = num_leaf_only_actions[factor];
         if (f_mobility == 0){
+            // TODO this should be checked before
             cerr << "ERROR: non-mobile leaf factor " << factor << endl;
             for (int var : g_leaves[factor]){
                 cerr << g_fact_names[var][0] << endl;
