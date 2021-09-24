@@ -43,6 +43,7 @@ namespace lp {
 #endif
 class CPLEXSolver {
     bool is_solved;
+    bool has_time_limit;
 #ifdef USE_CPLEX
     IloEnv env;
     IloNumVarArray ilo_variables;
@@ -72,9 +73,6 @@ public:
 
     CPLEX_METHOD(void solve())
 
-    // solves the LP, populating the solution pool
-    CPLEX_METHOD(void populate())
-
     /*
       Return true if the solving the LP showed that it is bounded feasible and
       the discovered solution is guaranteed to be optimal. We test for
@@ -100,11 +98,11 @@ public:
     /*
       Return the solution found after solving an LP as a vector with one entry
       per variable.
-      The LP has to be solved with a call to solve() and has to have an optimal
-      solution before calling this method.
+      The LP has to be solved with a call to solve() and has to have an (optimal)
+      solution before calling this method. If a time limit has been set, the
+      solution may be suboptimal.
     */
     CPLEX_METHOD(std::vector<double> extract_solution() const)
-    CPLEX_METHOD(std::vector<double> extract_best_solution() const)
 
     CPLEX_METHOD(int get_num_variables() const)
     CPLEX_METHOD(int get_num_constraints() const)

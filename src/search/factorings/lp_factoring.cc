@@ -107,13 +107,8 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
 
         timer.reset();
 
-        if (time_limit == -1){
-            solver.solve();
-        } else {
-#ifdef USE_CPLEX
-            solver.populate();
-#endif
-        }
+        solver.solve();
+
 #ifdef USE_CPLEX
     } catch (const IloException &excpt) {
         string error_message = excpt.getMessage();
@@ -147,14 +142,7 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
 #endif
     }
 
-
-    if (time_limit == -1){
-        solution = solver.extract_solution();
-    } else {
-#ifdef USE_CPLEX
-        solution = solver.extract_best_solution();
-#endif
-    }
+    solution = solver.extract_solution();
 
     cout << "LP objective value: " << solver.get_objective_value() << endl;
 
