@@ -22,8 +22,8 @@ CPLEXSolver::~CPLEXSolver() {
 }
 
 CPLEXSolver::CPLEXSolver(int time_limit)
-    : has_time_limit(false),
-      is_solved(false),
+    : is_solved(false),
+      has_time_limit(false),
       ilo_variables(IloNumVarArray(env, 0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env, 0)),
