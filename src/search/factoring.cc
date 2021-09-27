@@ -363,7 +363,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 
         for (size_t i = 0; i < factoring.size(); ++i){
             LeafFactorID factor(ordering[i]);
-            vector<int> variables(factoring[factor].begin(), factoring[factor].end());
+            vector<int> variables(factoring[i].begin(), factoring[i].end());
             for (size_t j = 0; j < variables.size(); ++j){
                 g_belongs_to_factor[variables[j]] = factor;
                 g_new_index[variables[j]] = j;
