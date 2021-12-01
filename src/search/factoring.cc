@@ -638,19 +638,23 @@ void Factoring::print_factoring_statistics() const {
     }
 
     double sum_f_flex = 0.0;
+    int num_facts = 0;
     for (LeafFactorID lid(0); lid < g_leaves.size(); ++lid){
         double l_f_flex = 0.0;
+        int leaf_facts = 0;
         for (int var : g_leaves[lid]){
             for (int val = 0; val < g_variable_domain[var]; ++val){
+                ++leaf_facts;
+                ++num_facts;
                 if (fact_flexibility[var][val].first > 0 && fact_flexibility[var][val].second > 0){
                     l_f_flex += (double) fact_flexibility[var][val].first / fact_flexibility[var][val].second;
                     sum_f_flex += (double) fact_flexibility[var][val].first / fact_flexibility[var][val].second;
                 }
             }
         }
-        cout << "sum fact flexibility for leaf " << lid << ": " << l_f_flex << endl;
+        cout << "avg fact flexibility for leaf " << lid << ": " << (l_f_flex / leaf_facts) << endl;
     }
-    cout << "sum fact flexibility: " << sum_f_flex << endl;
+    cout << "avg fact flexibility: " << (sum_f_flex / num_facts) << endl;
 
     int sum_mobility = 0;
     int min_mobility = g_operators.size();

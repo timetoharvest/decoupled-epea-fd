@@ -43,6 +43,7 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
         strategy(STRATEGY(opts.get_enum("strategy"))),
         min_mobility(opts.get<int>("min_mobility")),
         min_flexibility(opts.get<float>("min_flexibility")),
+        min_fact_flexibility(opts.get<float>("min_fact_flexibility")),
         add_cg_sccs_(opts.get<bool>("add_cg_sccs")),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         merge_overlapping(opts.get<bool>("merge_overlapping")),
@@ -504,6 +505,22 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
                 }
             }
         }
+
+        if (min_fact_flexibility > 0.0){
+            // average flexibility of all facts in the leaf must be >= min_fact_flexibility
+            for (const PotentialLeaf &pleaf : potential_leaves){
+                lp::LPConstraint constraint(-infty, 0.0);
+                int num_facts = 0;
+                for (int var : pleaf.vars){
+                    num_facts += g_variable_domain[var];
+                    for (int val = 0; val < g_variable_domain[var]; ++val){
+                        constraint.insert(mob_cvars_ids[var] + val, -1.0);
+                    }
+                }
+                constraint.insert(pleaf.id, num_facts * min_fact_flexibility);
+                constraints.push_back(constraint);
+            }
+        }
     }
 
 
@@ -949,6 +966,12 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
 
     parser.add_option<float>(
             "min_flexibility",
+            "TODO",
+            "0"
+    );
+
+    parser.add_option<float>(
+            "min_fact_flexibility",
             "TODO",
             "0"
     );

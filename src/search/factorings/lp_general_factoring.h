@@ -37,6 +37,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     float min_flexibility;
 
+    float min_fact_flexibility;
+
     bool add_cg_sccs_;
 
     int max_merge_steps;
