@@ -526,6 +526,8 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         return FactoredVars();
     }
 
+    // TODO if there are no constraints, no need to solve the LP, simply return the factoring
+
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
             variables, constraints, false, false);
 
