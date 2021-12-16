@@ -12,8 +12,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
         MMAS, // maximize mobile action schemas
         MM_OPT, // maximize mobility
         MM_APPROX,
-        MFA // maximize mobile facts
-//        MF,
+        MFA, // maximize mobile facts
+        MM // maximize mobility (sum)
     };
 
     struct PotentialLeaf {

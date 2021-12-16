@@ -252,6 +252,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
                       // fall through
             case MML: // fall through
             case MM_OPT: variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true)); break;
+            case MM: variables.push_back(lp::LPVariable(0.0, 1.0, action_schemas[act_schema].num_actions, true)); break;
             case MM_APPROX:
                 {double obj_v = 0.0;
                 if (find(pleaf.self_mobile_as.begin(), pleaf.self_mobile_as.end(), act_schema) == pleaf.self_mobile_as.end()){
@@ -949,7 +950,7 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
     strategies.push_back("mm_opt");
     strategies.push_back("mm_approx");
     strategies.push_back("mfa");
-//    strategies.push_back("mf");
+    strategies.push_back("mm");
     parser.add_enum_option(
             "strategy",
             strategies,
