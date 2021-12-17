@@ -544,14 +544,19 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         return FactoredVars();
     }
 
-    // TODO if there are no constraints, no need to solve the LP, simply return the factoring
+    vector<double> solution;
+    if (constraints.empty()){
+        // this should only happen when all potential leaves can become leaves
+        solution.resize(potential_leaves.size(), 1);
+        cout << "No constraints, all candidates become leaf factors." << endl;
+    } else {
+        solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+                variables, constraints, false, false);
 
-    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-            variables, constraints, false, false);
-
-    if (solution.empty()) {
-        cerr << "ERROR: no solution found by LP solver." << endl;
-        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        if (solution.empty()) {
+            cout << "WARNING: no solution found by LP solver." << endl;
+            return FactoredVars();
+        }
     }
 
     FactoredVars factoring;

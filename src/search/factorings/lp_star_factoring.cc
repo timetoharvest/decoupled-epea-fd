@@ -90,8 +90,8 @@ Factoring::FactoredVars LPStarFactoring::get_mip_factoring() const {
             variables, constraints, true, strategy == MIS_LP_RELAX);
 
     if (solution.empty()) {
-        cerr << "ERROR: no solution found by LP solver." << endl;
-        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        cout << "ERROR: no solution found by LP solver." << endl;
+        return FactoredVars();
     }
 
     //extract solution
@@ -333,10 +333,20 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves() const {
         return FactoredVars();
     }
 
-    // TODO if there are no constraints, no need to solve the LP, simply return the factoring
+    vector<double> solution;
+    if (constraints.empty()){
+        // this should only happen when all potential leaves can become leaves
+        solution.resize(potential_leaves.size(), 1);
+        cout << "No constraints, all candidates become leaf factors." << endl;
+    } else {
+        solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
+                variables, constraints, false, false);
 
-    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-            variables, constraints, false, false);
+        if (solution.empty()) {
+            cout << "WARNING: no solution found by LP solver." << endl;
+            return FactoredVars();
+        }
+    }
 
     FactoredVars factoring;
 
@@ -569,8 +579,8 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular() const {
     vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
 
     if (solution.empty()) {
-        cerr << "ERROR: no solution found by LP solver." << endl;
-        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        cout << "ERROR: no solution found by LP solver." << endl;
+        return FactoredVars();
     }
 
     FactoredVars factoring;
@@ -783,8 +793,8 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular_no_scheme
             variables, constraints);
 
     if (solution.empty()) {
-        cerr << "ERROR: no solution found by LP solver." << endl;
-        exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        cout << "ERROR: no solution found by LP solver." << endl;
+        return FactoredVars();
     }
 
     FactoredVars factoring;
