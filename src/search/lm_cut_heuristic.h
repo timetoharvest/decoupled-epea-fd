@@ -121,6 +121,7 @@ protected:
     std::vector<std::vector<size_t> > number_center_effs;
     size_t num_art_center_pre_pre;
     size_t num_art_center_goal_eff;
+    std::vector<RelaxedProposition> artificial_leaf_goals;
     
 
     virtual void initialize();
