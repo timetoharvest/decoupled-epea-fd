@@ -97,6 +97,9 @@ void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &sta
                     for (int var : g_leaves[factor]) {
                         enqueue_if_necessary(get_prop_id(var, f[var]), cost, op_id);
                     }
+                    if (g_goals_per_factor[factor].empty()){
+                        enqueue_if_necessary(get_prop_id(g_variable_domain.size(), factor), cost, NO_OP);
+                    }
                 }
                 ++id;
             }

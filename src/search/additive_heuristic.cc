@@ -71,6 +71,9 @@ void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const Stat
     } else {
         cpg->populate_cost_of_leaf_facts(function<void(int, int, int)> ([&] (int var, int val, int cost) {
             enqueue_if_necessary(get_prop_id(var, val), cost, NO_OP);
+            if (g_goals_per_factor[g_belongs_to_factor[var]].empty()){
+                enqueue_if_necessary(get_prop_id(g_variable_domain.size(), g_belongs_to_factor[var]), cost, NO_OP);
+            }
         }));
     }
 }
