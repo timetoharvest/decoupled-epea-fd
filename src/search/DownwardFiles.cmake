@@ -50,6 +50,7 @@ fast_downward_plugin(
 
         axioms
         combining_evaluator
+        command_line
         eager_search
         enforced_hill_climbing_search
         evaluator
@@ -100,12 +101,33 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME OPTIONS
+    HELP "Option parsing and plugin definition"
+    SOURCES
+        options/any
+        options/bounds
+        options/doc_printer
+        options/doc_utils
+        options/errors
+        options/option_parser
+        options/options
+        options/parse_tree
+        options/predefinitions
+        options/plugin
+        options/raw_registry
+        options/registries
+        options/type_namer
+    CORE_PLUGIN
+)
+
+fast_downward_plugin(
     NAME UTILS
     HELP "System utilities"
     SOURCES
     	utils/array_pool
         utils/collections
         utils/countdown_timer
+        utils/exceptions
         utils/hash
         utils/language
         utils/logging
@@ -113,6 +135,7 @@ fast_downward_plugin(
         utils/memory
         utils/rng
         utils/rng_options
+        utils/strings
         utils/system
         utils/system_unix
         utils/system_windows
