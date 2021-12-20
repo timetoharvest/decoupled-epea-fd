@@ -443,16 +443,40 @@ fast_downward_plugin(
     NAME PDBS
     HELP "Plugin containing the code for PDBs"
     SOURCES
+        pdbs/canonical_pdbs
         pdbs/canonical_pdbs_heuristic
-        pdbs/dominance_pruner
+        pdbs/cegar
+        pdbs/dominance_pruning
+        pdbs/incremental_canonical_pdbs
         pdbs/match_tree
         pdbs/max_cliques
-        pdbs/pattern_generation_edelkamp
-        pdbs/pattern_generation_haslum
+        pdbs/pattern_cliques
+        pdbs/pattern_collection_information
+        pdbs/pattern_collection_generator_combo
+        pdbs/pattern_collection_generator_disjoint_cegar
+        pdbs/pattern_collection_generator_genetic
+        pdbs/pattern_collection_generator_hillclimbing
+        pdbs/pattern_collection_generator_manual
+        pdbs/pattern_collection_generator_multiple_cegar
+        pdbs/pattern_collection_generator_multiple_random
+        pdbs/pattern_collection_generator_multiple
+        pdbs/pattern_collection_generator_systematic
+        pdbs/pattern_database
+        pdbs/pattern_generator_cegar
+        pdbs/pattern_generator_greedy
+        pdbs/pattern_generator_manual
+        pdbs/pattern_generator_random
+        pdbs/pattern_generator
+        pdbs/pattern_information
         pdbs/pdb_heuristic
-        pdbs/util
+        pdbs/plugin_group
+        pdbs/random_pattern
+        pdbs/types
+        pdbs/utils
+        pdbs/validation
+        pdbs/zero_one_pdbs
         pdbs/zero_one_pdbs_heuristic
-    DEPENDS CAUSAL_GRAPH PRIORITY_QUEUES SUCCESSOR_GENERATOR VARIABLE_ORDER_FINDER
+    DEPENDS CAUSAL_GRAPH MAX_CLIQUES PRIORITY_QUEUES SAMPLING SUCCESSOR_GENERATOR TASK_PROPERTIES VARIABLE_ORDER_FINDER
 )
 
 fast_downward_plugin(
