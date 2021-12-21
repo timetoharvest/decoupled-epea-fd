@@ -4,7 +4,9 @@
 #include "../operator_id.h"
 #include "stubborn_sets.h"
 
+namespace options {
 class Options;
+}
 
 namespace stubborn_sets_simple {
 class StubbornSetsSimple : public stubborn_sets::StubbornSets {
@@ -27,7 +29,7 @@ protected:
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, OperatorID op_no) override;
 public:
-    StubbornSetsSimple(const Options &opts);
+    StubbornSetsSimple(const options::Options &opts);
     virtual ~StubbornSetsSimple() = default;
     
     virtual void initialize() override;

@@ -98,7 +98,7 @@ void StubbornSetsSimple::handle_stubborn_operator(const State &state,
     }
 }
 
-static PruningMethod* _parse(OptionParser &parser) {
+static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets simple",
         "Stubborn sets represent a state pruning method which computes a subset "
@@ -128,7 +128,7 @@ static PruningMethod* _parse(OptionParser &parser) {
         return 0;
     }
 
-    return new StubbornSetsSimple(parser.parse());
+    return make_shared<StubbornSetsSimple>(parser.parse());
 }
 
 static Plugin<PruningMethod> _plugin("stubborn_sets_simple", _parse);

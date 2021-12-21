@@ -11,7 +11,10 @@ class LeafFactorID;
 class LeafStateHash;
 template<class T>
 class OpsLeafProps;
+
+namespace options {
 class Options;
+}
 
 namespace stubborn_sets_decoupled {
 class StubbornSetsDecoupled : public stubborn_sets_simple::StubbornSetsSimple {
@@ -63,7 +66,7 @@ protected:
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, OperatorID op_no) override;
 public:
-    StubbornSetsDecoupled(const Options &opts);
+    StubbornSetsDecoupled(const options::Options &opts);
     virtual ~StubbornSetsDecoupled() = default;
 
     virtual void initialize() override;

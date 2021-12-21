@@ -658,7 +658,7 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
     }
 }
 
-static PruningMethod* _parse(OptionParser &parser) {
+static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets decoupled",
         "TODO");
@@ -693,7 +693,7 @@ static PruningMethod* _parse(OptionParser &parser) {
         return 0;
     }
 
-    return new StubbornSetsDecoupled(parser.parse());
+    return make_shared<StubbornSetsDecoupled>(parser.parse());
 }
 
 static Plugin<PruningMethod> _plugin("stubborn_sets_decoupled", _parse);

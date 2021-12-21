@@ -30,7 +30,7 @@ protected:
     virtual void initialize_stubborn_set(const State &state) override;
     virtual void handle_stubborn_operator(const State &state, OperatorID op_no) override;
 public:
-    StubbornSetsEC(const Options &opts);
+    StubbornSetsEC(const options::Options &opts);
     virtual ~StubbornSetsEC() = default;
     
     virtual void initialize() override {}

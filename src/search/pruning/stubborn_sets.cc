@@ -54,7 +54,7 @@ StubbornSets::StubbornSets(const Options &opts)
       num_pruned_successors_generated(0),
       expanded_states(0),
       disabled_pruning(false),
-      min_pruning_ratio(opts.get<float>("min_pruning_ratio")) {
+      min_pruning_ratio(opts.get<double>("min_pruning_ratio")) {
     verify_no_axioms_no_conditional_effects();
     compute_sorted_operators();
     compute_achievers();
@@ -156,7 +156,7 @@ void StubbornSets::print_statistics() const {
 }
 
 void StubbornSets::add_options_to_parser(OptionParser &parser) {
-    parser.add_option<float>(
+    parser.add_option<double>(
         "min_pruning_ratio",
         "TODO", 
         "0");
