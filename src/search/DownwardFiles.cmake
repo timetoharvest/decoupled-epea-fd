@@ -69,6 +69,7 @@ fast_downward_plugin(
         option_parser
         option_parser_util
         per_state_information
+        per_task_information
         pref_evaluator
         pruning_method
         relaxation_heuristic
@@ -246,6 +247,14 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME SUBSCRIBER
+    HELP "Allows object to subscribe to the destructor of other objects"
+    SOURCES
+        algorithms/subscriber
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME DECOUPLED_SEARCH
     HELP "Classes relevant to run decoupled search"
     SOURCES
@@ -353,6 +362,7 @@ fast_downward_plugin(
     HELP "Base class for all stubborn set partial order reduction methods"
     SOURCES
         pruning/stubborn_sets
+    DEPENDS TASK_PROPERTIES
     DEPENDENCY_ONLY
 )
 
@@ -391,6 +401,28 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME CORE_TASKS
+    HELP "Core task transformations"
+    SOURCES
+        tasks/cost_adapted_task
+        tasks/delegating_task
+        tasks/root_task
+    CORE_PLUGIN
+)
+
+fast_downward_plugin(
+    NAME EXTRA_TASKS
+    HELP "Non-core task transformations"
+    SOURCES
+        tasks/domain_abstracted_task
+        tasks/domain_abstracted_task_factory
+        tasks/modified_goals_task
+        tasks/modified_operator_costs_task
+    DEPENDS TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME DOMAIN_TRANSITION_GRAPH
     HELP "DTGs"
     SOURCES
@@ -407,12 +439,30 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME SAMPLING
+    HELP "Sampling"
+    SOURCES
+        task_utils/sampling
+    DEPENDS SUCCESSOR_GENERATOR TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME SUCCESSOR_GENERATOR
     HELP "Successor generator"
     SOURCES
         task_utils/successor_generator
         task_utils/successor_generator_factory
         task_utils/successor_generator_internals
+    DEPENDS TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME TASK_PROPERTIES
+    HELP "Task properties"
+    SOURCES
+        task_utils/task_properties
     DEPENDENCY_ONLY
 )
 

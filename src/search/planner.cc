@@ -6,6 +6,7 @@
 #include "options/registries.h"
 #include "utils/system.h"
 #include "utils/timer.h"
+#include "tasks/root_task.h"
 
 #include <iostream>
 
@@ -21,14 +22,15 @@ int main(int argc, const char **argv) {
     }
 
     if (static_cast<string>(argv[1]) != "--help"){
-	try {
-//	    OptionParser::parse_decoupled_search(argc, argv); // TODO implement this
-	} catch (ArgError &error) {
-	    error.print();
-	    usage(argv[0]);
-	    exit_with(ExitCode::SEARCH_INPUT_ERROR);
-	}
+    try {
+//      OptionParser::parse_decoupled_search(argc, argv); // TODO implement this
+    } catch (ArgError &error) {
+        error.print();
+        usage(argv[0]);
+        exit_with(ExitCode::SEARCH_INPUT_ERROR);
+    }
         read_everything(cin);
+        tasks::create_root_task();
     }
 
     shared_ptr<SearchEngine> engine;

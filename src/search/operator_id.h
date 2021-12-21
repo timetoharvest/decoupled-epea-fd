@@ -37,6 +37,10 @@ public:
         return index;
     }
 
+    int get_index() const {
+        return index;
+    }
+
     bool operator==(const OperatorID &other) const {
         return index == other.index;
     }
