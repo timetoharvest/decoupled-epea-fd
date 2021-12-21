@@ -211,6 +211,11 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
                            "perform simulation irrelevance pruning", "NO");
 }
 
+static PluginTypePlugin<PruningOptions> _type_plugin(
+    "PruningOptions",
+    "TODO",
+    "pruning_options");
+
 shared_ptr<PruningOptions> PruningOptions::_parse_dominance(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();

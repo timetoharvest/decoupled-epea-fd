@@ -174,3 +174,9 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "infinity");
     parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry", "use symmetries", "");
 }
+
+static PluginTypePlugin<SearchEngine> _type_plugin(
+    "SearchEngine",
+    // TODO: Replace empty string by synopsis for the wiki page.
+    "");
+

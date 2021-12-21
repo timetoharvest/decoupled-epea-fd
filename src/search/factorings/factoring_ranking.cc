@@ -319,6 +319,11 @@ void FactoringRanking::add_options_to_parser(OptionParser &parser) {
             "true");
 }
 
+static PluginTypePlugin<FactoringRanking> _type_plugin(
+    "FactoringRanking",
+    "TODO",
+    "factoring_ranking");
+
 static shared_ptr<FactoringRanking> _parse_mobility(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
@@ -378,7 +383,6 @@ static shared_ptr<FactoringRanking> _parse_aff_actions(OptionParser &parser) {
 
     return 0;
 }
-
 
 static Plugin<FactoringRanking> _plugin_mobility("mobility", _parse_mobility);
 static Plugin<FactoringRanking> _plugin_leaves("leaves", _parse_leaves);

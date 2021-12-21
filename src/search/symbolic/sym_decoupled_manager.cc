@@ -623,6 +623,11 @@ static shared_ptr<SymDecoupledManagerOptions> _parse(OptionParser &parser) {
     return 0;
 }
 
+static PluginTypePlugin<SymDecoupledManagerOptions> _type_plugin(
+    "SymDecoupledManagerOptions",
+    "TODO",
+    "sym_decoupled_manager_options");
+
 static Plugin<SymDecoupledManagerOptions> _plugin("cudd_decoupled_manager", _parse);
 
 template class SymDecoupledManager<SymPricingFunction>;

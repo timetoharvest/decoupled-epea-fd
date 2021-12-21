@@ -1994,6 +1994,11 @@ void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
     );
 }
 
+static PluginTypePlugin<Factoring> _type_plugin(
+    "Factoring",
+    "TODO",
+    "factoring");
+
 static shared_ptr<Factoring> _parse_fork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);

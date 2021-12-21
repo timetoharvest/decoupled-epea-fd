@@ -238,6 +238,11 @@ void GraphCreator::add_options_to_parser(OptionParser &parser) {
                            "0");
 }
 
+static PluginTypePlugin<GraphCreator> _type_plugin(
+    "GraphCreator",
+    "TODO",
+    "graph_creator");
+
 static shared_ptr<GraphCreator> _parse(OptionParser &parser) {
     GraphCreator::add_options_to_parser(parser);
     LexicographicOrdering::add_options_to_parser(parser);

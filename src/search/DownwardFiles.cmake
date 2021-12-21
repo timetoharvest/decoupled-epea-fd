@@ -76,13 +76,14 @@ fast_downward_plugin(
         search_node_info
         search_progress
         search_space
+        scalar_evaluator
         state
         state_id
         state_registry
         sum_evaluator
 
         weighted_evaluator
-          
+
         open_lists/open_list_buckets
 
         additive_heuristic
@@ -124,7 +125,7 @@ fast_downward_plugin(
     NAME UTILS
     HELP "System utilities"
     SOURCES
-    	utils/array_pool
+        utils/array_pool
         utils/collections
         utils/countdown_timer
         utils/exceptions
@@ -142,28 +143,28 @@ fast_downward_plugin(
         utils/timer
     CORE_PLUGIN
 )
- 
+
 fast_downward_plugin(
     NAME ALTERNATION_OPEN_LIST
     HELP "Open list that alternates between underlying open lists in a round-robin manner"
     SOURCES
         open_lists/alternation_open_list
 )
- 
+
 fast_downward_plugin(
     NAME PARETO_OPEN_LIST
     HELP "Pareto open list"
     SOURCES
         open_lists/pareto_open_list
 )
- 
+
 fast_downward_plugin(
     NAME STANDARD_SCALAR_OPEN_LIST
     HELP "Standard scalar open list"
     SOURCES
         open_lists/standard_scalar_open_list
 )
- 
+
 fast_downward_plugin(
     NAME TIEBREAKING_OPEN_LIST
     HELP "Tiebreaking open list"
@@ -353,7 +354,7 @@ fast_downward_plugin(
         pruning/stubborn_sets
     DEPENDENCY_ONLY
 )
- 
+
 fast_downward_plugin(
     NAME STUBBORN_SETS_SIMPLE
     HELP "Stubborn sets simple"
@@ -441,7 +442,7 @@ fast_downward_plugin(
 #        merge_and_shrink/transition_system
 #    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
 #)
- 
+
 #fast_downward_plugin( TODO fix option parsing
 #    NAME LANDMARKS
 #    HELP "Plugin containing the code to reason with landmarks"
@@ -461,7 +462,7 @@ fast_downward_plugin(
 #        landmarks/util
 #    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
 #)
- 
+
 #fast_downward_plugin( TODO fix option parsing
 #    NAME PDBS
 #    HELP "Plugin containing the code for PDBs"
