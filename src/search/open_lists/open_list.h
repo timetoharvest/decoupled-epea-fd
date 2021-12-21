@@ -7,7 +7,7 @@
 template<class Entry>
 class OpenList : public Evaluator {
 protected:
-    virtual Evaluator *get_evaluator() = 0;
+    virtual std::shared_ptr<Evaluator> get_evaluator() = 0;
     bool only_preferred;
 
 public:

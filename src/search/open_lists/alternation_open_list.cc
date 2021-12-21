@@ -12,7 +12,7 @@ using namespace std;
 
 
 template<class Entry>
-OpenList<Entry> *AlternationOpenList<Entry>::_parse(OptionParser &parser) {
+shared_ptr<OpenList<Entry>> AlternationOpenList<Entry>::_parse(OptionParser &parser) {
     parser.document_synopsis("Alternation open list",
                              "alternates between several open lists.");
     parser.document_note(
@@ -35,7 +35,7 @@ OpenList<Entry> *AlternationOpenList<Entry>::_parse(OptionParser &parser) {
         "for Satisficing Planning (Extended Version)\" "
         "(Department of Computer Science at Freiburg University, "
         "No. 258, 2010)");
-    parser.add_list_option<OpenList<Entry> *>("sublists", "sub open lists");
+    parser.add_list_option<shared_ptr<OpenList<Entry>>>("sublists", "sub open lists");
     parser.add_option<int>("boost",
                            "boost value for sub-open-lists "
                            "that are restricted to preferred operator nodes",
@@ -45,23 +45,23 @@ OpenList<Entry> *AlternationOpenList<Entry>::_parse(OptionParser &parser) {
     if (parser.help_mode())
         return 0;
 
-    if (opts.get_list<OpenList<Entry> *>("sublists").empty())
+    if (opts.get_list<shared_ptr<OpenList<Entry>>>("sublists").empty())
         parser.error("need at least one internal open list");
     if (parser.dry_run())
         return 0;
     else
-        return new AlternationOpenList<Entry>(opts);
+        return make_shared<AlternationOpenList<Entry>>(opts);
 }
 
 template<class Entry>
 AlternationOpenList<Entry>::AlternationOpenList(const Options &opts)
-    : open_lists(opts.get_list<OpenList<Entry> *>("sublists")),
+    : open_lists(opts.get_list<shared_ptr<OpenList<Entry>>>("sublists")),
       priorities(open_lists.size(), 0), size(0),
       boosting(opts.get<int>("boost")) {
 }
 
 template<class Entry>
-AlternationOpenList<Entry>::AlternationOpenList(const vector<OpenList<Entry> *> &sublists,
+AlternationOpenList<Entry>::AlternationOpenList(const vector<shared_ptr<OpenList<Entry>>> &sublists,
                                                 int boost_influence)
     : open_lists(sublists), priorities(sublists.size(), 0), size(0),
       boosting(boost_influence) {
@@ -96,7 +96,7 @@ Entry AlternationOpenList<Entry>::remove_min(vector<int> *key) {
         }
     }
     last_used_list = best;
-    OpenList<Entry> *best_list = open_lists[best];
+    shared_ptr<OpenList<Entry>> best_list = open_lists[best];
     assert(!best_list->empty());
     --size;
     ++priorities[best];
@@ -151,7 +151,7 @@ bool AlternationOpenList<Entry>::dead_end_is_reliable() const {
 }
 
 template<class Entry>
-void AlternationOpenList<Entry>::get_involved_heuristics(std::set<Heuristic *> &hset) {
+void AlternationOpenList<Entry>::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
     for (size_t i = 0; i < open_lists.size(); ++i)
         open_lists[i]->get_involved_heuristics(hset);
 }

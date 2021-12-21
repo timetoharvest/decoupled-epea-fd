@@ -4,8 +4,10 @@
 #include <iostream>
 #include <cassert>
 #include <limits>
+
 #include "../scalar_evaluator.h"
 #include "../option_parser.h"
+
 using namespace std;
 
 /*
@@ -14,7 +16,7 @@ using namespace std;
 */
 
 template<class Entry>
-OpenList<Entry> *TieBreakingOpenList<Entry>::_parse(OptionParser &parser) {
+shared_ptr<OpenList<Entry>> TieBreakingOpenList<Entry>::_parse(OptionParser &parser) {
     parser.document_synopsis("Tie-breaking open list", "");
     parser.add_list_option<ScalarEvaluator *>("evals", "scalar evaluators");
     parser.add_option<bool>(
@@ -28,28 +30,24 @@ OpenList<Entry> *TieBreakingOpenList<Entry>::_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new TieBreakingOpenList<Entry>(opts);
+        return make_shared<TieBreakingOpenList<Entry>>(opts);
 }
 
 template<class Entry>
 TieBreakingOpenList<Entry>::TieBreakingOpenList(const Options &opts)
     : OpenList<Entry>(opts.get<bool>("pref_only")),
-      size(0), evaluators(opts.get_list<ScalarEvaluator *>("evals")),
+      size(0), evaluators(opts.get_list<shared_ptr<ScalarEvaluator>>("evals")),
       allow_unsafe_pruning(opts.get<bool>("unsafe_pruning")) {
     last_evaluated_value.resize(evaluators.size());
 }
 
 template<class Entry>
 TieBreakingOpenList<Entry>::TieBreakingOpenList(
-    const std::vector<ScalarEvaluator *> &evals,
+    const std::vector<shared_ptr<ScalarEvaluator>> &evals,
     bool preferred_only, bool unsafe_pruning)
     : OpenList<Entry>(preferred_only), size(0), evaluators(evals),
       allow_unsafe_pruning(unsafe_pruning) {
     last_evaluated_value.resize(evaluators.size());
-}
-
-template<class Entry>
-TieBreakingOpenList<Entry>::~TieBreakingOpenList() {
 }
 
 template<class Entry>
@@ -139,7 +137,7 @@ int TieBreakingOpenList<Entry>::dimension() const {
 }
 
 template<class Entry>
-void TieBreakingOpenList<Entry>::get_involved_heuristics(std::set<Heuristic *> &hset) {
+void TieBreakingOpenList<Entry>::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
     for (size_t i = 0; i < evaluators.size(); ++i) {
         evaluators[i]->get_involved_heuristics(hset);
     }
