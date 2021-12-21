@@ -71,8 +71,10 @@ public:
     }
 };
 
+namespace options {
 class OptionParser;
 class Options;
+}
 
 class Factoring {
     
@@ -151,7 +153,7 @@ protected:
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
 
-    Factoring(const Options &opts);
+    Factoring(const options::Options &opts);
     
 public:
     
@@ -190,7 +192,7 @@ public:
         return var_to_affecting_op;
     }
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
     
 };
 

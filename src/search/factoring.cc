@@ -1,6 +1,7 @@
 #include "factoring.h"
 
 #include "algorithms/sccs.h"
+#include "factorings/factoring_ranking.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cudd_cpg.h"
 #include "compliant_paths/explicit_state_cpg.h"
@@ -88,9 +89,9 @@ void Factoring::init_action_schemas() {
 }
 
 Factoring::Factoring(const Options &opts) :
-            search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))),
-            abstain_type(ABSTAIN_TYPE(opts.get_enum("abstain_type"))),
-            leaf_type(LEAF_REPRESENTATION_TYPE(opts.get_enum("leaf_representation"))),
+            search_type(opts.get<DECOUPLED_SEARCH_TYPE>("search_type")),
+            abstain_type(opts.get<ABSTAIN_TYPE>("abstain_type")),
+            leaf_type(opts.get<LEAF_REPRESENTATION_TYPE>("leaf_representation")),
             factoring_time_limit(opts.get<int>("factoring_time_limit")),
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
 
@@ -113,9 +114,9 @@ Factoring::Factoring(const Options &opts) :
         max_leaf_size = numeric_limits<size_t>::max();
     }
     if (opts.contains("pruning")){
-        CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
+        CompliantPathGraph::set_pruning_options(opts.get<shared_ptr<PruningOptions>>("pruning"));
     } else {
-        CompliantPathGraph::set_pruning_options(new PruningOptions());
+        CompliantPathGraph::set_pruning_options(make_shared<PruningOptions>());
         cout << "using default pruning method: BasicPruning" << endl;
     }
 #ifndef USE_CUDD
@@ -1894,59 +1895,53 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
-    parser.add_option<PruningOptions*>(
+    parser.add_option<shared_ptr<PruningOptions>>(
         "pruning",
         "TODO",
-        "",
-        OptionFlags(false));
+        "");
 
     vector<string> search_types;
     search_types.push_back("ASDA");
     search_types.push_back("SDA");
     search_types.push_back("SAT");
     search_types.push_back("UNSAT");
-    parser.add_enum_option(
+    parser.add_enum_option<DECOUPLED_SEARCH_TYPE>(
         "search_type",
         search_types,
         "TODO",
         "SDA",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     vector<string> leaf_types;
     leaf_types.push_back("EXPLICIT");
     leaf_types.push_back("SYMBOLIC");
-    parser.add_enum_option(
+    parser.add_enum_option<LEAF_REPRESENTATION_TYPE>(
             "leaf_representation",
             leaf_types,
             "TODO",
             "EXPLICIT",
-            vector<string>(),
-            OptionFlags(false));
+            vector<string>());
 
-    parser.add_option<symbolic::SymDecoupledManagerOptions*>(
+    parser.add_option<shared_ptr<symbolic::SymDecoupledManagerOptions>>(
         "cudd_options",
         "TODO",
-        "",
-        OptionFlags(false));
+        "");
 
     vector<string> abstain_types;
     abstain_types.push_back("ABSTAIN_ON_FAILURE");
     abstain_types.push_back("STANDARD_ON_FAILURE");
     abstain_types.push_back("NO_SEARCH");
-    parser.add_enum_option(
+    parser.add_enum_option<ABSTAIN_TYPE>(
         "abstain_type",
         abstain_types,
         "TODO",
         "ABSTAIN_ON_FAILURE",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     parser.add_option<int>(
         "max_leaf_size",
         "TODO",
-        "",
-        OptionFlags(false));
+        "");
     parser.add_option<int>(
         "build_state_space_size",
         "TODO",
@@ -1981,11 +1976,10 @@ void ForkFactoring::add_options_to_parser(OptionParser &parser) {
 }
 
 void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
-    parser.add_list_option<FactoringRanking *>(
+    parser.add_list_option<shared_ptr<FactoringRanking>>(
             "rankings",
             "TODO",
-            "",
-            OptionFlags(false));
+            "");
 
     parser.add_option<bool>(
             "all_rankings",
@@ -2000,78 +1994,73 @@ void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
     );
 }
 
-static Factoring *_parse_fork(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_fork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    ForkFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new ForkFactoring(opts);
+        return make_shared<ForkFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_ifork(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_ifork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    ForkFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new ForkFactoring(opts, IFORK);
+        return make_shared<ForkFactoring>(opts, IFORK);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_xshape(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_xshape(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    XShapeFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new XShapeFactoring(opts);
+        return make_shared<XShapeFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_incarcs(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_incarcs(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     IncidentArcsFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    IncidentArcsFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new IncidentArcsFactoring(opts);
+        return make_shared<IncidentArcsFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_random(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_random(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    RandomFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new RandomFactoring(opts);
+        return make_shared<RandomFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 //static Factoring *_parse_doctransfer(OptionParser &parser) {

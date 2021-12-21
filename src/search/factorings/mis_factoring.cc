@@ -669,26 +669,24 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "TODO",
             "false");
 
-    parser.add_list_option<FactoringRanking *>(
+    parser.add_list_option<shared_ptr<FactoringRanking>>(
             "rankings",
             "TODO",
-            "",
-            OptionFlags(false));
+            "");
 }
 
-static Factoring *_parse_mis(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_mis(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     MaxIndependentSetFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    MaxIndependentSetFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new MaxIndependentSetFactoring(opts);
+        return make_shared<MaxIndependentSetFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 static Plugin<Factoring> _plugin_mis("mis", _parse_mis);
