@@ -9,7 +9,7 @@ class MaxEvaluator : public CombiningEvaluator {
 protected:
     virtual int combine_values(const std::vector<int> &values);
 public:
-    MaxEvaluator(const std::vector<ScalarEvaluator *> &subevaluators);
+    MaxEvaluator(const std::vector<std::shared_ptr<ScalarEvaluator>> &subevaluators);
     ~MaxEvaluator();
 };
 

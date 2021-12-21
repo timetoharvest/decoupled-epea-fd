@@ -6,12 +6,14 @@
 #include "option_parser.h"
 #include "plugin.h"
 
+using namespace std;
+
 WeightedEvaluator::WeightedEvaluator(const Options &opts)
-    : evaluator(opts.get<ScalarEvaluator *>("eval")),
+    : evaluator(opts.get<shared_ptr<ScalarEvaluator>>("eval")),
       w(opts.get<int>("weight")) {
 }
 
-WeightedEvaluator::WeightedEvaluator(ScalarEvaluator *eval, int weight)
+WeightedEvaluator::WeightedEvaluator(shared_ptr<ScalarEvaluator> eval, int weight)
     : evaluator(eval), w(weight) {
 }
 
@@ -37,21 +39,21 @@ int WeightedEvaluator::get_value() const {
     return value;
 }
 
-void WeightedEvaluator::get_involved_heuristics(std::set<Heuristic *> &hset) {
+void WeightedEvaluator::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
     evaluator->get_involved_heuristics(hset);
 }
 
-static ScalarEvaluator *_parse(OptionParser &parser) {
+static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Weighted evaluator",
         "Multiplies the value of the scalar evaluator with the given weight.");
-    parser.add_option<ScalarEvaluator *>("eval", "scalar evaluator");
+    parser.add_option<shared_ptr<ScalarEvaluator>>("eval", "scalar evaluator");
     parser.add_option<int>("weight", "weight");
     Options opts = parser.parse();
     if (parser.dry_run())
         return 0;
     else
-        return new WeightedEvaluator(opts);
+        return make_shared<WeightedEvaluator>(opts);
 }
 
 static Plugin<ScalarEvaluator> _plugin("weight", _parse);

@@ -1,6 +1,9 @@
 #include "g_evaluator.h"
+
 #include "option_parser.h"
 #include "plugin.h"
+
+using namespace std;
 
 GEvaluator::GEvaluator() {
 }
@@ -24,14 +27,14 @@ int GEvaluator::get_value() const {
     return value;
 }
 
-static ScalarEvaluator *_parse(OptionParser &parser) {
+static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("g-value evaluator",
                              "Returns the current g-value of the search.");
     parser.parse();
     if (parser.dry_run())
         return 0;
     else
-        return new GEvaluator;
+        return make_shared<GEvaluator>();
 }
 
 static Plugin<ScalarEvaluator> _plugin("g", _parse);

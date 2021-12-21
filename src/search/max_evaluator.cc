@@ -8,7 +8,7 @@
 using namespace std;
 
 
-MaxEvaluator::MaxEvaluator(const vector<ScalarEvaluator *> &subevaluators)
+MaxEvaluator::MaxEvaluator(const vector<shared_ptr<ScalarEvaluator>> &subevaluators)
     : CombiningEvaluator(subevaluators) {
 }
 
