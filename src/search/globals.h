@@ -111,7 +111,7 @@ extern bool g_is_part_of_anytime_portfolio;
 extern int g_num_previously_generated_plans;
 
 // TODO move this to the search engine
-extern std::unique_ptr<symmetries::GraphCreator> g_symmetry_graph;
+extern std::shared_ptr<symmetries::GraphCreator> g_symmetry_graph;
 
 // Only one global object for now. Could later be changed to use one instance
 // for each problem in this case the method State::get_id would also have to be

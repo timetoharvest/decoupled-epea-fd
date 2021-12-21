@@ -469,7 +469,7 @@ vector<vector<int> > g_leaves;
 vector<LeafFactorID> g_belongs_to_factor;
 vector<size_t> g_new_index;
 
-unique_ptr<symmetries::GraphCreator> g_symmetry_graph;
+shared_ptr<symmetries::GraphCreator> g_symmetry_graph;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
