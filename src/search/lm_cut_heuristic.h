@@ -16,7 +16,10 @@ class State;
 struct RelaxedProposition;
 struct RelaxedOperator;
 
+namespace options {
 class Options;
+}
+
 /* TODO: Check the impact of using unary relaxed operators instead of
    multi-effect ones.
 
@@ -151,7 +154,7 @@ protected:
     // needed for decoupled search
     void dereference_ops();
 public:
-    LandmarkCutHeuristic(const Options &opts);
+    LandmarkCutHeuristic(const options::Options &opts);
     virtual ~LandmarkCutHeuristic() = default;
 };
 

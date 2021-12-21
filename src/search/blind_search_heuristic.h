@@ -9,7 +9,7 @@ protected:
     virtual void initialize();
     virtual int compute_heuristic(const State &state);
 public:
-    BlindSearchHeuristic(const Options &options);
+    BlindSearchHeuristic(const options::Options &options);
     ~BlindSearchHeuristic();
 };
 

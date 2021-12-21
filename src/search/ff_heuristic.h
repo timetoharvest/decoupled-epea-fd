@@ -36,7 +36,7 @@ class FFHeuristic : public additive_heuristic::AdditiveHeuristic {
 protected:
     virtual int compute_heuristic(const State &state) override;
 public:
-    explicit FFHeuristic(const Options &opts);
+    explicit FFHeuristic(const options::Options &opts);
 };
 }
 

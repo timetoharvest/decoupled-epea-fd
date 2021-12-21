@@ -12,8 +12,8 @@
 using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
-    : cost_type(OperatorCost(opts.get_enum("cost_type"))),
-      heuristic_type(HEURISTIC_TYPE(opts.get_enum("search_type"))){
+    : cost_type(opts.get<OperatorCost>("cost_type")),
+      heuristic_type(opts.get<HEURISTIC_TYPE>("search_type")) {
     heuristic = NOT_INITIALIZED;
 
     if (g_factoring){
@@ -144,7 +144,7 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("STAR");
     search_types.push_back("CENTER");
     // TODO rename this to heuristic_type or just type?
-    parser.add_enum_option(
+    parser.add_enum_option<HEURISTIC_TYPE>(
         "search_type",
         search_types,
         "",

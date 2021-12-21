@@ -24,7 +24,7 @@
 #endif
 
 public:
-    LandmarkCutHeuristicSymbolic(const Options &opts);
+    LandmarkCutHeuristicSymbolic(const options::Options &opts);
 
     virtual ~LandmarkCutHeuristicSymbolic() = default;
 

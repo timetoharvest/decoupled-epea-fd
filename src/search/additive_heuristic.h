@@ -68,7 +68,7 @@ protected:
     // Common part of h^add and h^ff computation.
     int compute_add_and_ff(const State &state);
 public:
-    explicit AdditiveHeuristic(const Options &opts);
+    explicit AdditiveHeuristic(const options::Options &opts);
 };
 }
 

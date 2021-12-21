@@ -52,19 +52,18 @@ bool IPCMaxHeuristic::reach_state(const State &parent_state, OperatorID op,
     return result;
 }
 
-static Heuristic *_parse(OptionParser &parser) {
-    parser.document_hide(); //don't show documentation for this temporary class (see issue198)
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("IPC-Max Heuristic", "");
-    parser.add_list_option<Heuristic *>("heuristics");
+    parser.add_list_option<shared_ptr<Heuristic>>("heuristics");
     Heuristic::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.verify_list_non_empty<Heuristic *>("heuristics");
+    opts.verify_list_non_empty<shared_ptr<Heuristic>>("heuristics");
 
     if (parser.dry_run())
         return 0;
     else
-        return new IPCMaxHeuristic(opts);
+        return make_shared<IPCMaxHeuristic>(opts);
 }
 
 static Plugin<Heuristic> plugin("max", _parse);

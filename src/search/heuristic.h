@@ -11,10 +11,13 @@
 
 class OperatorID;
 class State;
+
+namespace options {
 class OptionParser;
 class Options;
+}
 
-class Heuristic : public ScalarEvaluator {
+class Heuristic : public ScalarEvaluator, std::enable_shared_from_this<Heuristic> {
     enum {NOT_INITIALIZED = -2};
     int heuristic;
     int evaluator_value; // usually equal to heuristic but can be different
@@ -37,7 +40,7 @@ protected:
     int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:
-    Heuristic(const Options &options);
+    Heuristic(const options::Options &options);
     virtual ~Heuristic();
 
     void evaluate(const State &state);
@@ -54,11 +57,11 @@ public:
     void evaluate(int g, bool preferred);
     bool dead_end_is_reliable() const;
     void set_evaluator_value(int val);
-    void get_involved_heuristics(std::set<Heuristic *> &hset) {hset.insert(this); }
+    void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset) {hset.insert(shared_from_this()); }
     OperatorCost get_cost_type() const {return cost_type; }
 
-    static void add_options_to_parser(OptionParser &parser);
-    static Options default_options();
+    static void add_options_to_parser(options::OptionParser &parser);
+    static options::Options default_options();
 };
 
 #endif

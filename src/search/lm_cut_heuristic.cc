@@ -562,7 +562,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
    values a bit.
  */
 
-static Heuristic *_parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Landmark-cut heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "not supported");
@@ -577,7 +577,7 @@ static Heuristic *_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new LandmarkCutHeuristic(opts);
+        return make_shared<LandmarkCutHeuristic>(opts);
 }
 
 
