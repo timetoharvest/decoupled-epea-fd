@@ -33,12 +33,12 @@ private:
     // h-statistics
     std::vector<int> best_heuristic_values; // best heuristic values so far
     std::vector<int> initial_h_values; // h values of the initial state
-    std::vector<Heuristic *> heuristics;
+    std::vector<std::shared_ptr<Heuristic>> heuristics;
 public:
     SearchProgress();
     virtual ~SearchProgress() = default;
 
-    void add_heuristic(Heuristic *h);
+    void add_heuristic(std::shared_ptr<Heuristic> h);
 
     // statistics update
     void inc_expanded(int inc = 1) {expanded_states += inc; }
