@@ -1,7 +1,7 @@
 #include "command_line.h"
 
 #include "option_parser.h"
-#include "plan_manager.h"
+//#include "plan_manager.h"
 #include "search_engine.h"
 
 #include "options/doc_printer.h"
@@ -118,12 +118,12 @@ static shared_ptr<SearchEngine> parse_cmd_line_aux(
         }
     }
 
-    if (engine) {
-        PlanManager &plan_manager = engine->get_plan_manager();
-        plan_manager.set_plan_filename(plan_filename);
-        plan_manager.set_num_previously_generated_plans(num_previously_generated_plans);
-        plan_manager.set_is_part_of_anytime_portfolio(is_part_of_anytime_portfolio);
-    }
+//    if (engine) { // TODO check how to do this
+//        PlanManager &plan_manager = engine->get_plan_manager();
+//        plan_manager.set_plan_filename(plan_filename);
+//        plan_manager.set_num_previously_generated_plans(num_previously_generated_plans);
+//        plan_manager.set_is_part_of_anytime_portfolio(is_part_of_anytime_portfolio);
+//    }
     return engine;
 }
 
