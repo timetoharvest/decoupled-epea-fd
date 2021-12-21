@@ -1,48 +1,56 @@
+#include "command_line.h"
 #include "globals.h"
-
 #include "option_parser.h"
 #include "search_engine.h"
-#include "utils/timer.h"
+
+#include "options/registries.h"
 #include "utils/system.h"
+#include "utils/timer.h"
 
 #include <iostream>
 
 using namespace std;
+using utils::ExitCode;
 
 int main(int argc, const char **argv) {
     utils::register_event_handlers();
 
     if (argc < 2) {
-        cout << OptionParser::usage(argv[0]) << endl;
+        cout << usage(argv[0]) << endl;
         exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
-    if (string(argv[1]).compare("--help") != 0){
+    if (static_cast<string>(argv[1]) != "--help"){
 	try {
-	    OptionParser::parse_decoupled_search(argc, argv);
+//	    OptionParser::parse_decoupled_search(argc, argv); // TODO implement this
 	} catch (ArgError &error) {
-	    cerr << error << endl;
-	    OptionParser::usage(argv[0]);
-	    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+	    error.print();
+	    usage(argv[0]);
+	    exit_with(ExitCode::SEARCH_INPUT_ERROR);
 	}
         read_everything(cin);
     }
 
-    SearchEngine *engine = 0;
+    shared_ptr<SearchEngine> engine;
 
     // The command line is parsed twice: once in dry-run mode, to
     // check for simple input errors, and then in normal mode.
     bool unit_cost = is_unit_cost();
     try {
-        OptionParser::parse_cmd_line(argc, argv, true, unit_cost);
-        engine = OptionParser::parse_cmd_line(argc, argv, false, unit_cost);
-    } catch (ArgError &error) {
-        cerr << error << endl;
-        OptionParser::usage(argv[0]);
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-    } catch (ParseError &error) {
-        cerr << error << endl;
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+        options::Registry registry(*options::RawRegistry::instance());
+        parse_cmd_line(argc, argv, registry, true, unit_cost);
+        engine = parse_cmd_line(argc, argv, registry, false, unit_cost);
+    } catch (const ArgError &error) {
+        error.print();
+        usage(argv[0]);
+        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+    } catch (const OptionParserError &error) {
+        error.print();
+        usage(argv[0]);
+        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+    } catch (const ParseError &error) {
+        error.print();
+        utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
     }
 
     utils::Timer search_timer;
@@ -57,8 +65,8 @@ int main(int argc, const char **argv) {
     cout << "Total time: " << utils::g_timer << endl;
 
     if (engine->found_solution()) {
-        exit_with(utils::ExitCode::SUCCESS);
+        exit_with(ExitCode::SUCCESS);
     } else {
-        exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
+        exit_with(ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
     }
 }
