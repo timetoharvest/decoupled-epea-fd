@@ -52,14 +52,14 @@ fast_downward_plugin(
         combining_evaluator
         command_line
         eager_search
-        enforced_hill_climbing_search
+        # enforced_hill_climbing_search TODO fix option parsing
         evaluator
         factoring
         g_evaluator
         globals
         heuristic
         ipc_max_heuristic
-        iterated_search
+        # iterated_search TODO fix option parsing
         lazy_search
         max_evaluator
         operator
@@ -422,61 +422,61 @@ fast_downward_plugin(
     DEPENDENCY_ONLY
 )
 
-fast_downward_plugin(
-    NAME MAS_HEURISTIC
-    HELP "The Merge-and-Shrink heuristic"
-    SOURCES
-        merge_and_shrink/label
-        merge_and_shrink/labels
-        merge_and_shrink/label_reducer
-        merge_and_shrink/merge_and_shrink_heuristic
-        merge_and_shrink/merge_dfp
-        merge_and_shrink/merge_linear
-        merge_and_shrink/merge_strategy
-        merge_and_shrink/shrink_bisimulation
-        merge_and_shrink/shrink_bucket_based
-        merge_and_shrink/shrink_fh
-        merge_and_shrink/shrink_random
-        merge_and_shrink/shrink_strategy
-        merge_and_shrink/transition_system
-    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
-)
+#fast_downward_plugin( TODO fix option parsing
+#    NAME MAS_HEURISTIC
+#    HELP "The Merge-and-Shrink heuristic"
+#    SOURCES
+#        merge_and_shrink/label
+#        merge_and_shrink/labels
+#        merge_and_shrink/label_reducer
+#        merge_and_shrink/merge_and_shrink_heuristic
+#        merge_and_shrink/merge_dfp
+#        merge_and_shrink/merge_linear
+#        merge_and_shrink/merge_strategy
+#        merge_and_shrink/shrink_bisimulation
+#        merge_and_shrink/shrink_bucket_based
+#        merge_and_shrink/shrink_fh
+#        merge_and_shrink/shrink_random
+#        merge_and_shrink/shrink_strategy
+#        merge_and_shrink/transition_system
+#    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
+#)
  
-fast_downward_plugin(
-    NAME LANDMARKS
-    HELP "Plugin containing the code to reason with landmarks"
-    SOURCES
-        landmarks/exploration
-        landmarks/h_m_landmarks
-        landmarks/lama_ff_synergy
-        landmarks/landmark_cost_assignment
-        landmarks/landmark_count_heuristic
-        landmarks/landmark_status_manager
-        landmarks/landmark_graph_merged
-        landmarks/landmark_graph
-        landmarks/landmark_factory
-        landmarks/landmark_factory_rpg_exhaust
-        landmarks/landmark_factory_rpg_sasp
-        landmarks/landmark_factory_zhu_givan
-        landmarks/util
-    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
-)
+#fast_downward_plugin( TODO fix option parsing
+#    NAME LANDMARKS
+#    HELP "Plugin containing the code to reason with landmarks"
+#    SOURCES
+#        landmarks/exploration
+#        landmarks/h_m_landmarks
+#        landmarks/lama_ff_synergy
+#        landmarks/landmark_cost_assignment
+#        landmarks/landmark_count_heuristic
+#        landmarks/landmark_status_manager
+#        landmarks/landmark_graph_merged
+#        landmarks/landmark_graph
+#        landmarks/landmark_factory
+#        landmarks/landmark_factory_rpg_exhaust
+#        landmarks/landmark_factory_rpg_sasp
+#        landmarks/landmark_factory_zhu_givan
+#        landmarks/util
+#    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
+#)
  
-fast_downward_plugin(
-    NAME PDBS
-    HELP "Plugin containing the code for PDBs"
-    SOURCES
-        pdbs/canonical_pdbs_heuristic
-        pdbs/dominance_pruner
-        pdbs/match_tree
-        pdbs/max_cliques
-        pdbs/pattern_generation_edelkamp
-        pdbs/pattern_generation_haslum
-        pdbs/pdb_heuristic
-        pdbs/util
-        pdbs/zero_one_pdbs_heuristic
-    DEPENDS CAUSAL_GRAPH PRIORITY_QUEUES SUCCESSOR_GENERATOR VARIABLE_ORDER_FINDER
-)
+#fast_downward_plugin( TODO fix option parsing
+#    NAME PDBS
+#    HELP "Plugin containing the code for PDBs"
+#    SOURCES
+#        pdbs/canonical_pdbs_heuristic
+#        pdbs/dominance_pruner
+#        pdbs/match_tree
+#        pdbs/max_cliques
+#        pdbs/pattern_generation_edelkamp
+#        pdbs/pattern_generation_haslum
+#        pdbs/pdb_heuristic
+#        pdbs/util
+#        pdbs/zero_one_pdbs_heuristic
+#    DEPENDS CAUSAL_GRAPH PRIORITY_QUEUES SUCCESSOR_GENERATOR VARIABLE_ORDER_FINDER
+#)
 
 fast_downward_plugin(
     NAME SCCS
