@@ -22,8 +22,8 @@ SearchEngine::SearchEngine(const Options &opts)
     : status(IN_PROGRESS),
       solution_found(false),
       cheapest_goal_state(StateID::no_state),
-      search_space(OperatorCost(opts.get_enum("cost_type"))),
-      cost_type(OperatorCost(opts.get_enum("cost_type"))),
+      search_space(opts.get<OperatorCost>("cost_type")),
+      cost_type(opts.get<OperatorCost>("cost_type")),
       max_time(opts.get<double>("max_time")) {
     if (opts.get<int>("bound") < 0) {
         cerr << "error: negative cost bound " << opts.get<int>("bound") << endl;
@@ -34,7 +34,7 @@ SearchEngine::SearchEngine(const Options &opts)
         CompliantPathGraph::set_cost_type(cost_type);
     }
     if (opts.contains("symmetry")) {
-        g_symmetry_graph = unique_ptr<symmetries::GraphCreator>(opts.get<symmetries::GraphCreator*>("symmetry"));
+        g_symmetry_graph = opts.get<shared_ptr<symmetries::GraphCreator>>("symmetry");
         if (g_factoring){
             ExplicitStateCPG::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
         }
@@ -172,5 +172,5 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
-    parser.add_option<symmetries::GraphCreator *>("symmetry", "use symmetries", "", OptionFlags(false));
+    parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry", "use symmetries", "");
 }

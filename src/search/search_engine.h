@@ -10,8 +10,11 @@
 class CompliantPathGraph;
 class Heuristic;
 class Operator;
+
+namespace options {
 class OptionParser;
 class Options;
+}
 
 enum SearchStatus {IN_PROGRESS, TIMEOUT, FAILED, SOLVED};
 
@@ -40,7 +43,7 @@ protected:
     int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:
-    SearchEngine(const Options &opts);
+    SearchEngine(const options::Options &opts);
     virtual ~SearchEngine() = default;
     virtual void statistics() const;
     virtual void heuristic_statistics() const {}
@@ -52,7 +55,7 @@ public:
     SearchProgress get_search_progress() const {return search_progress; }
     void set_bound(int b) {bound = b; }
     int get_bound() {return bound; }
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 };
 
 #endif

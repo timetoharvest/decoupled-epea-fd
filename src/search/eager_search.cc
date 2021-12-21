@@ -5,6 +5,9 @@
 #include "g_evaluator.h"
 #include "globals.h"
 #include "heuristic.h"
+#include "open_lists/alternation_open_list.h"
+#include "open_lists/standard_scalar_open_list.h"
+#include "open_lists/tiebreaking_open_list.h"
 #include "option_parser.h"
 #include "plugin.h"
 #include "pruning_method.h"
@@ -24,23 +27,21 @@ EagerSearch::EagerSearch(
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       do_pathmax(opts.get<bool>("pathmax")),
       use_multi_path_dependence(opts.get<bool>("mpd")),
-      open_list(opts.get<OpenList<StateID> *>("open")) {
+      open_list(opts.get<shared_ptr<OpenList<StateID>>>("open")) {
     if (opts.contains("f_eval")) {
-        f_evaluator = opts.get<ScalarEvaluator *>("f_eval");
+        f_evaluator = opts.get<shared_ptr<ScalarEvaluator>>("f_eval");
     } else {
         f_evaluator = 0;
     }
     if (opts.contains("pruning")){
-        pruning_method = unique_ptr<PruningMethod>(opts.get<PruningMethod*>("pruning"));
+        pruning_method = opts.get<shared_ptr<PruningMethod>>("pruning");
     }
     if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
-        pruning_heuristic = opts.get<Heuristic*>("pruning_heuristic");
-    } else {
-        pruning_heuristic = 0;
+        pruning_heuristic = opts.get<shared_ptr<Heuristic>>("pruning_heuristic");
     }
     if (opts.contains("preferred")) {
         preferred_operator_heuristics =
-            opts.get_list<Heuristic *>("preferred");
+            opts.get_list<shared_ptr<Heuristic>>("preferred");
     }
 }
 
@@ -56,12 +57,12 @@ void EagerSearch::initialize() {
         cout << "Using multi-path dependence (LM-A*)" << endl;
     assert(open_list != NULL);
 
-    set<Heuristic *> hset;
+    set<shared_ptr<Heuristic>> hset;
     open_list->get_involved_heuristics(hset);
 
-    for (set<Heuristic *>::iterator it = hset.begin(); it != hset.end(); ++it) {
-        estimate_heuristics.push_back(*it);
-        search_progress.add_heuristic(*it);
+    for (shared_ptr<Heuristic> h : hset) {
+        estimate_heuristics.push_back(h);
+        search_progress.add_heuristic(h);
     }
 
     // add heuristics that are used for preferred operators (in case they are
@@ -76,8 +77,8 @@ void EagerSearch::initialize() {
         f_evaluator->get_involved_heuristics(hset);
     }
 
-    for (set<Heuristic *>::iterator it = hset.begin(); it != hset.end(); ++it) {
-        heuristics.push_back(*it);
+    for (shared_ptr<Heuristic> h : hset) {
+        heuristics.push_back(h);
     }
 
     assert(!heuristics.empty());
@@ -150,8 +151,7 @@ SearchStatus EagerSearch::step() {
     }
 
     // This evaluates the expanded state (again) to get preferred ops
-    for (size_t i = 0; i < preferred_operator_heuristics.size(); ++i) {
-        Heuristic *h = preferred_operator_heuristics[i];
+    for (shared_ptr<Heuristic> h : preferred_operator_heuristics) {
         h->evaluate(s);
         if (!h->is_dead_end()) {
             // In an alternation search with unreliable heuristics, it is
@@ -449,41 +449,39 @@ void EagerSearch::print_heuristic_values(const vector<int> &values) const {
     }
 }
 
-static SearchEngine *_parse(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     //open lists are currently registered with the parser on demand,
     //because for templated classes the usual method of registering
     //does not work:
-    Plugin<OpenList<StateID> >::register_open_lists();
+//    Plugin<OpenList<StateID> >::register_open_lists(); TODO fix this
 
     parser.document_synopsis("Eager best first search", "");
 
-    parser.add_option<OpenList<StateID> *>("open", "open list");
+    parser.add_option<shared_ptr<OpenList<StateID>>>("open", "open list");
     parser.add_option<bool>("reopen_closed",
                             "reopen closed nodes", "false");
     parser.add_option<bool>("pathmax",
                             "use pathmax correction", "false");
-    parser.add_option<ScalarEvaluator *>(
+    parser.add_option<shared_ptr<ScalarEvaluator>>(
         "f_eval",
         "set evaluator for jump statistics. "
         "(Optional; if no evaluator is used, jump statistics will not be displayed.)",
-        "",
-        OptionFlags(false));
-    parser.add_list_option<Heuristic *>
+        "");
+    parser.add_list_option<shared_ptr<Heuristic>>
         ("preferred",
         "use preferred operators of these heuristics", "[]");
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    EagerSearch *engine = 0;
     if (!parser.dry_run()) {
         opts.set<bool>("mpd", false);
-        engine = new EagerSearch(opts);
+        return make_shared<EagerSearch>(opts);
     }
 
-    return engine;
+    return 0;
 }
 
-static SearchEngine *_parse_astar(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse_astar(OptionParser &parser) {
     parser.document_synopsis(
         "A* search (eager)",
         "A* is a special case of eager best first search that uses g+h "
@@ -503,45 +501,41 @@ static SearchEngine *_parse_astar(OptionParser &parser) {
         "--search eager(tiebreaking([sum([g(), h]), h], unsafe_pruning=false),\n"
         "               reopen_closed=true, pathmax=false, progress_evaluator=sum([g(), h]))\n"
         "```\n", true);
-    parser.add_option<ScalarEvaluator *>("eval", "evaluator for h-value");
-    parser.add_option<Heuristic*>("pruning_heuristic", "heuristic for upper-bound pruning in anytime decoupled search", "", OptionFlags(false));
+    parser.add_option<shared_ptr<ScalarEvaluator>>("eval", "evaluator for h-value");
+    parser.add_option<shared_ptr<Heuristic>>("pruning_heuristic", "heuristic for upper-bound pruning in anytime decoupled search", "");
     parser.add_option<bool>("pathmax",
                             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
                             "use multi-path dependence (LM-A*)", "false");
-    parser.add_option<PruningMethod*>("pruning", 
+    parser.add_option<shared_ptr<PruningMethod>>("pruning",
                                       "pruning method",
-                                      "",
-                                      OptionFlags(false));
+                                      "");
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    EagerSearch *engine = 0;
     if (!parser.dry_run()) {
-        GEvaluator *g = new GEvaluator();
-        vector<ScalarEvaluator *> sum_evals;
-        sum_evals.push_back(g);
-        ScalarEvaluator *eval = opts.get<ScalarEvaluator *>("eval");
+        vector<shared_ptr<ScalarEvaluator>> sum_evals;
+        sum_evals.push_back(make_shared<GEvaluator>());
+        shared_ptr<ScalarEvaluator> eval = opts.get<shared_ptr<ScalarEvaluator>>("eval");
         sum_evals.push_back(eval);
-        ScalarEvaluator *f_eval = new SumEvaluator(sum_evals);
+        shared_ptr<ScalarEvaluator> f_eval = make_shared<SumEvaluator>(sum_evals);
 
         // use eval for tiebreaking
-        std::vector<ScalarEvaluator *> evals;
+        std::vector<shared_ptr<ScalarEvaluator>> evals;
         evals.push_back(f_eval);
         evals.push_back(eval);
-        OpenList<StateID> *open = \
-            new TieBreakingOpenList<StateID>(evals, false, false);
+        shared_ptr<OpenList<StateID>> open = make_shared<TieBreakingOpenList<StateID>>(evals, false, false);
 
         opts.set("open", open);
         opts.set("f_eval", f_eval);
         opts.set("reopen_closed", true);
-        engine = new EagerSearch(opts);
+        return make_shared<EagerSearch>(opts);
     }
 
-    return engine;
+    return 0;
 }
 
-static SearchEngine *_parse_greedy(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
     parser.document_synopsis("Greedy search (eager)", "");
     parser.document_note(
         "Open list",
@@ -581,8 +575,8 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
         "is equivalent to\n"
         "```\n--search eager(single(eval1))\n```\n", true);
 
-    parser.add_list_option<ScalarEvaluator *>("evals", "scalar evaluators");
-    parser.add_list_option<Heuristic *>(
+    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Heuristic>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<int>(
@@ -592,28 +586,27 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
 
 
     Options opts = parser.parse();
-    opts.verify_list_non_empty<ScalarEvaluator *>("evals");
+    opts.verify_list_non_empty<shared_ptr<ScalarEvaluator>>("evals");
 
-    EagerSearch *engine = 0;
     if (!parser.dry_run()) {
-        vector<ScalarEvaluator *> evals =
-            opts.get_list<ScalarEvaluator *>("evals");
-        vector<Heuristic *> preferred_list =
-            opts.get_list<Heuristic *>("preferred");
-        OpenList<StateID> *open;
+        vector<shared_ptr<ScalarEvaluator>> evals =
+            opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
+        vector<shared_ptr<Heuristic>> preferred_list =
+            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        shared_ptr<OpenList<StateID>> open;
         if ((evals.size() == 1) && preferred_list.empty()) {
-            open = new StandardScalarOpenList<StateID>(evals[0], false);
+            open = make_shared<StandardScalarOpenList<StateID>>(evals[0], false);
         } else {
-            vector<OpenList<StateID> *> inner_lists;
+            vector<shared_ptr<OpenList<StateID>>> inner_lists;
             for (size_t i = 0; i < evals.size(); ++i) {
                 inner_lists.push_back(
-                    new StandardScalarOpenList<StateID>(evals[i], false));
+                        make_shared<StandardScalarOpenList<StateID>>(evals[i], false));
                 if (!preferred_list.empty()) {
                     inner_lists.push_back(
-                        new StandardScalarOpenList<StateID>(evals[i], true));
+                            make_shared<StandardScalarOpenList<StateID>>(evals[i], true));
                 }
             }
-            open = new AlternationOpenList<StateID>(
+            open = make_shared<AlternationOpenList<StateID>>(
                 inner_lists, opts.get<int>("boost"));
         }
 
@@ -621,12 +614,12 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
         opts.set("reopen_closed", false);
         opts.set("pathmax", false);
         opts.set("mpd", false);
-        ScalarEvaluator *sep = 0;
+        shared_ptr<ScalarEvaluator> sep;
         opts.set("f_eval", sep);
         opts.set("preferred", preferred_list);
-        engine = new EagerSearch(opts);
+        return make_shared<EagerSearch>(opts);
     }
-    return engine;
+    return 0;
 }
 
 static Plugin<SearchEngine> _plugin("eager", _parse);

@@ -3,7 +3,10 @@
 #include "factoring.h"
 #include "g_evaluator.h"
 #include "heuristic.h"
+#include "option_parser.h"
 #include "plugin.h"
+#include "open_lists/alternation_open_list.h"
+#include "open_lists/standard_scalar_open_list.h"
 #include "task_utils/successor_generator.h"
 #include "sum_evaluator.h"
 #include "compliant_paths/pruning_options.h"
@@ -12,11 +15,13 @@
 #include <algorithm>
 #include <limits>
 
+using namespace std;
+
 static const int DEFAULT_LAZY_BOOST = 1000;
 
 LazySearch::LazySearch(const Options &opts)
     : SearchEngine(opts),
-      open_list(opts.get<OpenList<OpenListEntryLazy> *>("open")),
+      open_list(opts.get<shared_ptr<OpenList<OpenListEntryLazy>>>("open")),
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       randomize_successors(opts.get<bool>("randomize_successors")),
       preferred_successors_first(opts.get<bool>("preferred_successors_first")),
@@ -27,16 +32,8 @@ LazySearch::LazySearch(const Options &opts)
       current_real_g(0) {
 }
 
-LazySearch::~LazySearch() {
-    delete open_list;
-    
-    for (auto heuristic : heuristics){
-        delete heuristic;
-    } 
-}
-
 void LazySearch::set_pref_operator_heuristics(
-    vector<Heuristic *> &heur) {
+    vector<shared_ptr<Heuristic>> &heur) {
     preferred_operator_heuristics = heur;
 }
 
@@ -45,12 +42,12 @@ void LazySearch::initialize() {
     cout << "Conducting lazy best first search, (real) bound = " << bound << endl;
 
     assert(open_list != NULL);
-    set<Heuristic *> hset;
+    set<shared_ptr<Heuristic>> hset;
     open_list->get_involved_heuristics(hset);
 
-    for (set<Heuristic *>::iterator it = hset.begin(); it != hset.end(); ++it) {
-        estimate_heuristics.push_back(*it);
-        search_progress.add_heuristic(*it);
+    for (shared_ptr<Heuristic> h : hset) {
+        estimate_heuristics.push_back(h);
+        search_progress.add_heuristic(h);
     }
 
     // add heuristics that are used for preferred operators (in case they are
@@ -58,8 +55,8 @@ void LazySearch::initialize() {
     hset.insert(preferred_operator_heuristics.begin(),
                 preferred_operator_heuristics.end());
 
-    for (set<Heuristic *>::iterator it = hset.begin(); it != hset.end(); ++it) {
-        heuristics.push_back(*it);
+    for (shared_ptr<Heuristic> h : hset) {
+        heuristics.push_back(h);
     }
     assert(!heuristics.empty());
 }
@@ -72,10 +69,9 @@ void LazySearch::get_successor_operators(vector<OperatorID> &ops) {
     g_successor_generator->generate_applicable_ops(
         current_state, all_operators);
 
-    for (size_t i = 0; i < preferred_operator_heuristics.size(); ++i) {
-        Heuristic *heur = preferred_operator_heuristics[i];
-        if (!heur->is_dead_end())
-            heur->get_preferred_operators(preferred_operators);
+    for (shared_ptr<Heuristic> h : preferred_operator_heuristics) {
+        if (!h->is_dead_end())
+            h->get_preferred_operators(preferred_operators);
     }
 
     if (randomize_successors) {
@@ -236,32 +232,32 @@ static void _add_succ_order_options(OptionParser &parser) {
         "preferred operators are moved to the front.");
 }
 
-static SearchEngine *_parse(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     parser.document_synopsis("Lazy best first search", "");
-    Plugin<OpenList<OpenListEntryLazy > >::register_open_lists();
-    parser.add_option<OpenList<OpenListEntryLazy> *>("open", "open list");
+//    Plugin<OpenList<OpenListEntryLazy > >::register_open_lists(); // TODO fix this
+    parser.add_option<shared_ptr<OpenList<OpenListEntryLazy>>>("open", "open list");
     parser.add_option<bool>("reopen_closed",
                             "reopen closed nodes", "false");
-    parser.add_list_option<Heuristic *>(
+    parser.add_list_option<shared_ptr<Heuristic>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     _add_succ_order_options(parser);
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    LazySearch *engine = 0;
     if (!parser.dry_run()) {
-        engine = new LazySearch(opts);
-        vector<Heuristic *> preferred_list =
-            opts.get_list<Heuristic *>("preferred");
+        shared_ptr<LazySearch> engine = make_shared<LazySearch>(opts);
+        vector<shared_ptr<Heuristic>> preferred_list =
+            opts.get_list<shared_ptr<Heuristic>>("preferred");
         engine->set_pref_operator_heuristics(preferred_list);
+        return engine;
     }
 
-    return engine;
+    return 0;
 }
 
 
-static SearchEngine *_parse_greedy(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
     parser.document_synopsis("Greedy search (lazy)", "");
     parser.document_note(
         "Open lists",
@@ -298,8 +294,8 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
         "```\n--search lazy(single(eval1))\n```\n",
         true);
 
-    parser.add_list_option<ScalarEvaluator *>("evals", "scalar evaluators");
-    parser.add_list_option<Heuristic *>(
+    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Heuristic>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<bool>("reopen_closed",
@@ -308,44 +304,44 @@ static SearchEngine *_parse_greedy(OptionParser &parser) {
         "boost",
         "boost value for alternation queues that are restricted "
         "to preferred operator nodes",
-        OptionParser::to_str(DEFAULT_LAZY_BOOST));
+        to_string(DEFAULT_LAZY_BOOST));
     _add_succ_order_options(parser);
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    LazySearch *engine = 0;
     if (!parser.dry_run()) {
-        vector<ScalarEvaluator *> evals =
-            opts.get_list<ScalarEvaluator *>("evals");
-        vector<Heuristic *> preferred_list =
-            opts.get_list<Heuristic *>("preferred");
-        OpenList<OpenListEntryLazy> *open;
+        vector<shared_ptr<ScalarEvaluator>> evals =
+            opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
+        vector<shared_ptr<Heuristic>> preferred_list =
+            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        shared_ptr<OpenList<OpenListEntryLazy>> open;
         if ((evals.size() == 1) && preferred_list.empty()) {
-            open = new StandardScalarOpenList<OpenListEntryLazy>(evals[0],
+            open = make_shared<StandardScalarOpenList<OpenListEntryLazy>>(evals[0],
                                                                  false);
         } else {
-            vector<OpenList<OpenListEntryLazy> *> inner_lists;
+            vector<shared_ptr<OpenList<OpenListEntryLazy>>> inner_lists;
             for (size_t i = 0; i < evals.size(); ++i) {
                 inner_lists.push_back(
-                    new StandardScalarOpenList<OpenListEntryLazy>(evals[i],
+                        make_shared<StandardScalarOpenList<OpenListEntryLazy>>(evals[i],
                                                                   false));
                 if (!preferred_list.empty()) {
                     inner_lists.push_back(
-                        new StandardScalarOpenList<OpenListEntryLazy>(evals[i],
+                            make_shared<StandardScalarOpenList<OpenListEntryLazy>>(evals[i],
                                                                       true));
                 }
             }
-            open = new AlternationOpenList<OpenListEntryLazy>(
+            open = make_shared<AlternationOpenList<OpenListEntryLazy>>(
                 inner_lists, opts.get<int>("boost"));
         }
         opts.set("open", open);
-        engine = new LazySearch(opts);
+        shared_ptr<LazySearch> engine = make_shared<LazySearch>(opts);
         engine->set_pref_operator_heuristics(preferred_list);
+        return engine;
     }
-    return engine;
+    return 0;
 }
 
-static SearchEngine *_parse_weighted_astar(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse_weighted_astar(OptionParser &parser) {
     parser.document_synopsis(
         "(Weighted) A* search (lazy)",
         "Weighted A* is a special case of lazy best first search.");
@@ -391,64 +387,64 @@ static SearchEngine *_parse_weighted_astar(OptionParser &parser) {
         "```\n--search lazy(single(sum([g(), weight(eval1, 2)])), reopen_closed=true)\n```\n",
         true);
 
-    parser.add_list_option<ScalarEvaluator *>("evals", "scalar evaluators");
-    parser.add_list_option<Heuristic *>(
+    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Heuristic>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<bool>("reopen_closed", "reopen closed nodes", "true");
     parser.add_option<int>("boost",
                            "boost value for preferred operator open lists",
-                           OptionParser::to_str(DEFAULT_LAZY_BOOST));
+                           to_string(DEFAULT_LAZY_BOOST));
     parser.add_option<int>("w", "heuristic weight", "1");
     _add_succ_order_options(parser);
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.verify_list_non_empty<ScalarEvaluator *>("evals");
+    opts.verify_list_non_empty<shared_ptr<ScalarEvaluator>>("evals");
 
-    LazySearch *engine = 0;
     if (!parser.dry_run()) {
-        vector<ScalarEvaluator *> evals = opts.get_list<ScalarEvaluator *>("evals");
-        vector<Heuristic *> preferred_list =
-            opts.get_list<Heuristic *>("preferred");
-        vector<OpenList<OpenListEntryLazy> *> inner_lists;
+        vector<shared_ptr<ScalarEvaluator>> evals = opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
+        vector<shared_ptr<Heuristic>> preferred_list =
+            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        vector<shared_ptr<OpenList<OpenListEntryLazy>>> inner_lists;
         for (size_t i = 0; i < evals.size(); ++i) {
-            GEvaluator *g = new GEvaluator();
-            vector<ScalarEvaluator *> sum_evals;
+            shared_ptr<GEvaluator> g = make_shared<GEvaluator>();
+            vector<shared_ptr<ScalarEvaluator>> sum_evals;
             sum_evals.push_back(g);
             if (opts.get<int>("w") == 1) {
                 sum_evals.push_back(evals[i]);
             } else {
-                WeightedEvaluator *w = new WeightedEvaluator(
+                shared_ptr<WeightedEvaluator> w = make_shared<WeightedEvaluator>(
                     evals[i],
                     opts.get<int>("w"));
                 sum_evals.push_back(w);
             }
-            SumEvaluator *f_eval = new SumEvaluator(sum_evals);
+            shared_ptr<SumEvaluator> f_eval = make_shared<SumEvaluator>(sum_evals);
 
             inner_lists.push_back(
-                new StandardScalarOpenList<OpenListEntryLazy>(f_eval, false));
+                make_shared<StandardScalarOpenList<OpenListEntryLazy>>(f_eval, false));
 
             if (!preferred_list.empty()) {
                 inner_lists.push_back(
-                    new StandardScalarOpenList<OpenListEntryLazy>(f_eval,
+                    make_shared<StandardScalarOpenList<OpenListEntryLazy>>(f_eval,
                                                                   true));
             }
         }
-        OpenList<OpenListEntryLazy> *open;
+        shared_ptr<OpenList<OpenListEntryLazy>> open;
         if (inner_lists.size() == 1) {
             open = inner_lists[0];
         } else {
-            open = new AlternationOpenList<OpenListEntryLazy>(
+            open = make_shared<AlternationOpenList<OpenListEntryLazy>>(
                 inner_lists, opts.get<int>("boost"));
         }
 
         opts.set("open", open);
 
-        engine = new LazySearch(opts);
+        shared_ptr<LazySearch> engine = make_shared<LazySearch>(opts);
         engine->set_pref_operator_heuristics(preferred_list);
+        return engine;
     }
-    return engine;
+    return 0;
 }
 
 static Plugin<SearchEngine> _plugin("lazy", _parse);
