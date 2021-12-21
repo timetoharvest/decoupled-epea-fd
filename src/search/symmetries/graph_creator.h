@@ -50,7 +50,7 @@ class GraphCreator  {
 
 public:
 
-    GraphCreator(const Options &opts);
+    GraphCreator(const options::Options &opts);
 
     ~GraphCreator() = default;
 
@@ -85,7 +85,7 @@ public:
     }
 
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 
 };
 

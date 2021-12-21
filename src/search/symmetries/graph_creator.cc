@@ -229,7 +229,7 @@ GraphCreator::create_permutation_from_state_to_state(const State &state,
 void GraphCreator::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int>("stop_after_false_generated",
                            "Stopping after the Bliss software generated too many false generators",
-                           OptionParser::to_str(numeric_limits<int>::max()));
+                           to_string(numeric_limits<int>::max()));
     parser.add_option<int>("time_bound",
                            "Stopping after the Bliss software reached the time bound",
                            "0");
@@ -238,7 +238,7 @@ void GraphCreator::add_options_to_parser(OptionParser &parser) {
                            "0");
 }
 
-static GraphCreator *_parse(OptionParser &parser) {
+static shared_ptr<GraphCreator> _parse(OptionParser &parser) {
     GraphCreator::add_options_to_parser(parser);
     LexicographicOrdering::add_options_to_parser(parser);
 
@@ -246,7 +246,7 @@ static GraphCreator *_parse(OptionParser &parser) {
 
     if (!parser.dry_run()) {
         cout << "Creating symmetry graph stabilizing goal only and using orbit search." << endl;
-        return new GraphCreator(opts);
+        return make_shared<GraphCreator>(opts);
     } else {
         return 0;
     }
