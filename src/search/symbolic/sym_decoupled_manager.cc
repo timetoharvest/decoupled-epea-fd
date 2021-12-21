@@ -569,6 +569,15 @@ SymDecoupledManager<T>::SymDecoupledManager(const SymDecoupledManagerOptions &op
 
 #endif
 
+SymDecoupledManagerOptions::SymDecoupledManagerOptions() :
+        cudd_init_nodes(16000000L),
+        cudd_init_cache_size(16000000L),
+        cudd_init_available_memory(0L),
+        gamer_ordering(true),
+        use_cache_updates(true),
+        use_cache_heuristic(true) {
+}
+
 SymDecoupledManagerOptions::SymDecoupledManagerOptions(const Options &opts) :
 #ifdef USE_CUDD
         mgrParams(opts), searchParams(opts),
@@ -579,19 +588,6 @@ SymDecoupledManagerOptions::SymDecoupledManagerOptions(const Options &opts) :
 	    gamer_ordering(opts.get<bool>("gamer_ordering")),
 	    use_cache_updates(opts.get<bool> ("use_cache_updates") || opts.get<bool> ("use_cache")),
 	    use_cache_heuristic(opts.get<bool> ("use_cache_heuristic") || opts.get<bool> ("use_cache")) {
-}
-
-SymDecoupledManagerOptions*  SymDecoupledManagerOptions::get_default_options() {
-    OptionParser parser("cudd_decoupled_manager", false);
-#ifdef USE_CUDD
-    SymController::add_options_to_parser(parser, 1800e3, 1e7);
-#else
-        cerr << "Need to compile FD with Cudd support to use symbolic search classes." << endl;
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-#endif
-    add_options_to_parser(parser);
-
-    return new SymDecoupledManagerOptions(parser.parse());
 }
 
 void SymDecoupledManagerOptions::add_options_to_parser(OptionParser &parser) {
@@ -608,7 +604,7 @@ void SymDecoupledManagerOptions::add_options_to_parser(OptionParser &parser) {
             "false");
 }
 
-static SymDecoupledManagerOptions  *_parse(OptionParser &parser) {
+static shared_ptr<SymDecoupledManagerOptions> _parse(OptionParser &parser) {
 #ifdef USE_CUDD
     SymController::add_options_to_parser(parser, 1800e3, 1e7);
 #else
@@ -620,18 +616,17 @@ static SymDecoupledManagerOptions  *_parse(OptionParser &parser) {
 
     Options opts = parser.parse();
 
-    SymDecoupledManagerOptions * res = 0;
     if (!parser.dry_run()) {
-        res = new SymDecoupledManagerOptions(opts);
+        return make_shared<SymDecoupledManagerOptions>(opts);
     }
 
-    return res;
+    return 0;
 }
 
 static Plugin<SymDecoupledManagerOptions> _plugin("cudd_decoupled_manager", _parse);
 
-template class SymDecoupledManager< SymPricingFunction >;
-template class SymDecoupledManager< SymPricingFunctionSAT >;
-template class SymDecoupledManager< SymPricingFunctionDebug >;
+template class SymDecoupledManager<SymPricingFunction>;
+template class SymDecoupledManager<SymPricingFunctionSAT>;
+template class SymDecoupledManager<SymPricingFunctionDebug>;
 
 }

@@ -286,7 +286,7 @@ void SymStateSpaceManager::init_transitions(const map<int, vector <TransitionRel
 SymParamsMgr::SymParamsMgr(const Options &opts) :
             max_tr_size(opts.get<int>("max_tr_size")),
             max_tr_time(opts.get<int>("max_tr_time")),
-            mutex_type(MutexType(opts.get_enum("mutex_type"))),
+            mutex_type(opts.get<MutexType>("mutex_type")),
             max_mutex_size(opts.get<int>("max_mutex_size")),
             max_mutex_time(opts.get<int>("max_mutex_time")),
             max_aux_nodes(opts.get<int>("max_aux_nodes")),
@@ -324,7 +324,7 @@ void SymParamsMgr::add_options_to_parser(OptionParser &parser) {
     parser.add_option<int> ("max_tr_time",
             "maximum time (ms) to generate TR BDDs", "60000");
 
-    parser.add_enum_option("mutex_type", MutexTypeValues,
+    parser.add_enum_option<MutexType>("mutex_type", MutexTypeValues,
             "mutex type", "MUTEX_EDELETION");
 
     parser.add_option<int> ("max_mutex_size",

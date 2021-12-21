@@ -31,9 +31,9 @@ SymVariables::SymVariables(const SymDecoupledManagerOptions &opts) :
 }
 
 SymVariables::SymVariables(const Options &opts) :
-                    cudd_init_nodes(opts.get<long>("cudd_init_nodes")),
-                    cudd_init_cache_size(opts.get<long>("cudd_init_cache_size")),
-                    cudd_init_available_memory(opts.get<long>("cudd_init_available_memory")),
+                    cudd_init_nodes(opts.get<int>("cudd_init_nodes")),
+                    cudd_init_cache_size(opts.get<int>("cudd_init_cache_size")),
+                    cudd_init_available_memory(opts.get<int>("cudd_init_available_memory")),
                     gamer_ordering(opts.get<bool>("gamer_ordering")) {
 }
 
@@ -428,14 +428,14 @@ void SymVariables::add_options_to_parser(OptionParser &parser) {
     //                     "variable ordering for the symbolic manager", "REVERSE_LEVEL");
 
 
-    parser.add_option<long> ("cudd_init_nodes", "Initial number of nodes in the cudd manager.",
-            "16000000L");
+    parser.add_option<int> ("cudd_init_nodes", "Initial number of nodes in the cudd manager.",
+            "16000000");
 
-    parser.add_option<long> ("cudd_init_cache_size",
-            "Initial number of cache entries in the cudd manager.", "16000000L");
+    parser.add_option<int> ("cudd_init_cache_size",
+            "Initial number of cache entries in the cudd manager.", "16000000");
 
-    parser.add_option<long> ("cudd_init_available_memory",
-            "Total available memory for the cudd manager.", "0L");
+    parser.add_option<int> ("cudd_init_available_memory",
+            "Total available memory for the cudd manager.", "0");
     parser.add_option<bool> ("gamer_ordering", "Use Gamer ordering optimization", "true");
 }
 

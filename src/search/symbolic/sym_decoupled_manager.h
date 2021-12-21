@@ -9,8 +9,9 @@
 #include <functional>
 #include <unordered_map>
 
-
+namespace options {
 class Options;
+}
 
 namespace symbolic {
 
@@ -215,11 +216,10 @@ public:
     const bool use_cache_updates;
     const bool use_cache_heuristic;
 
+    SymDecoupledManagerOptions();
     SymDecoupledManagerOptions(const Options &opts);
 
     static void add_options_to_parser(OptionParser &parser);
-
-    static SymDecoupledManagerOptions* get_default_options();
 };
 
 #ifdef __GNUG__

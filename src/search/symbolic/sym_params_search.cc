@@ -6,6 +6,30 @@
 using namespace std;
 
 namespace symbolic {
+SymParamsSearch::SymParamsSearch() :
+    max_disj_nodes(numeric_limits<int>::max()),
+    min_estimation_time(1000),
+    penalty_time_estimation_sum(1000),
+    penalty_time_estimation_mult(2),
+    penalty_nodes_estimation_sum(1000),
+    penalty_nodes_estimation_mult(2),
+    maxStepTime(1800e3),
+    maxStepNodes(1e7),
+    maxStepNodesPerPlanningSecond(100),
+    maxStepNodesMin(10000),
+    maxStepNodesTimeStartIncrement(-1),
+    ratioUseful(0.0),
+    minAllotedTime(60e3),
+    minAllotedNodes(10e6),
+    maxAllotedTime(60e3),
+    maxAllotedNodes(15e6),
+    ratioAllotedTime(2.0),
+    ratioAllotedNodes(2.0),
+    ratioAfterRelax(0.8),
+    non_stop(false),
+    debug(false) {
+}
+
 SymParamsSearch::SymParamsSearch(const Options &opts) :
     max_disj_nodes(opts.get<int>("max_disj_nodes")),
     min_estimation_time(opts.get<double>("min_estimation_time")),
