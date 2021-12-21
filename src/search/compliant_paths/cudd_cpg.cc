@@ -54,8 +54,8 @@ unique_ptr<CompliantPathGraph> CuddCPG<T>::get_init_state_cpg() {
 }
 
 template<class T>
-void CuddCPG<T>::set_sym_manager(symbolic::SymDecoupledManagerOptions *options) {
-    sym_manager.reset(new SymDecoupledManager<T>(*options));
+void CuddCPG<T>::set_sym_manager(const symbolic::SymDecoupledManagerOptions &options) {
+    sym_manager.reset(new SymDecoupledManager<T>(options));
 }
 
 template<class T>
@@ -63,7 +63,7 @@ void CuddCPG<T>::initialize() {
     if (!initialized){
         if (!sym_manager){
             // no options specified via command line => take default options
-            set_sym_manager(SymDecoupledManagerOptions::get_default_options());
+            set_sym_manager(SymDecoupledManagerOptions());
         }
         sym_manager->initialize(cost_type);
         initialized = true;

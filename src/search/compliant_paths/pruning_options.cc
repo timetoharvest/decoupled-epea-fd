@@ -3,6 +3,7 @@
 #include "compliant_path_graph.h"
 #include "explicit_state_cpg.h"
 #include "../factoring.h"
+#include "../option_parser.h"
 #include "../plugin.h"
 #include "simulation_relation.h"
 
@@ -15,14 +16,14 @@ bool PruningOptions::ignore_current_search_state = false;
 
 
 PruningOptions::PruningOptions(const Options &opts)
-                    : pruning_type(PRUNING_TYPE(opts.get_enum("pruning_type"))),
+                    : pruning_type(opts.get<PRUNING_TYPE>("pruning_type")),
                       hypercube_pruning(opts.get<bool>("hypercube_pruning")),
                       min_price_in_g(opts.get<bool>("include_price_in_g")),
                       g_in_dominance(opts.get<bool>("include_g_in_dominance")),
                       prices_in_dominance(opts.get<bool>("trade_prices_in_dominance")),
                       transitivity(opts.get<bool>("use_transitivity")),
                       exploit_leaf_invertibility(opts.get<bool>("exploit_leaf_invertibility")),
-                      irrelevance(IRRELEVANCE(opts.get_enum("irrelevance"))),
+                      irrelevance(opts.get<IRRELEVANCE>("irrelevance")),
                       do_simulation(opts.get<bool>("simulation")),
                       goal_price_propagation(opts.get<bool>("goal_price_propagation")) {
 
@@ -205,51 +206,48 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
                             "perform simulation dominance pruning", "false");
 
     vector<string> irr_options({"NO", "STATES", "TRANSITIONS"});
-    parser.add_enum_option("irrelevance",
+    parser.add_enum_option<IRRELEVANCE>("irrelevance",
                            irr_options,
                            "perform simulation irrelevance pruning", "NO");
 }
 
-PruningOptions *PruningOptions::_parse_dominance(OptionParser &parser) {
+shared_ptr<PruningOptions> PruningOptions::_parse_dominance(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
     opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DOMINANCE);
 
-    PruningOptions *pruning = 0;
     if (!parser.dry_run()) {
-        pruning = new PruningOptions(opts);
+        return make_shared<PruningOptions>(opts);
     }
 
-    return pruning;
+    return 0;
 }
 
-PruningOptions *PruningOptions::_parse_duplicate(OptionParser &parser) {
+shared_ptr<PruningOptions> PruningOptions::_parse_duplicate(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
 
     opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DUPLICATE);
 
-    PruningOptions *pruning = 0;
     if (!parser.dry_run()) {
-        pruning = new PruningOptions(opts);
+        return make_shared<PruningOptions>(opts);
     }
 
-    return pruning;
+    return 0;
 }
 
-PruningOptions *PruningOptions::_parse_frontier(OptionParser &parser) {
+shared_ptr<PruningOptions> PruningOptions::_parse_frontier(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
     opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::FRONTIER);
 
-    PruningOptions *pruning = 0;
     if (!parser.dry_run()) {
-        pruning = new PruningOptions(opts);
+        return make_shared<PruningOptions>(opts);
     }
 
-    return pruning;
+    return 0;
 }
 
 static Plugin<PruningOptions> _plugin_dominance("dominance", PruningOptions::_parse_dominance);

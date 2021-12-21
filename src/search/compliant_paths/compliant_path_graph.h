@@ -62,7 +62,7 @@ protected:
     
     static OperatorCost cost_type;
     
-    static std::unique_ptr<PruningOptions> pruning;
+    static std::shared_ptr<PruningOptions> pruning;
 
     // contains the locally minimal goal cost per factor
     static std::vector<int> min_leaf_goal_cost;
@@ -126,8 +126,8 @@ public:
         return min_leaf_action_cost[factor];
     }
 
-    static void set_pruning_options(PruningOptions *p) {
-        pruning.reset(p);
+    static void set_pruning_options(std::shared_ptr<PruningOptions> p) {
+        pruning = p;
     }
     
     static const PruningOptions& get_pruning_options() {

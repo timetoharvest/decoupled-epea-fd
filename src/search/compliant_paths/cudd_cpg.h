@@ -33,7 +33,7 @@ class CuddCPG : public SymbolicStateCPG {
 
     static void initialize();
 
-    static void set_sym_manager(symbolic::SymDecoupledManagerOptions *options);
+    static void set_sym_manager(const symbolic::SymDecoupledManagerOptions &options);
 
     static void set_min_leaf_goal_cost(LeafFactorID factor, int cost);
 

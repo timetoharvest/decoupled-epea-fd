@@ -18,7 +18,7 @@ using namespace std;
 
 bool CompliantPathGraph::initialized = false;
 
-unique_ptr<PruningOptions> CompliantPathGraph::pruning;
+shared_ptr<PruningOptions> CompliantPathGraph::pruning;
 
 vector<int> CompliantPathGraph::min_leaf_goal_cost;
 

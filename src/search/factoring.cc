@@ -127,11 +127,11 @@ Factoring::Factoring(const Options &opts) :
     }
 #endif
     if (leaf_type == LEAF_REPRESENTATION_TYPE::SYMBOLIC && opts.contains("cudd_options")){
-        const auto sym_opts = opts.get<symbolic::SymDecoupledManagerOptions*>("cudd_options");
+        const auto sym_opts = opts.get<shared_ptr<symbolic::SymDecoupledManagerOptions>>("cudd_options");
         if (search_type == SAT || search_type == UNSAT){
-            CuddCPG<symbolic::SymPricingFunctionSAT>::set_sym_manager(sym_opts);
+            CuddCPG<symbolic::SymPricingFunctionSAT>::set_sym_manager(*sym_opts);
         } else {
-            CuddCPG<symbolic::SymPricingFunction>::set_sym_manager(sym_opts);
+            CuddCPG<symbolic::SymPricingFunction>::set_sym_manager(*sym_opts);
         }
     }
     min_number_leaves = opts.get<int>("min_num_leaves");;
