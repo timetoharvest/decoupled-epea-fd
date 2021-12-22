@@ -6,6 +6,7 @@
 #include "option_parser.h"
 #include "plugin.h"
 #include "open_lists/alternation_open_list.h"
+#include "open_lists/open_list_plugins.h"
 #include "open_lists/standard_scalar_open_list.h"
 #include "task_utils/successor_generator.h"
 #include "sum_evaluator.h"
@@ -42,20 +43,21 @@ void LazySearch::initialize() {
     cout << "Conducting lazy best first search, (real) bound = " << bound << endl;
 
     assert(open_list != NULL);
-    set<shared_ptr<Heuristic>> hset;
+    set<Heuristic*> hset;
     open_list->get_involved_heuristics(hset);
 
-    for (shared_ptr<Heuristic> h : hset) {
+    for (Heuristic *h : hset) {
         estimate_heuristics.push_back(h);
         search_progress.add_heuristic(h);
     }
 
     // add heuristics that are used for preferred operators (in case they are
     // not also used in the open list)
-    hset.insert(preferred_operator_heuristics.begin(),
-                preferred_operator_heuristics.end());
+    for (auto h : preferred_operator_heuristics){
+        hset.insert(h.get());
+    }
 
-    for (shared_ptr<Heuristic> h : hset) {
+    for (Heuristic *h : hset) {
         heuristics.push_back(h);
     }
     assert(!heuristics.empty());
@@ -234,7 +236,7 @@ static void _add_succ_order_options(OptionParser &parser) {
 
 static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     parser.document_synopsis("Lazy best first search", "");
-//    Plugin<OpenList<OpenListEntryLazy > >::register_open_lists(); // TODO fix this
+
     parser.add_option<shared_ptr<OpenList<OpenListEntryLazy>>>("open", "open list");
     parser.add_option<bool>("reopen_closed",
                             "reopen closed nodes", "false");

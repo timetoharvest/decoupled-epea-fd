@@ -452,10 +452,6 @@ void EagerSearch::print_heuristic_values(const vector<int> &values) const {
 }
 
 static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
-    //open lists are currently registered with the parser on demand,
-    //because for templated classes the usual method of registering
-    //does not work:
-
     parser.document_synopsis("Eager best first search", "");
 
     parser.add_option<shared_ptr<OpenList<StateID>>>("open", "open list");

@@ -29,9 +29,9 @@ protected:
     bool randomize_successors;
     bool preferred_successors_first;
 
-    std::vector<std::shared_ptr<Heuristic>> heuristics;
+    std::vector<Heuristic*> heuristics;
     std::vector<std::shared_ptr<Heuristic>> preferred_operator_heuristics;
-    std::vector<std::shared_ptr<Heuristic>> estimate_heuristics;
+    std::vector<Heuristic*> estimate_heuristics;
 
     State current_state;
     StateID current_predecessor_id;
