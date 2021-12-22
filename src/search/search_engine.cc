@@ -172,7 +172,9 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
-    parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry", "use symmetries", "");
+    parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry", 
+            "use symmetries",
+            OptionParser::NONE);
 }
 
 static PluginTypePlugin<SearchEngine> _type_plugin(
