@@ -94,11 +94,11 @@ void StandardScalarOpenList<Entry>::clear() {
 
 template<class Entry>
 void StandardScalarOpenList<Entry>::evaluate(int g, bool preferred) {
-    evaluator->evaluate(g, preferred);
-    last_evaluated_value = evaluator->get_value();
+    get_evaluator()->evaluate(g, preferred);
+    last_evaluated_value = get_evaluator()->get_value();
     last_preferred = preferred;
-    dead_end = evaluator->is_dead_end();
-    dead_end_reliable = evaluator->dead_end_is_reliable();
+    dead_end = get_evaluator()->is_dead_end();
+    dead_end_reliable = get_evaluator()->dead_end_is_reliable();
 }
 
 template<class Entry>
@@ -113,7 +113,7 @@ bool StandardScalarOpenList<Entry>::dead_end_is_reliable() const {
 
 template<class Entry>
 void StandardScalarOpenList<Entry>::get_involved_heuristics(
-    std::set<shared_ptr<Heuristic>> &hset) {
+    std::set<Heuristic*> &hset) {
     evaluator->get_involved_heuristics(hset);
 }
 #endif

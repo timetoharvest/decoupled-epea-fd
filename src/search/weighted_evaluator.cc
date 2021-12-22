@@ -39,7 +39,7 @@ int WeightedEvaluator::get_value() const {
     return value;
 }
 
-void WeightedEvaluator::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
+void WeightedEvaluator::get_involved_heuristics(std::set<Heuristic*> &hset) {
     evaluator->get_involved_heuristics(hset);
 }
 

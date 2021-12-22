@@ -58,18 +58,19 @@ void EagerSearch::initialize() {
         cout << "Using multi-path dependence (LM-A*)" << endl;
     assert(open_list != NULL);
 
-    set<shared_ptr<Heuristic>> hset;
+    set<Heuristic*> hset;
     open_list->get_involved_heuristics(hset);
 
-    for (shared_ptr<Heuristic> h : hset) {
+    for (Heuristic *h : hset) {
         estimate_heuristics.push_back(h);
         search_progress.add_heuristic(h);
     }
 
     // add heuristics that are used for preferred operators (in case they are
     // not also used in the open list)
-    hset.insert(preferred_operator_heuristics.begin(),
-                preferred_operator_heuristics.end());
+    for (auto h : preferred_operator_heuristics){
+        hset.insert(h.get());
+    }
 
     // add heuristics that are used in the f_evaluator. They are usually also
     // used in the open list and hence already be included, but we want to be
@@ -78,7 +79,7 @@ void EagerSearch::initialize() {
         f_evaluator->get_involved_heuristics(hset);
     }
 
-    for (shared_ptr<Heuristic> h : hset) {
+    for (Heuristic *h : hset) {
         heuristics.push_back(h);
     }
 

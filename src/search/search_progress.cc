@@ -26,7 +26,7 @@ SearchProgress::SearchProgress() {
     lastjump_f_value = -1;
 }
 
-void SearchProgress::add_heuristic(shared_ptr<Heuristic> h) {
+void SearchProgress::add_heuristic(Heuristic *h) {
     heuristics.push_back(h);
     best_heuristic_values.push_back(-1);
 }

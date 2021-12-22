@@ -151,7 +151,7 @@ bool AlternationOpenList<Entry>::dead_end_is_reliable() const {
 }
 
 template<class Entry>
-void AlternationOpenList<Entry>::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
+void AlternationOpenList<Entry>::get_involved_heuristics(std::set<Heuristic*> &hset) {
     for (size_t i = 0; i < open_lists.size(); ++i)
         open_lists[i]->get_involved_heuristics(hset);
 }

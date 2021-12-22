@@ -17,7 +17,7 @@ class OptionParser;
 }
 
 template<class Entry>
-class TieBreakingOpenList : public OpenList<Entry>, std::enable_shared_from_this<Evaluator> {
+class TieBreakingOpenList : public OpenList<Entry> {
     typedef std::deque<Entry> Bucket;
 
     std::map<const std::vector<int>, Bucket> buckets;
@@ -35,7 +35,7 @@ class TieBreakingOpenList : public OpenList<Entry>, std::enable_shared_from_this
     const std::vector<int> &get_value(); // currently not used
     int dimension() const;
 protected:
-    std::shared_ptr<Evaluator> get_evaluator() {return shared_from_this(); }
+    Evaluator* get_evaluator() {return this; }
 
 public:
     TieBreakingOpenList(const options::Options &opts);
@@ -52,7 +52,7 @@ public:
     void evaluate(int g, bool preferred);
     bool is_dead_end() const;
     bool dead_end_is_reliable() const;
-    void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset);
+    void get_involved_heuristics(std::set<Heuristic*> &hset);
 
     static std::shared_ptr<OpenList<Entry>> _parse(options::OptionParser &parser);
 };

@@ -29,7 +29,7 @@ public:
     virtual bool is_dead_end() const;
     virtual bool dead_end_is_reliable() const;
     virtual int get_value() const;
-    virtual void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset);
+    virtual void get_involved_heuristics(std::set<Heuristic*> &hset);
 };
 
 #endif

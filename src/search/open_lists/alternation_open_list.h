@@ -13,7 +13,7 @@ class OptionParser;
 }
 
 template<class Entry>
-class AlternationOpenList : public OpenList<Entry>, std::enable_shared_from_this<Evaluator> {
+class AlternationOpenList : public OpenList<Entry> {
     std::vector<std::shared_ptr<OpenList<Entry>>> open_lists;
     std::vector<int> priorities;
 
@@ -26,7 +26,7 @@ class AlternationOpenList : public OpenList<Entry>, std::enable_shared_from_this
     int last_used_list;
 
 protected:
-    std::shared_ptr<Evaluator> get_evaluator() {return shared_from_this(); }
+    Evaluator* get_evaluator() {return this; }
 
 public:
     AlternationOpenList(const options::Options &opts);
@@ -44,7 +44,7 @@ public:
     void evaluate(int g, bool preferred);
     bool is_dead_end() const;
     bool dead_end_is_reliable() const;
-    void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset);
+    void get_involved_heuristics(std::set<Heuristic*> &hset);
 
     int boost_preferred();
     void boost_last_used_list();

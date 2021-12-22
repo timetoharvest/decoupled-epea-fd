@@ -25,7 +25,7 @@ class StandardScalarOpenList : public OpenList<Entry> {
     bool dead_end;
     bool dead_end_reliable;
 protected:
-    std::shared_ptr<Evaluator> get_evaluator() {return evaluator; }
+    ScalarEvaluator* get_evaluator() {return evaluator.get(); }
 
 public:
     StandardScalarOpenList(const options::Options &opts);
@@ -41,7 +41,7 @@ public:
     void evaluate(int g, bool preferred);
     bool is_dead_end() const;
     bool dead_end_is_reliable() const;
-    void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset);
+    void get_involved_heuristics(std::set<Heuristic*> &hset);
 
     static std::shared_ptr<OpenList<Entry>> _parse(options::OptionParser &parser);
 };

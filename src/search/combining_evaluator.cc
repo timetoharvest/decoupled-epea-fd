@@ -44,7 +44,7 @@ int CombiningEvaluator::get_value() const {
     return value;
 }
 
-void CombiningEvaluator::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
+void CombiningEvaluator::get_involved_heuristics(std::set<Heuristic*> &hset) {
     for (size_t i = 0; i < subevaluators.size(); ++i)
         subevaluators[i]->get_involved_heuristics(hset);
 }

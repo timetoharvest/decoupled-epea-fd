@@ -137,7 +137,7 @@ int TieBreakingOpenList<Entry>::dimension() const {
 }
 
 template<class Entry>
-void TieBreakingOpenList<Entry>::get_involved_heuristics(std::set<shared_ptr<Heuristic>> &hset) {
+void TieBreakingOpenList<Entry>::get_involved_heuristics(std::set<Heuristic*> &hset) {
     for (size_t i = 0; i < evaluators.size(); ++i) {
         evaluators[i]->get_involved_heuristics(hset);
     }

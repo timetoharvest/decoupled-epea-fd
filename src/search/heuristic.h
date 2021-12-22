@@ -17,7 +17,7 @@ class OptionParser;
 class Options;
 }
 
-class Heuristic : public ScalarEvaluator, std::enable_shared_from_this<Heuristic> {
+class Heuristic : public ScalarEvaluator {
     enum {NOT_INITIALIZED = -2};
     int heuristic;
     int evaluator_value; // usually equal to heuristic but can be different
@@ -57,7 +57,7 @@ public:
     void evaluate(int g, bool preferred);
     bool dead_end_is_reliable() const;
     void set_evaluator_value(int val);
-    void get_involved_heuristics(std::set<std::shared_ptr<Heuristic>> &hset) {hset.insert(shared_from_this()); }
+    void get_involved_heuristics(std::set<Heuristic*> &hset) {hset.insert(this); }
     OperatorCost get_cost_type() const {return cost_type; }
 
     static void add_options_to_parser(options::OptionParser &parser);
