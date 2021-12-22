@@ -1,5 +1,7 @@
 #include "root_task.h"
 
+#include "../globals.h"
+#include "../operator.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 #include "../state_registry.h"
@@ -16,58 +18,13 @@
 
 
 using namespace std;
-using utils::ExitCode;
 
 namespace tasks {
-static const int PRE_FILE_VERSION = 3;
 shared_ptr<AbstractTask> g_root_task = nullptr;
 
-struct ExplicitVariable {
-    int domain_size;
-    string name;
-    vector<string> fact_names;
-    int axiom_layer;
-    int axiom_default_value;
-
-    explicit ExplicitVariable(istream &in);
-};
-
-
-struct ExplicitEffect {
-    FactPair fact;
-    vector<FactPair> conditions;
-
-    ExplicitEffect(int var, int value, vector<FactPair> &&conditions);
-};
-
-
-struct ExplicitOperator {
-    vector<FactPair> preconditions;
-    vector<ExplicitEffect> effects;
-    int cost;
-    string name;
-    bool is_an_axiom;
-
-    void read_pre_post(istream &in);
-    ExplicitOperator(istream &in, bool is_an_axiom, bool use_metric);
-};
-
-
 class RootTask : public AbstractTask {
-    vector<ExplicitVariable> variables;
-    // TODO: think about using hash sets here.
-    vector<vector<set<FactPair>>> mutexes;
-    vector<ExplicitOperator> operators;
-    vector<ExplicitOperator> axioms;
-    vector<int> initial_state_values;
-    vector<FactPair> goals;
-
-    const ExplicitVariable &get_variable(int var) const;
-    const ExplicitEffect &get_effect(int op_id, int effect_id, bool is_axiom) const;
-    const ExplicitOperator &get_operator_or_axiom(int index, bool is_axiom) const;
-
 public:
-    explicit RootTask(istream &in);
+    explicit RootTask();
 
     virtual int get_num_variables() const override;
     virtual string get_variable_name(int var) const override;
@@ -109,85 +66,31 @@ public:
 };
 
 RootTask::RootTask() {
-    read_and_verify_version(in);
-    bool use_metric = read_metric(in);
-    variables = read_variables(in);
-    int num_variables = variables.size();
-
-    mutexes = read_mutexes(in, variables);
-
-    initial_state_values.resize(num_variables);
-    check_magic(in, "begin_state");
-    for (int i = 0; i < num_variables; ++i) {
-        in >> initial_state_values[i];
-    }
-    check_magic(in, "end_state");
-
-    for (int i = 0; i < num_variables; ++i) {
-        variables[i].axiom_default_value = initial_state_values[i];
-    }
-
-    goals = read_goal(in);
-    check_facts(goals, variables);
-    operators = read_actions(in, false, use_metric, variables);
-    axioms = read_actions(in, true, use_metric, variables);
-    /* TODO: We should be stricter here and verify that we
-       have reached the end of "in". */
-
-    /*
-      HACK: We use a TaskProxy to access g_axiom_evaluators here which assumes
-      that this task is completely constructed.
-    */
-    AxiomEvaluator &axiom_evaluator = g_axiom_evaluators[TaskProxy(*this)];
-    axiom_evaluator.evaluate(initial_state_values);
-}
-
-const ExplicitVariable &RootTask::get_variable(int var) const {
-    assert(utils::in_bounds(var, variables));
-    return variables[var];
-}
-
-const ExplicitEffect &RootTask::get_effect(
-    int op_id, int effect_id, bool is_axiom) const {
-    const ExplicitOperator &op = get_operator_or_axiom(op_id, is_axiom);
-    assert(utils::in_bounds(effect_id, op.effects));
-    return op.effects[effect_id];
-}
-
-const ExplicitOperator &RootTask::get_operator_or_axiom(
-    int index, bool is_axiom) const {
-    if (is_axiom) {
-        assert(utils::in_bounds(index, axioms));
-        return axioms[index];
-    } else {
-        assert(utils::in_bounds(index, operators));
-        return operators[index];
-    }
 }
 
 int RootTask::get_num_variables() const {
-    return variables.size();
+    return g_variable_domain.size();
 }
 
 string RootTask::get_variable_name(int var) const {
-    return get_variable(var).name;
+    return g_variable_name[var];
 }
 
 int RootTask::get_variable_domain_size(int var) const {
-    return get_variable(var).domain_size;
+    return g_variable_domain[var];
 }
 
 int RootTask::get_variable_axiom_layer(int var) const {
-    return get_variable(var).axiom_layer;
+    return g_axiom_layers[var];
 }
 
 int RootTask::get_variable_default_axiom_value(int var) const {
-    return get_variable(var).axiom_default_value;
+    return g_default_axiom_values[var];
 }
 
 string RootTask::get_fact_name(const FactPair &fact) const {
-    assert(utils::in_bounds(fact.value, get_variable(fact.var).fact_names));
-    return get_variable(fact.var).fact_names[fact.value];
+    assert(utils::in_bounds(fact.value, g_fact_names[fact.var]));
+    return g_fact_names[fact.var][fact.value];
 }
 
 bool RootTask::are_facts_mutex(const FactPair &fact1, const FactPair &fact2) const {
@@ -195,53 +98,70 @@ bool RootTask::are_facts_mutex(const FactPair &fact1, const FactPair &fact2) con
         // Same variable: mutex iff different value.
         return fact1.value != fact2.value;
     }
-    assert(utils::in_bounds(fact1.var, mutexes));
-    assert(utils::in_bounds(fact1.value, mutexes[fact1.var]));
-    return bool(mutexes[fact1.var][fact1.value].count(fact2));
+    return are_mutex({fact1.var, fact1.value}, {fact2.var, fact2.value});
+}
+
+static const Operator &get_operator_or_axiom(int op_index, bool is_axiom) {
+    if (is_axiom) {
+        assert(utils::in_bounds(op_index, g_axioms));
+        return g_axioms[op_index];
+    } else {
+        assert(utils::in_bounds(op_index, g_operators));
+        return g_operators[op_index];
+    }
 }
 
 int RootTask::get_operator_cost(int index, bool is_axiom) const {
-    return get_operator_or_axiom(index, is_axiom).cost;
+    const Operator &op = get_operator_or_axiom(index, is_axiom);
+    return op.get_cost();
 }
 
 string RootTask::get_operator_name(int index, bool is_axiom) const {
-    return get_operator_or_axiom(index, is_axiom).name;
+    const Operator &op = get_operator_or_axiom(index, is_axiom);
+    return op.get_name();
 }
 
 int RootTask::get_num_operators() const {
-    return operators.size();
+    return g_operators.size();
 }
 
 int RootTask::get_num_operator_preconditions(int index, bool is_axiom) const {
-    return get_operator_or_axiom(index, is_axiom).preconditions.size();
+    return get_operator_or_axiom(index, is_axiom).get_preconditions().size();
 }
 
 FactPair RootTask::get_operator_precondition(
     int op_index, int fact_index, bool is_axiom) const {
-    const ExplicitOperator &op = get_operator_or_axiom(op_index, is_axiom);
-    assert(utils::in_bounds(fact_index, op.preconditions));
-    return op.preconditions[fact_index];
+    const vector<Condition> &pre = get_operator_or_axiom(op_index, is_axiom).get_preconditions();
+    assert(utils::in_bounds(fact_index, pre));
+    return FactPair(pre[fact_index].var, pre[fact_index].val);
 }
 
 int RootTask::get_num_operator_effects(int op_index, bool is_axiom) const {
-    return get_operator_or_axiom(op_index, is_axiom).effects.size();
+    return get_operator_or_axiom(op_index, is_axiom).get_effects().size();
 }
 
 int RootTask::get_num_operator_effect_conditions(
     int op_index, int eff_index, bool is_axiom) const {
-    return get_effect(op_index, eff_index, is_axiom).conditions.size();
+    const vector<Effect> &effs = get_operator_or_axiom(op_index, is_axiom).get_effects();
+    assert(utils::in_bounds(eff_index, effs));
+    return effs[eff_index].conditions.size();
 }
 
 FactPair RootTask::get_operator_effect_condition(
     int op_index, int eff_index, int cond_index, bool is_axiom) const {
-    const ExplicitEffect &effect = get_effect(op_index, eff_index, is_axiom);
-    assert(utils::in_bounds(cond_index, effect.conditions));
-    return effect.conditions[cond_index];
+    const vector<Effect> &effs = get_operator_or_axiom(op_index, is_axiom).get_effects();
+    assert(utils::in_bounds(eff_index, effs));
+    const Effect &eff = effs[eff_index];
+    assert(utils::in_bounds(cond_index, eff.conditions));
+    return FactPair(eff.conditions[cond_index].var, eff.conditions[cond_index].val);
 }
 
 FactPair RootTask::get_operator_effect(
     int op_index, int eff_index, bool is_axiom) const {
-    return get_effect(op_index, eff_index, is_axiom).fact;
+    const vector<Effect> &effs = get_operator_or_axiom(op_index, is_axiom).get_effects();
+    assert(utils::in_bounds(eff_index, effs));
+    const Effect &eff = effs[eff_index];
+    return FactPair(eff.var, eff.val);
 }
 
 int RootTask::convert_operator_index(
@@ -253,20 +173,20 @@ int RootTask::convert_operator_index(
 }
 
 int RootTask::get_num_axioms() const {
-    return axioms.size();
+    return g_axioms.size();
 }
 
 int RootTask::get_num_goals() const {
-    return goals.size();
+    return g_goal.size();
 }
 
 FactPair RootTask::get_goal_fact(int index) const {
-    assert(utils::in_bounds(index, goals));
-    return goals[index];
+    assert(utils::in_bounds(index, g_goal));
+    return FactPair(g_goal[index].first, g_goal[index].second);
 }
 
 vector<int> RootTask::get_initial_state_values() const {
-    return initial_state_values;
+    return g_initial_state_data;
 }
 
 void RootTask::convert_ancestor_state_values(
