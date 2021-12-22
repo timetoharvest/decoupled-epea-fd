@@ -3,6 +3,7 @@
 
 #include "open_list.h"
 #include "../option_parser.h"
+#include "../scalar_evaluator.h"
 
 #include <deque>
 #include <map>

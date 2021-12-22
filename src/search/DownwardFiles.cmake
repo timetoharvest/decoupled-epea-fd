@@ -60,7 +60,7 @@ fast_downward_plugin(
         heuristic
         ipc_max_heuristic
         # iterated_search TODO fix option parsing
-        lazy_search
+        # lazy_search TODO fix open list plugins
         max_evaluator
         operator
         operator_cost
@@ -85,6 +85,7 @@ fast_downward_plugin(
         weighted_evaluator
 
         open_lists/open_list_buckets
+        open_lists/open_list_plugins
 
         additive_heuristic
         blind_search_heuristic

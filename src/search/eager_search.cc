@@ -6,6 +6,7 @@
 #include "globals.h"
 #include "heuristic.h"
 #include "open_lists/alternation_open_list.h"
+#include "open_lists/open_list_plugins.h"
 #include "open_lists/standard_scalar_open_list.h"
 #include "open_lists/tiebreaking_open_list.h"
 #include "option_parser.h"
