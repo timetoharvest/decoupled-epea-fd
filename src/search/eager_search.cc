@@ -453,7 +453,6 @@ static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     //open lists are currently registered with the parser on demand,
     //because for templated classes the usual method of registering
     //does not work:
-//    Plugin<OpenList<StateID> >::register_open_lists(); TODO fix this
 
     parser.document_synopsis("Eager best first search", "");
 
@@ -502,14 +501,16 @@ static shared_ptr<SearchEngine> _parse_astar(OptionParser &parser) {
         "               reopen_closed=true, pathmax=false, progress_evaluator=sum([g(), h]))\n"
         "```\n", true);
     parser.add_option<shared_ptr<ScalarEvaluator>>("eval", "evaluator for h-value");
-    parser.add_option<shared_ptr<Heuristic>>("pruning_heuristic", "heuristic for upper-bound pruning in anytime decoupled search", "");
+    parser.add_option<shared_ptr<Heuristic>>("pruning_heuristic",
+            "heuristic for upper-bound pruning in anytime decoupled search",
+            OptionParser::NONE);
     parser.add_option<bool>("pathmax",
-                            "use pathmax correction", "false");
+            "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
-                            "use multi-path dependence (LM-A*)", "false");
+            "use multi-path dependence (LM-A*)", "false");
     parser.add_option<shared_ptr<PruningMethod>>("pruning",
-                                      "pruning method",
-                                      "");
+            "pruning method",
+            OptionParser::NONE);
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
