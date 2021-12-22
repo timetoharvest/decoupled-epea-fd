@@ -270,7 +270,7 @@ void CGHeuristic::mark_helpful_transitions(const State &state,
     }
 }
 
-static shared_ptr<Heuristic> _parse(OptionParser &parser) {
+static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("Causal graph heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -293,4 +293,4 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
 }
 
 
-static Plugin<Heuristic> _plugin("cg", _parse);
+static Plugin<ScalarEvaluator> _plugin("cg", _parse);

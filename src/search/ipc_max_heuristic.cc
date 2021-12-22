@@ -52,7 +52,7 @@ bool IPCMaxHeuristic::reach_state(const State &parent_state, OperatorID op,
     return result;
 }
 
-static shared_ptr<Heuristic> _parse(OptionParser &parser) {
+static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("IPC-Max Heuristic", "");
     parser.add_list_option<shared_ptr<Heuristic>>("heuristics");
     Heuristic::add_options_to_parser(parser);
@@ -66,4 +66,4 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         return make_shared<IPCMaxHeuristic>(opts);
 }
 
-static Plugin<Heuristic> plugin("max", _parse);
+static Plugin<ScalarEvaluator> plugin("max", _parse);

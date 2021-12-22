@@ -135,7 +135,7 @@ int FFHeuristic::compute_heuristic(const State &state) {
 }
 
 
-static shared_ptr<Heuristic> _parse(OptionParser &parser) {
+static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("FF heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -157,5 +157,5 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         return make_shared<FFHeuristic>(opts);
 }
 
-static Plugin<Heuristic> _plugin("ff", _parse);
+static Plugin<ScalarEvaluator> _plugin("ff", _parse);
 }
