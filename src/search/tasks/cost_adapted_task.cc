@@ -1,5 +1,7 @@
 #include "cost_adapted_task.h"
 
+#include "../globals.h"
+#include "../operator.h"
 #include "../operator_cost.h"
 #include "../option_parser.h"
 #include "../plugin.h"
@@ -24,8 +26,14 @@ CostAdaptedTask::CostAdaptedTask(
 }
 
 int CostAdaptedTask::get_operator_cost(int index, bool is_axiom) const {
-    OperatorProxy op(*parent, index, is_axiom);
-    return get_adjusted_action_cost(op, cost_type, parent_is_unit_cost);
+    // TODO: revert this back to the following after getting rid of globals.
+    // OperatorProxy op(*parent, index, is_axiom);
+    // return get_adjusted_action_cost(op, cost_type, parent_is_unit_cost);
+    if (is_axiom) {
+        return get_adjusted_action_cost(g_axioms[index], cost_type);
+    } else {
+        return get_adjusted_action_cost(g_operators[index], cost_type);
+    }
 }
 
 
