@@ -16,7 +16,7 @@
 class Heuristic;
 class Operator;
 class PruningMethod;
-class ScalarEvaluator;
+class Evaluator;
 
 namespace options {
 class Options;
@@ -30,9 +30,9 @@ class EagerSearch : public SearchEngine {
     bool use_multi_path_dependence;
 
     std::shared_ptr<OpenList<StateID>> open_list;
-    std::shared_ptr<ScalarEvaluator> f_evaluator;
+    std::shared_ptr<Evaluator> f_evaluator;
     // used for upper bound pruning in anytime decoupled search
-    std::shared_ptr<Heuristic> pruning_heuristic;
+    std::shared_ptr<Evaluator> pruning_heuristic;
     
     std::shared_ptr<PruningMethod> pruning_method;
     
@@ -46,7 +46,7 @@ protected:
     void reward_progress();
 
     std::vector<Heuristic*> heuristics;
-    std::vector<std::shared_ptr<Heuristic>> preferred_operator_heuristics;
+    std::vector<std::shared_ptr<Evaluator>> preferred_operator_heuristics;
     std::vector<Heuristic*> estimate_heuristics;
     // TODO: in the long term this
     // should disappear into the open list

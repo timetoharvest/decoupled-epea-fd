@@ -24,7 +24,7 @@ int PrefEvaluator::get_value() const {
         return 1;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("Preference evaluator",
                              "Returns 0 if preferred is true and 1 otherwise.");
     parser.parse();
@@ -34,4 +34,4 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<PrefEvaluator>();
 }
 
-static Plugin<ScalarEvaluator> _plugin("pref", _parse);
+static Plugin<Evaluator> _plugin("pref", _parse);

@@ -30,7 +30,7 @@ EagerSearch::EagerSearch(
       use_multi_path_dependence(opts.get<bool>("mpd")),
       open_list(opts.get<shared_ptr<OpenList<StateID>>>("open")) {
     if (opts.contains("f_eval")) {
-        f_evaluator = opts.get<shared_ptr<ScalarEvaluator>>("f_eval");
+        f_evaluator = opts.get<shared_ptr<Evaluator>>("f_eval");
     } else {
         f_evaluator = 0;
     }
@@ -38,11 +38,11 @@ EagerSearch::EagerSearch(
         pruning_method = opts.get<shared_ptr<PruningMethod>>("pruning");
     }
     if (g_factoring && g_factoring->get_search_type() == ASDA && opts.contains("pruning_heuristic")){
-        pruning_heuristic = opts.get<shared_ptr<Heuristic>>("pruning_heuristic");
+        pruning_heuristic = opts.get<shared_ptr<Evaluator>>("pruning_heuristic");
     }
     if (opts.contains("preferred")) {
         preferred_operator_heuristics =
-            opts.get_list<shared_ptr<Heuristic>>("preferred");
+            opts.get_list<shared_ptr<Evaluator>>("preferred");
     }
 }
 
@@ -69,7 +69,7 @@ void EagerSearch::initialize() {
     // add heuristics that are used for preferred operators (in case they are
     // not also used in the open list)
     for (auto h : preferred_operator_heuristics){
-        hset.insert(h.get());
+        h->get_involved_heuristics(hset);
     }
 
     // add heuristics that are used in the f_evaluator. They are usually also
@@ -153,7 +153,7 @@ SearchStatus EagerSearch::step() {
     }
 
     // This evaluates the expanded state (again) to get preferred ops
-    for (shared_ptr<Heuristic> h : preferred_operator_heuristics) {
+    for (shared_ptr<Evaluator> h : preferred_operator_heuristics) {
         h->evaluate(s);
         if (!h->is_dead_end()) {
             // In an alternation search with unreliable heuristics, it is
@@ -459,12 +459,12 @@ static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
                             "reopen closed nodes", "false");
     parser.add_option<bool>("pathmax",
                             "use pathmax correction", "false");
-    parser.add_option<shared_ptr<ScalarEvaluator>>(
+    parser.add_option<shared_ptr<Evaluator>>(
         "f_eval",
         "set evaluator for jump statistics. "
         "(Optional; if no evaluator is used, jump statistics will not be displayed.)",
         "");
-    parser.add_list_option<shared_ptr<Heuristic>>
+    parser.add_list_option<shared_ptr<Evaluator>>
         ("preferred",
         "use preferred operators of these heuristics", "[]");
     SearchEngine::add_options_to_parser(parser);
@@ -498,8 +498,8 @@ static shared_ptr<SearchEngine> _parse_astar(OptionParser &parser) {
         "--search eager(tiebreaking([sum([g(), h]), h], unsafe_pruning=false),\n"
         "               reopen_closed=true, pathmax=false, progress_evaluator=sum([g(), h]))\n"
         "```\n", true);
-    parser.add_option<shared_ptr<ScalarEvaluator>>("eval", "evaluator for h-value");
-    parser.add_option<shared_ptr<Heuristic>>("pruning_heuristic",
+    parser.add_option<shared_ptr<Evaluator>>("eval", "evaluator for h-value");
+    parser.add_option<shared_ptr<Evaluator>>("pruning_heuristic",
             "heuristic for upper-bound pruning in anytime decoupled search",
             OptionParser::NONE);
     parser.add_option<bool>("pathmax",
@@ -513,14 +513,14 @@ static shared_ptr<SearchEngine> _parse_astar(OptionParser &parser) {
     Options opts = parser.parse();
 
     if (!parser.dry_run()) {
-        vector<shared_ptr<ScalarEvaluator>> sum_evals;
+        vector<shared_ptr<Evaluator>> sum_evals;
         sum_evals.push_back(make_shared<GEvaluator>());
-        shared_ptr<ScalarEvaluator> eval = opts.get<shared_ptr<ScalarEvaluator>>("eval");
+        shared_ptr<Evaluator> eval = opts.get<shared_ptr<Evaluator>>("eval");
         sum_evals.push_back(eval);
-        shared_ptr<ScalarEvaluator> f_eval = make_shared<SumEvaluator>(sum_evals);
+        shared_ptr<Evaluator> f_eval = make_shared<SumEvaluator>(sum_evals);
 
         // use eval for tiebreaking
-        std::vector<shared_ptr<ScalarEvaluator>> evals;
+        std::vector<shared_ptr<Evaluator>> evals;
         evals.push_back(f_eval);
         evals.push_back(eval);
         shared_ptr<OpenList<StateID>> open = make_shared<TieBreakingOpenList<StateID>>(evals, false, false);
@@ -574,8 +574,8 @@ static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
         "is equivalent to\n"
         "```\n--search eager(single(eval1))\n```\n", true);
 
-    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
-    parser.add_list_option<shared_ptr<Heuristic>>(
+    parser.add_list_option<shared_ptr<Evaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Evaluator>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<int>(
@@ -585,13 +585,13 @@ static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
 
 
     Options opts = parser.parse();
-    opts.verify_list_non_empty<shared_ptr<ScalarEvaluator>>("evals");
+    opts.verify_list_non_empty<shared_ptr<Evaluator>>("evals");
 
     if (!parser.dry_run()) {
-        vector<shared_ptr<ScalarEvaluator>> evals =
-            opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
-        vector<shared_ptr<Heuristic>> preferred_list =
-            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        vector<shared_ptr<Evaluator>> evals =
+            opts.get_list<shared_ptr<Evaluator>>("evals");
+        vector<shared_ptr<Evaluator>> preferred_list =
+            opts.get_list<shared_ptr<Evaluator>>("preferred");
         shared_ptr<OpenList<StateID>> open;
         if ((evals.size() == 1) && preferred_list.empty()) {
             open = make_shared<StandardScalarOpenList<StateID>>(evals[0], false);
@@ -613,7 +613,7 @@ static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
         opts.set("reopen_closed", false);
         opts.set("pathmax", false);
         opts.set("mpd", false);
-        shared_ptr<ScalarEvaluator> sep;
+        shared_ptr<Evaluator> sep;
         opts.set("f_eval", sep);
         opts.set("preferred", preferred_list);
         return make_shared<EagerSearch>(opts);

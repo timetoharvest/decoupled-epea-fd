@@ -1,13 +1,14 @@
 #ifndef G_EVALUATOR_H
 #define G_EVALUATOR_H
 
-#include "scalar_evaluator.h"
+#include "evaluator.h"
+
 #include <string>
 #include <vector>
 
 class Heuristic;
 
-class GEvaluator : public ScalarEvaluator {
+class GEvaluator : public Evaluator {
 private:
     int value;
 

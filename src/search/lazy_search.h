@@ -2,7 +2,7 @@
 #define LAZY_SEARCH_H
 
 #include "state.h"
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 #include "search_engine.h"
 #include "search_progress.h"
 #include "search_space.h"
@@ -30,7 +30,7 @@ protected:
     bool preferred_successors_first;
 
     std::vector<Heuristic*> heuristics;
-    std::vector<std::shared_ptr<Heuristic>> preferred_operator_heuristics;
+    std::vector<std::shared_ptr<Evaluator>> preferred_operator_heuristics;
     std::vector<Heuristic*> estimate_heuristics;
 
     State current_state;
@@ -52,7 +52,7 @@ public:
 
     LazySearch(const options::Options &opts);
 
-    void set_pref_operator_heuristics(std::vector<std::shared_ptr<Heuristic>> &heur);
+    void set_pref_operator_heuristics(std::vector<std::shared_ptr<Evaluator>> &heur);
 
     virtual void statistics() const;
 };

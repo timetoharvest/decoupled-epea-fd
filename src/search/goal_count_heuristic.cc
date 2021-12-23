@@ -29,7 +29,7 @@ int GoalCountHeuristic::compute_heuristic(const State &state) {
     return unsatisfied_goal_count;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Goal count heuristic", "");
     parser.document_language_support("action costs", "ignored by design");
     parser.document_language_support("conditional effects", "supported");
@@ -47,4 +47,4 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<GoalCountHeuristic>(opts);
 }
 
-static Plugin<ScalarEvaluator> _plugin("goalcount", _parse);
+static Plugin<Evaluator> _plugin("goalcount", _parse);

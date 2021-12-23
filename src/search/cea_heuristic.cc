@@ -439,7 +439,7 @@ bool ContextEnhancedAdditiveHeuristic::dead_ends_are_reliable() const {
     return false;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Context-enhanced additive heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -462,5 +462,5 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<ContextEnhancedAdditiveHeuristic>(opts);
 }
 
-static Plugin<ScalarEvaluator> _plugin("cea", _parse);
+static Plugin<Evaluator> _plugin("cea", _parse);
 }

@@ -5,7 +5,7 @@
 using namespace std;
 
 CombiningEvaluator::CombiningEvaluator(
-    const vector<shared_ptr<ScalarEvaluator>> &subevaluators_)
+    const vector<shared_ptr<Evaluator>> &subevaluators_)
     : subevaluators(subevaluators_),
       subevaluator_values(subevaluators_.size()) {
 }

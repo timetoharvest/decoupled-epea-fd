@@ -2,7 +2,7 @@
 #define OPEN_LISTS_OPEN_LIST_BUCKETS_H
 
 #include "open_list.h"
-#include "../scalar_evaluator.h"
+#include "../evaluator.h"
 
 #include <deque>
 #include <utility>
@@ -17,13 +17,13 @@ class BucketOpenList : public OpenList<Entry> {
     mutable int lowest_bucket;
     int size;
 
-    ScalarEvaluator *evaluator;
+    Evaluator *evaluator;
     int last_evaluated_value;
     bool last_preferred;
     bool dead_end;
     bool dead_end_reliable;
 protected:
-    ScalarEvaluator *get_evaluator() {return evaluator; }
+    Evaluator *get_evaluator() {return evaluator; }
 
 public:
     BucketOpenList(const Options &opts);
