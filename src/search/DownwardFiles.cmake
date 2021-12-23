@@ -71,6 +71,7 @@ fast_downward_plugin(
         option_parser_util
         per_state_information
         per_task_information
+        plan_manager
         pref_evaluator
         pruning_method
         relaxation_heuristic
