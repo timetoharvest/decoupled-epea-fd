@@ -213,14 +213,13 @@ void PruningOptions::add_options_to_parser(OptionParser &parser){
 
 static PluginTypePlugin<PruningOptions> _type_plugin(
     "PruningOptions",
-    "TODO",
-    "pruning_options");
+    "TODO");
 
 shared_ptr<PruningOptions> PruningOptions::_parse_dominance(OptionParser &parser) {
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
-    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DOMINANCE);
+    opts.set<PruningOptions::PRUNING_TYPE>("pruning_type", PruningOptions::PRUNING_TYPE::DOMINANCE);
 
     if (!parser.dry_run()) {
         return make_shared<PruningOptions>(opts);
@@ -233,7 +232,7 @@ shared_ptr<PruningOptions> PruningOptions::_parse_duplicate(OptionParser &parser
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::DUPLICATE);
+    opts.set<PruningOptions::PRUNING_TYPE>("pruning_type", PruningOptions::PRUNING_TYPE::DUPLICATE);
 
     if (!parser.dry_run()) {
         return make_shared<PruningOptions>(opts);
@@ -246,7 +245,7 @@ shared_ptr<PruningOptions> PruningOptions::_parse_frontier(OptionParser &parser)
     PruningOptions::add_options_to_parser(parser);
     Options opts = parser.parse();
     
-    opts.set<int>("pruning_type", PruningOptions::PRUNING_TYPE::FRONTIER);
+    opts.set<PruningOptions::PRUNING_TYPE>("pruning_type", PruningOptions::PRUNING_TYPE::FRONTIER);
 
     if (!parser.dry_run()) {
         return make_shared<PruningOptions>(opts);
