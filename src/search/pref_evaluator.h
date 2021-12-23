@@ -1,13 +1,13 @@
 #ifndef PREF_EVALUATOR_H
 #define PREF_EVALUATOR_H
 
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 
 #include <string>
 #include <vector>
 
 
-class PrefEvaluator : public ScalarEvaluator {
+class PrefEvaluator : public Evaluator {
 private:
     bool value_preferred;
 

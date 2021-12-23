@@ -15,7 +15,9 @@
 #include <map>
 #include <vector>
 
+namespace options {
 class Options;
+}
 
 typedef std::pair<StateID, std::pair<int, OperatorID> > OpenListEntryEHC;
 
@@ -26,12 +28,12 @@ enum PreferredUsage {
 
 class EnforcedHillClimbingSearch : public SearchEngine {
 protected:
-    OpenList<OpenListEntryEHC> *open_list;
-    GEvaluator *g_evaluator;
+    std::shared_ptr<OpenList<OpenListEntryEHC>> open_list;
+    std::shared_ptr<GEvaluator> g_evaluator;
 
-    Heuristic *heuristic;
+    std::shared_ptr<Evaluator> heuristic;
     bool preferred_contains_eval;
-    std::vector<Heuristic *> preferred_heuristics;
+    std::vector<std::shared_ptr<Evaluator>> preferred_heuristics;
     bool use_preferred;
     PreferredUsage preferred_usage;
 
@@ -50,8 +52,7 @@ protected:
     void get_successors(const State &state, std::vector<OperatorID> &ops);
     void evaluate(const State &parent, OperatorID op, const State &state);
 public:
-    EnforcedHillClimbingSearch(const Options &opts);
-    virtual ~EnforcedHillClimbingSearch();
+    EnforcedHillClimbingSearch(const options::Options &opts);
 
     virtual void statistics() const;
 };

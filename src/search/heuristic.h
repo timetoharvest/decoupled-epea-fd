@@ -1,7 +1,7 @@
 #ifndef HEURISTIC_H
 #define HEURISTIC_H
 
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 #include "operator_cost.h"
 
 #include <map>
@@ -17,7 +17,7 @@ class OptionParser;
 class Options;
 }
 
-class Heuristic : public ScalarEvaluator {
+class Heuristic : public Evaluator {
     enum {NOT_INITIALIZED = -2};
     int heuristic;
     int evaluator_value; // usually equal to heuristic but can be different
@@ -43,22 +43,23 @@ public:
     Heuristic(const options::Options &options);
     virtual ~Heuristic();
 
-    void evaluate(const State &state);
-    bool is_dead_end() const;
-    int get_heuristic();
+    virtual void evaluate(const State &state) override;
+    virtual bool is_dead_end() const override;
+    virtual int get_heuristic() override;
     // changed to virtual, so HeuristicProxy can delegate this:
-    virtual void get_preferred_operators(std::vector<OperatorID> &result);
-    virtual bool dead_ends_are_reliable() const {return true; }
+    virtual void get_preferred_operators(std::vector<OperatorID> &result) override;
+    virtual bool dead_ends_are_reliable() const override {return true; }
     virtual bool reach_state(const State &parent_state, OperatorID op,
-                             const State &state);
+                             const State &state) override;
 
-    // for abstract parent ScalarEvaluator
-    int get_value() const;
-    void evaluate(int g, bool preferred);
-    bool dead_end_is_reliable() const;
-    void set_evaluator_value(int val);
-    void get_involved_heuristics(std::set<Heuristic*> &hset) {hset.insert(this); }
-    OperatorCost get_cost_type() const {return cost_type; }
+    // for abstract parent Evaluator
+    virtual int get_value() const override;
+
+    virtual void evaluate(int g, bool preferred)  override;
+    virtual bool dead_end_is_reliable() const override;
+    virtual void set_evaluator_value(int val) override;
+    virtual void get_involved_heuristics(std::set<Heuristic*> &hset) override {hset.insert(this); }
+    virtual OperatorCost get_cost_type() const override {return cost_type; }
 
     static void add_options_to_parser(options::OptionParser &parser);
     static options::Options default_options();

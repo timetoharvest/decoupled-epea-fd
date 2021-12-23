@@ -3,14 +3,14 @@
 
 #include "open_list.h"
 #include "../option_parser.h"
-#include "../scalar_evaluator.h"
+#include "../evaluator.h"
 
 #include <deque>
 #include <map>
 #include <vector>
 #include <utility>
 
-class ScalarEvaluator;
+class Evaluator;
 
 template<class Entry>
 class StandardScalarOpenList : public OpenList<Entry> {
@@ -19,17 +19,17 @@ class StandardScalarOpenList : public OpenList<Entry> {
     std::map<int, Bucket> buckets;
     int size;
 
-    std::shared_ptr<ScalarEvaluator> evaluator;
+    std::shared_ptr<Evaluator> evaluator;
     int last_evaluated_value;
     int last_preferred;
     bool dead_end;
     bool dead_end_reliable;
 protected:
-    ScalarEvaluator* get_evaluator() {return evaluator.get(); }
+    Evaluator* get_evaluator() {return evaluator.get(); }
 
 public:
     StandardScalarOpenList(const options::Options &opts);
-    StandardScalarOpenList(std::shared_ptr<ScalarEvaluator> eval,
+    StandardScalarOpenList(std::shared_ptr<Evaluator> eval,
                            bool preferred_only);
     ~StandardScalarOpenList();
 

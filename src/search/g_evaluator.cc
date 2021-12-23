@@ -27,7 +27,7 @@ int GEvaluator::get_value() const {
     return value;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("g-value evaluator",
                              "Returns the current g-value of the search.");
     parser.parse();
@@ -37,4 +37,4 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<GEvaluator>();
 }
 
-static Plugin<ScalarEvaluator> _plugin("g", _parse);
+static Plugin<Evaluator> _plugin("g", _parse);

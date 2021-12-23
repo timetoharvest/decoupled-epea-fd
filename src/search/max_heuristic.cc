@@ -119,7 +119,7 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     return total_cost;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Max heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -142,5 +142,5 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
 }
 
 
-static Plugin<ScalarEvaluator> _plugin("hmax", _parse);
+static Plugin<Evaluator> _plugin("hmax", _parse);
 }

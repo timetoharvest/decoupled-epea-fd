@@ -34,7 +34,7 @@ LazySearch::LazySearch(const Options &opts)
 }
 
 void LazySearch::set_pref_operator_heuristics(
-    vector<shared_ptr<Heuristic>> &heur) {
+    vector<shared_ptr<Evaluator>> &heur) {
     preferred_operator_heuristics = heur;
 }
 
@@ -54,7 +54,7 @@ void LazySearch::initialize() {
     // add heuristics that are used for preferred operators (in case they are
     // not also used in the open list)
     for (auto h : preferred_operator_heuristics){
-        hset.insert(h.get());
+        h->get_involved_heuristics(hset);
     }
 
     for (Heuristic *h : hset) {
@@ -71,7 +71,7 @@ void LazySearch::get_successor_operators(vector<OperatorID> &ops) {
     g_successor_generator->generate_applicable_ops(
         current_state, all_operators);
 
-    for (shared_ptr<Heuristic> h : preferred_operator_heuristics) {
+    for (shared_ptr<Evaluator> h : preferred_operator_heuristics) {
         if (!h->is_dead_end())
             h->get_preferred_operators(preferred_operators);
     }
@@ -240,7 +240,7 @@ static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     parser.add_option<shared_ptr<OpenList<OpenListEntryLazy>>>("open", "open list");
     parser.add_option<bool>("reopen_closed",
                             "reopen closed nodes", "false");
-    parser.add_list_option<shared_ptr<Heuristic>>(
+    parser.add_list_option<shared_ptr<Evaluator>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     _add_succ_order_options(parser);
@@ -249,8 +249,8 @@ static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
 
     if (!parser.dry_run()) {
         shared_ptr<LazySearch> engine = make_shared<LazySearch>(opts);
-        vector<shared_ptr<Heuristic>> preferred_list =
-            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        vector<shared_ptr<Evaluator>> preferred_list =
+            opts.get_list<shared_ptr<Evaluator>>("preferred");
         engine->set_pref_operator_heuristics(preferred_list);
         return engine;
     }
@@ -296,8 +296,8 @@ static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
         "```\n--search lazy(single(eval1))\n```\n",
         true);
 
-    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
-    parser.add_list_option<shared_ptr<Heuristic>>(
+    parser.add_list_option<shared_ptr<Evaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Evaluator>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<bool>("reopen_closed",
@@ -312,10 +312,10 @@ static shared_ptr<SearchEngine> _parse_greedy(OptionParser &parser) {
     Options opts = parser.parse();
 
     if (!parser.dry_run()) {
-        vector<shared_ptr<ScalarEvaluator>> evals =
-            opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
-        vector<shared_ptr<Heuristic>> preferred_list =
-            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        vector<shared_ptr<Evaluator>> evals =
+            opts.get_list<shared_ptr<Evaluator>>("evals");
+        vector<shared_ptr<Evaluator>> preferred_list =
+            opts.get_list<shared_ptr<Evaluator>>("preferred");
         shared_ptr<OpenList<OpenListEntryLazy>> open;
         if ((evals.size() == 1) && preferred_list.empty()) {
             open = make_shared<StandardScalarOpenList<OpenListEntryLazy>>(evals[0],
@@ -389,8 +389,8 @@ static shared_ptr<SearchEngine> _parse_weighted_astar(OptionParser &parser) {
         "```\n--search lazy(single(sum([g(), weight(eval1, 2)])), reopen_closed=true)\n```\n",
         true);
 
-    parser.add_list_option<shared_ptr<ScalarEvaluator>>("evals", "scalar evaluators");
-    parser.add_list_option<shared_ptr<Heuristic>>(
+    parser.add_list_option<shared_ptr<Evaluator>>("evals", "scalar evaluators");
+    parser.add_list_option<shared_ptr<Evaluator>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     parser.add_option<bool>("reopen_closed", "reopen closed nodes", "true");
@@ -402,16 +402,16 @@ static shared_ptr<SearchEngine> _parse_weighted_astar(OptionParser &parser) {
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.verify_list_non_empty<shared_ptr<ScalarEvaluator>>("evals");
+    opts.verify_list_non_empty<shared_ptr<Evaluator>>("evals");
 
     if (!parser.dry_run()) {
-        vector<shared_ptr<ScalarEvaluator>> evals = opts.get_list<shared_ptr<ScalarEvaluator>>("evals");
-        vector<shared_ptr<Heuristic>> preferred_list =
-            opts.get_list<shared_ptr<Heuristic>>("preferred");
+        vector<shared_ptr<Evaluator>> evals = opts.get_list<shared_ptr<Evaluator>>("evals");
+        vector<shared_ptr<Evaluator>> preferred_list =
+            opts.get_list<shared_ptr<Evaluator>>("preferred");
         vector<shared_ptr<OpenList<OpenListEntryLazy>>> inner_lists;
         for (size_t i = 0; i < evals.size(); ++i) {
             shared_ptr<GEvaluator> g = make_shared<GEvaluator>();
-            vector<shared_ptr<ScalarEvaluator>> sum_evals;
+            vector<shared_ptr<Evaluator>> sum_evals;
             sum_evals.push_back(g);
             if (opts.get<int>("w") == 1) {
                 sum_evals.push_back(evals[i]);

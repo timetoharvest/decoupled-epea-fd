@@ -165,7 +165,7 @@ int AdditiveHeuristic::compute_heuristic(const State &state) {
     return h;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Additive heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -187,5 +187,5 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<AdditiveHeuristic>(opts);
 }
 
-static Plugin<ScalarEvaluator> _plugin("add", _parse);
+static Plugin<Evaluator> _plugin("add", _parse);
 }

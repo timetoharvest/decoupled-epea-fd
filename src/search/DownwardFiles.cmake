@@ -52,7 +52,7 @@ fast_downward_plugin(
         combining_evaluator
         command_line
         eager_search
-        # enforced_hill_climbing_search TODO fix option parsing
+        enforced_hill_climbing_search
         evaluator
         factoring
         g_evaluator
@@ -77,7 +77,6 @@ fast_downward_plugin(
         search_node_info
         search_progress
         search_space
-        scalar_evaluator
         state
         state_id
         state_registry

@@ -10,7 +10,7 @@ class Options;
 }
 
 class IPCMaxHeuristic : public Heuristic {
-    std::vector<Heuristic *> evaluators;
+    std::vector<std::shared_ptr<Evaluator>> evaluators;
     int value;
     bool dead_end;
     bool dead_end_reliable;

@@ -1,7 +1,7 @@
 #ifndef WEIGHTED_EVALUATOR_H
 #define WEIGHTED_EVALUATOR_H
 
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 
 #include <memory>
 #include <string>
@@ -11,15 +11,15 @@ namespace options {
 class Options;
 }
 
-class WeightedEvaluator : public ScalarEvaluator {
+class WeightedEvaluator : public Evaluator {
 private:
-    std::shared_ptr<ScalarEvaluator> evaluator;
+    std::shared_ptr<Evaluator> evaluator;
     int w;
     int value;
 
 public:
     WeightedEvaluator(const options::Options &opts);
-    WeightedEvaluator(std::shared_ptr<ScalarEvaluator> eval, int weight);
+    WeightedEvaluator(std::shared_ptr<Evaluator> eval, int weight);
     ~WeightedEvaluator();
 
     void evaluate(int g, bool preferred);

@@ -12,7 +12,7 @@ using namespace std;
 
 
 IPCMaxHeuristic::IPCMaxHeuristic(const Options &opts)
-    : Heuristic(opts), evaluators(opts.get_list<Heuristic *>("heuristics")) {
+    : Heuristic(opts), evaluators(opts.get_list<shared_ptr<Evaluator>>("heuristics")) {
 }
 
 IPCMaxHeuristic::~IPCMaxHeuristic() {
@@ -52,13 +52,13 @@ bool IPCMaxHeuristic::reach_state(const State &parent_state, OperatorID op,
     return result;
 }
 
-static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
+static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("IPC-Max Heuristic", "");
-    parser.add_list_option<shared_ptr<Heuristic>>("heuristics");
+    parser.add_list_option<shared_ptr<Evaluator>>("heuristics");
     Heuristic::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.verify_list_non_empty<shared_ptr<Heuristic>>("heuristics");
+    opts.verify_list_non_empty<shared_ptr<Evaluator>>("heuristics");
 
     if (parser.dry_run())
         return 0;
@@ -66,4 +66,4 @@ static shared_ptr<ScalarEvaluator> _parse(OptionParser &parser) {
         return make_shared<IPCMaxHeuristic>(opts);
 }
 
-static Plugin<ScalarEvaluator> plugin("max", _parse);
+static Plugin<Evaluator> plugin("max", _parse);

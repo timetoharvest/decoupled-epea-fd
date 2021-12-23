@@ -9,7 +9,7 @@
 #include <vector>
 #include <utility>
 
-class ScalarEvaluator;
+class Evaluator;
 
 namespace options {
 class Options;
@@ -23,7 +23,7 @@ class TieBreakingOpenList : public OpenList<Entry> {
     std::map<const std::vector<int>, Bucket> buckets;
     int size;
 
-    std::vector<std::shared_ptr<ScalarEvaluator>> evaluators;
+    std::vector<std::shared_ptr<Evaluator>> evaluators;
     std::vector<int> last_evaluated_value;
     bool last_preferred;
     bool dead_end;
@@ -39,7 +39,7 @@ protected:
 
 public:
     TieBreakingOpenList(const options::Options &opts);
-    TieBreakingOpenList(const std::vector<std::shared_ptr<ScalarEvaluator>> &evals,
+    TieBreakingOpenList(const std::vector<std::shared_ptr<Evaluator>> &evals,
                         bool preferred_only, bool unsafe_pruning);
 
     // open list interface

@@ -1,5 +1,8 @@
 #include "enforced_hill_climbing_search.h"
 
+#include "open_lists/open_list_plugins.h"
+#include "open_lists/standard_scalar_open_list.h"
+#include "open_lists/tiebreaking_open_list.h"
 #include "operator.h"
 #include "heuristic.h"
 #include "plugin.h"
@@ -7,18 +10,20 @@
 #include "task_utils/successor_generator.h"
 #include "utils/system.h"
 
+using namespace std;
+
 EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(
     const Options &opts)
     : SearchEngine(opts),
-      heuristic(opts.get<Heuristic *>("h")),
+      heuristic(opts.get<shared_ptr<Evaluator>>("h")),
       use_preferred(false),
-      preferred_usage(PreferredUsage(opts.get_enum("preferred_usage"))),
+      preferred_usage(PreferredUsage(opts.get<PreferredUsage>("preferred_usage"))),
       current_state(g_initial_state()),
       current_h(0),
       current_g(0),
       num_ehc_phases(0) {
     if (opts.contains("preferred")) {
-        preferred_heuristics = opts.get_list<Heuristic *>("preferred");
+        preferred_heuristics = opts.get_list<shared_ptr<Evaluator>>("preferred");
         if (preferred_heuristics.empty()) {
             use_preferred = false;
             preferred_contains_eval = false;
@@ -29,12 +34,8 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(
             preferred_contains_eval = true;
         }
     }
-    search_progress.add_heuristic(heuristic);
-    g_evaluator = new GEvaluator();
-}
-
-EnforcedHillClimbingSearch::~EnforcedHillClimbingSearch() {
-    delete g_evaluator;
+    search_progress.add_heuristic(dynamic_cast<Heuristic*>(heuristic.get()));
+    g_evaluator = make_shared<GEvaluator>();
 }
 
 void EnforcedHillClimbingSearch::evaluate(const State &parent, OperatorID op, const State &state) {
@@ -84,12 +85,12 @@ void EnforcedHillClimbingSearch::initialize() {
     node.open_initial(current_h);
 
     if (!use_preferred || (preferred_usage == PRUNE_BY_PREFERRED)) {
-        open_list = new StandardScalarOpenList<OpenListEntryEHC>(g_evaluator, false);
+        open_list = make_shared<StandardScalarOpenList<OpenListEntryEHC>>(g_evaluator, false);
     } else {
-        vector<ScalarEvaluator *> evals;
+        vector<shared_ptr<Evaluator>> evals;
         evals.push_back(g_evaluator);
-        evals.push_back(new PrefEvaluator);
-        open_list = new TieBreakingOpenList<OpenListEntryEHC>(evals, false, true);
+        evals.push_back(make_shared<PrefEvaluator>());
+        open_list = make_shared<TieBreakingOpenList<OpenListEntryEHC>>(evals, false, true);
     }
 }
 
@@ -233,30 +234,29 @@ void EnforcedHillClimbingSearch::statistics() const {
     }
 }
 
-static SearchEngine *_parse(OptionParser &parser) {
+static shared_ptr<SearchEngine> _parse(OptionParser &parser) {
     parser.document_synopsis("Enforced hill-climbing", "");
-    parser.add_option<Heuristic *>("h", "heuristic");
+    parser.add_option<shared_ptr<Evaluator>>("h", "heuristic");
     parser.add_option<bool>("bfs_use_cost",
                             "use cost for bfs", "false");
     vector<string> preferred_usages;
     preferred_usages.push_back("PRUNE_BY_PREFERRED");
     preferred_usages.push_back("RANK_PREFERRED_FIRST");
-    parser.add_enum_option("preferred_usage", preferred_usages,
+    parser.add_enum_option<PreferredUsage>("preferred_usage", preferred_usages,
                            "preferred operator usage",
                            "PRUNE_BY_PREFERRED");
 
-    parser.add_list_option<Heuristic *>(
+    parser.add_list_option<shared_ptr<Evaluator>>(
         "preferred",
         "use preferred operators of these heuristics", "[]");
     SearchEngine::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    EnforcedHillClimbingSearch *engine = 0;
     if (!parser.dry_run()) {
-        engine = new EnforcedHillClimbingSearch(opts);
+        return make_shared<EnforcedHillClimbingSearch>(opts);
     }
 
-    return engine;
+    return 0;
 }
 
 static Plugin<SearchEngine> _plugin("ehc", _parse);
