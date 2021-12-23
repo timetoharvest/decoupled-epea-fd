@@ -48,6 +48,7 @@ fast_downward_plugin(
     SOURCES
         planner
 
+        abstract_task
         axioms
         combining_evaluator
         command_line
@@ -81,6 +82,7 @@ fast_downward_plugin(
         state_id
         state_registry
         sum_evaluator
+        task_id
         task_proxy
 
         weighted_evaluator
