@@ -319,66 +319,70 @@ void FactoringRanking::add_options_to_parser(OptionParser &parser) {
             "true");
 }
 
-static FactoringRanking *_parse_mobility(OptionParser &parser) {
+static PluginTypePlugin<FactoringRanking> _type_plugin(
+    "FactoringRanking",
+    "TODO",
+    "factoring_ranking");
+
+static shared_ptr<FactoringRanking> _parse_mobility(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
-    MobilityRanking *ranking = 0;
+
     if (!parser.dry_run()) {
-        ranking = new MobilityRanking(opts);
+        return make_shared<MobilityRanking>(opts);
     }
 
-    return ranking;
+    return 0;
 }
 
-static FactoringRanking *_parse_leaves(OptionParser &parser) {
+static shared_ptr<FactoringRanking> _parse_leaves(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
-    LeavesRanking *ranking = 0;
+
     if (!parser.dry_run()) {
-        ranking = new LeavesRanking(opts);
+        return make_shared<LeavesRanking>(opts);
     }
 
-    return ranking;
+    return 0;
 }
 
-static FactoringRanking *_parse_dom_size(OptionParser &parser) {
+static shared_ptr<FactoringRanking> _parse_dom_size(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
-    DomSizeRanking *ranking = 0;
+
     if (!parser.dry_run()) {
-        ranking = new DomSizeRanking(opts);
+        return make_shared<DomSizeRanking>(opts);
     }
 
-    return ranking;
+    return 0;
 }
 
-static FactoringRanking *_parse_vars(OptionParser &parser) {
+static shared_ptr<FactoringRanking> _parse_vars(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
-    VariablesRanking *ranking = 0;
+
     if (!parser.dry_run()) {
-        ranking = new VariablesRanking(opts);
+        return make_shared<VariablesRanking>(opts);
     }
 
-    return ranking;
+    return 0;
 }
 
-static FactoringRanking *_parse_aff_actions(OptionParser &parser) {
+static shared_ptr<FactoringRanking> _parse_aff_actions(OptionParser &parser) {
 
     FactoringRanking::add_options_to_parser(parser);
     Options opts = parser.parse();
-    AffActionsRanking *ranking = 0;
+
     if (!parser.dry_run()) {
-        ranking = new AffActionsRanking(opts);
+        return make_shared<AffActionsRanking>(opts);
     }
 
-    return ranking;
+    return 0;
 }
-
 
 static Plugin<FactoringRanking> _plugin_mobility("mobility", _parse_mobility);
 static Plugin<FactoringRanking> _plugin_leaves("leaves", _parse_leaves);

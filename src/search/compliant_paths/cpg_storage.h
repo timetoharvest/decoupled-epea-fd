@@ -7,7 +7,7 @@ class CompliantPathGraph;
 class PruningOptions;
 
 class CPGStorage {
-    
+
 protected:
 
     virtual void register_at_compliant_path_graph() = 0;
@@ -16,7 +16,7 @@ public:
 
     virtual ~CPGStorage() = default;
 
-    virtual const CompliantPathGraph* get_cpg(const State &state) const = 0;
+    virtual const CompliantPathGraph* get_cpg(const GlobalState &state) const = 0;
 
     virtual size_t size(const StateRegistry *registry) const = 0;
 
@@ -33,7 +33,7 @@ class Storage : public CPGStorage {
 
     PerStateInformation<T> cpgs;
 
-    void store_cpg(const State &state, T &cpg) {
+    void store_cpg(const GlobalState &state, T &cpg) {
         cpgs[state] = std::move(cpg);
     }
 
@@ -43,7 +43,7 @@ protected:
 
 public:
 
-    virtual const CompliantPathGraph* get_cpg(const State &state) const override {
+    virtual const CompliantPathGraph* get_cpg(const GlobalState &state) const override {
         return &cpgs[state];
     }
 

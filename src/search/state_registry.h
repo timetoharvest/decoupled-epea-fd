@@ -19,11 +19,11 @@
 /*
   Overview of classes relevant to storing and working with registered states.
 
-  State
+  GlobalState
     This class is used for manipulating states.
     It contains the (uncompressed) variable values for fast access by the heuristic.
-    A State is always registered in a StateRegistry and has a valid ID.
-    States can be constructed from a StateRegistry by factory methods for the
+    A GlobalState is always registered in a StateRegistry and has a valid ID.
+    GlobalStates can be constructed from a StateRegistry by factory methods for the
     initial state and successor states.
     They never own the actual state data which is borrowed from the StateRegistry
     that created them.
@@ -57,7 +57,7 @@
 
   PerStateInformation<T>
     Associates a value of type T with every state in a given StateRegistry.
-    Can be thought of as a very compactly implemented map from State to T.
+    Can be thought of as a very compactly implemented map from GlobalState to T.
     References stay valid forever. Memory usage is essentially the same as a
     vector<T> whose size is the number of states in the registry.
 
@@ -190,7 +190,7 @@ class StateRegistry {
 
     /*
       Hash set of StateIDs used to detect states that are already registered in
-      this registry and find their IDs. States are compared/hashed semantically,
+      this registry and find their IDs. GlobalStates are compared/hashed semantically,
       i.e. the actual state data is compared, not the memory location.
      */
 
@@ -213,7 +213,7 @@ class StateRegistry {
 
     std::vector<LeafStateIDSet> registered_leaf_states;
 
-    State *cached_initial_state;
+    GlobalState *cached_initial_state;
 
     /*
       maps the StateID of the base state to the number of different decoupled
@@ -237,7 +237,7 @@ public:
       Returns the state that was registered at the given ID. The ID must refer
       to a state in this registry. Do not mix IDs from from different registries.
      */
-    State lookup_state(StateID id) const;
+    GlobalState lookup_state(StateID id) const;
 
     /*
       Returns the redFact that was registered at the given ID. The ID must refer
@@ -249,11 +249,11 @@ public:
       Returns a reference to the initial state and registers it if this was not
       done before. The result is cached internally so subsequent calls are cheap.
      */
-    const State &get_initial_state();
+    const GlobalState &get_initial_state();
 
-    State get_state_permutation(const State &state, const symmetries::Permutation &permutation);
+    GlobalState get_state_permutation(const GlobalState &state, const symmetries::Permutation &permutation);
 
-    State get_decoupled_state_permutation(const State &state,
+    GlobalState get_decoupled_state_permutation(const GlobalState &state,
             symmetries::SymmetryCPG &cpg,
             const symmetries::DecoupledPermutation &permutation);
 
@@ -262,19 +262,19 @@ public:
       registers it if this was not done before. This is an expensive operation
       as it includes duplicate checking.
      */
-    State get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical = true);
+    GlobalState get_successor_state(const GlobalState &predecessor, const Operator &op, bool compute_canonical = true);
 
-    State get_state(const std::vector<int> &facts);
+    GlobalState get_state(const std::vector<int> &facts);
 
-    State get_center_state(const std::vector<int> &facts);
+    GlobalState get_center_state(const std::vector<int> &facts);
 
     /*
       returns the state resulting from setting the last variable (dup counter)
       to dup_counter
      */
-    State get_decoupled_state(const State &base_state, int dup_counter);
+    GlobalState get_decoupled_state(const GlobalState &base_state, int dup_counter);
 
-    State get_center_successor(const State &center, const Operator &op);
+    GlobalState get_center_successor(const GlobalState &center, const Operator &op);
 
     /**
      * NOTE: At least one leaf state in this factor has to exist

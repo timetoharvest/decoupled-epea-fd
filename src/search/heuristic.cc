@@ -4,6 +4,7 @@
 #include "operator.h"
 #include "option_parser.h"
 #include "operator_cost.h"
+#include "plugin.h"
 
 #include <cassert>
 #include <cstdlib>
@@ -12,8 +13,8 @@
 using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
-    : cost_type(OperatorCost(opts.get_enum("cost_type"))),
-      heuristic_type(HEURISTIC_TYPE(opts.get_enum("search_type"))){
+    : cost_type(opts.get<OperatorCost>("cost_type")),
+      heuristic_type(opts.get<HEURISTIC_TYPE>("search_type")) {
     heuristic = NOT_INITIALIZED;
 
     if (g_factoring){
@@ -45,7 +46,7 @@ void Heuristic::set_preferred(OperatorID op) {
     }
 }
 
-void Heuristic::evaluate(const State &state) {
+void Heuristic::evaluate(const GlobalState &state) {
     if (heuristic == NOT_INITIALIZED)
         initialize();
     preferred_operators.clear();
@@ -106,8 +107,8 @@ void Heuristic::get_preferred_operators(std::vector<OperatorID> &result) {
                   preferred_operators.end());
 }
 
-bool Heuristic::reach_state(const State & /*parent_state*/,
-                            OperatorID  /*op*/, const State & /*state*/) {
+bool Heuristic::reach_state(const GlobalState & /*parent_state*/,
+                            OperatorID  /*op*/, const GlobalState & /*state*/) {
     return false;
 }
 
@@ -117,7 +118,7 @@ int Heuristic::get_value() const {
 
 void Heuristic::evaluate(int, bool) {
     return;
-    // if this is called, evaluate(const State &state) or set_evaluator_value(int val)
+    // if this is called, evaluate(const GlobalState &state) or set_evaluator_value(int val)
     // should already have been called
 }
 
@@ -144,7 +145,7 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
     search_types.push_back("STAR");
     search_types.push_back("CENTER");
     // TODO rename this to heuristic_type or just type?
-    parser.add_enum_option(
+    parser.add_enum_option<HEURISTIC_TYPE>(
         "search_type",
         search_types,
         "",
@@ -158,3 +159,4 @@ Options Heuristic::default_options() {
     opts.set<int>("search_type", 0);
     return opts;
 }
+

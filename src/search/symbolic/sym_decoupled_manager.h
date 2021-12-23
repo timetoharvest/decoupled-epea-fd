@@ -9,8 +9,9 @@
 #include <functional>
 #include <unordered_map>
 
-
+namespace options {
 class Options;
+}
 
 namespace symbolic {
 
@@ -30,7 +31,7 @@ public:
 
     bool operator<(const CenterPrecondition &other) const;
 
-    bool is_center_applicable(const State &state) const;
+    bool is_center_applicable(const GlobalState &state) const;
 
 };
 
@@ -64,7 +65,7 @@ class Cache {
 
     std::shared_ptr<SymStateSpaceManager> manager;
 public:
-    Cache(std::shared_ptr<SymStateSpaceManager> manager_) : manager(manager_) {} 
+    Cache(std::shared_ptr<SymStateSpaceManager> manager_) : manager(manager_) {}
 
     std::shared_ptr<SymStateSpaceManager> get_manager() const {
         return manager;
@@ -116,7 +117,7 @@ class FactorManager {
     mutable boost::dynamic_bitset<> center_preconditions_checked;
 
 
-    void check_center_preconditions(const State &center_state) const {
+    void check_center_preconditions(const GlobalState &center_state) const {
         for (size_t i = 0; i < center_preconditions.size(); ++i) {
             center_preconditions_checked[i] =
                     center_preconditions[i].is_center_applicable(center_state);
@@ -170,14 +171,14 @@ public:
     }
 
     std::shared_ptr<SymStateSpaceManager> get_leaf_state_space(const SymParamsMgr &params,
-            const State &center_state) const;
+            const GlobalState &center_state) const;
 
     std::shared_ptr<SymStateSpaceManager> get_leaf_state_space(const SymParamsMgr &params,
             const std::map<int, std::vector<TransitionRelation>> &trs) const;
 
     std::shared_ptr<T>
     update_prices_via_propagation(std::shared_ptr<T> predecessor,
-            const State &center_state,
+            const GlobalState &center_state,
             const SymParamsMgr &params,
             const SymParamsSearch &searchParams);
 
@@ -215,11 +216,10 @@ public:
     const bool use_cache_updates;
     const bool use_cache_heuristic;
 
+    SymDecoupledManagerOptions();
     SymDecoupledManagerOptions(const Options &opts);
 
     static void add_options_to_parser(OptionParser &parser);
-
-    static SymDecoupledManagerOptions* get_default_options();
 };
 
 #ifdef __GNUG__
@@ -243,7 +243,7 @@ class SymDecoupledManager {
     std::vector<FactorManager<T>> factor_managers;
 
     std::shared_ptr<SymStateSpaceManager> get_leaf_state_space(LeafFactorID factor,
-            const State &center_state) const;
+            const GlobalState &center_state) const;
 
     BDD get_leaf_precondition(const Operator &op, LeafFactorID factor) const;
 
@@ -269,7 +269,7 @@ public:
     CUDD_METHOD(bool is_applicable(const Operator &op, const std::vector<std::shared_ptr<T>> &leaf_prices) const)
 
     CUDD_METHOD(std::shared_ptr<T> get_initial_state_prices(LeafFactorID factor,
-            const State &center_state))
+            const GlobalState &center_state))
 
     CUDD_METHOD(std::shared_ptr<T>
     update_prices_via_operator(std::shared_ptr<T> predecessor,
@@ -277,7 +277,7 @@ public:
 
     CUDD_METHOD(std::shared_ptr<T>
     update_prices_via_propagation(std::shared_ptr<T> predecessor,
-            LeafFactorID factor, const State &center_state))
+            LeafFactorID factor, const GlobalState &center_state))
 
     CUDD_METHOD(void populate_reached_leaf_facts(const T &info, std::function<void(int, int)> f) const)
 

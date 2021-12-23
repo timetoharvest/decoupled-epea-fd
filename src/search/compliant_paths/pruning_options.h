@@ -1,8 +1,12 @@
 #ifndef PRUNING_OPTIONS_H
 #define PRUNING_OPTIONS_H
 
+#include <memory>
+
+namespace options {
 class Options;
 class OptionParser;
+}
 
 enum DOMINANCE {
     NONE,
@@ -72,7 +76,7 @@ public:
                        do_simulation(false), 
                        goal_price_propagation(false) {}
 
-    PruningOptions(const Options &opts);
+    PruningOptions(const options::Options &opts);
 
     ~PruningOptions() = default;
     
@@ -141,11 +145,11 @@ public:
         return ignore_current_search_state;
     }
     
-    static void add_options_to_parser(OptionParser &parser);
-    
-    static PruningOptions* _parse_dominance(OptionParser &parser);
-    static PruningOptions* _parse_duplicate(OptionParser &parser);
-    static PruningOptions* _parse_frontier(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
+
+    static std::shared_ptr<PruningOptions> _parse_dominance(options::OptionParser &parser);
+    static std::shared_ptr<PruningOptions> _parse_duplicate(options::OptionParser &parser);
+    static std::shared_ptr<PruningOptions> _parse_frontier(options::OptionParser &parser);
 
 };
 

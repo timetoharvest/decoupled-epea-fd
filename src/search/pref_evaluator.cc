@@ -2,11 +2,8 @@
 #include "plugin.h"
 #include "option_parser.h"
 
-PrefEvaluator::PrefEvaluator() {
-}
+using namespace std;
 
-PrefEvaluator::~PrefEvaluator() {
-}
 
 void PrefEvaluator::evaluate(int, bool preferred) {
     value_preferred = preferred;
@@ -27,14 +24,14 @@ int PrefEvaluator::get_value() const {
         return 1;
 }
 
-static ScalarEvaluator *_parse(OptionParser &parser) {
+static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("Preference evaluator",
                              "Returns 0 if preferred is true and 1 otherwise.");
     parser.parse();
     if (parser.dry_run())
         return 0;
     else
-        return new PrefEvaluator;
+        return make_shared<PrefEvaluator>();
 }
 
-static Plugin<ScalarEvaluator> _plugin("pref", _parse);
+static Plugin<Evaluator> _plugin("pref", _parse);

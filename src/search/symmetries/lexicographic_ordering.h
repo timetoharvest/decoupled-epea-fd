@@ -1,8 +1,10 @@
 #ifndef SYMMETRIES_LEXICOGRAPHIC_ORDERING_H
 #define SYMMETRIES_LEXICOGRAPHIC_ORDERING_H
 
+namespace options {
 class Options;
 class OptionParser;
+}
 
 namespace symmetries {
 
@@ -17,7 +19,7 @@ class LexicographicOrdering {
 
 public:
     
-    LexicographicOrdering(const Options &opts);
+    LexicographicOrdering(const options::Options &opts);
     
     bool produces_less(const LeavesPermutation &per, 
 		       const SymmetryCPG &p) const;
@@ -28,7 +30,7 @@ public:
 
     void print_ordering(const SymmetryCPG &p) const;
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
     
 };
 

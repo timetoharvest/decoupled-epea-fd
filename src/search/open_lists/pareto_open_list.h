@@ -11,7 +11,7 @@
 #include <vector>
 #include <utility>
 
-class ScalarEvaluator;
+class Evaluator;
 
 
 template<class Entry>
@@ -25,7 +25,7 @@ class ParetoOpenList : public OpenList<Entry> {
     BucketMap buckets;
     KeySet nondominated;
     bool state_uniform_selection;
-    std::vector<ScalarEvaluator *> evaluators;
+    std::vector<Evaluator *> evaluators;
     std::vector<int> last_evaluated_value;
 
     bool dominates(const KeyType &v1, const KeyType &v2);
@@ -40,7 +40,7 @@ protected:
     Evaluator *get_evaluator() {return this; }
 
 public:
-    ParetoOpenList(const std::vector<ScalarEvaluator *> &evals,
+    ParetoOpenList(const std::vector<Evaluator *> &evals,
                    bool preferred_only, bool state_uniform_selection_);
     ParetoOpenList(const Options &opts);
     ~ParetoOpenList();

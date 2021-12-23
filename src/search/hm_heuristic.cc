@@ -34,7 +34,7 @@ void HMHeuristic::initialize() {
 }
 
 
-int HMHeuristic::compute_heuristic(const State &state) {
+int HMHeuristic::compute_heuristic(const GlobalState &state) {
     if (test_goal(state)) {
         return 0;
     } else {
@@ -191,7 +191,7 @@ int HMHeuristic::check_tuple_in_tuple(
 }
 
 
-void HMHeuristic::state_to_tuple(const State &state, Tuple &t) const {
+void HMHeuristic::state_to_tuple(const GlobalState &state, Tuple &t) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i)
         t.push_back(make_pair(i, state[i]));
 }
@@ -321,8 +321,7 @@ void HMHeuristic::dump_tuple(Tuple &tup) const {
 
 }
 
-
-static Heuristic *_parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("h^m heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "ignored");
@@ -345,8 +344,7 @@ static Heuristic *_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new HMHeuristic(opts);
+        return make_shared<HMHeuristic>(opts);
 }
 
-
-static Plugin<Heuristic> _plugin("hm", _parse);
+static Plugin<Evaluator> _plugin("hm", _parse);

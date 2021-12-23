@@ -71,8 +71,10 @@ public:
     }
 };
 
+namespace options {
 class OptionParser;
 class Options;
+}
 
 class Factoring {
     
@@ -133,9 +135,9 @@ protected:
     static void init_action_schemas();
 
 
-    size_t max_leaf_size;
+    int max_leaf_size;
     
-    size_t min_number_leaves;
+    int min_number_leaves;
     
     // TODO so-far, this is only considered by LP-based, incident arcs, and MIS factorings; all other factorings ignore the limit
     utils::CountdownTimer factoring_timer;
@@ -151,7 +153,7 @@ protected:
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
 
-    Factoring(const Options &opts);
+    Factoring(const options::Options &opts);
     
 public:
     
@@ -190,7 +192,7 @@ public:
         return var_to_affecting_op;
     }
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
     
 };
 

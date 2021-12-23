@@ -25,7 +25,7 @@ enum color_t {PREDICATE_VERTEX, VALUE_VERTEX, PRECOND_VERTEX, EFFECT_VERTEX,
  */
 
 class GraphCreator  {
-    
+
     bool initialized;
 
     OperatorCost cost_type;
@@ -33,7 +33,7 @@ class GraphCreator  {
     int time_bound;
 
     int generators_bound;
-    
+
     const LexicographicOrdering lex_ordering;
 
     std::unique_ptr<Group> group;
@@ -50,34 +50,34 @@ class GraphCreator  {
 
 public:
 
-    GraphCreator(const Options &opts);
+    GraphCreator(const options::Options &opts);
 
     ~GraphCreator() = default;
 
     void initialize(OperatorCost cost_type);
 
-    const std::vector<int> & get_canonical_state(const State &state)  {
+    const std::vector<int> & get_canonical_state(const GlobalState &state)  {
         return group->get_canonical_state(state);
     }
 
-    std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center)  const {
+    std::vector<const DecoupledPermutation *> get_stabilized_permutations(const GlobalState &center)  const {
         assert(decoupled_group);
         return decoupled_group->get_stabilized_permutations(center);
     }
 
-    
-    const std::vector<int> & get_canonical_decoupled_state(const State &center,
+
+    const std::vector<int> & get_canonical_decoupled_state(const GlobalState &center,
                                                            SymmetryCPG &leaves) const {
         assert(decoupled_group);
         return decoupled_group->get_canonical_decoupled_state(center, leaves, lex_ordering);
     }
-    
-    Permutation create_permutation_from_state_to_state(const State &from_state, 
-                                                       const State &to_state);
 
-    std::unique_ptr<DecoupledPermutation> create_permutation_from_state_to_state(const State &state, 
+    Permutation create_permutation_from_state_to_state(const GlobalState &from_state,
+                                                       const GlobalState &to_state);
+
+    std::unique_ptr<DecoupledPermutation> create_permutation_from_state_to_state(const GlobalState &state,
                                                                 const SymmetryCPG &cpg,
-                                                                const State &succ_state, 
+                                                                const GlobalState &succ_state,
                                                                 const SymmetryCPG &succ_cpg) const;
 
     bool has_generators() const {
@@ -85,7 +85,7 @@ public:
     }
 
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 
 };
 

@@ -9,7 +9,7 @@ class CompliantPathGraph;
 class LeafState;
 class LeafFactorID;
 class OperatorID;
-class State;
+class GlobalState;
 
 namespace successor_generator {
 class GeneratorBase;
@@ -29,11 +29,11 @@ public:
     ~SuccessorGenerator();
 
     void generate_applicable_ops(
-            const State &state, std::vector<OperatorID> &applicable_ops) const;
+            const GlobalState &state, std::vector<OperatorID> &applicable_ops) const;
 
     // used to generate successors when reconstructing decoupled plans in orbit search
     void generate_applicable_ops(
-                const State &state, const CompliantPathGraph &cpg,
+                const GlobalState &state, const CompliantPathGraph &cpg,
                 std::vector<OperatorID> &applicable_ops) const;
 
     // used in decoupled search to compute leaf state spaces (leaf actions)

@@ -52,7 +52,7 @@ class SymStateSpaceManager {
     void cost_preimage(const BDD &bdd, std::map <int, std::vector<BDD>> &res, int maxNodes) const;
     void zero_image(const BDD &bdd, std::vector <BDD> &res, int maxNodes) const;
     void cost_image(const BDD &bdd, std::map <int, std::vector<BDD>> &res, int maxNodes) const;
-    
+
     //Used for breadth first search
     void all_image(const BDD &bdd, std::vector<BDD> &res, int maxNodes) const;
     void all_preimage(const BDD &bdd, std::vector<BDD> &res, int maxNodes) const;
@@ -95,10 +95,10 @@ protected:
 
 
 public:
-    SymStateSpaceManager(SymVariables *v, const SymParamsMgr &params, 
-			 const std::set<int> &relevant_vars_ = std::set<int>());
+    SymStateSpaceManager(SymVariables *v, const SymParamsMgr &params,
+             const std::set<int> &relevant_vars_ = std::set<int>());
 
-    SymStateSpaceManager(SymVariables *v, const SymParamsMgr &params, 
+    SymStateSpaceManager(SymVariables *v, const SymParamsMgr &params,
             const std::set<int> & relevant_vars_, BDD initialState_, BDD goal_) :
                 SymStateSpaceManager(v, params, relevant_vars_) {
         initialState = initialState_;
@@ -192,7 +192,7 @@ public:
     }
 
     //Update binState
-    inline int *getBinaryDescription(const State &state) const {
+    inline int *getBinaryDescription(const GlobalState &state) const {
         return vars->getBinaryDescription(state);
     }
 
@@ -248,7 +248,7 @@ public:
     }
 
     inline int getAbsoluteMinTransitionCost() const {
-	if(hasTR0) return 0;
+    if(hasTR0) return 0;
         return min_transition_cost;
     }
 

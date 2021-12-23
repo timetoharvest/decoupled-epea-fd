@@ -54,7 +54,7 @@ StubbornSets::StubbornSets(const Options &opts)
       num_pruned_successors_generated(0),
       expanded_states(0),
       disabled_pruning(false),
-      min_pruning_ratio(opts.get<float>("min_pruning_ratio")) {
+      min_pruning_ratio(opts.get<double>("min_pruning_ratio")) {
     verify_no_axioms_no_conditional_effects();
     compute_sorted_operators();
     compute_achievers();
@@ -108,7 +108,7 @@ bool StubbornSets::mark_as_stubborn(OperatorID op_no) {
 }
 
 void StubbornSets::prune_operators(
-    const State &state, vector<OperatorID> &ops) {
+    const GlobalState &state, vector<OperatorID> &ops) {
     if (disabled_pruning){
         return;
     } else if (expanded_states == 1000 && (1 - (float) num_pruned_successors_generated / (float) num_unpruned_successors_generated) < min_pruning_ratio){
@@ -156,9 +156,9 @@ void StubbornSets::print_statistics() const {
 }
 
 void StubbornSets::add_options_to_parser(OptionParser &parser) {
-    parser.add_option<float>(
+    parser.add_option<double>(
         "min_pruning_ratio",
-        "TODO", 
+        "TODO",
         "0");
 }
 }

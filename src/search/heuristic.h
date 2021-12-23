@@ -1,7 +1,7 @@
 #ifndef HEURISTIC_H
 #define HEURISTIC_H
 
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 #include "operator_cost.h"
 
 #include <map>
@@ -10,11 +10,14 @@
 #include <vector>
 
 class OperatorID;
-class State;
+class GlobalState;
+
+namespace options {
 class OptionParser;
 class Options;
+}
 
-class Heuristic : public ScalarEvaluator {
+class Heuristic : public Evaluator {
     enum {NOT_INITIALIZED = -2};
     int heuristic;
     int evaluator_value; // usually equal to heuristic but can be different
@@ -29,7 +32,7 @@ protected:
     HEURISTIC_TYPE heuristic_type;
     enum {DEAD_END = -1};
     virtual void initialize() {}
-    virtual int compute_heuristic(const State &state) = 0;
+    virtual int compute_heuristic(const GlobalState &state) = 0;
     // Usage note: It's OK to set the same operator as preferred
     // multiple times -- it will still only appear in the list of
     // preferred operators for this heuristic once.
@@ -37,28 +40,29 @@ protected:
     int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:
-    Heuristic(const Options &options);
+    Heuristic(const options::Options &options);
     virtual ~Heuristic();
 
-    void evaluate(const State &state);
-    bool is_dead_end() const;
-    int get_heuristic();
+    virtual void evaluate(const GlobalState &state) override;
+    virtual bool is_dead_end() const override;
+    virtual int get_heuristic() override;
     // changed to virtual, so HeuristicProxy can delegate this:
-    virtual void get_preferred_operators(std::vector<OperatorID> &result);
-    virtual bool dead_ends_are_reliable() const {return true; }
-    virtual bool reach_state(const State &parent_state, OperatorID op,
-                             const State &state);
+    virtual void get_preferred_operators(std::vector<OperatorID> &result) override;
+    virtual bool dead_ends_are_reliable() const override {return true; }
+    virtual bool reach_state(const GlobalState &parent_state, OperatorID op,
+                             const GlobalState &state) override;
 
-    // for abstract parent ScalarEvaluator
-    int get_value() const;
-    void evaluate(int g, bool preferred);
-    bool dead_end_is_reliable() const;
-    void set_evaluator_value(int val);
-    void get_involved_heuristics(std::set<Heuristic *> &hset) {hset.insert(this); }
-    OperatorCost get_cost_type() const {return cost_type; }
+    // for abstract parent Evaluator
+    virtual int get_value() const override;
 
-    static void add_options_to_parser(OptionParser &parser);
-    static Options default_options();
+    virtual void evaluate(int g, bool preferred)  override;
+    virtual bool dead_end_is_reliable() const override;
+    virtual void set_evaluator_value(int val) override;
+    virtual void get_involved_heuristics(std::set<Heuristic*> &hset) override {hset.insert(this); }
+    virtual OperatorCost get_cost_type() const override {return cost_type; }
+
+    static void add_options_to_parser(options::OptionParser &parser);
+    static options::Options default_options();
 };
 
 #endif

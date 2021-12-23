@@ -8,7 +8,7 @@
 using namespace std;
 
 
-MaxEvaluator::MaxEvaluator(const vector<ScalarEvaluator *> &subevaluators)
+MaxEvaluator::MaxEvaluator(const vector<shared_ptr<Evaluator>> &subevaluators)
     : CombiningEvaluator(subevaluators) {
 }
 
@@ -26,13 +26,13 @@ int MaxEvaluator::combine_values(const vector<int> &values) {
 
 /* commented out to silence compiler warning while this is unused.
 
-static ScalarEvaluator *create(const vector<string> &config,
+static shared_ptr<Evaluator> create(const vector<string> &config,
                                int start, int &end, bool dry_run) {
     if (config[start + 1] != "(")
         throw ParseError(start + 1);
 
     // create evaluators
-    vector<ScalarEvaluator *> evals;
+    vector<shared_ptr<Evaluator>> evals;
     OptionParser::instance()->parse_scalar_evaluator_list(
         config, start + 2, end, false, evals, dry_run);
 
@@ -54,4 +54,4 @@ static ScalarEvaluator *create(const vector<string> &config,
 // TODO: Comment this in once the max/sum evaluator stuff is fixed.
 //       For now, it's commented out to use the IPC implementation of
 //       max again, see issue181.
-// static Plugin<ScalarEvaluator> plugin("max", create);
+// static Plugin<Evaluator> plugin("max", create);

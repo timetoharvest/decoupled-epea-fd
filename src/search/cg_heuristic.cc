@@ -41,7 +41,7 @@ void CGHeuristic::initialize() {
     cout << "Initializing causal graph heuristic..." << endl;
 }
 
-int CGHeuristic::compute_heuristic(const State &state) {
+int CGHeuristic::compute_heuristic(const GlobalState &state) {
     setup_domain_transition_graphs();
 
     int heuristic = 0;
@@ -71,7 +71,7 @@ void CGHeuristic::setup_domain_transition_graphs() {
     ++helpful_transition_extraction_counter;
 }
 
-int CGHeuristic::get_transition_cost(const State &state,
+int CGHeuristic::get_transition_cost(const GlobalState &state,
                                      DomainTransitionGraph *dtg, int start_val,
                                      int goal_val) {
     if (start_val == goal_val)
@@ -209,7 +209,7 @@ int CGHeuristic::get_transition_cost(const State &state,
     return start->distances[goal_val];
 }
 
-void CGHeuristic::mark_helpful_transitions(const State &state,
+void CGHeuristic::mark_helpful_transitions(const GlobalState &state,
                                            DomainTransitionGraph *dtg, int to) {
     int var_no = dtg->var;
     int from = state[var_no];
@@ -270,7 +270,7 @@ void CGHeuristic::mark_helpful_transitions(const State &state,
     }
 }
 
-static Heuristic *_parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Causal graph heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -289,8 +289,8 @@ static Heuristic *_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new CGHeuristic(opts);
+        return make_shared<CGHeuristic>(opts);
 }
 
 
-static Plugin<Heuristic> _plugin("cg", _parse);
+static Plugin<Evaluator> _plugin("cg", _parse);

@@ -15,9 +15,12 @@
 
 class Heuristic;
 class Operator;
-class Options;
 class PruningMethod;
-class ScalarEvaluator;
+class Evaluator;
+
+namespace options {
+class Options;
+}
 
 
 class EagerSearch : public SearchEngine {
@@ -26,12 +29,12 @@ class EagerSearch : public SearchEngine {
     bool do_pathmax; // whether to use pathmax correction
     bool use_multi_path_dependence;
 
-    OpenList<StateID> *open_list;
-    ScalarEvaluator *f_evaluator;
+    std::shared_ptr<OpenList<StateID>> open_list;
+    std::shared_ptr<Evaluator> f_evaluator;
     // used for upper bound pruning in anytime decoupled search
-    Heuristic *pruning_heuristic;
+    std::shared_ptr<Evaluator> pruning_heuristic;
     
-    std::unique_ptr<PruningMethod> pruning_method;
+    std::shared_ptr<PruningMethod> pruning_method;
     
     bool insert_state(const SearchNode &succ_node);
 
@@ -42,16 +45,16 @@ protected:
     void print_heuristic_values(const std::vector<int> &values) const;
     void reward_progress();
 
-    std::vector<Heuristic *> heuristics;
-    std::vector<Heuristic *> preferred_operator_heuristics;
-    std::vector<Heuristic *> estimate_heuristics;
+    std::vector<Heuristic*> heuristics;
+    std::vector<std::shared_ptr<Evaluator>> preferred_operator_heuristics;
+    std::vector<Heuristic*> estimate_heuristics;
     // TODO: in the long term this
     // should disappear into the open list
 
     virtual void initialize();
 
 public:
-    EagerSearch(const Options &opts);
+    EagerSearch(const options::Options &opts);
     ~EagerSearch() = default;
     
     void statistics() const;

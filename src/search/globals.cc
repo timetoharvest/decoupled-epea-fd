@@ -40,7 +40,7 @@ static const int PRE_FILE_VERSION = 3;
 
 static vector<vector<set<pair<int, int> > > > g_inconsistent_facts;
 
-bool test_goal(const State &state) {
+bool test_goal(const GlobalState &state) {
     for (size_t i = 0; i < g_goal.size(); ++i) {
         assert(!g_factoring || g_belongs_to_factor[g_goal[i].first] == LeafFactorID::CENTER);
         if (state[g_goal[i].first] != g_goal[i].second){
@@ -53,7 +53,7 @@ bool test_goal(const State &state) {
             if (!g_goals_per_factor[factor].empty() && !cpg->goal_reachable(factor)){
                 return false;
             }
-        }    
+        }
     }
     return true;
 }
@@ -269,8 +269,8 @@ void read_everything(istream &in) {
     read_axioms(in);
 
     cout << "done reading input! [t=" << utils::g_timer << "]" << endl;
-    
-    
+
+
     if (g_factoring){
         g_factoring->do_factoring_or_abstain();
         if (g_factoring->run_standard_search_because_factoring_failed()){
@@ -293,7 +293,7 @@ void read_everything(istream &in) {
                 leaf_domains[factor][g_new_index[var]] = g_variable_domain[var];
             }
         }
-        
+
         // TODO further adapt this based on experiments
         // TODO it can probably be somewhat aligned with the bin-packing, too.
         // if we need a new bucket anyway, then we could as well use an entire int
@@ -322,7 +322,7 @@ void read_everything(istream &in) {
         }
 
         center_domains.push_back(MAX_DUPLICATE_COUNTER);
-        
+
         cout << "packing state variables..." << flush;
         g_state_packer = new int_packer::IntPacker(center_domains);
         cout << "Variables: " << g_center.size() << endl;
@@ -335,17 +335,17 @@ void read_everything(istream &in) {
         g_leaf_factor_packers.push_back(new int_packer::IntPacker(vector<int>(1, 2)));
         cout << "Variables: " << g_variable_domain.size() << endl;
     }
-    
+
     cout << "Bytes per state: "
          << g_state_packer->get_num_bins() * sizeof(int_packer::IntPacker::Bin) << endl;
-    
+
     if (g_factoring){
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             cout << "Bytes per state of leaf factor " << factor << ": "
                     << g_leaf_factor_packers[factor]->get_num_bins() * sizeof(int_packer::IntPacker::Bin) << endl;
         }
     }
-    
+
     cout << "Building successor generator..." << flush;
     int peak_memory_before = utils::get_peak_memory_in_kb();
     utils::Timer successor_generator_timer;
@@ -380,10 +380,10 @@ void dump_everything() {
     for (size_t i = 0; i < g_variable_name.size(); ++i)
         cout << "  " << g_variable_name[i]
              << " (range " << g_variable_domain[i] << ")" << endl;
-    State initial_state = g_initial_state();
-    cout << "Initial State (PDDL):" << endl;
+    GlobalState initial_state = g_initial_state();
+    cout << "Initial GlobalState (PDDL):" << endl;
     initial_state.dump_pddl();
-    cout << "Initial State (FDR):" << endl;
+    cout << "Initial GlobalState (FDR):" << endl;
     initial_state.dump_fdr();
     dump_goal();
     /*
@@ -447,7 +447,7 @@ bool are_mutex(const pair<int, int> &a, const pair<int, int> &b) {
     return bool(g_inconsistent_facts[a.first][a.second].count(b));
 }
 
-const State &g_initial_state() {
+const GlobalState &g_initial_state() {
     return g_state_registry->get_initial_state();
 }
 
@@ -457,7 +457,7 @@ int g_max_action_cost = 0;
 
 int MAX_DUPLICATE_COUNTER;
 
-unique_ptr<Factoring> g_factoring;
+shared_ptr<Factoring> g_factoring;
 
 int g_inc_g_by;
 
@@ -469,7 +469,7 @@ vector<vector<int> > g_leaves;
 vector<LeafFactorID> g_belongs_to_factor;
 vector<size_t> g_new_index;
 
-unique_ptr<symmetries::GraphCreator> g_symmetry_graph;
+shared_ptr<symmetries::GraphCreator> g_symmetry_graph;
 
 vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;

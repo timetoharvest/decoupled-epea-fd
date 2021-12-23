@@ -15,14 +15,14 @@ using StubbornDTG = vector<vector<int>>;
 
 static inline bool is_v_applicable(int var,
                                    size_t op_no,
-                                   const State &state,
+                                   const GlobalState &state,
                                    vector<vector<int>> &preconditions) {
     int precondition_on_var = preconditions[op_no][var];
     return precondition_on_var == -1 || precondition_on_var == state[var];
 }
 
 // Copied from SimpleStubbornSets
-static inline pair<int, int> find_unsatisfied_goal(const State &state) {
+static inline pair<int, int> find_unsatisfied_goal(const GlobalState &state) {
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int goal_var = g_goal[i].first;
         int goal_value = g_goal[i].second;
@@ -157,7 +157,7 @@ void StubbornSetsEC::build_reachability_map() {
     }
 }
 
-void StubbornSetsEC::compute_active_operators(const State &state) {
+void StubbornSetsEC::compute_active_operators(const GlobalState &state) {
     for (OperatorID op_no(0); op_no < g_operators.size(); ++op_no) {
         const Operator &op = g_operators[op_no];
         bool all_preconditions_are_active = true;
@@ -202,7 +202,7 @@ void StubbornSetsEC::compute_conflicts_and_disabling() {
 
 // TODO: find a better name.
 void StubbornSetsEC::mark_as_stubborn_and_remember_written_vars(
-        OperatorID op_no, const State &state) {
+        OperatorID op_no, const GlobalState &state) {
     if (mark_as_stubborn(op_no)) {
         const Operator &op = g_operators[op_no];
         if (op.is_applicable(state)) {
@@ -215,7 +215,7 @@ void StubbornSetsEC::mark_as_stubborn_and_remember_written_vars(
 
 /* TODO: think about a better name, which distinguishes this method
    better from the corresponding method for simple stubborn sets */
-void StubbornSetsEC::add_nes_for_fact(const pair<int, int> &fact, const State &state) {
+void StubbornSetsEC::add_nes_for_fact(const pair<int, int> &fact, const GlobalState &state) {
     for (OperatorID achiever : achievers[fact.first][fact.second]) {
         if (active_ops[achiever]) {
             mark_as_stubborn_and_remember_written_vars(achiever, state);
@@ -226,7 +226,7 @@ void StubbornSetsEC::add_nes_for_fact(const pair<int, int> &fact, const State &s
 }
 
 void StubbornSetsEC::add_conflicting_and_disabling(OperatorID op_no,
-                                                   const State &state) {
+                                                   const GlobalState &state) {
     for (OperatorID conflict : conflicting_and_disabling[op_no]) {
         if (active_ops[conflict])
             mark_as_stubborn_and_remember_written_vars(conflict, state);
@@ -241,7 +241,7 @@ void StubbornSetsEC::get_disabled_vars(
                          disabled_vars);
 }
 
-void StubbornSetsEC::apply_s5(const Operator &op, const State &state) {
+void StubbornSetsEC::apply_s5(const Operator &op, const GlobalState &state) {
     // Find a violated state variable and check if stubborn contains a writer for this variable.
     pair<int, int> violated_precondition(-1, -1);
     for (const Condition &precondition : op.get_preconditions()) {
@@ -267,7 +267,7 @@ void StubbornSetsEC::apply_s5(const Operator &op, const State &state) {
     }
 }
 
-void StubbornSetsEC::initialize_stubborn_set(const State &state) {
+void StubbornSetsEC::initialize_stubborn_set(const GlobalState &state) {
     active_ops.clear();
     active_ops.assign(g_operators.size(), false);
     for (size_t i = 0; i < nes_computed.size(); i++) {
@@ -284,7 +284,7 @@ void StubbornSetsEC::initialize_stubborn_set(const State &state) {
     add_nes_for_fact(unsatisfied_goal, state);     // active operators used
 }
 
-void StubbornSetsEC::handle_stubborn_operator(const State &state, OperatorID op_no) {
+void StubbornSetsEC::handle_stubborn_operator(const GlobalState &state, OperatorID op_no) {
     const Operator &op = g_operators[op_no];
     if (op.is_applicable(state)) {
         //Rule S2 & S3
@@ -321,7 +321,7 @@ void StubbornSetsEC::handle_stubborn_operator(const State &state, OperatorID op_
     }
 }
 
-static PruningMethod* _parse(OptionParser &parser) {
+static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "StubbornSetsEC",
         "Stubborn sets represent a state pruning method which computes a subset "
@@ -338,14 +338,14 @@ static PruningMethod* _parse(OptionParser &parser) {
             "and Scheduling (ICAPS 2013)"
             "251-259"
             "AAAI Press 2013");
-    
+
     stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {
         return 0;
     }
 
-    return new StubbornSetsEC(parser.parse());
+    return make_shared<StubbornSetsEC>(parser.parse());
 }
 
 static Plugin<PruningMethod> _plugin("stubborn_sets_ec", _parse);

@@ -13,7 +13,7 @@ Condition::Condition(istream &in) {
     in >> var >> val;
 }
 
-bool Condition::is_applicable(const State &state) const {
+bool Condition::is_applicable(const GlobalState &state) const {
     assert(!g_factoring || g_belongs_to_factor[var] == LeafFactorID::CENTER);
     return state[var] == val;
 }
@@ -86,7 +86,7 @@ Operator::Operator(istream &in, bool axiom) {
     }
 }
 
-bool Operator::is_applicable(const State &state) const {
+bool Operator::is_applicable(const GlobalState &state) const {
     if (g_factoring){
         if (!is_center_applicable(state)){
             return false;
@@ -102,7 +102,7 @@ bool Operator::is_applicable(const State &state) const {
                 return false;
             }
         }
-    }        
+    }
     return true;
 }
 
@@ -120,7 +120,7 @@ bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
     return true;
 }
 
-bool Operator::is_center_applicable(const State &state) const {
+bool Operator::is_center_applicable(const GlobalState &state) const {
     OpsLeafProps<Condition> center_preconds = get_preconditions(LeafFactorID::CENTER);
     for (const Condition &cond : center_preconds){
         if (!cond.is_applicable(state)){

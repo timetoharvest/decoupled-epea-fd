@@ -1,4 +1,4 @@
-#include "sym_decoupled_manager.h" 
+#include "sym_decoupled_manager.h"
 
 #include "../compliant_paths/cudd_cpg.h"
 #include "../factoring.h"
@@ -39,7 +39,7 @@ bool CenterPrecondition::operator<(const CenterPrecondition &other) const {
     return conditions < other.conditions;
 }
 
-bool CenterPrecondition::is_center_applicable(const State &state) const {
+bool CenterPrecondition::is_center_applicable(const GlobalState &state) const {
     for (const auto &cond : conditions){
         if (!cond.is_applicable(state)){
             return false;
@@ -264,14 +264,14 @@ int SymDecoupledManager<T>::apply_leaf_precondition(const Operator & op, LeafFac
 
 template<typename T>
 shared_ptr<SymStateSpaceManager>
-SymDecoupledManager<T>::get_leaf_state_space(LeafFactorID factor, const State &center_state) const {
+SymDecoupledManager<T>::get_leaf_state_space(LeafFactorID factor, const GlobalState &center_state) const {
     return factor_managers[factor].get_leaf_state_space(mgrParams, center_state);
 }
 
 template<typename T>
 shared_ptr<SymStateSpaceManager>
 FactorManager<T>::get_leaf_state_space(const SymParamsMgr &params,
-        const State & center_state) const {
+        const GlobalState & center_state) const {
 
     check_center_preconditions(center_state);
 
@@ -320,7 +320,7 @@ shared_ptr<ClosedList>  perform_uniform_cost_search (shared_ptr<SymStateSpaceMan
 template<typename T>
 shared_ptr<T>
 SymDecoupledManager<T>::get_initial_state_prices(LeafFactorID factor,
-        const State & initial_center_state) {
+        const GlobalState & initial_center_state) {
 
     auto mgr = get_leaf_state_space(factor, initial_center_state);
 
@@ -337,7 +337,7 @@ SymDecoupledManager<T>::get_initial_state_prices(LeafFactorID factor,
 template<typename T>
 shared_ptr<T> SymDecoupledManager<T>::update_prices_via_propagation(
         shared_ptr<T> predecessor, LeafFactorID factor,
-        const State & center_state) {
+        const GlobalState & center_state) {
     return factor_managers[factor].update_prices_via_propagation(predecessor, center_state,
             mgrParams, searchParams);
 }
@@ -367,7 +367,7 @@ shared_ptr<T> FactorManager<T>::update_prices_via_operator (shared_ptr<T> predec
 
 template<typename T>
 shared_ptr<T> FactorManager<T>::update_prices_via_propagation (std::shared_ptr<T> predecessor,
-        const State & center_state,
+        const GlobalState & center_state,
         const SymParamsMgr & mgrParams,
         const SymParamsSearch & searchParams) {
 
@@ -496,7 +496,7 @@ get_leaf_compliant_plan(const vector<StateID> &center_states,
     }
 
     for(size_t i = 0; i < center_path.size(); ++i) {
-        const State &center_state = g_state_registry->lookup_state(center_states[i+1]);
+        const GlobalState &center_state = g_state_registry->lookup_state(center_states[i+1]);
         const Operator &op = g_operators[center_path[i]];
 
         auto closed_i = path_reconstructed[i]->getClosedList(); //Make copy
@@ -528,7 +528,7 @@ get_leaf_compliant_plan(const vector<StateID> &center_states,
     //Now we go backward trying to reconstruct from the goal
     for(int i = (int) path_reconstructed.size() - 1; i >= 0; --i) {
 
-        const State &center_state = g_state_registry->lookup_state(center_states[i]);
+        const GlobalState &center_state = g_state_registry->lookup_state(center_states[i]);
 
         map<int, vector<TransitionRelation>> trs;
         for(const auto & op : g_operators) {
@@ -569,29 +569,25 @@ SymDecoupledManager<T>::SymDecoupledManager(const SymDecoupledManagerOptions &op
 
 #endif
 
+SymDecoupledManagerOptions::SymDecoupledManagerOptions() :
+        cudd_init_nodes(16000000L),
+        cudd_init_cache_size(16000000L),
+        cudd_init_available_memory(0L),
+        gamer_ordering(true),
+        use_cache_updates(true),
+        use_cache_heuristic(true) {
+}
+
 SymDecoupledManagerOptions::SymDecoupledManagerOptions(const Options &opts) :
 #ifdef USE_CUDD
         mgrParams(opts), searchParams(opts),
 #endif
         cudd_init_nodes(opts.get<long>("cudd_init_nodes")),
-	    cudd_init_cache_size(opts.get<long>("cudd_init_cache_size")),
-	    cudd_init_available_memory(opts.get<long>("cudd_init_available_memory")),
-	    gamer_ordering(opts.get<bool>("gamer_ordering")),
-	    use_cache_updates(opts.get<bool> ("use_cache_updates") || opts.get<bool> ("use_cache")),
-	    use_cache_heuristic(opts.get<bool> ("use_cache_heuristic") || opts.get<bool> ("use_cache")) {
-}
-
-SymDecoupledManagerOptions*  SymDecoupledManagerOptions::get_default_options() {
-    OptionParser parser("cudd_decoupled_manager", false);
-#ifdef USE_CUDD
-    SymController::add_options_to_parser(parser, 1800e3, 1e7);
-#else
-        cerr << "Need to compile FD with Cudd support to use symbolic search classes." << endl;
-        exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-#endif
-    add_options_to_parser(parser);
-
-    return new SymDecoupledManagerOptions(parser.parse());
+        cudd_init_cache_size(opts.get<long>("cudd_init_cache_size")),
+        cudd_init_available_memory(opts.get<long>("cudd_init_available_memory")),
+        gamer_ordering(opts.get<bool>("gamer_ordering")),
+        use_cache_updates(opts.get<bool> ("use_cache_updates") || opts.get<bool> ("use_cache")),
+        use_cache_heuristic(opts.get<bool> ("use_cache_heuristic") || opts.get<bool> ("use_cache")) {
 }
 
 void SymDecoupledManagerOptions::add_options_to_parser(OptionParser &parser) {
@@ -608,30 +604,31 @@ void SymDecoupledManagerOptions::add_options_to_parser(OptionParser &parser) {
             "false");
 }
 
-static SymDecoupledManagerOptions  *_parse(OptionParser &parser) {
+static shared_ptr<SymDecoupledManagerOptions> _parse(OptionParser &parser) {
 #ifdef USE_CUDD
     SymController::add_options_to_parser(parser, 1800e3, 1e7);
-#else
-    cerr << "Need to compile FD with Cudd support to use symbolic search classes." << endl;
-    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 #endif
 
     SymDecoupledManagerOptions::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    SymDecoupledManagerOptions * res = 0;
     if (!parser.dry_run()) {
-        res = new SymDecoupledManagerOptions(opts);
+        return make_shared<SymDecoupledManagerOptions>(opts);
     }
 
-    return res;
+    return 0;
 }
+
+static PluginTypePlugin<SymDecoupledManagerOptions> _type_plugin(
+    "SymDecoupledManagerOptions",
+    "TODO",
+    "sym_decoupled_manager_options");
 
 static Plugin<SymDecoupledManagerOptions> _plugin("cudd_decoupled_manager", _parse);
 
-template class SymDecoupledManager< SymPricingFunction >;
-template class SymDecoupledManager< SymPricingFunctionSAT >;
-template class SymDecoupledManager< SymPricingFunctionDebug >;
+template class SymDecoupledManager<SymPricingFunction>;
+template class SymDecoupledManager<SymPricingFunctionSAT>;
+template class SymDecoupledManager<SymPricingFunctionDebug>;
 
 }

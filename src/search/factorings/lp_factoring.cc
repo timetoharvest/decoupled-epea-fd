@@ -8,6 +8,7 @@
 #include "../task_utils/causal_graph.h"
 #include "../globals.h"
 #include "../operator.h"
+#include "../utils/hash.h"
 #include "../utils/timer.h"
 
 #include <algorithm>
@@ -22,14 +23,14 @@ static const string CPLEX_ERROR_MEMORY_2 = "not enough memory";
 
 namespace lp_factoring {
 LPFactoring::LPFactoring(const Options &opts) : Factoring(opts),
-        strategy(STRATEGY(opts.get_enum("strategy"))),
-        factoring_type(FACTORING_TYPE(opts.get_enum("factoring_type"))),
+        strategy(opts.get<STRATEGY>("strategy")),
+        factoring_type(opts.get<FACTORING_TYPE>("factoring_type")),
         min_mobility(opts.get<int>("min_mobility")),
-        min_flexibility(opts.get<float>("min_flexibility")),
+        min_flexibility(opts.get<double>("min_flexibility")),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         cplex_time_limit(opts.get<int>("cplex_time_limit")),
         memory_limit(opts.get<int>("memory_limit")),
-        lp_solver_type(lp::LPSolverType(opts.get_enum("lpsolver"))),
+        lp_solver_type(opts.get<lp::LPSolverType>("lpsolver")),
         timer(utils::Timer()) {
     profile = STAR;
     cout << "using LP factoring strategy" << endl;
@@ -1014,7 +1015,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
         utils::HashMap<std::vector<int>, size_t> leaf_lookup;
         for (size_t as = 0; as < action_schemas.size(); ++as) {
             const ActionSchema &action_schema = action_schemas[as];
-            uint64_t size = 1;
+            int64_t size = 1;
             for (int var : action_schema.eff_vars){
                 size *= g_variable_domain[var];
                 if (max_leaf_size != 0 && size > max_leaf_size){
@@ -1428,26 +1429,24 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
     strategies.push_back("mm");
     strategies.push_back("mf");
     strategies.push_back("mmf");
-    parser.add_enum_option(
+    parser.add_enum_option<STRATEGY>(
         "strategy",
         strategies,
         "TODO",
         "mml",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     vector<string> factoring_type;
     factoring_type.push_back("general");
     factoring_type.push_back("strict");
     factoring_type.push_back("f");
     factoring_type.push_back("if");
-    parser.add_enum_option(
+    parser.add_enum_option<FACTORING_TYPE>(
         "factoring_type",
         factoring_type,
         "TODO",
         "strict",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     parser.add_option<int>(
         "min_mobility",
@@ -1455,7 +1454,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
         "1"
     );
 
-    parser.add_option<float>(
+    parser.add_option<double>(
         "min_flexibility",
         "TODO",
         "0"
@@ -1481,7 +1480,7 @@ void LPFactoring::add_options_to_parser(OptionParser &parser) {
 
 }
 
-static Factoring *_parse_lp(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_lp(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     LPFactoring::add_options_to_parser(parser);
@@ -1489,12 +1488,11 @@ static Factoring *_parse_lp(OptionParser &parser) {
 
     Options opts = parser.parse();
 
-    LPFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new LPFactoring(opts);
+        return make_shared<LPFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 static Plugin<Factoring> _plugin_lp("lp_factoring", _parse_lp);

@@ -301,7 +301,7 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             }
             if (neighbour_leaves.size() == 1) {
                 // check leaf factor size
-                uint64_t f_size = g_variable_domain[c];
+                int64_t f_size = g_variable_domain[c];
                 for (int v : mis[*neighbour_leaves.begin()]) {
                     f_size *= g_variable_domain[v];
                 }
@@ -430,14 +430,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         }
                         if (neighbour_leaves.size() > 1 && max_merge_count < arg_merge_leaves_level) {
                             // check leaf factor size
-                            uint64_t f_size = g_variable_domain[var];
+                            int64_t f_size = g_variable_domain[var];
                             for (int f : neighbour_leaves) {
                                 for (int v : mis[f]) {
                                     f_size *= g_variable_domain[v];
                                 }
                             }
                             if ((max_leaf_size == 0 || f_size <= max_leaf_size) &&
-                                    min_number_leaves <= (mis.size() - neighbour_leaves.size() + 1)) {
+                                    min_number_leaves <= static_cast<int>(mis.size() - neighbour_leaves.size() + 1)) {
                                 merge_candidates.push_back(var);
                                 merge_candidates_to_leaves.push_back(neighbour_leaves);
                             }
@@ -669,26 +669,24 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "TODO",
             "false");
 
-    parser.add_list_option<FactoringRanking *>(
+    parser.add_list_option<shared_ptr<FactoringRanking>>(
             "rankings",
             "TODO",
-            "",
-            OptionFlags(false));
+            "");
 }
 
-static Factoring *_parse_mis(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_mis(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     MaxIndependentSetFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    MaxIndependentSetFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new MaxIndependentSetFactoring(opts);
+        return make_shared<MaxIndependentSetFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 static Plugin<Factoring> _plugin_mis("mis", _parse_mis);

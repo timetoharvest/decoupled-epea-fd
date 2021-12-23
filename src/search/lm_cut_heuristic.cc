@@ -156,7 +156,7 @@ void LandmarkCutHeuristic::build_relaxed_operator(const Operator &op) {
         effects.push_back(&propositions[op_effects[i].var][op_effects[i].val]);
     }
     int cost = get_adjusted_cost(op);
-    if (heuristic_type == HEURISTIC_TYPE::CENTER && 
+    if (heuristic_type == HEURISTIC_TYPE::CENTER &&
             op.get_affected_factor() != LeafFactorID::CENTER){
         cost = 0;
     }
@@ -210,7 +210,7 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
     }
 }
 
-void LandmarkCutHeuristic::setup_exploration_queue_state(const State &state) {
+void LandmarkCutHeuristic::setup_exploration_queue_state(const GlobalState &state) {
     for (size_t var = 0; var < propositions.size(); ++var) {
         if (heuristic_type == HEURISTIC_TYPE::STD ||
                 g_belongs_to_factor[var] == LeafFactorID::CENTER){
@@ -221,7 +221,7 @@ void LandmarkCutHeuristic::setup_exploration_queue_state(const State &state) {
     enqueue_if_necessary(&artificial_precondition, 0);
 }
 
-void LandmarkCutHeuristic::first_exploration(const State &state) {
+void LandmarkCutHeuristic::first_exploration(const GlobalState &state) {
     assert(priority_queue.empty());
     setup_exploration_queue();
     setup_exploration_queue_state(state);
@@ -302,7 +302,7 @@ void LandmarkCutHeuristic::first_exploration_incremental(
 }
 
 void LandmarkCutHeuristic::second_exploration(
-        const State &state, vector<RelaxedProposition *> &second_exploration_queue, vector<RelaxedOperator *> &cut) {
+        const GlobalState &state, vector<RelaxedProposition *> &second_exploration_queue, vector<RelaxedOperator *> &cut) {
     assert(second_exploration_queue.empty());
     assert(cut.empty());
 
@@ -410,7 +410,7 @@ void LandmarkCutHeuristic::dereference_ops() {
     artificial_precondition.precondition_of.resize(num_art_center_pre_pre);
 }
 
-int LandmarkCutHeuristic::compute_heuristic(const State &state) {
+int LandmarkCutHeuristic::compute_heuristic(const GlobalState &state) {
     // TODO: Possibly put back in some kind of preferred operator mechanism.
     if (heuristic_type != HEURISTIC_TYPE::STD){
         // add virtual operators for factored search
@@ -434,7 +434,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                         assert(cost >= 0);
                     }
 
-                    if (id >= relaxed_leaf_operators[factor].size()){                        
+                    if (id >= relaxed_leaf_operators[factor].size()){
                         for (LeafStateHash i(relaxed_leaf_operators[factor].size()); i <= id; ++i){
                             const LeafState &f = g_state_registry->lookup_leaf_state(i, factor);
 
@@ -562,7 +562,7 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
    values a bit.
  */
 
-static Heuristic *_parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Landmark-cut heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "not supported");
@@ -577,8 +577,8 @@ static Heuristic *_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new LandmarkCutHeuristic(opts);
+        return make_shared<LandmarkCutHeuristic>(opts);
 }
 
 
-static Plugin<Heuristic> _plugin("lmcut", _parse);
+static Plugin<Evaluator> _plugin("lmcut", _parse);

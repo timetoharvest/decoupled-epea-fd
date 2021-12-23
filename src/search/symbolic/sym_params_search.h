@@ -3,8 +3,10 @@
 
 #include <algorithm>
 
+namespace options {
 class Options;
 class OptionParser;
+}
 
 namespace symbolic {
 class SymParamsSearch {
@@ -39,11 +41,13 @@ public:
 
     bool debug;
 
-    SymParamsSearch(const Options &opts);
+    SymParamsSearch();
 
-    static void add_options_to_parser(OptionParser &parser, int maxStepTime, int maxStepNodes);
+    SymParamsSearch(const options::Options &opts);
+
+    static void add_options_to_parser(options::OptionParser &parser, int maxStepTime, int maxStepNodes);
     //Parameters with default values for hierarchy policies
-    static void add_options_to_parser_abstractions(OptionParser &parser, int maxStepTime, int maxStepNodes);
+    static void add_options_to_parser_abstractions(options::OptionParser &parser, int maxStepTime, int maxStepNodes);
     void print_options() const;
 
     inline double getAllotedTime(double estimatedTime) const {

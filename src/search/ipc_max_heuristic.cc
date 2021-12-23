@@ -12,13 +12,13 @@ using namespace std;
 
 
 IPCMaxHeuristic::IPCMaxHeuristic(const Options &opts)
-    : Heuristic(opts), evaluators(opts.get_list<Heuristic *>("heuristics")) {
+    : Heuristic(opts), evaluators(opts.get_list<shared_ptr<Evaluator>>("heuristics")) {
 }
 
 IPCMaxHeuristic::~IPCMaxHeuristic() {
 }
 
-int IPCMaxHeuristic::compute_heuristic(const State &state) {
+int IPCMaxHeuristic::compute_heuristic(const GlobalState &state) {
     dead_end = false;
     dead_end_reliable = false;
     value = 0;
@@ -40,8 +40,8 @@ int IPCMaxHeuristic::compute_heuristic(const State &state) {
     return value;
 }
 
-bool IPCMaxHeuristic::reach_state(const State &parent_state, OperatorID op,
-                                  const State &state) {
+bool IPCMaxHeuristic::reach_state(const GlobalState &parent_state, OperatorID op,
+                                  const GlobalState &state) {
     bool result = false;
     for (size_t i = 0; i < evaluators.size(); ++i) {
         if (evaluators[i]->reach_state(parent_state, op, state)) {
@@ -52,19 +52,18 @@ bool IPCMaxHeuristic::reach_state(const State &parent_state, OperatorID op,
     return result;
 }
 
-static Heuristic *_parse(OptionParser &parser) {
-    parser.document_hide(); //don't show documentation for this temporary class (see issue198)
+static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.document_synopsis("IPC-Max Heuristic", "");
-    parser.add_list_option<Heuristic *>("heuristics");
+    parser.add_list_option<shared_ptr<Evaluator>>("heuristics");
     Heuristic::add_options_to_parser(parser);
     Options opts = parser.parse();
 
-    opts.verify_list_non_empty<Heuristic *>("heuristics");
+    opts.verify_list_non_empty<shared_ptr<Evaluator>>("heuristics");
 
     if (parser.dry_run())
         return 0;
     else
-        return new IPCMaxHeuristic(opts);
+        return make_shared<IPCMaxHeuristic>(opts);
 }
 
-static Plugin<Heuristic> plugin("max", _parse);
+static Plugin<Evaluator> plugin("max", _parse);

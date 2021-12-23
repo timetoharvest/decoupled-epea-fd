@@ -5,7 +5,7 @@
 using namespace std;
 
 CombiningEvaluator::CombiningEvaluator(
-    const vector<ScalarEvaluator *> &subevaluators_)
+    const vector<shared_ptr<Evaluator>> &subevaluators_)
     : subevaluators(subevaluators_),
       subevaluator_values(subevaluators_.size()) {
 }
@@ -44,7 +44,7 @@ int CombiningEvaluator::get_value() const {
     return value;
 }
 
-void CombiningEvaluator::get_involved_heuristics(std::set<Heuristic *> &hset) {
+void CombiningEvaluator::get_involved_heuristics(std::set<Heuristic*> &hset) {
     for (size_t i = 0; i < subevaluators.size(); ++i)
         subevaluators[i]->get_involved_heuristics(hset);
 }

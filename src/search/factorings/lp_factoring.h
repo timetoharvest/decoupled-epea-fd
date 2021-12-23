@@ -73,7 +73,7 @@ class LPFactoring : public Factoring {
 
     int min_mobility;
 
-    float min_flexibility;
+    double min_flexibility;
 
     int max_merge_steps;
 
@@ -114,9 +114,9 @@ class LPFactoring : public Factoring {
 
 public:
 
-    LPFactoring(const Options &opts);
+    LPFactoring(const options::Options &opts);
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 
 };
 }

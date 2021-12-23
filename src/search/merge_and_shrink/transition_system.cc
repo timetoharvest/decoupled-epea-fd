@@ -765,7 +765,7 @@ void TransitionSystem::apply_abstraction(
         transitions_sorted_unique = false;
 }
 
-int TransitionSystem::get_cost(const State &state) const {
+int TransitionSystem::get_cost(const GlobalState &state) const {
     int abs_state = get_abstract_state(state);
     if (abs_state == PRUNED_STATE)
         return -1;
@@ -961,7 +961,7 @@ string AtomicTransitionSystem::description() const {
     return s.str();
 }
 
-AbstractStateRef AtomicTransitionSystem::get_abstract_state(const State &state) const {
+AbstractStateRef AtomicTransitionSystem::get_abstract_state(const GlobalState &state) const {
     int value = state[variable];
     return lookup_table[value];
 }
@@ -1108,7 +1108,7 @@ string CompositeTransitionSystem::description() const {
     return s.str();
 }
 
-AbstractStateRef CompositeTransitionSystem::get_abstract_state(const State &state) const {
+AbstractStateRef CompositeTransitionSystem::get_abstract_state(const GlobalState &state) const {
     AbstractStateRef state1 = components[0]->get_abstract_state(state);
     AbstractStateRef state2 = components[1]->get_abstract_state(state);
     if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)

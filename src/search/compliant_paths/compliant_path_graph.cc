@@ -18,7 +18,7 @@ using namespace std;
 
 bool CompliantPathGraph::initialized = false;
 
-unique_ptr<PruningOptions> CompliantPathGraph::pruning;
+shared_ptr<PruningOptions> CompliantPathGraph::pruning;
 
 vector<int> CompliantPathGraph::min_leaf_goal_cost;
 
@@ -27,7 +27,7 @@ int CompliantPathGraph::sum_min_leaf_goal_cost = 0;
 vector<int> CompliantPathGraph::min_leaf_action_cost;
 
 const int CompliantPathGraph::INF = -1;
-    
+
 SearchSpace* CompliantPathGraph::search_space;
 
 OperatorCost CompliantPathGraph::cost_type;
@@ -48,7 +48,7 @@ void CompliantPathGraph::set_cost_type(OperatorCost ct) {
     }
 }
 
-void CompliantPathGraph::notify_new_center_state(const State &state, const CompliantPathGraph &cpg) {
+void CompliantPathGraph::notify_new_center_state(const GlobalState &state, const CompliantPathGraph &cpg) {
     if (g_symmetry_graph && state.get_id().hash() == 0){
         // need some cleanup for the special case of permuted initial state
         if (pruning->use_exact_duplicate_checking() && duplicate_table[state.get_id().hash()].size() == 1){
@@ -72,20 +72,20 @@ void CompliantPathGraph::notify_new_center_state(const State &state, const Compl
     }
 }
 
-pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
+pair<int, bool> CompliantPathGraph::check_dominance(const GlobalState &base_state,
                                                     int curr_number_duplicates,
-                                                    const State &predecessor,
+                                                    const GlobalState &predecessor,
                                                     const Operator &op) {
-    
+
     int new_g = search_space->get_node(predecessor).get_g() + get_adjusted_action_cost(op, cost_type) + g_inc_g_by;
-    
+
 #ifdef DEBUG_PRUNING
     cout << "start checking duplicates for state " << base_state.get_id() << ", g = " << new_g << endl;
     dump();
 #endif
-    
+
     vector<size_t> predecessors;
-    
+
     if (g_factoring->get_search_type() != DECOUPLED_SEARCH_TYPE::SAT
             && g_factoring->get_search_type() != DECOUPLED_SEARCH_TYPE::UNSAT){
         StateID curr_id = predecessor.get_id();
@@ -96,7 +96,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
         }
         predecessors.push_back(0); // initial state always has StateID 0
     }
-    
+
     int replaced_state_dup = -1;
 
     size_t base_state_id_hash = base_state.get_id().hash();
@@ -135,7 +135,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const State &base_state,
 #endif
 
         // get other state
-        const State s = g_state_registry->get_decoupled_state(base_state, dup);
+        const GlobalState s = g_state_registry->get_decoupled_state(base_state, dup);
 
 #ifdef DEBUG_PRUNING
         cout << "compare to state " << s.get_id() << ", g = " << search_space->get_node(s).get_g() << endl;

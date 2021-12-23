@@ -2,7 +2,7 @@
 #define LAZY_SEARCH_H
 
 #include "state.h"
-#include "scalar_evaluator.h"
+#include "evaluator.h"
 #include "search_engine.h"
 #include "search_progress.h"
 #include "search_space.h"
@@ -13,24 +13,27 @@
 
 class Operator;
 class Heuristic;
+
+namespace options {
 class Options;
+}
 
 typedef std::pair<StateID, OperatorID> OpenListEntryLazy;
 
 class LazySearch : public SearchEngine {
 protected:
-    OpenList<OpenListEntryLazy> *open_list;
+    std::shared_ptr<OpenList<OpenListEntryLazy>> open_list;
 
     // Search Behavior parameters
     bool reopen_closed_nodes; // whether to reopen closed nodes upon finding lower g paths
     bool randomize_successors;
     bool preferred_successors_first;
 
-    std::vector<Heuristic *> heuristics;
-    std::vector<Heuristic *> preferred_operator_heuristics;
-    std::vector<Heuristic *> estimate_heuristics;
+    std::vector<Heuristic*> heuristics;
+    std::vector<std::shared_ptr<Evaluator>> preferred_operator_heuristics;
+    std::vector<Heuristic*> estimate_heuristics;
 
-    State current_state;
+    GlobalState current_state;
     StateID current_predecessor_id;
     OperatorID current_operator;
     int current_g;
@@ -47,9 +50,9 @@ protected:
     void get_successor_operators(std::vector<OperatorID> &ops);
 public:
 
-    LazySearch(const Options &opts);
-    virtual ~LazySearch();
-    void set_pref_operator_heuristics(std::vector<Heuristic *> &heur);
+    LazySearch(const options::Options &opts);
+
+    void set_pref_operator_heuristics(std::vector<std::shared_ptr<Evaluator>> &heur);
 
     virtual void statistics() const;
 };

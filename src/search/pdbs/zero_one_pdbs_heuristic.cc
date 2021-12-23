@@ -28,7 +28,7 @@ ZeroOnePDBsHeuristic::ZeroOnePDBsHeuristic(
       zero_one_pdbs(get_zero_one_pdbs_from_options(task, opts)) {
 }
 
-int ZeroOnePDBsHeuristic::compute_heuristic(const State &ancestor_state) {
+int ZeroOnePDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     State state = convert_ancestor_state(ancestor_state);
     int h = zero_one_pdbs.get_value(state);
     if (h == numeric_limits<int>::max())

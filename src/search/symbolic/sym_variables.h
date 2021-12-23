@@ -46,7 +46,7 @@ class SymVariables {
     std::unique_ptr<Cudd> _manager; //_manager associated with this symbolic search
 
     int numBDDVars; //Number of binary variables (just one set, the total number is numBDDVars*3
-    std::vector<int> numBDDVarsByFactor; 
+    std::vector<int> numBDDVarsByFactor;
     std::vector<BDD> variables; // BDD variables
 
     //The variable order must be complete.
@@ -63,7 +63,7 @@ class SymVariables {
 
     std::vector<BDD> validBDDsFactor; // BDD that represents the valid values of all the variables
 
-    enum class Assignment{ZERO, ONE, BOTH};   
+    enum class Assignment{ZERO, ONE, BOTH};
     std::vector<std::vector<int> > fd_vars; //FD var for each bdd var and factor
 
     //Vector to store the binary description of an state
@@ -82,7 +82,7 @@ public:
     void init();
 
     //State getStateFrom(const BDD & bdd) const;
-    BDD getStateBDD(const State &state) const;
+    BDD getStateBDD(const GlobalState &state) const;
     BDD getStateBDD(const std::vector<int> &state) const;
 
     BDD getPartialStateBDD(const std::vector<std::pair<int, int>> &state) const;
@@ -98,7 +98,7 @@ public:
     double percentageNumStates(const BDD &bdd) const {
         return numStates(bdd) / numStates();
     }
-    bool isIn(const State &state, const BDD &bdd) const;
+    bool isIn(const GlobalState &state, const BDD &bdd) const;
 
 
     inline const std::vector<int> &vars_index_pre(int variable) const {
@@ -205,7 +205,7 @@ public:
 
     void print();
 
-    template <class T> 
+    template <class T>
     int *getBinaryDescription(const T &state) {
         int pos = 0;
         //  cout << "State " << endl;
@@ -276,34 +276,34 @@ private:
         return bdd_index_pre[fd_var].size();
     }
 
-    void put_facts (int fd_var, 
+    void put_facts (int fd_var,
             const std::vector<Assignment> & current_assignment,
             std::vector<std::vector<bool> > & facts) const {
         put_facts(fd_var, current_assignment, facts, pos_fd_var(fd_var), 0, 1);
     }
 
-    void put_facts (int fd_var, 
+    void put_facts (int fd_var,
             const std::vector<Assignment> & current_assignment,
             std::vector<std::vector<bool> > & facts, int pos,
             int fact_value, int value_pos) const;
 
 
-    void get_BDD_facts (LeafFactorID factor, DdNode * bdd, int current_bdd_var, 
+    void get_BDD_facts (LeafFactorID factor, DdNode * bdd, int current_bdd_var,
             std::vector<Assignment> & current_assignment,
             std::vector<std::vector<bool> > & facts,
             std::unordered_set<DdNode *> & cache) const ;
 
-    void put_facts (int fd_var, 
+    void put_facts (int fd_var,
             const std::vector<Assignment> & current_assignment,
             std::vector<std::vector<int> > & facts, int price_value) const ;
 
-    void put_facts (int fd_var, 
+    void put_facts (int fd_var,
             const std::vector<Assignment> & current_assignment,
             std::vector<std::vector<int> > & facts, int pos,
             int fact_value, int value_pos, int price_value) const;
 
 
-    int get_ADD_fact_prices (LeafFactorID factor, DdNode * bdd, int current_bdd_var, 
+    int get_ADD_fact_prices (LeafFactorID factor, DdNode * bdd, int current_bdd_var,
             std::vector<Assignment> & current_assignment,
             std::vector<std::vector<int> > & facts, std::vector<int> & all_below,
             std::unordered_map<DdNode *, int> & cache) const ;

@@ -16,7 +16,7 @@
 class LeafState;
 class LeafStateID;
 class SearchSpace;
-class State;
+class GlobalState;
 class StateID;
 
 
@@ -24,7 +24,7 @@ class CompliantPathGraph {
     friend class PathPrices; // get_successor_via_center_action()
     friend class SearchSpace; // init state cpg + get successors
     friend class StateRegistry; // get_init_state_cpg() + check_dominance()
-    
+
 
     static bool initialized;
 
@@ -47,22 +47,22 @@ class CompliantPathGraph {
 
     static std::unique_ptr<CompliantPathGraph> get_init_state_cpg();
 
-    static void notify_new_center_state(const State &state, const CompliantPathGraph &cpg);
+    static void notify_new_center_state(const GlobalState &state, const CompliantPathGraph &cpg);
 
     // returns the duplicate counter for this base state and compliant path graph
     // i.e. the counter of the state subsuming that or the current max + 1
-    std::pair<int, bool> check_dominance(const State &base_state,
+    std::pair<int, bool> check_dominance(const GlobalState &base_state,
             int curr_number_duplicates,
-            const State &predecessor,
+            const GlobalState &predecessor,
             const Operator &op);
 
 protected:
 
     static SearchSpace *search_space;
-    
+
     static OperatorCost cost_type;
-    
-    static std::unique_ptr<PruningOptions> pruning;
+
+    static std::shared_ptr<PruningOptions> pruning;
 
     // contains the locally minimal goal cost per factor
     static std::vector<int> min_leaf_goal_cost;
@@ -71,19 +71,19 @@ protected:
 
     static std::vector<int> min_leaf_action_cost;
 
-    
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const = 0;
-                                                                          
-    virtual DOMINANCE check_dominance(const State &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
-    
-    virtual void store_new_cpg(const State &state) = 0;
-    
-    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const = 0;
+
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const GlobalState &new_center_state, const Operator &op) const = 0;
+
+    virtual DOMINANCE check_dominance(const GlobalState &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) = 0;
+
+    virtual void store_new_cpg(const GlobalState &state) = 0;
+
+    virtual bool is_hypercube_covered(const GlobalState &base_state, int curr_number_duplicates) const = 0;
 
 public:
-    
+
     static const int INF;
-    
+
 
     virtual ~CompliantPathGraph() = default;
 
@@ -93,7 +93,7 @@ public:
     virtual void populate_cost_of_leaf_facts(std::function<void(int, int, int)> f) const = 0;
 
     virtual bool goal_reachable(LeafFactorID factor) const = 0;
-    
+
     virtual int get_goal_cost(LeafFactorID factor) const = 0;
 
     virtual int get_total_goal_price() const = 0;
@@ -110,7 +110,7 @@ public:
 
 
     virtual void dump() const = 0;
-    
+
     // returns an approximation of the number of bytes stored in memory of this CPG
     virtual size_t get_memory_footprint() const = 0;
 
@@ -126,10 +126,10 @@ public:
         return min_leaf_action_cost[factor];
     }
 
-    static void set_pruning_options(PruningOptions *p) {
-        pruning.reset(p);
+    static void set_pruning_options(std::shared_ptr<PruningOptions> p) {
+        pruning = p;
     }
-    
+
     static const PruningOptions& get_pruning_options() {
         return *pruning;
     }
@@ -137,9 +137,9 @@ public:
     static void set_search_space(SearchSpace *sp) {
         search_space = sp;
     }
-    
+
     static void set_cost_type(OperatorCost ct);
-    
+
     static OperatorCost get_cost_type() {
         return cost_type;
     }

@@ -19,10 +19,10 @@ namespace stubborn_sets_decoupled {
 
 
 inline vector<pair<int, int>> find_unsatisfied_preconditions(
-    const Operator &op, const State &state, const ExplicitStateCPG *current_cpg) {
+    const Operator &op, const GlobalState &state, const ExplicitStateCPG *current_cpg) {
 
     vector<pair<int, int>> res;
-    
+
     // first handle open leaf preconditions, to get back to frontier states
     // if there exists a precondition that is not satisfied by any reachable
     // state => add NES for this precondition. next, if the operator is not
@@ -31,12 +31,12 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (op.has_precondition_on(factor)){
             OpsLeafProps<Condition> preconds = op.get_preconditions(factor);
-            
+
             vector<bool> unsat(preconds.size(), false);
             vector<bool> sat(preconds.size(), false);
-            
+
             bool applicable = false;
-            
+
             size_t num_leaf_states = current_cpg->get_number_states(factor);
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (current_cpg->has_leaf_state(id, factor)){
@@ -76,7 +76,7 @@ inline vector<pair<int, int>> find_unsatisfied_preconditions(
         }
     }
     assert(res.empty());
-    
+
     for (const Condition &precondition : op.get_preconditions(LeafFactorID::CENTER)) {
         int var = precondition.var;
         int value = precondition.val;
@@ -127,7 +127,7 @@ inline bool have_competing_leaf_preconditions(const vector<pair<int, int>> &pre1
     return false;
 }
 
-StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) : 
+StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
             stubborn_sets_simple::StubbornSetsSimple(opts),
             goal_ingoing_transitions(opts.get<bool>("goal_ingoing_transitions")),
             special_case_optimizations(opts.get<bool>("special_case_optimizations")),
@@ -138,14 +138,14 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         cout << "Decoupled strong stubborn sets only work if decoupled search is enabled!" << endl;
         exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     } else if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT){
-    	cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        cout << "Search type \"SAT\" not yet supported by decoupled strong stubborn sets!" << endl;
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     } else if (g_factoring->get_leaf_representation_type() != LEAF_REPRESENTATION_TYPE::EXPLICIT){
-    	cout << "Symbolic leaf representation is supported by decoupled strong stubborn sets!" << endl;
-    	exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+        cout << "Symbolic leaf representation is supported by decoupled strong stubborn sets!" << endl;
+        exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
     }
     cout << "pruning method: stubborn sets decoupled" << endl;
-    
+
     if (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::UNSAT){
         ExplicitStateCPG::set_precompute_leaf_state_spaces(vector<bool>(g_leaves.size(), true));
     }
@@ -154,7 +154,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
         ExplicitStateCPG::set_compute_leaf_backwards_graph();
         ExplicitStateCPG::set_store_leaf_goal_states();
     }
-    
+
     is_fork_factoring = false;
     is_ifork_factoring = false;
     has_fork_leaf = false;
@@ -162,7 +162,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
     is_single_var_ifork_factoring = false;
     is_fork_leaf = vector<bool>(g_leaves.size(), false);
     is_ifork_leaf = vector<bool>(g_leaves.size(), false);
-    
+
     if (g_factoring->get_profile() == FACTORING_PROFILE::FORK){
         is_fork_factoring = true;
         has_fork_leaf = true;
@@ -189,7 +189,7 @@ StubbornSetsDecoupled::StubbornSetsDecoupled(const Options &opts) :
             }
         }
     }
-    
+
     if (special_case_optimizations && check_ifork_applicable && has_ifork_leaf){
         checked_op_ifork_applicable.resize(g_operators.size(), false);
     }
@@ -218,7 +218,7 @@ void StubbornSetsDecoupled::initialize() {
             }
         }
     }
-    
+
     if (special_case_optimizations && has_fork_leaf){
 
         // remove non-simple paths from leaf state spaces
@@ -240,7 +240,7 @@ void StubbornSetsDecoupled::initialize() {
                         min_cost_to_goal[factor][id] = 0;
                     }
                 }
-                
+
                 bool change = true;
                 while (change){
                     change = false;
@@ -248,8 +248,8 @@ void StubbornSetsDecoupled::initialize() {
                         int cost_before = min_cost_to_goal[factor][id];
                         for (auto &succ : reduced_leaf_state_spaces[factor][id]){
                             if (min_cost_to_goal[factor][succ.second] < numeric_limits<int>::max()){
-                                min_cost_to_goal[factor][id] = min(min_cost_to_goal[factor][id], 
-                                                                   min_cost_to_goal[factor][succ.second] + 
+                                min_cost_to_goal[factor][id] = min(min_cost_to_goal[factor][id],
+                                                                   min_cost_to_goal[factor][succ.second] +
                                                                    get_adjusted_action_cost(g_operators[succ.first], CompliantPathGraph::get_cost_type()));
                             }
                         }
@@ -266,7 +266,7 @@ void StubbornSetsDecoupled::initialize() {
             }
         }
     }
-    
+
     if (!is_fork_factoring && !is_ifork_factoring){
         center_successors.resize(g_leaves.size());
         for (const Operator &op : g_operators){
@@ -296,7 +296,7 @@ void StubbornSetsDecoupled::mark_fork_frontier_actions_as_stubborn(LeafFactorID 
         // goal cannot become cheaper
         return;
     }
-    
+
     // add frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used as a fork-leaf precondition
     size_t num_leaf_states = current_cpg->get_number_states(factor);
@@ -325,7 +325,7 @@ void StubbornSetsDecoupled::mark_goal_frontier_actions_as_stubborn(LeafFactorID 
     // TODO include check that the goal price can actually be improved from the leaf state
     // i.e., the state is on a goal path whose cost is lower than the current goal cost
     // done for fork leaves, does it make sense for other leaves?
-    
+
     // add goal frontier of a leaf to stubborn set
     // needed to capture improvements of the prices of leaf states used to achieve the goal
     size_t num_leaf_states = current_cpg->get_number_states(factor);
@@ -413,7 +413,7 @@ void StubbornSetsDecoupled::compute_interference_relation() {
     */
     for (OperatorID op1_no(0); op1_no < num_operators; ++op1_no) {
         if (special_case_optimizations){
-            if ((is_fork_factoring || is_single_var_ifork_factoring) && 
+            if ((is_fork_factoring || is_single_var_ifork_factoring) &&
                     g_operators[op1_no].get_affected_factor() != LeafFactorID::CENTER){
                 continue;
             }
@@ -482,9 +482,9 @@ bool StubbornSetsDecoupled::mark_as_stubborn(OperatorID op_no) {
     }
 }
 
-void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
+void StubbornSetsDecoupled::initialize_stubborn_set(const GlobalState &state) {
     current_cpg = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    
+
     if (special_case_optimizations && has_ifork_leaf){
         if (is_ifork_factoring && test_goal(state)){
             // in inverted-fork factorings, plans can only get more expensive behind goal states.
@@ -524,7 +524,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
                 // enablers of all leaf goal facts unsatisfied in any reached leaf state.
                 vector<bool> unsat(g_goals_per_factor[factor].size(), false);
                 vector<bool> sat(g_goals_per_factor[factor].size(), false);
-                
+
                 size_t num_leaf_states = current_cpg->get_number_states(factor);
                 for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                     if (current_cpg->has_leaf_state(id, factor)){
@@ -559,7 +559,7 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             return;
         }
     }
-    
+
     // if all leaf goals reached, look for open center goal
     for (size_t i = 0; i < g_goal.size(); ++i){
         if (state[g_goal[i].first] != g_goal[i].second){
@@ -567,22 +567,22 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
             return;
         }
     }
-    
+
     assert(g_factoring->get_search_type() != SAT);
     assert(test_goal(state));
 
     if (g_factoring->get_search_type() == UNSAT){
-    	// this is only relevant when exhausting the entire state space not stopping
-    	// at goal states. in this case, we prune all outgoing transitions of goal states.
-    	return;
+        // this is only relevant when exhausting the entire state space not stopping
+        // at goal states. in this case, we prune all outgoing transitions of goal states.
+        return;
     }
-    
+
     int leaf_part_g = 0;
     if (!is_fork_factoring){
         leaf_part_g = CompliantPathGraph::search_space->get_node(state).get_leaf_part_g();
     }
-    
-    // for decoupled goal states, mark all frontier actions in all leaves 
+
+    // for decoupled goal states, mark all frontier actions in all leaves
     // that have a goal condition as stubborn
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
@@ -602,10 +602,10 @@ void StubbornSetsDecoupled::initialize_stubborn_set(const State &state) {
     }
 }
 
-void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
+void StubbornSetsDecoupled::handle_stubborn_operator(const GlobalState &state,
                                                      OperatorID op_no) {
     const Operator &op = g_operators[op_no];
-    
+
     vector<pair<int, int>> unsatisfied_preconditions = find_unsatisfied_preconditions(op, state, current_cpg);
     if (unsatisfied_preconditions.empty()) {
         /* no unsatisfied precondition found
@@ -658,42 +658,42 @@ void StubbornSetsDecoupled::handle_stubborn_operator(const State &state,
     }
 }
 
-static PruningMethod* _parse(OptionParser &parser) {
+static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Stubborn sets decoupled",
         "TODO");
-    
+
     parser.add_option<bool>("goal_ingoing_transitions",
                             "TODO",
                             "false");
-    
+
     parser.add_option<bool>("special_case_optimizations",
                             "TODO",
                             "false");
-    
+
     parser.add_option<bool>("mutex_pre_interference",
                             "TODO",
                             "false");
-    
+
     // even if this option is true, it will we overwritten by
     // special_case_optimizations=false
     parser.add_option<bool>("check_ifork_applicable",
                             "TODO",
                             "true");
-    
-    // even if this option is true, it will we overwritten by 
+
+    // even if this option is true, it will we overwritten by
     // special_case_optimizations=false
     parser.add_option<bool>("use_single_var_ifork_optimization",
                             "TODO",
                             "true");
-    
+
     stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {
         return 0;
     }
 
-    return new StubbornSetsDecoupled(parser.parse());
+    return make_shared<StubbornSetsDecoupled>(parser.parse());
 }
 
 static Plugin<PruningMethod> _plugin("stubborn_sets_decoupled", _parse);

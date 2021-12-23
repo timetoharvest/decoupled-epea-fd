@@ -51,7 +51,7 @@ void AdditiveHeuristic::setup_exploration_queue() {
     }
 }
 
-void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
+void AdditiveHeuristic::setup_exploration_queue_state(const GlobalState &state) {
     for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
         if (heuristic_type == HEURISTIC_TYPE::STD ||
                 g_belongs_to_factor[var] == LeafFactorID::CENTER){
@@ -61,7 +61,7 @@ void AdditiveHeuristic::setup_exploration_queue_state(const State &state) {
     }
 }
 
-void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
+void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const GlobalState &state) {
     const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
 
     if (heuristic_type == HEURISTIC_TYPE::CENTER){
@@ -106,7 +106,7 @@ void AdditiveHeuristic::relaxed_exploration() {
 }
 
 void AdditiveHeuristic::mark_preferred_operators(
-    const State &state, PropID goal_id) {
+    const GlobalState &state, PropID goal_id) {
     Proposition *goal = get_proposition(goal_id);
     if (!goal->marked) { // Only consider each subgoal once.
         goal->marked = true;
@@ -124,7 +124,7 @@ void AdditiveHeuristic::mark_preferred_operators(
             if (is_preferred && operator_no != -1) {
                 // This is not an axiom.
                 const Operator &op = g_operators[operator_no];
-                if (heuristic_type == HEURISTIC_TYPE::STD || 
+                if (heuristic_type == HEURISTIC_TYPE::STD ||
                         op.get_affected_factor() == LeafFactorID::CENTER){
                     // don't mark leaf ops as preferred
                     assert(op.is_applicable(state));
@@ -135,7 +135,7 @@ void AdditiveHeuristic::mark_preferred_operators(
     }
 }
 
-int AdditiveHeuristic::compute_add_and_ff(const State &state) {
+int AdditiveHeuristic::compute_add_and_ff(const GlobalState &state) {
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
@@ -150,9 +150,9 @@ int AdditiveHeuristic::compute_add_and_ff(const State &state) {
     return total_cost;
 }
 
-int AdditiveHeuristic::compute_heuristic(const State &state) {
+int AdditiveHeuristic::compute_heuristic(const GlobalState &state) {
     setup_exploration_queue();
-    
+
     if (heuristic_type != HEURISTIC_TYPE::STD){
         setup_exploration_queue_decoupled_leaf_states(state);
     }
@@ -165,7 +165,7 @@ int AdditiveHeuristic::compute_heuristic(const State &state) {
     return h;
 }
 
-static Heuristic* _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Additive heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -184,8 +184,8 @@ static Heuristic* _parse(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
     else
-        return new AdditiveHeuristic(opts);
+        return make_shared<AdditiveHeuristic>(opts);
 }
 
-static Plugin<Heuristic> _plugin("add", _parse);
+static Plugin<Evaluator> _plugin("add", _parse);
 }

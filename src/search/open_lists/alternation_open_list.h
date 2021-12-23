@@ -7,12 +7,14 @@
 
 #include <vector>
 
+namespace options {
 class Options;
 class OptionParser;
+}
 
 template<class Entry>
 class AlternationOpenList : public OpenList<Entry> {
-    std::vector<OpenList<Entry> *> open_lists;
+    std::vector<std::shared_ptr<OpenList<Entry>>> open_lists;
     std::vector<int> priorities;
 
     int size;
@@ -24,11 +26,11 @@ class AlternationOpenList : public OpenList<Entry> {
     int last_used_list;
 
 protected:
-    Evaluator *get_evaluator() {return this; }
+    Evaluator* get_evaluator() {return this; }
 
 public:
-    AlternationOpenList(const Options &opts);
-    AlternationOpenList(const std::vector<OpenList<Entry> *> &sublists,
+    AlternationOpenList(const options::Options &opts);
+    AlternationOpenList(const std::vector<std::shared_ptr<OpenList<Entry>>> &sublists,
                         int boost_influence);
     ~AlternationOpenList();
 
@@ -42,12 +44,12 @@ public:
     void evaluate(int g, bool preferred);
     bool is_dead_end() const;
     bool dead_end_is_reliable() const;
-    void get_involved_heuristics(std::set<Heuristic *> &hset);
+    void get_involved_heuristics(std::set<Heuristic*> &hset);
 
     int boost_preferred();
     void boost_last_used_list();
 
-    static OpenList<Entry> *_parse(OptionParser &parser);
+    static std::shared_ptr<OpenList<Entry>> _parse(options::OptionParser &parser);
 };
 
 #include "alternation_open_list.cc"

@@ -48,8 +48,10 @@ fast_downward_plugin(
     SOURCES
         planner
 
+        abstract_task
         axioms
         combining_evaluator
+        command_line
         eager_search
         enforced_hill_climbing_search
         evaluator
@@ -58,7 +60,7 @@ fast_downward_plugin(
         globals
         heuristic
         ipc_max_heuristic
-        iterated_search
+        # iterated_search TODO fix option parsing
         lazy_search
         max_evaluator
         operator
@@ -68,6 +70,8 @@ fast_downward_plugin(
         option_parser
         option_parser_util
         per_state_information
+        per_task_information
+        plan_manager
         pref_evaluator
         pruning_method
         relaxation_heuristic
@@ -79,10 +83,13 @@ fast_downward_plugin(
         state_id
         state_registry
         sum_evaluator
+        task_id
+        task_proxy
 
         weighted_evaluator
-          
+
         open_lists/open_list_buckets
+        open_lists/open_list_plugins
 
         additive_heuristic
         blind_search_heuristic
@@ -100,12 +107,33 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME OPTIONS
+    HELP "Option parsing and plugin definition"
+    SOURCES
+        options/any
+        options/bounds
+        options/doc_printer
+        options/doc_utils
+        options/errors
+        options/option_parser
+        options/options
+        options/parse_tree
+        options/predefinitions
+        options/plugin
+        options/raw_registry
+        options/registries
+        options/type_namer
+    CORE_PLUGIN
+)
+
+fast_downward_plugin(
     NAME UTILS
     HELP "System utilities"
     SOURCES
-    	utils/array_pool
+        utils/array_pool
         utils/collections
         utils/countdown_timer
+        utils/exceptions
         utils/hash
         utils/language
         utils/logging
@@ -113,34 +141,35 @@ fast_downward_plugin(
         utils/memory
         utils/rng
         utils/rng_options
+        utils/strings
         utils/system
         utils/system_unix
         utils/system_windows
         utils/timer
     CORE_PLUGIN
 )
- 
+
 fast_downward_plugin(
     NAME ALTERNATION_OPEN_LIST
     HELP "Open list that alternates between underlying open lists in a round-robin manner"
     SOURCES
         open_lists/alternation_open_list
 )
- 
+
 fast_downward_plugin(
     NAME PARETO_OPEN_LIST
     HELP "Pareto open list"
     SOURCES
         open_lists/pareto_open_list
 )
- 
+
 fast_downward_plugin(
     NAME STANDARD_SCALAR_OPEN_LIST
     HELP "Standard scalar open list"
     SOURCES
         open_lists/standard_scalar_open_list
 )
- 
+
 fast_downward_plugin(
     NAME TIEBREAKING_OPEN_LIST
     HELP "Tiebreaking open list"
@@ -217,6 +246,14 @@ fast_downward_plugin(
     HELP "Memory-friendly and vector-like data structure"
     SOURCES
         algorithms/segmented_vector
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME SUBSCRIBER
+    HELP "Allows object to subscribe to the destructor of other objects"
+    SOURCES
+        algorithms/subscriber
     DEPENDENCY_ONLY
 )
 
@@ -328,9 +365,10 @@ fast_downward_plugin(
     HELP "Base class for all stubborn set partial order reduction methods"
     SOURCES
         pruning/stubborn_sets
+    DEPENDS TASK_PROPERTIES
     DEPENDENCY_ONLY
 )
- 
+
 fast_downward_plugin(
     NAME STUBBORN_SETS_SIMPLE
     HELP "Stubborn sets simple"
@@ -366,6 +404,28 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME CORE_TASKS
+    HELP "Core task transformations"
+    SOURCES
+        tasks/cost_adapted_task
+        tasks/delegating_task
+        tasks/root_task
+    CORE_PLUGIN
+)
+
+fast_downward_plugin(
+    NAME EXTRA_TASKS
+    HELP "Non-core task transformations"
+    SOURCES
+        tasks/domain_abstracted_task
+        tasks/domain_abstracted_task_factory
+        tasks/modified_goals_task
+        tasks/modified_operator_costs_task
+    DEPENDS TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME DOMAIN_TRANSITION_GRAPH
     HELP "DTGs"
     SOURCES
@@ -382,12 +442,30 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME SAMPLING
+    HELP "Sampling"
+    SOURCES
+        task_utils/sampling
+    DEPENDS SUCCESSOR_GENERATOR TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
     NAME SUCCESSOR_GENERATOR
     HELP "Successor generator"
     SOURCES
         task_utils/successor_generator
         task_utils/successor_generator_factory
         task_utils/successor_generator_internals
+    DEPENDS TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME TASK_PROPERTIES
+    HELP "Task properties"
+    SOURCES
+        task_utils/task_properties
     DEPENDENCY_ONLY
 )
 
@@ -399,46 +477,6 @@ fast_downward_plugin(
     DEPENDENCY_ONLY
 )
 
-fast_downward_plugin(
-    NAME MAS_HEURISTIC
-    HELP "The Merge-and-Shrink heuristic"
-    SOURCES
-        merge_and_shrink/label
-        merge_and_shrink/labels
-        merge_and_shrink/label_reducer
-        merge_and_shrink/merge_and_shrink_heuristic
-        merge_and_shrink/merge_dfp
-        merge_and_shrink/merge_linear
-        merge_and_shrink/merge_strategy
-        merge_and_shrink/shrink_bisimulation
-        merge_and_shrink/shrink_bucket_based
-        merge_and_shrink/shrink_fh
-        merge_and_shrink/shrink_random
-        merge_and_shrink/shrink_strategy
-        merge_and_shrink/transition_system
-    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
-)
- 
-fast_downward_plugin(
-    NAME LANDMARKS
-    HELP "Plugin containing the code to reason with landmarks"
-    SOURCES
-        landmarks/exploration
-        landmarks/h_m_landmarks
-        landmarks/lama_ff_synergy
-        landmarks/landmark_cost_assignment
-        landmarks/landmark_count_heuristic
-        landmarks/landmark_status_manager
-        landmarks/landmark_graph_merged
-        landmarks/landmark_graph
-        landmarks/landmark_factory
-        landmarks/landmark_factory_rpg_exhaust
-        landmarks/landmark_factory_rpg_sasp
-        landmarks/landmark_factory_zhu_givan
-        landmarks/util
-    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
-)
- 
 fast_downward_plugin(
     NAME PDBS
     HELP "Plugin containing the code for PDBs"
@@ -478,6 +516,46 @@ fast_downward_plugin(
         pdbs/zero_one_pdbs_heuristic
     DEPENDS CAUSAL_GRAPH MAX_CLIQUES PRIORITY_QUEUES SAMPLING SUCCESSOR_GENERATOR TASK_PROPERTIES VARIABLE_ORDER_FINDER
 )
+
+#fast_downward_plugin( TODO fix option parsing
+#    NAME MAS_HEURISTIC
+#    HELP "The Merge-and-Shrink heuristic"
+#    SOURCES
+#        merge_and_shrink/label
+#        merge_and_shrink/labels
+#        merge_and_shrink/label_reducer
+#        merge_and_shrink/merge_and_shrink_heuristic
+#        merge_and_shrink/merge_dfp
+#        merge_and_shrink/merge_linear
+#        merge_and_shrink/merge_strategy
+#        merge_and_shrink/shrink_bisimulation
+#        merge_and_shrink/shrink_bucket_based
+#        merge_and_shrink/shrink_fh
+#        merge_and_shrink/shrink_random
+#        merge_and_shrink/shrink_strategy
+#        merge_and_shrink/transition_system
+#    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
+#)
+
+#fast_downward_plugin( TODO fix option parsing
+#    NAME LANDMARKS
+#    HELP "Plugin containing the code to reason with landmarks"
+#    SOURCES
+#        landmarks/exploration
+#        landmarks/h_m_landmarks
+#        landmarks/lama_ff_synergy
+#        landmarks/landmark_cost_assignment
+#        landmarks/landmark_count_heuristic
+#        landmarks/landmark_status_manager
+#        landmarks/landmark_graph_merged
+#        landmarks/landmark_graph
+#        landmarks/landmark_factory
+#        landmarks/landmark_factory_rpg_exhaust
+#        landmarks/landmark_factory_rpg_sasp
+#        landmarks/landmark_factory_zhu_givan
+#        landmarks/util
+#    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
+#)
 
 fast_downward_plugin(
     NAME SCCS

@@ -44,7 +44,7 @@ unique_ptr<CompliantPathGraph> CuddCPG<T>::get_init_state_cpg() {
 
     cpg->sym_leaf_info.reserve(g_leaves.size());
 
-    const State init_center_state = g_state_registry->get_center_state(g_initial_state_data);
+    const GlobalState init_center_state = g_state_registry->get_center_state(g_initial_state_data);
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         cpg->sym_leaf_info.push_back(sym_manager->get_initial_state_prices(factor, init_center_state));
@@ -54,8 +54,8 @@ unique_ptr<CompliantPathGraph> CuddCPG<T>::get_init_state_cpg() {
 }
 
 template<class T>
-void CuddCPG<T>::set_sym_manager(symbolic::SymDecoupledManagerOptions *options) {
-    sym_manager.reset(new SymDecoupledManager<T>(*options));
+void CuddCPG<T>::set_sym_manager(const symbolic::SymDecoupledManagerOptions &options) {
+    sym_manager.reset(new SymDecoupledManager<T>(options));
 }
 
 template<class T>
@@ -63,7 +63,7 @@ void CuddCPG<T>::initialize() {
     if (!initialized){
         if (!sym_manager){
             // no options specified via command line => take default options
-            set_sym_manager(SymDecoupledManagerOptions::get_default_options());
+            set_sym_manager(SymDecoupledManagerOptions());
         }
         sym_manager->initialize(cost_type);
         initialized = true;
@@ -84,7 +84,7 @@ void CuddCPG<T>::set_min_leaf_goal_cost(int cost) {
 }
 
 template<class T>
-unique_ptr<CompliantPathGraph> CuddCPG<T>::get_successor_via_center_action(const State &new_center, const Operator &op) const {
+unique_ptr<CompliantPathGraph> CuddCPG<T>::get_successor_via_center_action(const GlobalState &new_center, const Operator &op) const {
     CuddCPG<T> *cpg = new CuddCPG<T>();
 
     cpg->sym_leaf_info.reserve(g_leaves.size());
@@ -103,7 +103,7 @@ unique_ptr<CompliantPathGraph> CuddCPG<T>::get_successor_via_center_action(const
 }
 
 template<class T>
-DOMINANCE CuddCPG<T>::check_dominance(const State &other, int /*g_advantage*/, DOMINANCE needed) {
+DOMINANCE CuddCPG<T>::check_dominance(const GlobalState &other, int /*g_advantage*/, DOMINANCE needed) {
     // TODO incorporate g_advantage
     // TODO implement better exact duplicate checking
 
@@ -136,12 +136,12 @@ DOMINANCE CuddCPG<T>::check_dominance(const State &other, int /*g_advantage*/, D
 }
 
 template<class T>
-void CuddCPG<T>::store_new_cpg(const State &state) {
+void CuddCPG<T>::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
 template<class T>
-bool CuddCPG<T>::is_hypercube_covered(const State &, int ) const {
+bool CuddCPG<T>::is_hypercube_covered(const GlobalState &, int ) const {
     // TODO implement this
     cerr << "hypercube pruning for symbolic leaf representation not yet implemented" << endl;
     exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);

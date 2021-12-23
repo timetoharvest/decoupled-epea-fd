@@ -5,7 +5,7 @@
 #include "option_parser.h"
 #include "plugin.h"
 
-
+using namespace std;
 
 
 GoalCountHeuristic::GoalCountHeuristic(const Options &opts)
@@ -19,7 +19,7 @@ void GoalCountHeuristic::initialize() {
     cout << "Initializing goal count heuristic..." << endl;
 }
 
-int GoalCountHeuristic::compute_heuristic(const State &state) {
+int GoalCountHeuristic::compute_heuristic(const GlobalState &state) {
     int unsatisfied_goal_count = 0;
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int var = g_goal[i].first, value = g_goal[i].second;
@@ -29,7 +29,7 @@ int GoalCountHeuristic::compute_heuristic(const State &state) {
     return unsatisfied_goal_count;
 }
 
-static Heuristic *_parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Goal count heuristic", "");
     parser.document_language_support("action costs", "ignored by design");
     parser.document_language_support("conditional effects", "supported");
@@ -44,8 +44,7 @@ static Heuristic *_parse(OptionParser &parser) {
     if (parser.dry_run())
         return 0;
     else
-        return new GoalCountHeuristic(opts);
+        return make_shared<GoalCountHeuristic>(opts);
 }
 
-
-static Plugin<Heuristic> _plugin("goalcount", _parse);
+static Plugin<Evaluator> _plugin("goalcount", _parse);

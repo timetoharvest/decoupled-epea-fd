@@ -48,7 +48,7 @@ void HSPMaxHeuristic::setup_exploration_queue() {
     }
 }
 
-void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
+void HSPMaxHeuristic::setup_exploration_queue_state(const GlobalState &state) {
     for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
         if (heuristic_type == HEURISTIC_TYPE::STD ||
                 g_belongs_to_factor[var] == LeafFactorID::CENTER){
@@ -85,7 +85,7 @@ void HSPMaxHeuristic::relaxed_exploration() {
     }
 }
 
-int HSPMaxHeuristic::compute_heuristic(const State &state) {
+int HSPMaxHeuristic::compute_heuristic(const GlobalState &state) {
     setup_exploration_queue();
 
     if (heuristic_type != HEURISTIC_TYPE::STD){
@@ -119,7 +119,7 @@ int HSPMaxHeuristic::compute_heuristic(const State &state) {
     return total_cost;
 }
 
-static Heuristic* _parse(OptionParser &parser) {
+static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis("Max heuristic", "");
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported");
@@ -138,9 +138,9 @@ static Heuristic* _parse(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
     else
-        return new HSPMaxHeuristic(opts);
+        return make_shared<HSPMaxHeuristic>(opts);
 }
 
 
-static Plugin<Heuristic> _plugin("hmax", _parse);
+static Plugin<Evaluator> _plugin("hmax", _parse);
 }

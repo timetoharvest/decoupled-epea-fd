@@ -1,6 +1,7 @@
 #include "factoring.h"
 
 #include "algorithms/sccs.h"
+#include "factorings/factoring_ranking.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cudd_cpg.h"
 #include "compliant_paths/explicit_state_cpg.h"
@@ -88,10 +89,11 @@ void Factoring::init_action_schemas() {
 }
 
 Factoring::Factoring(const Options &opts) :
-            search_type(DECOUPLED_SEARCH_TYPE(opts.get_enum("search_type"))),
-            abstain_type(ABSTAIN_TYPE(opts.get_enum("abstain_type"))),
-            leaf_type(LEAF_REPRESENTATION_TYPE(opts.get_enum("leaf_representation"))),
+            search_type(opts.get<DECOUPLED_SEARCH_TYPE>("search_type")),
+            abstain_type(opts.get<ABSTAIN_TYPE>("abstain_type")),
+            leaf_type(opts.get<LEAF_REPRESENTATION_TYPE>("leaf_representation")),
             factoring_time_limit(opts.get<int>("factoring_time_limit")),
+            max_leaf_size(opts.get<int>("max_leaf_size")),
             factoring_timer(utils::CountdownTimer(numeric_limits<double>::infinity())) {
 
     switch(search_type){
@@ -101,21 +103,16 @@ Factoring::Factoring(const Options &opts) :
         case DECOUPLED_SEARCH_TYPE::UNSAT : cout << "trying to prove task unsolvable" << endl; break;
         default : cout << "unknown decoupled search type " << search_type << endl; exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
-    if (opts.contains("max_leaf_size")){
-        max_leaf_size = opts.get<int>("max_leaf_size");
-        if (max_leaf_size == 0){
-            cout << "no bound on leaf factor size" << endl;
-            // TODO probably change command line to -1 => no bound
-        } else {
-            cout << "maximum leaf factor size " << max_leaf_size << endl;
-        }
+    if (max_leaf_size == 0){
+        cout << "no bound on leaf factor size" << endl;
+        // TODO probably change command line to -1 => no bound
     } else {
-        max_leaf_size = numeric_limits<size_t>::max();
+        cout << "maximum leaf factor size " << max_leaf_size << endl;
     }
     if (opts.contains("pruning")){
-        CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
+        CompliantPathGraph::set_pruning_options(opts.get<shared_ptr<PruningOptions>>("pruning"));
     } else {
-        CompliantPathGraph::set_pruning_options(new PruningOptions());
+        CompliantPathGraph::set_pruning_options(make_shared<PruningOptions>());
         cout << "using default pruning method: BasicPruning" << endl;
     }
 #ifndef USE_CUDD
@@ -126,11 +123,11 @@ Factoring::Factoring(const Options &opts) :
     }
 #endif
     if (leaf_type == LEAF_REPRESENTATION_TYPE::SYMBOLIC && opts.contains("cudd_options")){
-        const auto sym_opts = opts.get<symbolic::SymDecoupledManagerOptions*>("cudd_options");
+        const auto sym_opts = opts.get<shared_ptr<symbolic::SymDecoupledManagerOptions>>("cudd_options");
         if (search_type == SAT || search_type == UNSAT){
-            CuddCPG<symbolic::SymPricingFunctionSAT>::set_sym_manager(sym_opts);
+            CuddCPG<symbolic::SymPricingFunctionSAT>::set_sym_manager(*sym_opts);
         } else {
-            CuddCPG<symbolic::SymPricingFunction>::set_sym_manager(sym_opts);
+            CuddCPG<symbolic::SymPricingFunction>::set_sym_manager(*sym_opts);
         }
     }
     min_number_leaves = opts.get<int>("min_num_leaves");;
@@ -789,7 +786,7 @@ void Factoring::do_factoring_or_abstain() {
 
     cout << "factoring time " << factoring_timer.get_elapsed_time() << endl;
 
-    if (best_factoring.size() < min_number_leaves){
+    if (static_cast<int>(best_factoring.size()) < min_number_leaves){
         cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
         switch (abstain_type){
             case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
@@ -879,7 +876,7 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
 
     cout << "added " << added << " roots" << endl;
 
-    if (best_factoring.size() < min_number_leaves){
+    if (static_cast<int>(best_factoring.size()) < min_number_leaves){
 
         if (maximize_mobility){
             best_factoring = get_fork_maximize_mobility(true);
@@ -889,7 +886,7 @@ Factoring::FactoredVars XShapeFactoring::get_factoring() {    //////////////////
 
         cout << "found inv-fork factoring with " << best_factoring.size() << " leaves" << endl;
 
-        if (best_factoring.size() < min_number_leaves){
+        if (static_cast<int>(best_factoring.size()) < min_number_leaves){
             return FactoredVars();
         }
     }
@@ -903,7 +900,7 @@ Factoring::FactoredVars RandomFactoring::get_factoring() { /////////////////////
 
     srand(time(NULL)); // TODO add support for getting seed via command line
 
-    uint64_t current_size = 1;
+    int64_t current_size = 1;
 
     for (size_t var = 0; var < g_variable_domain.size(); var++){
         if (rand() % 2 == 0){
@@ -937,7 +934,7 @@ Factoring::FactoredVars ForkFactoring::get_factoring() { ///////////////////////
         factoring = get_fork_maximize_leaves(profile == IFORK);
     }
 
-    if (factoring.size() < min_number_leaves){
+    if (static_cast<int>(factoring.size()) < min_number_leaves){
         return FactoredVars();
     }
 
@@ -961,7 +958,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
     }
 
     FactoredVars best_factoring;
-    size_t best_number_leaves = 0;
+    int best_number_leaves = 0;
 
     vector<bool> discarded_leaves;
 
@@ -982,7 +979,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
             FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
 
             for (int i = factoring.size() - 1; i >= 0; --i){
-                uint64_t size = 1;
+                int64_t size = 1;
                 for (int var : factoring[i]){
                     size *= g_variable_domain[var];
                     if (max_leaf_size != 0 && size > max_leaf_size){
@@ -994,7 +991,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
                 }
             }
 
-            size_t number_leaves = factoring.size();
+            int number_leaves = static_cast<int>(factoring.size());
             if (number_leaves < best_number_leaves || number_leaves < min_number_leaves){
                 // no need to perform the expensive frozen leaf check if it cannot
                 // possibly result in more (enough) leaves
@@ -1034,7 +1031,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
         }
     }
 
-    if (best_factoring.size() < min_number_leaves){
+    if (static_cast<int>(best_factoring.size()) < min_number_leaves){
         return FactoredVars();
     }
 
@@ -1066,14 +1063,14 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
         return best_factoring;
     }
 
-    typedef multimap<uint64_t, pair<vector<int>, set<int> > > CandSCCs;
+    typedef multimap<int64_t, pair<vector<int>, set<int> > > CandSCCs;
     // contains all leaf SCCs sorted by size
     CandSCCs canditate_sccs;
 
     bool all_leaves_fit_bound = true;
 
     for (size_t i = 0; i < sccs.size(); ++i){
-        uint64_t current_size = 1;
+        int64_t current_size = 1;
         bool is_leaf = true;
 
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
@@ -1192,7 +1189,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_leaves(bool inverted, v
                 int successor = *it->second.second.begin();
 
                 bool can_add = true;
-                uint64_t new_size = it->first;
+                int64_t new_size = it->first;
                 for (set<int>::const_iterator scc_it = best_factoring[successor].begin(); scc_it != best_factoring[successor].end(); ++scc_it){
                     new_size *= g_variable_domain[*scc_it];
                     if (max_leaf_size != 0 && new_size > max_leaf_size){
@@ -1262,9 +1259,9 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 
     bool all_sscs_fit_bound = true;
 
-    uint64_t best_mobility = 1;
+    int64_t best_mobility = 1;
 
-    uint64_t current_size = 1;
+    int64_t current_size = 1;
 
     // contains all leaf SCCs sorted by size
     CandSCCs canditate_sccs;
@@ -1394,7 +1391,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 
         // find best SCC to add to leaves
         CandSCCs::iterator best_successor_scc;
-        uint64_t successor_mobility = 0;
+        int64_t successor_mobility = 0;
 
         for (CandSCCs::iterator it = canditate_sccs.begin(); it != canditate_sccs.end(); ++it){
             bool can_add = true;
@@ -1443,7 +1440,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
 
             if (can_add){
                 // reconstruct of which SCCs the current leaf factors consist
-                uint64_t new_mobility = 1;
+                int64_t new_mobility = 1;
                 vector<set<int> > sccs(current_factoring.size() + 1);
                 for (size_t i = 0; i < current_factoring.size(); ++i){
                     for (set<int>::iterator v_it = current_factoring[i].begin(); v_it != current_factoring[i].end(); ++v_it){
@@ -1485,7 +1482,7 @@ Factoring::FactoredVars ForkFactoring::get_fork_maximize_mobility(bool inverted,
                 cout << "new factoring would have mobility " << new_mobility << " and " << sccs.size() << " leaf factors" << endl;
 #endif
 
-                if (new_mobility > successor_mobility && sccs.size() >= min_number_leaves){
+                if (new_mobility > successor_mobility && static_cast<int>(sccs.size()) >= min_number_leaves){
 #ifdef DEBUG_FACTORING
                     cout << "better than current best successor factoring => replace" << endl;
 #endif
@@ -1774,7 +1771,7 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
     FactoredVars best_factoring;
 
     for (size_t i = 0; i < sccs.size(); i++){
-	uint64_t current_size = 1;
+	int64_t current_size = 1;
 	for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
 	    current_size *= g_variable_domain[*it];
 	    if (max_leaf_size != 0 && current_size > max_leaf_size){
@@ -1827,7 +1824,7 @@ Factoring::FactoredVars TPPConstrainedFactoring::get_factoring() {
     FactoredVars best_factoring;
 
     for (size_t i = 0; i < sccs.size(); i++){
-        uint64_t current_size = 1;
+        int64_t current_size = 1;
         for (set<int>::iterator it = sccs[i].begin(); it != sccs[i].end(); ++it){
             current_size *= g_variable_domain[*it];
             if (max_leaf_size != 0 && current_size > max_leaf_size){
@@ -1894,59 +1891,53 @@ Factoring::FactoredVars PegsolFactoring::get_factoring() {
 
 void Factoring::add_options_to_parser(OptionParser &parser) {
     // TODO add docu
-    parser.add_option<PruningOptions*>(
+    parser.add_option<shared_ptr<PruningOptions>>(
         "pruning",
         "TODO",
-        "",
-        OptionFlags(false));
+        "dominance");
 
     vector<string> search_types;
     search_types.push_back("ASDA");
     search_types.push_back("SDA");
     search_types.push_back("SAT");
     search_types.push_back("UNSAT");
-    parser.add_enum_option(
+    parser.add_enum_option<DECOUPLED_SEARCH_TYPE>(
         "search_type",
         search_types,
         "TODO",
         "SDA",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     vector<string> leaf_types;
     leaf_types.push_back("EXPLICIT");
     leaf_types.push_back("SYMBOLIC");
-    parser.add_enum_option(
+    parser.add_enum_option<LEAF_REPRESENTATION_TYPE>(
             "leaf_representation",
             leaf_types,
             "TODO",
             "EXPLICIT",
-            vector<string>(),
-            OptionFlags(false));
+            vector<string>());
 
-    parser.add_option<symbolic::SymDecoupledManagerOptions*>(
+    parser.add_option<shared_ptr<symbolic::SymDecoupledManagerOptions>>(
         "cudd_options",
         "TODO",
-        "",
-        OptionFlags(false));
+        OptionParser::NONE);
 
     vector<string> abstain_types;
     abstain_types.push_back("ABSTAIN_ON_FAILURE");
     abstain_types.push_back("STANDARD_ON_FAILURE");
     abstain_types.push_back("NO_SEARCH");
-    parser.add_enum_option(
+    parser.add_enum_option<ABSTAIN_TYPE>(
         "abstain_type",
         abstain_types,
         "TODO",
         "ABSTAIN_ON_FAILURE",
-        vector<string>(),
-        OptionFlags(false));
+        vector<string>());
 
     parser.add_option<int>(
         "max_leaf_size",
         "TODO",
-        "",
-        OptionFlags(false));
+        to_string(numeric_limits<int>::max() - 1));
     parser.add_option<int>(
         "build_state_space_size",
         "TODO",
@@ -1981,11 +1972,10 @@ void ForkFactoring::add_options_to_parser(OptionParser &parser) {
 }
 
 void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
-    parser.add_list_option<FactoringRanking *>(
+    parser.add_list_option<shared_ptr<FactoringRanking>>(
             "rankings",
             "TODO",
-            "",
-            OptionFlags(false));
+            OptionParser::NONE);
 
     parser.add_option<bool>(
             "all_rankings",
@@ -2000,78 +1990,77 @@ void IncidentArcsFactoring::add_options_to_parser(OptionParser &parser) {
     );
 }
 
-static Factoring *_parse_fork(OptionParser &parser) {
+static PluginTypePlugin<Factoring> _type_plugin(
+    "Factoring",
+    "Specification of the decoupling.");
+
+static shared_ptr<Factoring> _parse_fork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    ForkFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new ForkFactoring(opts);
+        return make_shared<ForkFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_ifork(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_ifork(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    ForkFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new ForkFactoring(opts, IFORK);
+        return make_shared<ForkFactoring>(opts, IFORK);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_xshape(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_xshape(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     ForkFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    XShapeFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new XShapeFactoring(opts);
+        return make_shared<XShapeFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_incarcs(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_incarcs(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     IncidentArcsFactoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    IncidentArcsFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new IncidentArcsFactoring(opts);
+        return make_shared<IncidentArcsFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
-static Factoring *_parse_random(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_random(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    RandomFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new RandomFactoring(opts);
+        return make_shared<RandomFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 //static Factoring *_parse_doctransfer(OptionParser &parser) {

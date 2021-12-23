@@ -5,7 +5,7 @@
 
 #include <vector>
 
-class State;
+class GlobalState;
 
 namespace symmetries {
 
@@ -24,28 +24,28 @@ class DecoupledGroup {
     std::vector<std::unique_ptr<DecoupledPermutation>> generators_center;
 
     std::vector<std::unique_ptr<DecoupledPermutation>> generators_only_leaves;
-     
+
     mutable std::vector<int> tmp_state;
-    
+
 public:
     DecoupledGroup(const Group &group);
 
     ~DecoupledGroup() = default;
 
-    DecoupledTrace get_trace(const State &center,
+    DecoupledTrace get_trace(const GlobalState &center,
                              const SymmetryCPG &leaves,
                              const LexicographicOrdering &lex_ordering) const;
 
     std::unique_ptr<DecoupledPermutation> compose_permutation(const DecoupledTrace &trace) const;
 
-    const std::vector<int> & get_canonical_decoupled_state(const State &center, 
+    const std::vector<int> & get_canonical_decoupled_state(const GlobalState &center,
                                                            SymmetryCPG &leaves,
                                                            const LexicographicOrdering &lex_ordering) const;
 
-    std::vector<const DecoupledPermutation *> get_stabilized_permutations(const State &center) const;
-    
+    std::vector<const DecoupledPermutation *> get_stabilized_permutations(const GlobalState &center) const;
+
     void statistics () const;
-    
+
 };
 
 }

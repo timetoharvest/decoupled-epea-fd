@@ -2,6 +2,7 @@
 
 #include "globals.h"
 #include "operator.h"
+#include "option_parser.h"
 #include "../utils/collections.h"
 #include "../utils/hash.h"
 #include "../utils/timer.h"

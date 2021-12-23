@@ -9,9 +9,12 @@
 #include <vector>
 #include <utility>
 
-class ScalarEvaluator;
+class Evaluator;
+
+namespace options {
 class Options;
 class OptionParser;
+}
 
 template<class Entry>
 class TieBreakingOpenList : public OpenList<Entry> {
@@ -20,7 +23,7 @@ class TieBreakingOpenList : public OpenList<Entry> {
     std::map<const std::vector<int>, Bucket> buckets;
     int size;
 
-    std::vector<ScalarEvaluator *> evaluators;
+    std::vector<std::shared_ptr<Evaluator>> evaluators;
     std::vector<int> last_evaluated_value;
     bool last_preferred;
     bool dead_end;
@@ -32,13 +35,12 @@ class TieBreakingOpenList : public OpenList<Entry> {
     const std::vector<int> &get_value(); // currently not used
     int dimension() const;
 protected:
-    Evaluator *get_evaluator() {return this; }
+    Evaluator* get_evaluator() {return this; }
 
 public:
-    TieBreakingOpenList(const Options &opts);
-    TieBreakingOpenList(const std::vector<ScalarEvaluator *> &evals,
+    TieBreakingOpenList(const options::Options &opts);
+    TieBreakingOpenList(const std::vector<std::shared_ptr<Evaluator>> &evals,
                         bool preferred_only, bool unsafe_pruning);
-    ~TieBreakingOpenList();
 
     // open list interface
     int insert(const Entry &entry);
@@ -50,9 +52,9 @@ public:
     void evaluate(int g, bool preferred);
     bool is_dead_end() const;
     bool dead_end_is_reliable() const;
-    void get_involved_heuristics(std::set<Heuristic *> &hset);
+    void get_involved_heuristics(std::set<Heuristic*> &hset);
 
-    static OpenList<Entry> *_parse(OptionParser &parser);
+    static std::shared_ptr<OpenList<Entry>> _parse(options::OptionParser &parser);
 };
 
 #include "tiebreaking_open_list.cc"

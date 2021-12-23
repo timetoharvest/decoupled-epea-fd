@@ -24,30 +24,30 @@ class Group {
     static int num_identity_generators;
 
     static int stop_after_false_generated;
-    
+
 public:
-    
+
     Group(const Options &opts);
-    
+
     ~Group() = default;
-    
+
     void initialize();
 
     // Direct product creation methods.
     void default_direct_product();
 
     void add_generator(Permutation gen);
-    
+
     int get_num_generators() const;
-    
+
     void dump_generators() const;
 
     Permutation compose_permutation(Trace &trace) const;
-    
-    const std::vector<int> & get_canonical_state(const State &state) const;
-    
-    void get_trace(const State &state, Trace &full_trace);
-    
+
+    const std::vector<int> & get_canonical_state(const GlobalState &state) const;
+
+    void get_trace(const GlobalState &state, Trace &full_trace);
+
 
     static void add_permutation(void*, unsigned int, const unsigned int *);
 

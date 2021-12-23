@@ -67,7 +67,7 @@ CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
       canonical_pdbs(get_canonical_pdbs_from_options(task, opts)) {
 }
 
-int CanonicalPDBsHeuristic::compute_heuristic(const State &ancestor_state) {
+int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     State state = convert_ancestor_state(ancestor_state);
     int h = canonical_pdbs.get_value(state);
     if (h == numeric_limits<int>::max()) {
@@ -77,7 +77,7 @@ int CanonicalPDBsHeuristic::compute_heuristic(const State &ancestor_state) {
     }
 }
 
-void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
+void add_canonical_pdbs_options_to_parser(OptionParser &parser) {
     parser.add_option<double>(
         "max_time_dominance_pruning",
         "The maximum time in seconds spent on dominance pruning. Using 0.0 "

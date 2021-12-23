@@ -8,7 +8,7 @@
 #include <cassert>
 #include <vector>
 
-class State;
+class GlobalState;
 class Operator;
 
 namespace relaxation_heuristic {
@@ -92,7 +92,7 @@ protected:
         return &unary_operators[op_id];
     }
 public:
-    explicit RelaxationHeuristic(const Options &options);
+    explicit RelaxationHeuristic(const options::Options &options);
 
     virtual bool dead_ends_are_reliable() const override;
 };

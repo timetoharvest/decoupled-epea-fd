@@ -3,15 +3,16 @@
 
 #include <memory>
 
+namespace options {
 class OptionParser;
 class Options;
-
+}
 
 namespace utils {
 class RandomNumberGenerator;
 
 // Add random_seed option to parser.
-extern void add_rng_options(OptionParser &parser);
+extern void add_rng_options(options::OptionParser &parser);
 
 /*
   Return an RNG based on the given options, which can either be the global
@@ -19,7 +20,7 @@ extern void add_rng_options(OptionParser &parser);
   "add_rng_options()".
 */
 extern RandomNumberGenerator* parse_rng_from_options(
-    const Options &options);
+    const options::Options &options);
 }
 
 #endif

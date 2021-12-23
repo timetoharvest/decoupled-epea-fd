@@ -16,8 +16,10 @@ enum FACTORING_FEATURE {
     NO_FACTORING_FEATURE
 };
 
+namespace options {
 class OptionParser;
 class Options;
+}
 
 
 class FactoringRanking {
@@ -36,7 +38,7 @@ public:
         maximize = true;
     }
 
-    FactoringRanking(const Options &opts);
+    FactoringRanking(const options::Options &opts);
 
     virtual ~FactoringRanking() = default;
 
@@ -55,7 +57,7 @@ public:
 
     static void print_all_rankings(const std::vector<std::set<int> > &factoring);
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 };
 
 
@@ -66,7 +68,7 @@ public:
         feature = MOBILITY;
     }
 
-    MobilityRanking(const Options &opts) : FactoringRanking(opts) {
+    MobilityRanking(const options::Options &opts) : FactoringRanking(opts) {
         feature = MOBILITY;
     };
 
@@ -82,7 +84,7 @@ public:
         feature = LEAVES;
     }
 
-    LeavesRanking(const Options &opts) : FactoringRanking(opts) {
+    LeavesRanking(const options::Options &opts) : FactoringRanking(opts) {
         feature = LEAVES;
     };
 
@@ -98,7 +100,7 @@ public:
         feature = DOM_SIZE;
     }
 
-    DomSizeRanking(const Options &opts) : FactoringRanking(opts) {
+    DomSizeRanking(const options::Options &opts) : FactoringRanking(opts) {
         feature = DOM_SIZE;
     };
 
@@ -114,7 +116,7 @@ public:
         feature = VARS;
     }
 
-    VariablesRanking(const Options &opts) : FactoringRanking(opts) {
+    VariablesRanking(const options::Options &opts) : FactoringRanking(opts) {
         feature = VARS;
     };
 
@@ -130,7 +132,7 @@ public:
         feature = AFF_ACTIONS;
     }
 
-    AffActionsRanking(const Options &opts) : FactoringRanking(opts) {
+    AffActionsRanking(const options::Options &opts) : FactoringRanking(opts) {
         feature = AFF_ACTIONS;
     };
 
