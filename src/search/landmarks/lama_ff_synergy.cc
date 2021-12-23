@@ -44,7 +44,7 @@ void LamaFFSynergy::get_ff_preferred_operators(std::vector<OperatorID> &result) 
                   ff_preferred_operators.end());
 }
 
-void LamaFFSynergy::compute_heuristics(const State &state) {
+void LamaFFSynergy::compute_heuristics(const GlobalState &state) {
     /* Compute heuristics and pref. ops. and store results;
        actual work is delegated to the heuristics. */
 
@@ -69,8 +69,8 @@ void LamaFFSynergy::compute_heuristics(const State &state) {
     }
 }
 
-bool LamaFFSynergy::lama_reach_state(const State &parent_state,
-                                     const Operator &op, const State &state) {
+bool LamaFFSynergy::lama_reach_state(const GlobalState &parent_state,
+                                     const Operator &op, const GlobalState &state) {
     return lama_heuristic->reach_state(parent_state, op, state);
 }
 

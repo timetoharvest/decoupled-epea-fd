@@ -33,7 +33,7 @@ protected:
     std::vector<std::shared_ptr<Evaluator>> preferred_operator_heuristics;
     std::vector<Heuristic*> estimate_heuristics;
 
-    State current_state;
+    GlobalState current_state;
     StateID current_predecessor_id;
     OperatorID current_operator;
     int current_g;

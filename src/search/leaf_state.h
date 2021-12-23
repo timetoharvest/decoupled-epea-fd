@@ -11,9 +11,9 @@ typedef int_packer::IntPacker::Bin PackedStateBin;
 
 class LeafState {
     friend class StateRegistry;
-    
+
     LeafStateID id;
-    
+
     // Values for vars are maintained in a packed state and accessed on demand.
     const PackedStateBin *buffer;
 
@@ -23,10 +23,10 @@ class LeafState {
 
     // No implementation to prevent default construction
     LeafState();
-    
+
     // Only used by the state registry.
     LeafState(const PackedStateBin *buffer_, LeafStateID id_);
-    
+
 public:
     ~LeafState() = default;
 
@@ -35,7 +35,7 @@ public:
     }
 
     int operator[](size_t index) const;
-    
+
     void dump_pddl() const;
     void dump_fdr() const;
 };

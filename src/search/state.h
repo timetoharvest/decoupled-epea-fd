@@ -15,7 +15,7 @@ typedef int_packer::IntPacker::Bin PackedStateBin;
 
 // For documentation on classes relevant to storing and working with registered
 // states see the file state_registry.h.
-class State {
+class GlobalState {
     friend class StateRegistry;
     template <class Entry>
     friend class PerStateInformation;
@@ -24,7 +24,7 @@ class State {
     const PackedStateBin *buffer;
     // registry isn't a reference because we want to support operator=
     const StateRegistry *registry;
-    
+
     StateID id;
 
     const PackedStateBin *get_packed_buffer() const {
@@ -36,14 +36,14 @@ class State {
     }
 
     // No implementation to prevent default construction
-    State();
-    
+    GlobalState();
+
     // Only used by the state registry.
-    State(const PackedStateBin *buffer_, const StateRegistry &registry_,
+    GlobalState(const PackedStateBin *buffer_, const StateRegistry &registry_,
           StateID id_);
-    
+
 public:
-    ~State();
+    ~GlobalState();
 
     StateID get_id() const {
         return id;

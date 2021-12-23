@@ -19,7 +19,7 @@ GraphCreator::GraphCreator(const Options &opts) :
     initialized(false),
     time_bound(opts.get<int>("time_bound")),
     generators_bound(opts.get<int>("generators_bound")),
-    lex_ordering(opts), 
+    lex_ordering(opts),
     group(new Group(opts)) {
     verify_no_axioms_no_conditional_effects(); // TODO implement support
 }
@@ -90,7 +90,7 @@ unique_ptr<bliss::Digraph> GraphCreator::create_bliss_directed_graph() const {
            g->add_edge(idx,i);
        }
     }
-    
+
     // add vertices for factors
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         idx = g->add_vertex(LEAF_FACTOR_VERTEX);
@@ -152,7 +152,7 @@ void GraphCreator::add_operator_directed_graph(unique_ptr<bliss::Digraph> &g, co
             g->add_edge(op_idx, eff_idx);
         } else {
             cerr << "Error: conditional effects are not implemented in this version (look at metis code)" << endl;
-//            	cout << "Adding a node for conditional effect" << endl;
+//              cout << "Adding a node for conditional effect" << endl;
 /*            // Adding a node for each condition. An edge from op to node, an edge from node to eff,
             // for each cond, an edge from cond to node.
             color_t effect_color = CONDITIONAL_EFFECT_VERTEX;
@@ -163,12 +163,12 @@ void GraphCreator::add_operator_directed_graph(unique_ptr<bliss::Digraph> &g, co
             g->add_edge(op_idx, cond_op_idx); // Edge from operator to conditional effect
             g->add_edge(cond_op_idx, eff_idx); // Edge from conditional effect to effect
             // Adding edges for conds
-	    for (const auto & cond : eff.conditions){
+        for (const auto & cond : eff.conditions){
                 int c_idx = Permutation::dom_sum_by_var[cond.var] + cond.value;
 
                 g->add_edge(c_idx, cond_op_idx); // Edge from condition to conditional effect
             }
-	    }*/
+        }*/
         }
     }
 }
@@ -194,8 +194,8 @@ void GraphCreator::add_operator_directed_graph(unique_ptr<bliss::Digraph> &g, co
     return false;
 }*/
 
-Permutation GraphCreator::create_permutation_from_state_to_state(const State &from_state, 
-								 const State &to_state) {
+Permutation GraphCreator::create_permutation_from_state_to_state(const GlobalState &from_state,
+                                 const GlobalState &to_state) {
     Trace new_trace;
     Trace curr_trace;
     group->get_trace(from_state, curr_trace);
@@ -208,15 +208,15 @@ Permutation GraphCreator::create_permutation_from_state_to_state(const State &fr
 }
 
 
-unique_ptr<DecoupledPermutation> 
-GraphCreator::create_permutation_from_state_to_state(const State &state, 
+unique_ptr<DecoupledPermutation>
+GraphCreator::create_permutation_from_state_to_state(const GlobalState &state,
                                                      const SymmetryCPG &cpg,
-                                                     const State &succ_state,
+                                                     const GlobalState &succ_state,
                                                      const SymmetryCPG &succ_cpg) const {
 
     DecoupledTrace curr_trace = decoupled_group->get_trace(state, cpg, lex_ordering);
     DecoupledTrace new_trace = decoupled_group->get_trace(succ_state, succ_cpg, lex_ordering);
-    
+
     assert(curr_trace.canonical_center == new_trace.canonical_center);
     assert(curr_trace.trace.empty());
 

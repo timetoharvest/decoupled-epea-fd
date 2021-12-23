@@ -31,7 +31,7 @@ class IntPacker;
 struct LeafFactorID;
 class Operator;
 class OperatorID;
-class State;
+class GlobalState;
 class StateID;
 namespace successor_generator {
 class SuccessorGenerator;
@@ -41,7 +41,7 @@ class Timer;
 }
 class StateRegistry;
 
-bool test_goal(const State &state);
+bool test_goal(const GlobalState &state);
 void save_plan(const std::vector<OperatorID> &plan, bool generates_multiple_plan_files);
 int calculate_plan_cost(const std::vector<OperatorID> &plan);
 
@@ -95,7 +95,7 @@ extern std::vector<int> g_initial_state_data;
 // TODO The following function returns the initial state that is registered
 //      in g_state_registry. This is only a short-term solution. In the
 //      medium term, we should get rid of the global registry.
-extern const State &g_initial_state();
+extern const GlobalState &g_initial_state();
 
 // in decoupled search, this only contains the center goals (if any)
 extern std::vector<std::pair<int, int> > g_goal;
@@ -114,7 +114,7 @@ extern int g_num_previously_generated_plans;
 extern std::shared_ptr<symmetries::GraphCreator> g_symmetry_graph;
 
 // Only one global object for now. Could later be changed to use one instance
-// for each problem in this case the method State::get_id would also have to be
+// for each problem in this case the method GlobalState::get_id would also have to be
 // changed.
 extern StateRegistry *g_state_registry;
 

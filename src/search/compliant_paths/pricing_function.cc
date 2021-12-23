@@ -43,7 +43,7 @@ void Prices::resize() {
 
 void Prices::reduce_cost_by(LeafFactorID factor, int cost) {
     assert(g_factoring->get_profile() != FORK);
-    
+
     if (goal_cost[factor] != INF){
         // if there is a goal state, its cost must be >= cost!
         goal_cost[factor] -= cost;
@@ -58,7 +58,7 @@ void Prices::reduce_cost_by(LeafFactorID factor, int cost) {
 }
 
 bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
-	assert(cost >= 0);
+    assert(cost >= 0);
     if (leaf_state_id_map[factor][id] == -1){ // get new index to prevent facts vector from being sparse
         leaf_state_id_map[factor][id] = curr_leaf_state_max_id[factor];
         ++curr_leaf_state_max_id[factor];
@@ -92,7 +92,7 @@ bool Prices::add_state(LeafStateHash id, LeafFactorID factor, int cost) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const State &new_center_state,
+unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const GlobalState &new_center_state,
                                                                        const Operator &op) const {
     // TODO what about having a static pointer in the class to prevent reallocation?
     unique_ptr<Prices> tmp_price;
@@ -100,21 +100,21 @@ unique_ptr<CompliantPathGraph> Prices::get_successor_via_center_action(const Sta
         tmp_price.reset(new Prices());
         tmp_price->resize();
         tmp_price->apply_center_op_to_leaves(*this, op);
-    } else {                
+    } else {
         tmp_price.reset(new Prices(*this));
     }
     tmp_price->update(new_center_state);
     return tmp_price;
 }
 
-void Prices::update(const State &base_state) {
+void Prices::update(const GlobalState &base_state) {
 
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        
+
         // skip fork leaves that don't have a goal!
         if (g_factoring->is_fork_leaf(factor) && g_goals_per_factor[factor].empty()){
             continue;
@@ -130,29 +130,29 @@ void Prices::update(const State &base_state) {
             lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
         }
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
-#endif 
-        
+#endif
+
         vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
-        
+
         bool change = true;
 
         while (change) {
-           
+
             change = false;
-            
+
             size_t num_states_handled = 0;
 
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                
+
                 if (has_leaf_state(id, factor)){
-                
+
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
                         continue;
                     }
-                    
+
                     best_prices[id] = cost;
-                    
+
                     assert(id < leaf_state_successors[factor].size());
 
                     for (size_t o = 0; o < leaf_state_successors[factor][id].size(); ++o){
@@ -160,11 +160,11 @@ void Prices::update(const State &base_state) {
                         // TODO what about caching applicability per update?
                         if (g_factoring->is_ifork_leaf(factor) || op.is_center_applicable(base_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
-                            change |= add_state(successor, factor, 
+                            change |= add_state(successor, factor,
                                                 cost + get_adjusted_action_cost(op, cost_type));
                         }
                     }
-                    
+
                     if (++num_states_handled == get_number_states(factor)){
                         break;
                     }
@@ -180,19 +180,19 @@ void Prices::update(const State &base_state) {
                 }
             }
         }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
 
     }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
 }
 
-DOMINANCE Prices::check_dominance(const State &other, int g_advantage, DOMINANCE needed) {
+DOMINANCE Prices::check_dominance(const GlobalState &other, int g_advantage, DOMINANCE needed) {
 
     if (!pruning->include_g_in_dominance()){
         g_advantage = 0;
@@ -294,8 +294,8 @@ DOMINANCE Prices::check_dominance(const State &other, int g_advantage, DOMINANCE
                         max_disadvantage = max(max_disadvantage, new_cost - old_cost);
                         min_disadvantage = min(min_disadvantage, new_cost - old_cost);
                     } else {
-                    	min_advantage = 0;
-                    	min_disadvantage = 0;
+                        min_advantage = 0;
+                        min_disadvantage = 0;
                     }
                 } else {
                     dominated = false;
@@ -388,42 +388,42 @@ void Prices::apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op
     // then run only over the states that satisfy the leaf precondition of op.
     // this should be a lot faster than running over all leaf states and check if the condition
     // is achieved!
-     
+
 #ifdef DEBUG_SEARCH
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-          
+
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
-        
+
         if (!has_pre_on_factor && num_effects == 0){
             // op does not affect leaf at all => copy everything
- 
+
             number_states[factor] = old_cpg.number_states[factor];
             prices[factor] = old_cpg.prices[factor];
             goal_cost[factor] = old_cpg.goal_cost[factor];
             continue;
         }
-        
+
         // center op completely overwrites this leaf factor
         bool leaf_overwritten = num_effects == g_leaves[factor].size();
-              
+
         int min_price = numeric_limits<int>::max();
-                
+
         size_t number_states = old_cpg.get_number_states(factor);
         LeafStateHash id(0);
         while (number_states > 0) {
             if (old_cpg.has_leaf_state(id, factor)){
                 --number_states;
-                
-                if (!has_pre_on_factor || op.is_applicable(id, factor)){ // TODO there should be a more efficient way to check this! yep, cf above TODO 
-                    
+
+                if (!has_pre_on_factor || op.is_applicable(id, factor)){ // TODO there should be a more efficient way to check this! yep, cf above TODO
+
                     int cost = old_cpg.get_cost_of_state(id, factor);
-                    
+
                     min_price = min(min_price, cost);
-                    
+
                     if (!leaf_overwritten){
                         if (num_effects == 0){
                             add_state(id, factor, cost);
@@ -436,7 +436,7 @@ void Prices::apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op
             }
             ++id;
         }
-        
+
         if (leaf_overwritten){
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
             add_state(g_state_registry->get_successor_leaf_state_hash(pred, op), factor, min_price);
@@ -514,7 +514,7 @@ void Prices::populate_cost_of_leaf_facts(function<void(int, int, int)> f) const 
     }
 }
 
-void Prices::store_new_cpg(const State &state) {
+void Prices::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -524,12 +524,12 @@ unique_ptr<CompliantPathGraph> Prices::get_init_state_cpg() {
     } else {
         unique_ptr<Prices> init_price(new Prices());
         init_price->resize();
-            
+
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             init_price->add_state(LeafStateHash(0), factor, 0);
         }
         init_price->update(g_state_registry->get_center_state(g_initial_state_data));
-        
+
         return init_price;
     }
 }
@@ -560,7 +560,7 @@ void Prices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per
     // Copy prices and reinitialize affected factors
     vector<vector<int> > old_prices(g_leaves.size());
     vector<size_t> old_number_states(g_leaves.size());
-    
+
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
     old_number_states = number_states;
@@ -648,7 +648,7 @@ uint64_t Prices::get_hash() const {
     return hash_state.get_hash64();
 }
 
-bool Prices::is_hypercube_covered(const State &, int ) const {
+bool Prices::is_hypercube_covered(const GlobalState &, int ) const {
     // TODO implement this
     cout << "Hypercube pruning not yet implemented for optimal planning." << endl;
     exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);

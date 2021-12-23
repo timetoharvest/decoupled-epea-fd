@@ -10,7 +10,7 @@
 #include <vector>
 
 class OperatorID;
-class State;
+class GlobalState;
 
 namespace options {
 class OptionParser;
@@ -32,7 +32,7 @@ protected:
     HEURISTIC_TYPE heuristic_type;
     enum {DEAD_END = -1};
     virtual void initialize() {}
-    virtual int compute_heuristic(const State &state) = 0;
+    virtual int compute_heuristic(const GlobalState &state) = 0;
     // Usage note: It's OK to set the same operator as preferred
     // multiple times -- it will still only appear in the list of
     // preferred operators for this heuristic once.
@@ -43,14 +43,14 @@ public:
     Heuristic(const options::Options &options);
     virtual ~Heuristic();
 
-    virtual void evaluate(const State &state) override;
+    virtual void evaluate(const GlobalState &state) override;
     virtual bool is_dead_end() const override;
     virtual int get_heuristic() override;
     // changed to virtual, so HeuristicProxy can delegate this:
     virtual void get_preferred_operators(std::vector<OperatorID> &result) override;
     virtual bool dead_ends_are_reliable() const override {return true; }
-    virtual bool reach_state(const State &parent_state, OperatorID op,
-                             const State &state) override;
+    virtual bool reach_state(const GlobalState &parent_state, OperatorID op,
+                             const GlobalState &state) override;
 
     // for abstract parent Evaluator
     virtual int get_value() const override;

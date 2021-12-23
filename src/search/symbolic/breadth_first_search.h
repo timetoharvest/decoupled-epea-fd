@@ -13,8 +13,8 @@ namespace symbolic {
 
 class SolutionBound;
 
-class BreadthFirstSearch : public UnidirectionalSearch  {  
-    Bucket open;   // States in open 
+class BreadthFirstSearch : public UnidirectionalSearch  {
+    Bucket open;   // States in open
     //Bucket closed; // States in closed
     BDD closedTotal;
 
@@ -77,9 +77,9 @@ public:
         BDD target = (fw ? mgr->getGoal() : mgr->getInitialState());
         return !empty_intersection(closedTotal, target);
         /* for (auto & bdd : closed) { */
-        /* 	  if (!((bdd*target).IsZero())) { */
-        /* 	      return true; */
-        /* 	  } */
+        /*    if (!((bdd*target).IsZero())) { */
+        /*        return true; */
+        /*    } */
         /* } */
     }
 
@@ -113,4 +113,4 @@ public:
 
 }
 
-#endif 
+#endif

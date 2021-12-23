@@ -8,7 +8,7 @@
 
 #include <cassert>
 
-class State;
+class GlobalState;
 
 namespace additive_heuristic {
 using relaxation_heuristic::PropID;
@@ -32,11 +32,11 @@ class AdditiveHeuristic : public relaxation_heuristic::RelaxationHeuristic {
     priority_queues::AdaptiveQueue<PropID> queue;
     bool did_write_overflow_warning;
 
-    void setup_exploration_queue_state(const State &state);
-    void setup_exploration_queue_decoupled_leaf_states(const State &state);
+    void setup_exploration_queue_state(const GlobalState &state);
+    void setup_exploration_queue_decoupled_leaf_states(const GlobalState &state);
 
     void relaxed_exploration();
-    void mark_preferred_operators(const State &state, PropID goal_id);
+    void mark_preferred_operators(const GlobalState &state, PropID goal_id);
 
     void increase_cost(int &cost, int amount) {
         assert(cost >= 0);
@@ -63,10 +63,10 @@ protected:
         assert(prop->cost != -1 && prop->cost <= cost);
     }
 
-    virtual int compute_heuristic(const State &state) override;
+    virtual int compute_heuristic(const GlobalState &state) override;
 
     // Common part of h^add and h^ff computation.
-    int compute_add_and_ff(const State &state);
+    int compute_add_and_ff(const GlobalState &state);
 public:
     explicit AdditiveHeuristic(const options::Options &opts);
 };

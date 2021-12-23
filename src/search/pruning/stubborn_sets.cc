@@ -108,7 +108,7 @@ bool StubbornSets::mark_as_stubborn(OperatorID op_no) {
 }
 
 void StubbornSets::prune_operators(
-    const State &state, vector<OperatorID> &ops) {
+    const GlobalState &state, vector<OperatorID> &ops) {
     if (disabled_pruning){
         return;
     } else if (expanded_states == 1000 && (1 - (float) num_pruned_successors_generated / (float) num_unpruned_successors_generated) < min_pruning_ratio){
@@ -158,7 +158,7 @@ void StubbornSets::print_statistics() const {
 void StubbornSets::add_options_to_parser(OptionParser &parser) {
     parser.add_option<double>(
         "min_pruning_ratio",
-        "TODO", 
+        "TODO",
         "0");
 }
 }

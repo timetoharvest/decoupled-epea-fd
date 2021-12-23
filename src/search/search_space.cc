@@ -23,7 +23,7 @@ SearchNode::SearchNode(StateID state_id, SearchNodeInfo &info,
     assert(state_id != StateID::no_state);
 }
 
-State SearchNode::get_state() const {
+GlobalState SearchNode::get_state() const {
     return g_state_registry->lookup_state(state_id);
 }
 
@@ -168,11 +168,11 @@ SearchSpace::SearchSpace(OperatorCost cost_type_)
     }
 }
 
-SearchNode SearchSpace::get_node(const State &state) {
+SearchNode SearchSpace::get_node(const GlobalState &state) {
     return SearchNode(state.get_id(), search_node_infos[state], cost_type);
 }
 
-void SearchSpace::trace_path(const State &goal_state,
+void SearchSpace::trace_path(const GlobalState &goal_state,
                              vector<OperatorID> &path) const {
 
     if (g_factoring && g_symmetry_graph){
@@ -183,26 +183,26 @@ void SearchSpace::trace_path(const State &goal_state,
 
         return;
     }
-                                 
-    State current_state = goal_state;
-    
+
+    GlobalState current_state = goal_state;
+
     vector<symmetries::Permutation> permutations; // needed for orbit search
     vector<StateID> states; // needed for decoupled search and orbit search
-    
+
     assert(path.empty());
-    
+
     for (;;) {          // backtrace solution path
         const SearchNodeInfo &info = search_node_infos[current_state];
         OperatorID op = info.creating_operator;
-        
+
         if (g_factoring || g_symmetry_graph){
             states.push_back(current_state.get_id());
         }
 
         if (g_symmetry_graph){
-            State new_state = g_initial_state();
+            GlobalState new_state = g_initial_state();
             if (op != OperatorID::no_operator) {
-                State parent_state = g_state_registry->lookup_state(info.parent_state_id);
+                GlobalState parent_state = g_state_registry->lookup_state(info.parent_state_id);
                 new_state = g_state_registry->get_successor_state(parent_state, g_operators[op], false);
             } else {
                 new_state = g_state_registry->get_state(g_initial_state_data);
@@ -228,11 +228,11 @@ void SearchSpace::trace_path(const State &goal_state,
     if (g_symmetry_graph && !g_factoring){
         trace_symmetric_path(path, states, permutations);
     }
-    
+
     if (g_factoring){
         CPGStorage::storage->get_cpg(goal_state)->fill_in_leaf_actions(path, states);
     }
-    
+
     reverse(path.begin(), path.end());
 }
 
@@ -259,7 +259,7 @@ void SearchSpace::trace_symmetric_path(vector<OperatorID> &path,
 
         for (OperatorID op_id : applicable_ops) {
             const Operator &op = g_operators[op_id];
-            State succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), op, false);
+            GlobalState succ_state = g_state_registry->get_successor_state(g_state_registry->lookup_state(states[i]), op, false);
             if (succ_state.get_id() == states[i-1]) {
                 if (op.get_cost() < min_cost) {
                     min_cost = op.get_cost();
@@ -286,7 +286,7 @@ void SearchSpace::dump() const {
             search_node_infos.begin(g_state_registry);
          it != search_node_infos.end(g_state_registry); ++it) {
         StateID id = *it;
-        State s = g_state_registry->lookup_state(id);
+        GlobalState s = g_state_registry->lookup_state(id);
         const SearchNodeInfo &node_info = search_node_infos[s];
         cout << id << ": ";
         s.dump_fdr();

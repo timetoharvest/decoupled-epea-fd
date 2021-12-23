@@ -9,32 +9,32 @@ struct PathPriceInfo {
     OperatorID generating_op;
     LeafStateHash predecessor;
     bool is_new;
-    
+
     PathPriceInfo() : generating_op(OperatorID::no_operator),
                       predecessor(LeafStateHash::MAX),
                       is_new(false) {}
-    
+
     PathPriceInfo(OperatorID op, LeafStateHash predecessor, bool is_new = false)
             : generating_op(op), predecessor(predecessor), is_new(is_new) {}
-            
+
     void reset_generating_op() {
         is_new = false;
         generating_op = OperatorID::no_operator;
     }
-    
-    void dump() const;    
+
+    void dump() const;
 };
 
 
 class PathPrices : public Prices {
-    
+
     // path information
     std::vector<std::vector<PathPriceInfo> > paths;
-    
+
     // return true, if the LeafState was actually added
     bool add_state(LeafStateHash id, LeafFactorID factor, int cost,
                    OperatorID generating_op, LeafStateHash predecessor);
-    
+
     PathPrices();
 
     PathPrices(const PathPrices &cpg);
@@ -42,9 +42,9 @@ class PathPrices : public Prices {
     PathPrices(const ExplicitStateCPG &cpg);
 
     const PathPriceInfo &get_path_info(LeafStateHash id, LeafFactorID factor) const;
-    
-    void update(const State &new_center_state);
-    
+
+    void update(const GlobalState &new_center_state);
+
     void apply_center_op_to_leaves(const PathPrices &old_cpg, const Operator &op);
 
     virtual void apply_symmetry_permutation(const symmetries::LeavesPermutation &permutation) override;

@@ -18,7 +18,7 @@ class HSPMaxHeuristic : public relaxation_heuristic::RelaxationHeuristic {
     priority_queues::AdaptiveQueue<PropID> queue;
 
     void setup_exploration_queue();
-    void setup_exploration_queue_state(const State &state);
+    void setup_exploration_queue_state(const GlobalState &state);
     void relaxed_exploration();
 
     void enqueue_if_necessary(PropID prop_id, int cost) {
@@ -31,7 +31,7 @@ class HSPMaxHeuristic : public relaxation_heuristic::RelaxationHeuristic {
         assert(prop->cost != -1 && prop->cost <= cost);
     }
 protected:
-    virtual int compute_heuristic(const State &state) override;
+    virtual int compute_heuristic(const GlobalState &state) override;
 public:
     explicit HSPMaxHeuristic(const options::Options &opts);
 };

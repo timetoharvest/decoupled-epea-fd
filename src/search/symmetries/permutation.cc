@@ -57,7 +57,7 @@ Permutation::Permutation(const unsigned int *full_permutation){
 Permutation::Permutation(const Permutation &perm, bool invert){
     _allocate();
     if (invert) {
-    	_inverse_value_from_permutation(perm);
+        _inverse_value_from_permutation(perm);
     } else {
         _copy_value_from_permutation(perm);
     }
@@ -88,7 +88,7 @@ void Permutation::finalize(){
         marked[current] = true;
         vector<int> cycle;
         cycle.push_back(current);
-        
+
         while (from_vars[current] != (int)i){
             current = from_vars[current];
             marked[current] = true;
@@ -214,7 +214,7 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
         return cmp_t::EQUAL;
     }
 
-    int from_here = vars_affected.size(); 
+    int from_here = vars_affected.size();
     bool greater = false;
     // Will be set to value below vars_affected.size() if there is a need to overwrite the state,
     // starting from that index in the vars_affected vector.
@@ -245,7 +245,7 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     }
 
     permute(state);
-    // cout << "less: " << endl; 
+    // cout << "less: " << endl;
     // for (size_t v = 0; v < g_variable_domain.size(); ++v) {
     //     cout << state[v];
     // }
@@ -253,7 +253,7 @@ cmp_t Permutation::replace_if_less(vector<int> &state)  const {
     return cmp_t::LESS;
 }
 
-bool Permutation::stabilizes(const State &state)  const {
+bool Permutation::stabilizes(const GlobalState &state)  const {
     if (identity()) {
         return true;
     }
@@ -283,7 +283,7 @@ void Permutation::permute(vector<int> &state) const {
         if (affected_vars_cycles[i].size() == 1) {
             int var = affected_vars_cycles[i][0];
             int from_val = state[var];
-            if (from_val >= 0) {  
+            if (from_val >= 0) {
                 pair<int, int> to_pair = get_new_var_val_by_old_var_val(var, from_val);
                 state[var] = to_pair.second;
             }
@@ -308,8 +308,8 @@ void Permutation::permute(vector<int> &state) const {
             int to_var = affected_vars_cycles[i][j];
             int from_var = affected_vars_cycles[i][j-1];
             int from_val = state[from_var];
-            assert(from_val >= 0);  
-        
+            assert(from_val >= 0);
+
             pair<int, int> to_pair = get_new_var_val_by_old_var_val(from_var, from_val);
             state[to_var] = to_pair.second;
         }
@@ -319,7 +319,7 @@ void Permutation::permute(vector<int> &state) const {
     }
 }
 
-void Permutation::permute_state(const State &from_state, vector<int> &to_state) const {
+void Permutation::permute_state(const GlobalState &from_state, vector<int> &to_state) const {
     // Does not assume anything about to_state
     for(size_t from_var = 0; from_var < g_variable_domain.size(); from_var++) {
         int from_val = from_state[from_var];
@@ -341,7 +341,7 @@ bool Permutation::affects_center() const {
 }
 
 size_t Permutation::number_leaves_affected() const {
-    set<int> leaves; 
+    set<int> leaves;
     for(int v : vars_affected) {
         if (g_belongs_to_factor[v] != LeafFactorID::CENTER) {
             leaves.insert(g_belongs_to_factor[v]);

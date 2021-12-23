@@ -31,10 +31,10 @@ class FFHeuristic : public additive_heuristic::AdditiveHeuristic {
     std::vector<int> leaf_state_costs;
     int current_leaf_cost;
     void mark_preferred_operators_and_relaxed_plan(
-        const State &state, PropID goal_id);
-    void setup_exploration_queue_decoupled_leaf_states(const State &state);
+        const GlobalState &state, PropID goal_id);
+    void setup_exploration_queue_decoupled_leaf_states(const GlobalState &state);
 protected:
-    virtual int compute_heuristic(const State &state) override;
+    virtual int compute_heuristic(const GlobalState &state) override;
 public:
     explicit FFHeuristic(const options::Options &opts);
 };

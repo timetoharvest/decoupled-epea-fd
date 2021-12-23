@@ -64,35 +64,35 @@ bool Reachable::add_state(LeafStateHash id, LeafFactorID factor) {
     return false;
 }
 
-unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const State &new_center_state,
+unique_ptr<CompliantPathGraph> Reachable::get_successor_via_center_action(const GlobalState &new_center_state,
                                                                           const Operator &op) const {
     unique_ptr<Reachable> tmp_reach;
     if (g_factoring->get_profile() != FORK){
         tmp_reach.reset(new Reachable());
         tmp_reach->resize();
         tmp_reach->apply_center_op_to_leaves(*this, op);
-    } else {                
+    } else {
         tmp_reach.reset(new Reachable(*this));
     }
     tmp_reach->update(new_center_state);
     return tmp_reach;
 }
 
-void Reachable::update(const State &base_state) {
-    
+void Reachable::update(const GlobalState &base_state) {
+
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        
+
         if (is_leaf_state_space_scc[factor]){
             continue;
         }
 
         if (g_factoring->is_fork_leaf(factor)){
             // skip fork leaves that don't have a goal or whose goal is already achieved
-            if (g_goals_per_factor[factor].empty() || 
+            if (g_goals_per_factor[factor].empty() ||
                 (g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT && goal_reached[factor])){
                 continue;
             }
@@ -108,46 +108,46 @@ void Reachable::update(const State &base_state) {
             lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
         }
         cout << "       " << new_tag.get_number_facts(factor) << " fact(s) initially true in leaf factor " << factor << endl;
-#endif 
-        
+#endif
+
         boost::dynamic_bitset<> handled(g_state_registry->size(factor), false);
-        
+
         size_t curr_number_states = get_number_states(factor);
-        
+
         bool change = true;
 
         while (change) {
-           
+
             change = false;
-            
+
             size_t num_states = 0;
             LeafStateHash id(0);
             while (num_states < curr_number_states) {
-                
+
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
                 }
-                
+
                 if (!has_leaf_state(id, factor)){
                     ++id;
                     continue;
                 }
-                
+
                 ++num_states;
 
                 if (handled[id]){
                     ++id;
                     continue;
                 }
-                
+
                 handled[id] = true;
-                
+
                 assert(id < leaf_state_successors[factor].size() || !precompute_leaf_state_spaces[factor]);
-                
+
                 size_t added = 0;
-                
-                if (precompute_leaf_state_spaces[factor] || 
+
+                if (precompute_leaf_state_spaces[factor] ||
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
                     if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == OperatorID::no_operator){
                         // is "dead-end" leaf state
@@ -163,18 +163,18 @@ void Reachable::update(const State &base_state) {
                         }
                     }
                 } else {
-                    
-                    const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);     
-                    
+
+                    const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
+
                     vector<OperatorID> applicable_ops;
-                    
+
                     if (!g_factoring->is_fork_leaf(factor)){       // is non-fork leaf
                         if (id >= center_successors[factor].size() || center_successors[factor][id].empty()){
                             // store center ops whose preconditions are satisfied by predecessor
-                            
+
                             vector<OperatorID> center_ops;
                             center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(predecessor, center_ops);
-                            
+
                             if (id >= center_successors[factor].size()){
                                 center_successors[factor].resize(id+1);
                             }
@@ -188,34 +188,34 @@ void Reachable::update(const State &base_state) {
                     }
 
                     leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
-                    
+
                     bool fits_store = id < MAX_LEAF_SPACE_STORE;
                     if (fits_store && leaf_state_successors[factor].size() <= id){
                         leaf_state_successors[factor].resize(id + 1);
                     }
 
-                    // apply all applicable_ops to predecessor and store the outcome          
+                    // apply all applicable_ops to predecessor and store the outcome
                     for (OperatorID op_id : applicable_ops){
                         const Operator &op = g_operators[op_id];
 
                         if (op.has_effect_on(factor) && (fits_store || op.is_center_applicable(base_state))){
 
                             LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
-                            
+
                             if (lid >= handled.size()){
                                 handled.resize(lid + 1, false);
                             }
-                            
+
                             if (lid >= leaf_state_id_map[factor].size()){
                                 leaf_state_id_map[factor].resize(lid + 1, -1);
                             }
-                            
+
                             if(!fits_store || op.is_center_applicable(base_state)){
                                 if (add_state(lid, factor)){
                                     ++added;
                                 }
                             }
-                            
+
                             if (fits_store){
                                 leaf_state_successors[factor][id].push_back(make_pair(op_id, lid));
                             }
@@ -226,12 +226,12 @@ void Reachable::update(const State &base_state) {
                         leaf_state_successors[factor][id].push_back(make_pair(OperatorID::no_operator, LeafStateHash(0))); // HACK
                     }
                 }
-                
+
                 if (added > 0){
                     curr_number_states += added;
                     change = true;
                 }
-                
+
                 if (g_factoring->get_search_type() == SAT && g_factoring->is_fork_leaf(factor) && goal_reached[factor]){
                     // in satisficing search => stop once a goal is reachable in fork-leaves
                     change = false;
@@ -240,19 +240,19 @@ void Reachable::update(const State &base_state) {
                 ++id;
             }
         }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
         assert((handled.count() == get_number_states(factor)) || goal_reached[factor]);
     }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
 }
 
-DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) {
+DOMINANCE Reachable::check_dominance(const GlobalState &other, int, DOMINANCE needed) {
 
     const Reachable *other_cpg = &cpg_storage->cpgs[other];
 
@@ -262,11 +262,11 @@ DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) 
     bool all_leaves_max_size = g_factoring->get_profile() != FORK;
     bool all_goals_reached = g_factoring->get_profile() == FORK
             && g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT;
-    
+
     // TODO fork-leaves that have a goal actually *can* be compared, i.e. if they are identical
     // its not so easy, because the second loop might detect one as dominating, although this
     // is only due to stopping the update
-    
+
     vector<bool> need_to_check(g_leaves.size(), false);
 
     // check number of reachable leaf states
@@ -276,8 +276,8 @@ DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) 
         }
         if (g_factoring->is_fork_leaf(factor)
                 && g_factoring->get_search_type() == DECOUPLED_SEARCH_TYPE::SAT) {
-            // in satisficing search, updating CPG stops if a goal 
-            // is reached in fork leaves. thus cannot compare number of states 
+            // in satisficing search, updating CPG stops if a goal
+            // is reached in fork leaves. thus cannot compare number of states
             // in this case
             if (goal_reachable(factor)){
                 if (other_cpg->goal_reachable(factor)){
@@ -326,7 +326,7 @@ DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) 
            all_leaves_max_size = false;
        }
     }
-    
+
     if (new_is_smaller && new_is_larger){
         return DOMINANCE::NONE;
     } else if (new_is_smaller){
@@ -338,17 +338,17 @@ DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) 
             return DOMINANCE::NONE;
         }
     }
-    
+
     if (all_goals_reached){
         // this is only relevant in satisficing fork-decoupled search when the center
         // has not reached its goal yet, but all leaves do.
         return DOMINANCE::EQUAL;
     }
-    
+
     if (sizes_equal && all_leaves_max_size){
         return DOMINANCE::EQUAL;
     }
-    
+
     bool dominated = (new_is_smaller && !new_is_larger) || sizes_equal;
     bool dominates = (new_is_larger && !new_is_smaller) || sizes_equal;
 
@@ -405,30 +405,30 @@ DOMINANCE Reachable::check_dominance(const State &other, int, DOMINANCE needed) 
 }
 
 void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operator &op) {
-     
+
 #ifdef DEBUG_SEARCH
     cout << "start to apply center op " << op.get_name() << " to leaves" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-          
+
         bool has_pre_on_factor = op.has_precondition_on(factor);
         OpsLeafProps<Effect> eff_on_factor = op.get_effects(factor);
-        
+
         if (!has_pre_on_factor && eff_on_factor.empty()){
-            // op does not affect leaf at all => copy everything            
+            // op does not affect leaf at all => copy everything
             reachable[factor] = old_tag.reachable[factor];
             goal_reached[factor] = old_tag.goal_reached[factor];
             continue;
         }
-        
+
         if (eff_on_factor.size() == g_leaves[factor].size()){
             // center op completely overwrites this leaf factor
-                    
+
             const LeafState pred = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
 
             size_t size_before = g_state_registry->size(factor);
-            
+
             LeafStateHash succ_id(g_state_registry->get_successor_leaf_state_hash(pred, op));
 
             if (succ_id >= size_before){
@@ -438,24 +438,24 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
             add_state(succ_id, factor);
         } else {
             // check which leaf states satisfy center precondition and apply effects
-            
+
             size_t number_states = old_tag.get_number_states(factor);
             LeafStateHash id(0);
             while (number_states > 0) {
                 if (old_tag.has_leaf_state(id, factor)){
                     --number_states;
-                    
+
                     if (!has_pre_on_factor || op.is_applicable(id, factor)){
-                                
+
                         if (eff_on_factor.empty()){
                             add_state(id, factor);
                         } else {
                             const LeafState state = g_state_registry->lookup_leaf_state(id, factor);
-                            
+
                             size_t size_before = g_state_registry->size(factor);
-                            
+
                             LeafStateHash succ_id = g_state_registry->get_successor_leaf_state_hash(state, op);
-                            
+
                             if (succ_id >= size_before){
                                 // new leaf state, need to store applicable center actions
                                 handle_new_leaf_state_from_center_op(succ_id, factor);
@@ -470,21 +470,21 @@ void Reachable::apply_center_op_to_leaves(const Reachable &old_tag, const Operat
     }
 }
 
-void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor) {     
+void Reachable::handle_new_leaf_state_from_center_op(LeafStateHash id, LeafFactorID factor) {
     if (id >= leaf_state_id_map[factor].size()){
         leaf_state_id_map[factor].resize(id + 1, -1);
     }
-    
+
     assert(id >= center_successors[factor].size());
-    
+
     if (!g_factoring->is_ifork_leaf(factor)){
         // store center ops whose preconditions are satisfied by the new leaf state
-        
+
         vector<OperatorID> center_ops;
         center_action_successor_generator->generate_applicable_ops_ignore_outside_pre(g_state_registry->lookup_leaf_state(id, factor), center_ops);
-        
+
         center_successors[factor].resize(id + 1);
-        
+
         center_successors[factor][id].reserve(center_ops.size());
         for (OperatorID op_id : center_ops){
             if (g_operators[op_id].has_precondition_on(factor)){
@@ -574,22 +574,22 @@ void Reachable::populate_cost_of_leaf_facts(function<void(int, int, int)> f) con
     }
 }
 
-void Reachable::store_new_cpg(const State &state) {
+void Reachable::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
 unique_ptr<CompliantPathGraph> Reachable::get_init_state_cpg() {
     if (pruning->do_advanced_pruning()){
-        return PruningReachable::get_init_state_cpg();        
+        return PruningReachable::get_init_state_cpg();
     } else {
         unique_ptr<Reachable> reach(new Reachable());
         reach->resize();
-            
+
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             reach->add_state(LeafStateHash(0), factor);
         }
         reach->update(g_state_registry->get_center_state(g_initial_state_data));
-        
+
         return reach;
     }
 }
@@ -639,7 +639,7 @@ void Reachable::apply_symmetry_permutation(const symmetries::LeavesPermutation &
         reachable[factor] = boost::dynamic_bitset<>();
         goal_reached[factor] = false;
     }
-    
+
     for(LeafFactorID to_factor : per.get_factors_affected()) {
         LeafFactorID from_factor = per.get_from_factor(to_factor);
 
@@ -773,14 +773,14 @@ inline HyperCube get_cube(const ExplicitStateCPG &cpg) {
     return cube;
 }
 
-bool Reachable::is_hypercube_covered(const State &base_state, int curr_number_duplicates) const {
+bool Reachable::is_hypercube_covered(const GlobalState &base_state, int curr_number_duplicates) const {
     // cube elimination
     vector<HyperCube> current_cubes;
     current_cubes.push_back(get_cube(*this));
 
     for (int dup = 0; dup <= curr_number_duplicates; ++dup){
         // get other state
-        State s = g_state_registry->get_decoupled_state(base_state, dup);
+        GlobalState s = g_state_registry->get_decoupled_state(base_state, dup);
 
         HyperCube evd_cube = get_cube(cpg_storage->cpgs[s]);
 

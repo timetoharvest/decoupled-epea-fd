@@ -35,7 +35,7 @@ void PruningReachable::resize() {
     goal_reached.resize(g_leaves.size(), false);
 }
 
-unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const State &new_center_state,
+unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action(const GlobalState &new_center_state,
                                                                                  const Operator &) const {
     // TODO copy frontier from predecessor?
     unique_ptr<PruningReachable> p_reach(new PruningReachable(*this));
@@ -43,17 +43,17 @@ unique_ptr<CompliantPathGraph> PruningReachable::get_successor_via_center_action
     return p_reach;
 }
 
-DOMINANCE PruningReachable::check_dominance(const State &other, int, DOMINANCE needed) {
+DOMINANCE PruningReachable::check_dominance(const GlobalState &other, int, DOMINANCE needed) {
     PruningReachable *other_cpg = &cpg_storage->cpgs[other];
 
     compute_frontier();
     other_cpg->compute_frontier();
-        
+
     bool dominated = needed != DOMINANCE::DOMINATES;
     bool dominates = needed != DOMINANCE::DOMINATED;
-    
+
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
-    
+
     // compare prices
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (!g_goals_per_factor[factor].empty()){
@@ -81,7 +81,7 @@ DOMINANCE PruningReachable::check_dominance(const State &other, int, DOMINANCE n
                     }
                 }
                 if (dominated && id < frontier[factor].size() && frontier[factor][id]){
-                    assert(has_leaf_state(id, factor));                    
+                    assert(has_leaf_state(id, factor));
                     if (!other_cpg->has_leaf_state(id, factor)){
                         dominated = false;
                     }
@@ -96,17 +96,17 @@ DOMINANCE PruningReachable::check_dominance(const State &other, int, DOMINANCE n
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
-#endif          
+#endif
         return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
-#endif          
+#endif
         return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
-#endif          
+#endif
         return DOMINANCE::DOMINATES;
     }
     return DOMINANCE::NONE;
@@ -114,11 +114,11 @@ DOMINANCE PruningReachable::check_dominance(const State &other, int, DOMINANCE n
 
 void PruningReachable::compute_frontier() {
     assert(pruning->use_frontier_pruning());
-    
+
     if (!frontier.empty()){
         return;
     }
-    
+
     frontier.resize(g_leaves.size());
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         boost::dynamic_bitset<>(g_state_registry->size(factor), false).swap(frontier[factor]);
@@ -135,14 +135,14 @@ void PruningReachable::compute_frontier() {
     }
 }
 
-void PruningReachable::store_new_cpg(const State &state) {
+void PruningReachable::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
 unique_ptr<CompliantPathGraph> PruningReachable::get_init_state_cpg() {
     unique_ptr<PruningReachable> reach(new PruningReachable());
     reach->resize();
-        
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         reach->add_state(LeafStateHash(0), factor);
     }
@@ -207,4 +207,4 @@ void PruningReachable::apply_symmetry_permutation(const symmetries::LeavesPermut
     cerr << "PruningReachable::apply_symmetry_permutation not yet implemented" << endl;
     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
-    
+

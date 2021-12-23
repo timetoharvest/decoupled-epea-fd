@@ -8,7 +8,7 @@
 namespace equivalence_relation {
 class EquivalenceRelation;
 }
-class State;
+class GlobalState;
 class Label;
 class Labels;
 
@@ -103,7 +103,7 @@ class TransitionSystem {
 protected:
     std::vector<int> varset;
 
-    virtual AbstractStateRef get_abstract_state(const State &state) const = 0;
+    virtual AbstractStateRef get_abstract_state(const GlobalState &state) const = 0;
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<AbstractStateRef> &abstraction_mapping) = 0;
     virtual int memory_estimate() const;
@@ -127,7 +127,7 @@ public:
     void normalize();
     equivalence_relation::EquivalenceRelation *compute_local_equivalence_relation() const;
 
-    int get_cost(const State &state) const;
+    int get_cost(const GlobalState &state) const;
     void statistics(bool include_expensive_statistics) const;
     // NOTE: This will only return something useful if the memory estimates
     //       have been computed along the way by calls to statistics().
@@ -184,7 +184,7 @@ protected:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<AbstractStateRef> &abstraction_mapping);
     virtual std::string description() const;
-    virtual AbstractStateRef get_abstract_state(const State &state) const;
+    virtual AbstractStateRef get_abstract_state(const GlobalState &state) const;
     virtual int memory_estimate() const;
 public:
     AtomicTransitionSystem(Labels *labels, int variable);
@@ -199,7 +199,7 @@ protected:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<AbstractStateRef> &abstraction_mapping);
     virtual std::string description() const;
-    virtual AbstractStateRef get_abstract_state(const State &state) const;
+    virtual AbstractStateRef get_abstract_state(const GlobalState &state) const;
     virtual int memory_estimate() const;
 public:
     CompositeTransitionSystem(Labels *labels, TransitionSystem *ts1, TransitionSystem *ts2);

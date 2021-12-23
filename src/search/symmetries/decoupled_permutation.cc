@@ -41,11 +41,11 @@ int DecoupledFactIndex::get_index_by_leaf_state(LeafStateHash id, LeafFactorID f
     return state_sum_by_factor[factor] + id;
 }
 
-LeavesPermutation::LeavesPermutation(const Permutation &per) 
+LeavesPermutation::LeavesPermutation(const Permutation &per)
                              : permutation(new Permutation(per)) {
 
     affected.assign(g_leaves.size(), false);
-   
+
     for (int v : per.vars_affected) {
         LeafFactorID factor = g_belongs_to_factor[v];
         if (factor != LeafFactorID::CENTER && !affected[factor]) {
@@ -62,12 +62,12 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
         if (factor == LeafFactorID::CENTER || from_v == -1){
             continue;
         }
-        
+
         LeafFactorID from_factor  = g_belongs_to_factor[from_v];
-            
+
         assert(from_factor != -1);
         assert(from_factors[factor] == LeafFactorID::CENTER || from_factors[factor] == from_factor);
-            
+
         from_factors[factor] = from_factor;
     }
 
@@ -115,12 +115,12 @@ LeavesPermutation::LeavesPermutation(const Permutation &per)
 LeavesPermutation::LeavesPermutation(const LeavesPermutation &perm1,
                                      const LeavesPermutation &perm2)
                                  : permutation(new Permutation(*perm1.permutation, *perm2.permutation)) {
-    
+
     affected.resize(g_leaves.size(), false);
     value.resize(findex_leaves.size(), -1);
     from_factors.resize(g_leaves.size(), LeafFactorID::CENTER);
     inverse_value.resize(findex_leaves.size(), -1);
-    
+
     for (size_t i = 0; i < findex_leaves.size(); i++) {
         set_value(i, perm2.value[perm1.value[i]]);
     }
@@ -129,7 +129,7 @@ LeavesPermutation::LeavesPermutation(const LeavesPermutation &perm1,
 
 LeavesPermutation::LeavesPermutation(const LeavesPermutation &perm, bool invert)
                                  : permutation(new Permutation(*perm.permutation, invert)){
-    
+
     affected.resize(g_leaves.size(), false);
     value.resize(findex_leaves.size(), -1);
     from_factors.resize(g_leaves.size(), LeafFactorID::CENTER);
@@ -190,8 +190,8 @@ cmp_t LeavesPermutation::cmp_goal_cost(const SymmetryCPG &cpg) const {
         int cost_from = cpg.get_goal_cost(from_factor);
         int cost_to = cpg.get_goal_cost(to_factor);
 
-        bool has_from = cost_from >= 0; 
-        bool has_to = cost_to >= 0; 
+        bool has_from = cost_from >= 0;
+        bool has_to = cost_to >= 0;
 
         if (has_from && !has_to) {
             return cmp_t::LESS;
@@ -225,9 +225,9 @@ cmp_t LeavesPermutation::cmp_prices(const SymmetryCPG &cpg) const {
             pair<LeafStateHash, LeafFactorID> from_pair = get_old_factor_state_by_new_factor_state(to_id, to_factor);
             assert(from_pair.second == from_factor);
             LeafStateHash from_id = from_pair.first;
-            
+
             bool has_from = cpg.has_leaf_state(from_id, from_factor);
-            bool has_to = cpg.has_leaf_state (to_id, to_factor); 
+            bool has_to = cpg.has_leaf_state (to_id, to_factor);
 
             if(has_from && !has_to) {
                 return cmp_t::LESS;
@@ -235,7 +235,7 @@ cmp_t LeavesPermutation::cmp_prices(const SymmetryCPG &cpg) const {
             if(!has_from && has_to) {
                 return cmp_t::GREATER;
             }
-                
+
             if(has_from && has_to) {
                 int cost_from = cpg.get_cost_of_state(from_id, from_factor);
                 int cost_to = cpg.get_cost_of_state(to_id, to_factor);
@@ -267,7 +267,7 @@ void LeavesPermutation::finalize() {
         marked[current] = true;
         vector<int> cycle;
         cycle.push_back(current);
-        
+
         while (from_factors[current] != (int) i){
             current = from_factors[current];
             marked[current] = true;
@@ -344,7 +344,7 @@ bool LeavesPermutation::is_symmetric_op(const Operator &op, const Operator &op2)
             }
         }
     }
-    
+
     for (const auto &pre : preconditions2) {
         auto old_var_val = permutation->get_old_var_val_by_new_var_val(pre.var, pre.val);
         if (g_belongs_to_factor[old_var_val.first] != LeafFactorID::CENTER){
@@ -413,21 +413,21 @@ void LeavesPermutation::print_cycle_notation() const {
         }
         cout << (is_center ? "center permutation => ignored)" : ")  ");
     }
-    cout << endl;    
+    cout << endl;
 }
 
-CenterPermutation::CenterPermutation(const Permutation &per, bool invert) : 
+CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
     Permutation(per, invert) {
     // remove leaf vars from vars_affected
-    vars_affected.erase(remove_if(vars_affected.begin(), 
-				       vars_affected.end(),
-				       [&](int x){ 
-					   if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
-					       affected[x] = false;
-					       return true;
-					   }
-					   return false;}),
-			vars_affected.end());
+    vars_affected.erase(remove_if(vars_affected.begin(),
+                       vars_affected.end(),
+                       [&](int x){
+                       if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
+                           affected[x] = false;
+                           return true;
+                       }
+                       return false;}),
+            vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
         if (from_vars[i] != -1 && g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
@@ -444,24 +444,24 @@ CenterPermutation::CenterPermutation(const Permutation &per, bool invert) :
 
 bool CenterPermutation::is_valid() const {
     return std::all_of(from_vars.begin(), from_vars.end(), [] (int v) {
-		return v == -1 ||  g_belongs_to_factor[v] == LeafFactorID::CENTER;
-	});
+        return v == -1 ||  g_belongs_to_factor[v] == LeafFactorID::CENTER;
+    });
 }
 
-CenterPermutation::CenterPermutation(const CenterPermutation &p1, 
-                                     const CenterPermutation &p2) : 
+CenterPermutation::CenterPermutation(const CenterPermutation &p1,
+                                     const CenterPermutation &p2) :
     Permutation(p1, p2) {
 
     //Remove leaf vars from vars_affected
-    vars_affected.erase(remove_if(vars_affected.begin(), 
-				       vars_affected.end(),
-				       [&](int x){ 
-					   if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
-					       affected[x] = false;
-					       return true;
-					   }
-					   return false;}),
-			vars_affected.end());
+    vars_affected.erase(remove_if(vars_affected.begin(),
+                       vars_affected.end(),
+                       [&](int x){
+                       if(g_belongs_to_factor[x] != LeafFactorID::CENTER) {
+                           affected[x] = false;
+                           return true;
+                       }
+                       return false;}),
+            vars_affected.end());
 
     for(size_t i = 0; i < from_vars.size(); ++i) {
         if (from_vars[i] == -1 || g_belongs_to_factor[from_vars[i]] != LeafFactorID::CENTER) {
@@ -501,11 +501,11 @@ bool CenterPermutation::is_symmetric_op(const Operator &op, const Operator &op2)
     return true;
 }
 
-DecoupledPermutation::DecoupledPermutation(const Permutation &p) { 
+DecoupledPermutation::DecoupledPermutation(const Permutation &p) {
     if (p.number_leaves_affected() > 0){
         leaves_permutation = unique_ptr<LeavesPermutation>(new LeavesPermutation(p));
     }
-    
+
     if (p.affects_center()){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(p));
     }
@@ -523,7 +523,7 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per) {
     assert(has_valid_center_permutation());
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {    
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool invert) {
     if (per.center_permutation){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*per.center_permutation, invert));
     }
@@ -534,8 +534,8 @@ DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &per, bool
     assert(has_valid_center_permutation());
 }
 
-DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1, 
-					   const DecoupledPermutation &p2) {
+DecoupledPermutation::DecoupledPermutation(const DecoupledPermutation &p1,
+                       const DecoupledPermutation &p2) {
     if (p1.center_permutation && p2.center_permutation){
         center_permutation = unique_ptr<CenterPermutation>(new CenterPermutation(*p1.center_permutation, *p2.center_permutation));
     } else if (p1.center_permutation){
@@ -565,10 +565,10 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, SymmetryCPG &lea
             }
             return true;
         } else if (cmp == cmp_t::GREATER) {
-            return false;	    
+            return false;
         }
     }
-    
+
     if (leaves_permutation &&
             lex_ordering.produces_less(*leaves_permutation, leaves)){
         leaves.apply_symmetry_permutation(*leaves_permutation);
@@ -578,9 +578,9 @@ bool DecoupledPermutation::replace_if_less(vector<int> &center, SymmetryCPG &lea
     return false;
 }
 
-cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center, 
+cmp_t DecoupledPermutation::replace_if_less_center(vector<int> &center,
         SymmetryCPG &leaves) const {
-    assert(center_permutation); 
+    assert(center_permutation);
     cmp_t cmp = center_permutation->replace_if_less(center);
     if (cmp == cmp_t::LESS && leaves_permutation){
         leaves.apply_symmetry_permutation(*leaves_permutation);
@@ -599,12 +599,12 @@ bool DecoupledPermutation::replace_if_less_leaves(SymmetryCPG &leaves,
     return false;
 }
 
-void DecoupledPermutation::permute_decoupled_state(vector<int> &center, 
+void DecoupledPermutation::permute_decoupled_state(vector<int> &center,
         SymmetryCPG &leaves) const {
     if(center_permutation){
         center_permutation->permute(center);
     }
-    
+
     if (leaves_permutation){
         leaves.apply_symmetry_permutation(*leaves_permutation);
     }
@@ -649,8 +649,8 @@ inline bool are_equal(OpsLeafProps<Effect> effs1, OpsLeafProps<Effect> effs2) {
 }
 
 OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operator &main_op,
-					                            const vector<OperatorID> &ops,
-					                            OperatorCost cost_type) const {
+                                                const vector<OperatorID> &ops,
+                                                OperatorCost cost_type) const {
 
     assert(!ops.empty());
 
@@ -667,7 +667,7 @@ OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operat
                     continue;
                 }
             } else if (!center_permutation->is_symmetric_op(main_op, op)){
-                continue;                
+                continue;
             }
 
             if (!leaves_permutation){
@@ -698,7 +698,7 @@ OperatorID DecoupledPermutation::find_matching_min_cost_permuted_op(const Operat
     exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
 }
 
-bool DecoupledPermutation::stabilizes_center(const State &center) const {
+bool DecoupledPermutation::stabilizes_center(const GlobalState &center) const {
     if(!center_permutation){
         return true;
     }

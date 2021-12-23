@@ -183,7 +183,7 @@ void MergeAndShrinkHeuristic::initialize() {
     cout << "Estimated peak memory for transition system: " << final_transition_system->get_peak_memory_estimate() << " bytes" << endl;
 }
 
-int MergeAndShrinkHeuristic::compute_heuristic(const State &state) {
+int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &state) {
     int cost = final_transition_system->get_cost(state);
     if (cost == -1)
         return DEAD_END;

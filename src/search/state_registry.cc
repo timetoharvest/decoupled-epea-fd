@@ -81,32 +81,32 @@ LeafStateHash StateRegistry::insert_id_or_pop_leaf_state(LeafFactorID factor) {
     return result.first->value;
 }
 
-State StateRegistry::lookup_state(StateID id) const {
-    return State(state_data_pool[id.value], *this, id);
+GlobalState StateRegistry::lookup_state(StateID id) const {
+    return GlobalState(state_data_pool[id.value], *this, id);
 }
 
 LeafState StateRegistry::lookup_leaf_state(LeafStateHash id, LeafFactorID factor) const {
     return LeafState((*leaf_state_data_pool[factor])[id], LeafStateID(id, factor));
 }
 
-const State &StateRegistry::get_initial_state() {
+const GlobalState &StateRegistry::get_initial_state() {
     if (cached_initial_state == 0) {
-        
+
         PackedStateBin *center_buffer = new PackedStateBin[g_state_packer->get_num_bins()];
         vector<PackedStateBin*> leaf_buffers;
-        
+
         if (g_factoring){
             leaf_buffers.resize(g_leaves.size());
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 leaf_buffers[factor] = new PackedStateBin[g_leaf_factor_packers[factor]->get_num_bins()];
             }
         }
-        
+
         for (size_t var = 0; var < g_initial_state_data.size(); ++var) {
             int index = var;
             if (g_factoring){
                 index = g_new_index[var];
-                
+
                 LeafFactorID factor = g_belongs_to_factor[var];
                 if (factor != LeafFactorID::CENTER){
                     g_leaf_factor_packers[factor]->set(leaf_buffers[factor], index, g_initial_state_data[var]);
@@ -115,19 +115,19 @@ const State &StateRegistry::get_initial_state() {
             }
             g_state_packer->set(center_buffer, index, g_initial_state_data[var]);
         }
-        
+
         if (g_factoring){
             g_state_packer->set(center_buffer, g_center.size(), 0);
         } else {
             g_axiom_evaluator->evaluate(center_buffer);
         }
-        
+
         state_data_pool.push_back(center_buffer);
         // buffer is copied by push_back
         delete[] center_buffer;
         StateID id = insert_id_or_pop_state();
-        cached_initial_state = new State(lookup_state(id));
-        
+        cached_initial_state = new GlobalState(lookup_state(id));
+
         if (g_factoring){
             for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
                 leaf_state_data_pool[factor]->push_back(leaf_buffers[factor]);
@@ -135,16 +135,16 @@ const State &StateRegistry::get_initial_state() {
                 delete[] leaf_buffers[factor];
                 insert_id_or_pop_leaf_state(factor);
             }
-            
+
             unique_ptr<CompliantPathGraph> init_state_cpg = CompliantPathGraph::get_init_state_cpg();
-            
+
             CompliantPathGraph::notify_new_center_state(*cached_initial_state, *init_state_cpg);
 
             init_state_cpg->store_new_cpg(*cached_initial_state);
 
             state_duplicate_counter[0] = 0;
         }
-        
+
 #ifdef DEBUG_SEARCH
         cout << "dump init state StateRegistry" << endl;
         cached_initial_state->dump_pddl();
@@ -169,26 +169,26 @@ void StateRegistry::permute_initial_state() {
                 break;
             }
         }
-        
+
         if (changed){
             registered_states.erase(cached_initial_state->get_id());
-            
+
             PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
             for (size_t var = 0; var < g_center.size(); ++var){
                 g_state_packer->set(sym_buffer, var, new_center[g_center[var]]);
             }
             g_state_packer->set(sym_buffer, g_center.size(), 0);
-                    
+
             StateID id = insert_id_or_pop_state();
             assert(id.hash() == 0);
-            
+
             delete cached_initial_state;
-            cached_initial_state = new State(lookup_state(id));
+            cached_initial_state = new GlobalState(lookup_state(id));
         }
         CompliantPathGraph::notify_new_center_state(*cached_initial_state, *CPGStorage::storage->get_cpg(*cached_initial_state));
     } else {
         const vector<int> &new_state = g_symmetry_graph->get_canonical_state(*cached_initial_state);
-        
+
         bool changed = false;
         for (size_t var = 0; var < g_variable_domain.size(); ++var){
             if ((*cached_initial_state)[var] != new_state[var]){
@@ -196,42 +196,42 @@ void StateRegistry::permute_initial_state() {
                 break;
             }
         }
-        
+
         if (changed){
             registered_states.erase(cached_initial_state->get_id());
-            
+
             PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
             for (size_t var = 0; var < g_variable_domain.size(); ++var){
                 g_state_packer->set(sym_buffer, var, new_state[var]);
             }
-                    
+
             StateID id = insert_id_or_pop_state();
-            
+
             delete cached_initial_state;
-            cached_initial_state = new State(lookup_state(id));
+            cached_initial_state = new GlobalState(lookup_state(id));
         }
     }
 }
 
-State StateRegistry::get_state_permutation(const State &state, const symmetries::Permutation &permutation) {
+GlobalState StateRegistry::get_state_permutation(const GlobalState &state, const symmetries::Permutation &permutation) {
     assert(g_symmetry_graph);
     assert(!g_factoring);
-    
+
     vector<int> permuted(g_variable_domain.size(), -1);
     permutation.permute_state(state, permuted);
-    
+
     state_data_pool.push_back(state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
+
     for (size_t var = 0; var < permuted.size(); ++var) {
         g_state_packer->set(buffer, var, permuted[var]);
     }
-    
+
     StateID id = insert_id_or_pop_state();
     return lookup_state(id);
 }
 
-State StateRegistry::get_decoupled_state_permutation(const State &state,
+GlobalState StateRegistry::get_decoupled_state_permutation(const GlobalState &state,
         symmetries::SymmetryCPG &cpg,
         const symmetries::DecoupledPermutation &permutation) {
     vector<int> permuted(g_variable_domain.size(), -1);
@@ -239,29 +239,29 @@ State StateRegistry::get_decoupled_state_permutation(const State &state,
         permuted[var] = state[var];
     }
     permutation.permute_decoupled_state(permuted, cpg);
-    
+
     state_data_pool.push_back(state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
+
     for (size_t var = 0; var < g_center.size(); ++var) {
         g_state_packer->set(buffer, var, permuted[g_center[var]]);
     }
     g_state_packer->set(buffer, g_center.size(), 0);
-    
+
     return lookup_state(insert_id_or_pop_state());
 }
 
 //TODO it would be nice to move the actual state creation (and operator application)
 //     out of the StateRegistry. This could for example be done by global functions
 //     operating on state buffers (PackedStateBin *).
-State StateRegistry::get_successor_state(const State &predecessor, const Operator &op, bool compute_canonical) {
+GlobalState StateRegistry::get_successor_state(const GlobalState &predecessor, const Operator &op, bool compute_canonical) {
     g_inc_g_by = 0;
-    
+
     assert(!g_factoring || op.get_affected_factor() == LeafFactorID::CENTER);
     assert(op.is_applicable(predecessor));
-        
+
     assert(!op.is_axiom());
-    
+
     state_data_pool.push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
 
@@ -296,18 +296,18 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
     }
 
     StateID id = insert_id_or_pop_state();
-    
+
     if (g_factoring){
-        State s = lookup_state(id);
-        
+        GlobalState s = lookup_state(id);
+
         int old_dup_counter = -1;
         DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
         if (pos != state_duplicate_counter.end()){
             old_dup_counter = pos->second;
         }
-        
+
         PruningOptions::reset_ignore_current_state();
-        
+
         unique_ptr<CompliantPathGraph> new_cpg = CPGStorage::storage->get_cpg(predecessor)->get_successor_via_center_action(s, op);
 
         if (g_symmetry_graph && compute_canonical){
@@ -320,7 +320,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                     break;
                 }
             }
-            
+
             if (changed){
                 if (old_dup_counter != -1){
                     // remove the newly added state if we do not need it later
@@ -328,16 +328,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 } else {
                     registered_states.erase(id);
                 }
-                
+
                 PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
                 for (size_t var = 0; var < g_center.size(); ++var){
                     g_state_packer->set(sym_buffer, var, new_center[g_center[var]]);
                 }
                 g_state_packer->set(sym_buffer, g_center.size(), 0);
-                        
+
                 id = insert_id_or_pop_state();
-                s = lookup_state(id);                
-                    
+                s = lookup_state(id);
+
                 old_dup_counter = -1;
                 DupCounterTable::iterator pos = state_duplicate_counter.find(id.hash());
                 if (pos != state_duplicate_counter.end()){
@@ -345,7 +345,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 }
             }
         }
-        
+
         if (old_dup_counter == -1){ // is new center state
             CompliantPathGraph::notify_new_center_state(s, *new_cpg);
             new_cpg->store_new_cpg(s);
@@ -358,16 +358,16 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 cerr << "Maximum number of decoupled states with the same center exceeded (" << MAX_DUPLICATE_COUNTER << "). Need to increase MAX_DUPLICATE_COUNTER in globals.cc and recompile." << endl;
                 exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
-            
+
             state_data_pool.push_back(s.get_packed_buffer());
             buffer = state_data_pool[state_data_pool.size() - 1];
             g_state_packer->set(buffer, g_center.size(), new_dup_counter);
-            
+
             size_t base_state_id = id.hash();
-            
+
             id = insert_id_or_pop_state();
             s = lookup_state(id);
-            
+
             if (new_dup_counter > old_dup_counter){
                 // is a new decoupled state
                 state_duplicate_counter[base_state_id] = new_dup_counter;
@@ -378,7 +378,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 new_cpg->store_new_cpg(s);
             }
         }
-        
+
 #ifdef DEBUG_SEARCH
         cout << "created state " << id << endl;
         s.dump_pddl();
@@ -394,7 +394,7 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
 #endif
         return s;
     } else if (g_symmetry_graph && compute_canonical){
-        State s = lookup_state(id);
+        GlobalState s = lookup_state(id);
 
         const vector<int> &new_state = g_symmetry_graph->get_canonical_state(s);
 
@@ -405,69 +405,69 @@ State StateRegistry::get_successor_state(const State &predecessor, const Operato
                 break;
             }
         }
-        
+
         if (changed){
             if (id.hash() + 1 != state_data_pool.size()){
                 state_data_pool.push_back(s.get_packed_buffer());
             } else {
                 registered_states.erase(id);
             }
-            
+
             PackedStateBin *sym_buffer = state_data_pool[state_data_pool.size() - 1];
             for (size_t var = 0; var < g_variable_domain.size(); ++var){
                 g_state_packer->set(sym_buffer, var, new_state[var]);
             }
-                    
+
             id = insert_id_or_pop_state();
         }
     }
     return lookup_state(id);
 }
 
-State StateRegistry::get_state(const vector<int> &facts) {
+GlobalState StateRegistry::get_state(const vector<int> &facts) {
     assert(facts.size() == g_variable_domain.size());
-    
+
     state_data_pool.push_back(cached_initial_state->get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
+
     for (size_t var = 0; var < g_variable_domain.size(); ++var) {
         g_state_packer->set(buffer, var, facts[var]);
     }
-    
-    StateID id = insert_id_or_pop_state();    
+
+    StateID id = insert_id_or_pop_state();
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_state(const vector<int> &facts) {
+GlobalState StateRegistry::get_center_state(const vector<int> &facts) {
     assert(facts.size() == g_variable_domain.size());// TODO this is quite ugly, but easier for using the symmetry code
-    
+
     state_data_pool.push_back(cached_initial_state->get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
+
     for (size_t var = 0; var < g_center.size(); ++var) {
         g_state_packer->set(buffer, var, facts[g_center[var]]);
     }
     g_state_packer->set(buffer, g_center.size(), 0);
-    
-    StateID id = insert_id_or_pop_state();    
+
+    StateID id = insert_id_or_pop_state();
     return lookup_state(id);
 }
 
-State StateRegistry::get_decoupled_state(const State &base_state, int dup_counter) {
+GlobalState StateRegistry::get_decoupled_state(const GlobalState &base_state, int dup_counter) {
     assert(dup_counter >= 0);
     assert(dup_counter < MAX_DUPLICATE_COUNTER);
-    
+
     state_data_pool.push_back(base_state.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
-    
+
     g_state_packer->set(buffer, g_center.size(), dup_counter);
-    
+
     StateID id = insert_id_or_pop_state();
-    
+
     return lookup_state(id);
 }
 
-State StateRegistry::get_center_successor(const State &center, const Operator& op) {
+GlobalState StateRegistry::get_center_successor(const GlobalState &center, const Operator& op) {
     state_data_pool.push_back(center.get_packed_buffer());
     PackedStateBin *buffer = state_data_pool[state_data_pool.size() - 1];
 
@@ -476,16 +476,16 @@ State StateRegistry::get_center_successor(const State &center, const Operator& o
         g_state_packer->set(buffer, g_new_index[eff.var], eff.val);
     }
     g_state_packer->set(buffer, g_center.size(), 0);
-    
+
     StateID id = insert_id_or_pop_state();
     return lookup_state(id);
 }
 
-LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op) {     
+LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &predecessor, const Operator &op) {
     assert(!op.is_axiom());
 
     LeafFactorID factor = predecessor.get_id().get_factor();
-    
+
     leaf_state_data_pool[factor]->push_back(predecessor.get_packed_buffer());
     PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
 
@@ -493,16 +493,16 @@ LeafStateHash StateRegistry::get_successor_leaf_state_hash(const LeafState &pred
         // no need to check does_fire here, because no conditional effects allowed (yet)
         g_leaf_factor_packers[factor]->set(buffer, g_new_index[eff.var], eff.val);
     }
-    
+
     // not supported (yet)
     // g_axiom_evaluator->evaluate(buffer);
-    
+
     return insert_id_or_pop_leaf_state(factor);
 }
 
 LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafFactorID factor) {
     assert(g_leaves[factor].size() == facts.size());
-    
+
     leaf_state_data_pool[factor]->push_back((*leaf_state_data_pool[factor])[0]);
     PackedStateBin *buffer = (*leaf_state_data_pool[factor])[leaf_state_data_pool[factor]->size() - 1];
 
@@ -517,7 +517,7 @@ LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafF
 void StateRegistry::print_decoupled_search_statistics() const {
     // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
-    
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         dec_size += sizeof(PackedStateBin) * g_leaf_factor_packers[factor]->get_num_bins() * size(factor);
     }

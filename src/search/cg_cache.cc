@@ -113,7 +113,7 @@ int CGCache::compute_required_cache_size(
     return required_size;
 }
 
-int CGCache::get_index(int var, const State &state,
+int CGCache::get_index(int var, const GlobalState &state,
                        int from_val, int to_val) const {
     assert(is_cached(var));
     assert(from_val != to_val);

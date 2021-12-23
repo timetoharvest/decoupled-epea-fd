@@ -48,7 +48,7 @@ void HSPMaxHeuristic::setup_exploration_queue() {
     }
 }
 
-void HSPMaxHeuristic::setup_exploration_queue_state(const State &state) {
+void HSPMaxHeuristic::setup_exploration_queue_state(const GlobalState &state) {
     for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
         if (heuristic_type == HEURISTIC_TYPE::STD ||
                 g_belongs_to_factor[var] == LeafFactorID::CENTER){
@@ -85,7 +85,7 @@ void HSPMaxHeuristic::relaxed_exploration() {
     }
 }
 
-int HSPMaxHeuristic::compute_heuristic(const State &state) {
+int HSPMaxHeuristic::compute_heuristic(const GlobalState &state) {
     setup_exploration_queue();
 
     if (heuristic_type != HEURISTIC_TYPE::STD){

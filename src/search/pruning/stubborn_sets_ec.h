@@ -21,18 +21,18 @@ private:
     void compute_operator_preconditions();
     void compute_conflicts_and_disabling();
     void compute_disabled_by_o();
-    void add_conflicting_and_disabling(OperatorID op_no, const State &state);
-    void compute_active_operators(const State &state);
-    void mark_as_stubborn_and_remember_written_vars(OperatorID op_no, const State &state);
-    void add_nes_for_fact(const std::pair<int, int> &fact, const State &state);
-    void apply_s5(const Operator &op, const State &state);
+    void add_conflicting_and_disabling(OperatorID op_no, const GlobalState &state);
+    void compute_active_operators(const GlobalState &state);
+    void mark_as_stubborn_and_remember_written_vars(OperatorID op_no, const GlobalState &state);
+    void add_nes_for_fact(const std::pair<int, int> &fact, const GlobalState &state);
+    void apply_s5(const Operator &op, const GlobalState &state);
 protected:
-    virtual void initialize_stubborn_set(const State &state) override;
-    virtual void handle_stubborn_operator(const State &state, OperatorID op_no) override;
+    virtual void initialize_stubborn_set(const GlobalState &state) override;
+    virtual void handle_stubborn_operator(const GlobalState &state, OperatorID op_no) override;
 public:
     StubbornSetsEC(const options::Options &opts);
     virtual ~StubbornSetsEC() = default;
-    
+
     virtual void initialize() override {}
 };
 }

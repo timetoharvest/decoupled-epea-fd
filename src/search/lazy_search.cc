@@ -132,7 +132,7 @@ SearchStatus LazySearch::fetch_next_state() {
 
     current_predecessor_id = next.first;
     current_operator = next.second;
-    State current_predecessor = g_state_registry->lookup_state(current_predecessor_id);
+    GlobalState current_predecessor = g_state_registry->lookup_state(current_predecessor_id);
     assert(g_operators[current_operator].is_applicable(current_predecessor));
     current_state = g_state_registry->get_successor_state(current_predecessor, g_operators[current_operator]);
 
@@ -154,7 +154,7 @@ SearchStatus LazySearch::step() {
 
     SearchNode node = search_space.get_node(current_state);
     bool reopen = reopen_closed_nodes && (current_g < node.get_g()) && !node.is_dead_end() && !node.is_new();
-    
+
     if (g_factoring && PruningOptions::ignore_current_state()){
         reopen = false;
     }
@@ -165,7 +165,7 @@ SearchStatus LazySearch::step() {
         if (dummy_id == StateID::no_state) {
             dummy_id = g_initial_state().get_id();
         }
-        State parent_state = g_state_registry->lookup_state(dummy_id);
+        GlobalState parent_state = g_state_registry->lookup_state(dummy_id);
         SearchNode parent_node = search_space.get_node(parent_state);
 
         for (size_t i = 0; i < heuristics.size(); ++i) {

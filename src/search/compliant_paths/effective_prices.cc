@@ -63,11 +63,11 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
         effective_prices = prices;
         number_effective_states = number_states;
     }
-    
+
     if (leaf_id >= effective_prices[factor].size()){
         effective_prices[factor].resize(leaf_id + 1, INF);
     }
-    
+
     if (effective_prices[factor][leaf_id] == INF){
         effective_prices[factor][leaf_id] = cost;
         ++number_effective_states[factor];
@@ -79,7 +79,7 @@ bool EffectivePrices::add_effective_state(LeafStateHash id, LeafFactorID factor,
     return false;
 }
 
-unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const State &new_center_state,
+unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(const GlobalState &new_center_state,
                                                                                 const Operator &) const {
     unique_ptr<EffectivePrices> eff_prices(new EffectivePrices(*this));
     eff_prices->update(new_center_state);
@@ -92,7 +92,7 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_successor_via_center_action(
     return eff_prices;
 }
 
-DOMINANCE EffectivePrices::check_dominance(const State &other, int g_advantage, DOMINANCE needed) {
+DOMINANCE EffectivePrices::check_dominance(const GlobalState &other, int g_advantage, DOMINANCE needed) {
 
     if (!pruning->include_g_in_dominance()){
         g_advantage = 0;
@@ -312,7 +312,7 @@ size_t EffectivePrices::get_number_effective_states(LeafFactorID factor) const {
     }
 }
 
-void EffectivePrices::store_new_cpg(const State &state) {
+void EffectivePrices::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -320,15 +320,15 @@ unique_ptr<CompliantPathGraph> EffectivePrices::get_init_state_cpg() {
     if (pruning->use_frontier_pruning()){
         return FrontierPrices::get_init_state_cpg();
     }
-    
+
     unique_ptr<EffectivePrices> init_effprices(new EffectivePrices());
     init_effprices->resize();
-        
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         init_effprices->add_state(LeafStateHash(0), factor, 0);
     }
     init_effprices->update(g_state_registry->get_center_state(g_initial_state_data));
-    
+
     return init_effprices;
 }
 
@@ -341,7 +341,7 @@ void EffectivePrices::goal_price_propagation() {
         // effort. Probably worth it to reduce overhead
         // Alvaro: Use a heap_queue?
         priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
-        
+
         for (LeafStateHash s : leaf_goal_states[factor]) {
             open.push(goal_cost[factor], s);
         }
@@ -349,22 +349,22 @@ void EffectivePrices::goal_price_propagation() {
         while (!open.empty()) {
             pair<int, LeafStateHash> entry = open.pop();
             LeafStateHash state = entry.second;
-            
+
             if (closed[state]){
                 continue;
             }
-            
+
             int value = entry.first;
 
             closed[state] = true;
-            
+
             if (value != INF) {
                 add_effective_state(state, factor, value);
             }
 
             for (const auto &transition : leaf_state_predecessors[factor][state]) {
                 LeafStateHash t = transition.second;
-                
+
                 if (closed[t]) {
                     continue;
                 }
@@ -384,7 +384,7 @@ void EffectivePrices::goal_price_propagation() {
 
 void EffectivePrices::propagate_dominance_prices() {
     const vector<vector<vector<LeafStateHash> > > &simulated_states = SimulationRelation::get_simulation_relation();
-    
+
     for (LeafFactorID factor(0); factor < simulated_states.size(); ++factor){
         for (LeafStateHash s(0); s < simulated_states[factor].size(); ++s) {
             if(has_effective_leaf_state(s, factor)){
@@ -396,7 +396,7 @@ void EffectivePrices::propagate_dominance_prices() {
                 }
             }
         }
-    }  
+    }
 }
 
 void EffectivePrices::apply_symmetry_permutation(const symmetries::LeavesPermutation &per) {
@@ -405,7 +405,7 @@ void EffectivePrices::apply_symmetry_permutation(const symmetries::LeavesPermuta
     vector<size_t> old_number_states(g_leaves.size());
     vector<vector<int> > old_effective_prices(g_leaves.size());
     vector<size_t> old_number_effective_states(g_leaves.size());
-    
+
 #ifndef NDEBUG
     vector<int> old_goal_cost(goal_cost);
 
@@ -428,7 +428,7 @@ void EffectivePrices::apply_symmetry_permutation(const symmetries::LeavesPermuta
             number_effective_states[factor] = 0;
         }
     }
-    
+
     for(LeafFactorID to_factor : per.get_factors_affected()) {
         assert(prices[to_factor].empty());
 

@@ -30,7 +30,7 @@ SuccessorGenerator::~SuccessorGenerator() = default;
 
 
 void SuccessorGenerator::generate_applicable_ops(
-    const State &state, vector<OperatorID> &applicable_ops) const {
+    const GlobalState &state, vector<OperatorID> &applicable_ops) const {
     root->generate_applicable_ops(state, applicable_ops);
 
     if (g_factoring){
@@ -38,7 +38,7 @@ void SuccessorGenerator::generate_applicable_ops(
     }
 }
 
-void SuccessorGenerator::generate_applicable_ops(const State &state,
+void SuccessorGenerator::generate_applicable_ops(const GlobalState &state,
                                                  const CompliantPathGraph &cpg,
                                                  vector<OperatorID> &applicable_ops) const {
     root->generate_applicable_ops(state, applicable_ops);
