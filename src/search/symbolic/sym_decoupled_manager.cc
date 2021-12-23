@@ -607,9 +607,6 @@ void SymDecoupledManagerOptions::add_options_to_parser(OptionParser &parser) {
 static shared_ptr<SymDecoupledManagerOptions> _parse(OptionParser &parser) {
 #ifdef USE_CUDD
     SymController::add_options_to_parser(parser, 1800e3, 1e7);
-#else
-    cerr << "Need to compile FD with Cudd support to use symbolic search classes." << endl;
-    exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
 #endif
 
     SymDecoupledManagerOptions::add_options_to_parser(parser);
