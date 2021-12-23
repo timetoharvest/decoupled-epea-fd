@@ -39,20 +39,20 @@ public:
 class LeafStateID {
     friend class StateRegistry;
     friend std::ostream &operator<<(std::ostream &os, LeafStateID id);
-   
+
     LeafStateHash value;
-    
+
     LeafFactorID factor;
-    
+
     // No implementation to prevent default construction
     LeafStateID();
-    
+
 public:
-    
+
     explicit LeafStateID(LeafStateHash id, LeafFactorID factor)
         : value(id), factor(factor) {
     }
-    
+
     ~LeafStateID() = default;
 
     bool operator==(const LeafStateID &other) const {
@@ -62,7 +62,7 @@ public:
     bool operator!=(const LeafStateID &other) const {
         return !(*this == other);
     }
-    
+
     bool operator<(const LeafStateID &other) const {
         return value < other.value;
     }
@@ -70,12 +70,12 @@ public:
     LeafStateHash hash() const {
         return value;
     }
-    
+
     LeafFactorID get_factor() const {
         return factor;
     }
-    
-    
+
+
     static const LeafStateID no_state;
 };
 

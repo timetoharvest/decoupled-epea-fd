@@ -8,7 +8,7 @@
 #include <cassert>
 #include <vector>
 
-class State;
+class GlobalState;
 class Operator;
 
 namespace relaxation_heuristic {

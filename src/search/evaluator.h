@@ -6,7 +6,7 @@
 
 class Heuristic;
 class Operator;
-class State;
+class GlobalState;
 
 class Evaluator {
 public:

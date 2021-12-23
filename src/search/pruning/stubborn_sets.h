@@ -47,21 +47,21 @@ protected:
     // Returns true iff the operators was enqueued.
     // TODO: rename to enqueue_stubborn_operator?
     virtual bool mark_as_stubborn(OperatorID op_no);
-    virtual void initialize_stubborn_set(const State &state) = 0;
-    virtual void handle_stubborn_operator(const State &state, OperatorID op_no) = 0;
+    virtual void initialize_stubborn_set(const GlobalState &state) = 0;
+    virtual void handle_stubborn_operator(const GlobalState &state, OperatorID op_no) = 0;
 public:
     StubbornSets(const options::Options &opts);
     virtual ~StubbornSets() = default;
-    
+
     virtual void initialize() override = 0;
 
     /* TODO: move prune_operators, and also the statistics, to the
        base class to have only one method virtual, and to make the
        interface more obvious */
-    virtual void prune_operators(const State &state,
+    virtual void prune_operators(const GlobalState &state,
                                  std::vector<OperatorID> &ops) override;
     virtual void print_statistics() const override;
-    
+
     static void add_options_to_parser(options::OptionParser &parser);
 };
 }

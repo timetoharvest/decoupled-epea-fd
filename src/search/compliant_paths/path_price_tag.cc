@@ -64,9 +64,9 @@ PathPrices::PathPrices(const ExplicitStateCPG &cpg) {
 bool PathPrices::add_state(LeafStateHash id, LeafFactorID factor, int cost,
                              OperatorID generating_op, LeafStateHash predecessor) {
     bool added = Prices::add_state(id, factor, cost);
-    
+
     size_t i = leaf_state_id_map[factor][id];
-    
+
     if (i >= paths[factor].size()){
         paths[factor].resize(i + 1);
     }
@@ -81,9 +81,9 @@ const PathPriceInfo& PathPrices::get_path_info(LeafStateHash id, LeafFactorID fa
     return paths[factor][leaf_state_id_map[factor][id]];
 }
 
-void PathPrices::update(const State &base_state) {
+void PathPrices::update(const GlobalState &base_state) {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        
+
         if (g_factoring->is_fork_leaf(factor)){
             // TODO do we need this optimization here? try to keep the code simple
             // skip fork leaves that don't have a goal or whose goal is already achieved (only satisficing search)
@@ -93,35 +93,35 @@ void PathPrices::update(const State &base_state) {
         }
 
         vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
-        
+
         bool change = true;
 
         while (change) {
-            
+
             change = false;
-            
+
             size_t num_states = 0;
             LeafStateHash id(0);
             while (num_states < number_states[factor]) {
-                
+
                 if (id >= g_state_registry->size(factor)){
                     change = true;
                     break;
                 }
                 if (has_leaf_state(id, factor)){
                     ++num_states;
-                
+
                     int cost = get_cost_of_state(id, factor);
                     if (best_prices[id] <= cost){
                         ++id;
                         continue;
                     }
-                    
+
                     best_prices[id] = cost;
-                    
+
                     assert(!precompute_leaf_state_spaces[factor] || id < leaf_state_successors[factor].size() || id >= MAX_LEAF_SPACE_STORE);
-                    
-                    if (precompute_leaf_state_spaces[factor] || 
+
+                    if (precompute_leaf_state_spaces[factor] ||
                         (id < leaf_state_successors[factor].size() && !leaf_state_successors[factor][id].empty())){
                         if (!precompute_leaf_state_spaces[factor] && leaf_state_successors[factor][id][0].first == OperatorID::no_operator){
                             // is "dead-end" leaf state
@@ -137,33 +137,33 @@ void PathPrices::update(const State &base_state) {
                                                     cost + get_adjusted_action_cost(op, cost_type), op.get_id(), id);
                             }
                         }
-                    } else {                      
+                    } else {
                         const LeafState predecessor = g_state_registry->lookup_leaf_state(id, factor);
-                        
+
                         vector<OperatorID> applicable_ops;
                         leaf_successor_generators[factor]->generate_applicable_ops(predecessor, applicable_ops);
 
-                        // apply all applicable_ops to predecessor and store the outcome          
+                        // apply all applicable_ops to predecessor and store the outcome
                         for (OperatorID op_id : applicable_ops){
                             const Operator &op = g_operators[op_id];
                             assert(op.get_affected_factor() != LeafFactorID::CENTER);
-                            
+
                             if (op.has_effect_on(factor) && op.is_center_applicable(base_state)){
                                 LeafStateHash lid = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
-                                
+
                                 if (lid >= leaf_state_id_map[factor].size()){
                                     // this can happen when using reachability functions in search, since here we might
                                     // find new leaf states
                                     leaf_state_id_map[factor].resize(lid + 1, -1);
                                     best_prices.resize(lid + 1, numeric_limits<int>::max());
                                 }
-                                
+
                                 change |= add_state(lid, factor, cost + get_adjusted_action_cost(op, cost_type), op_id, id);
                             }
                         }
                     }
-                    
-                    
+
+
                     if (g_factoring->get_search_type() == SAT && g_factoring->is_fork_leaf(factor) && get_goal_cost(factor) != INF){
                         // in satisficing search => stop once a goal is reachable in fork-leaves
                         change = false;
@@ -178,10 +178,10 @@ void PathPrices::update(const State &base_state) {
 
 void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Operator &op) {
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-          
+
         bool has_pre_on_factor = op.has_precondition_on(factor);
         size_t num_effects = op.get_effects(factor).size();
-        
+
         if (!has_pre_on_factor && num_effects == 0){
             // op does not affect leaf at all => copy everything
             number_states[factor] = old_cpg.number_states[factor];
@@ -193,7 +193,7 @@ void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Oper
             }
             continue;
         }
-        
+
         if (num_effects == g_leaves[factor].size()){
             // center op completely overwrites leaf
             LeafState predecessor = g_state_registry->lookup_leaf_state(LeafStateHash(0), factor);
@@ -202,7 +202,7 @@ void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Oper
 #endif
             LeafStateHash succ_state = g_state_registry->get_successor_leaf_state_hash(predecessor, op);
             assert(size_before == g_state_registry->size(factor));
-            
+
             add_state(succ_state, factor, 0, OperatorID::no_operator, LeafStateHash::MAX);
             paths[factor][leaf_state_id_map[factor][succ_state]].reset_generating_op();
             continue;
@@ -214,7 +214,7 @@ void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Oper
         while (number_states > 0) {
             if (old_cpg.has_leaf_state(id, factor)){
                 --number_states;
-                
+
                 if (!has_pre_on_factor || op.is_applicable(id, factor)){
                     if (num_effects == 0){
                         add_state(id, factor, old_cpg.get_cost_of_state(id, factor), OperatorID::no_operator, id);
@@ -225,9 +225,9 @@ void PathPrices::apply_center_op_to_leaves(const PathPrices &old_cpg, const Oper
                         size_t size_before = g_state_registry->size(factor);
 #endif
                         LeafStateHash succ_id = g_state_registry->get_successor_leaf_state_hash(state, op);
-                        
+
                         assert(size_before == g_state_registry->size(factor));
-            
+
                         add_state(succ_id, factor, old_cpg.get_cost_of_state(id, factor), OperatorID::no_operator, id);
                         paths[factor][leaf_state_id_map[factor][succ_id]].reset_generating_op();
                     }
@@ -251,19 +251,19 @@ void PathPrices::apply_symmetry_permutation(const symmetries::LeavesPermutation 
         goal_cost[factor] = INF;
         paths[factor] = vector<PathPriceInfo>();
     }
-    
+
     for(LeafFactorID to_factor : per.get_factors_affected()) {
         LeafFactorID from_factor = per.get_from_factor(to_factor);
 
-        assert(find(per.get_factors_affected().begin(), 
+        assert(find(per.get_factors_affected().begin(),
                          per.get_factors_affected().end(), to_factor)
                != per.get_factors_affected().end());
 
-        assert(find(per.get_factors_affected().begin(), 
+        assert(find(per.get_factors_affected().begin(),
                          per.get_factors_affected().end(), from_factor)
                != per.get_factors_affected().end());
 
-        size_t num_states = old_number_states[from_factor]; 
+        size_t num_states = old_number_states[from_factor];
         for  (LeafStateHash id(0); num_states > 0; ++id){
             assert(id < leaf_state_id_map[from_factor].size());
             if (leaf_state_id_map[from_factor][id] == -1){
@@ -487,8 +487,8 @@ void PathPrices::insert_leaf_actions(vector<OperatorID> &path, vector<StateID> &
     path.swap(decoupled_plan);
 }
 
-inline bool is_equal(const State &s1, const symmetries::SymmetryCPG &cpg1,
-                     const State &s2, const symmetries::SymmetryCPG &cpg2) {
+inline bool is_equal(const GlobalState &s1, const symmetries::SymmetryCPG &cpg1,
+                     const GlobalState &s2, const symmetries::SymmetryCPG &cpg2) {
 
     for (int var : g_center){
         if (s1[var] !=  s2[var]){
@@ -530,7 +530,7 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
     assert(states.size() == 1); // somewhat hacky
     assert(ops.empty());
 
-    State current_state = g_state_registry->lookup_state(states[0]);
+    GlobalState current_state = g_state_registry->lookup_state(states[0]);
 
     states.clear();
 
@@ -546,10 +546,10 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
 
         cpgs.push_back(unique_ptr<PathPrices>(new PathPrices(*static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(current_state)))));
 
-        State new_state = g_initial_state();
+        GlobalState new_state = g_initial_state();
         unique_ptr<SymmetryCPG> new_cpg;
         if (op != OperatorID::no_operator) {
-            State parent_state = g_state_registry->lookup_state(info.parent_state_id);
+            GlobalState parent_state = g_state_registry->lookup_state(info.parent_state_id);
 
             new_state = g_state_registry->get_center_successor(parent_state, g_operators[op]);
             new_cpg = unique_ptr<symmetries::SymmetryCPG>(dynamic_cast<symmetries::SymmetryCPG*>(CPGStorage::storage->get_cpg(parent_state)->get_successor_via_center_action(new_state, g_operators[op]).release()));
@@ -620,7 +620,7 @@ void PathPrices::symmetry_plan_reconstruction(vector<OperatorID> &ops, vector<St
         // verify that applying permuted_path[i-1] is states[i] results in states[i-1]
         PathPrices new_cpg;
         new_cpg.apply_center_op_to_leaves(*cpgs[i], g_operators[ops[i-1]]);
-        State center_successor = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), g_operators[ops[i-1]]);
+        GlobalState center_successor = g_state_registry->get_center_successor(g_state_registry->lookup_state(states[i]), g_operators[ops[i-1]]);
         new_cpg.update(center_successor);
         // this check can fail in optimal planning, because the g-value adaption is done
         // in cpgs[i-1], but not in new_cpg

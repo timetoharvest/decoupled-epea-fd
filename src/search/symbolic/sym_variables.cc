@@ -24,10 +24,10 @@ namespace symbolic {
 #ifdef USE_CUDD
 
 SymVariables::SymVariables(const SymDecoupledManagerOptions &opts) :
-	                cudd_init_nodes(opts.cudd_init_nodes),
-	                cudd_init_cache_size(opts.cudd_init_cache_size),
-	                cudd_init_available_memory(opts.cudd_init_available_memory),
-	                gamer_ordering(opts.gamer_ordering) {
+                    cudd_init_nodes(opts.cudd_init_nodes),
+                    cudd_init_cache_size(opts.cudd_init_cache_size),
+                    cudd_init_available_memory(opts.cudd_init_available_memory),
+                    gamer_ordering(opts.gamer_ordering) {
 }
 
 SymVariables::SymVariables(const Options &opts) :
@@ -237,15 +237,15 @@ void SymVariables::init(const vector <int> &v_order) {
     cout << "Symbolic Variables... Done." << endl;
 
     // for(size_t i = 0; i < g_variable_domain.size(); i++){
-    // 	for(int j = 0; j < g_variable_domain[i]; j++){
-    // 	    cout << "Var-val: " << i << "-" << j << endl;
-    // 	    preconditionBDDs[i][j].print(1,2);
-    // 	    effectBDDs[i][j].print(1,2);
-    // 	}
+    //  for(int j = 0; j < g_variable_domain[i]; j++){
+    //      cout << "Var-val: " << i << "-" << j << endl;
+    //      preconditionBDDs[i][j].print(1,2);
+    //      effectBDDs[i][j].print(1,2);
+    //  }
     // }
 }
 
-BDD SymVariables::getStateBDD(const State &state) const {
+BDD SymVariables::getStateBDD(const GlobalState &state) const {
     assert(!var_order.empty());
     BDD res = _manager->bddOne();
     for (int i = var_order.size() - 1; i >= 0; i--) {
@@ -263,7 +263,7 @@ BDD SymVariables::getStateBDD(const vector<int> &state) const {
     return res;
 }
 
-// State SymVariables::getStateFrom(const BDD & bdd) const {
+// GlobalState SymVariables::getStateFrom(const BDD & bdd) const {
 //   vector <int> vals;
 //   BDD current = bdd;
 //   for(int var = 0; var < g_variable_domain.size(); var++){
@@ -276,7 +276,7 @@ BDD SymVariables::getStateBDD(const vector<int> &state) const {
 //       }
 //     }
 //   }
-//   return State(vals);
+//   return GlobalState(vals);
 // }
 
 
@@ -305,7 +305,7 @@ BDD SymVariables::getPartialStateBDD(LeafFactorID factor, const vector<pair<int,
     return res;
 }
 
-bool SymVariables::isIn(const State &state, const BDD &bdd) const {
+bool SymVariables::isIn(const GlobalState &state, const BDD &bdd) const {
     BDD sBDD = getStateBDD(state);
     return !empty_intersection(sBDD, bdd);
 }
@@ -442,7 +442,7 @@ void SymVariables::add_options_to_parser(OptionParser &parser) {
 
 
 
-void SymVariables::put_facts (int fd_var, 
+void SymVariables::put_facts (int fd_var,
         const vector<Assignment> & current_assignment,
         vector<vector<bool> > & facts, int pos,
         int fact_value, int value_pos) const {
@@ -462,7 +462,7 @@ void SymVariables::put_facts (int fd_var,
         } else {
             put_facts(fd_var, current_assignment, facts, pos + 2, fact_value + value_pos, value_pos *2);
         }
-    } 
+    }
 }
 
 void SymVariables::get_BDD_facts(LeafFactorID factor, DdNode * bdd, int current_fd_var,
@@ -470,7 +470,7 @@ void SymVariables::get_BDD_facts(LeafFactorID factor, DdNode * bdd, int current_
         vector<vector<bool> > & facts,
         unordered_set<DdNode *> & cache) const {
 
-    DdNode * one =  _manager->bddOne().getNode();     
+    DdNode * one =  _manager->bddOne().getNode();
     if (bdd == one) {
         if(current_fd_var != -1) {
             put_facts (current_fd_var, current_assignment, facts);
@@ -559,28 +559,28 @@ void SymVariables::put_facts(int fd_var,
         const std::vector<Assignment> &current_assignment,
         std::vector<std::vector<int> > &facts, int price_value) const {
     // for (size_t i = 0 ; i < current_assignment.size(); ++i) {
-    // 	int pos = i;
-    // 	if (pos % 2 == 1) continue;
-    // 	if(current_assignment[pos] == Assignment::ONE) {
-    // 	    cout << "1";
-    // 	}  else 	if(current_assignment[pos] == Assignment::ZERO) {
-    // 	    cout << "0";
+    //  int pos = i;
+    //  if (pos % 2 == 1) continue;
+    //  if(current_assignment[pos] == Assignment::ONE) {
+    //      cout << "1";
+    //  }  else     if(current_assignment[pos] == Assignment::ZERO) {
+    //      cout << "0";
 
-    // 	} else {
-    // 	    cout << "X";
-    // 	}
+    //  } else {
+    //      cout << "X";
+    //  }
     // }
     // cout << endl;
     // for (int i = 0 ; i <num_bdd_vars(fd_var); ++i) {
-    // 	int pos = pos_fd_var(fd_var) + i*2;
-    // 	if(current_assignment[pos] == Assignment::ONE) {
-    // 	    cout << "1";
-    // 	}  else 	if(current_assignment[pos] == Assignment::ZERO) {
-    // 	    cout << "0";
+    //  int pos = pos_fd_var(fd_var) + i*2;
+    //  if(current_assignment[pos] == Assignment::ONE) {
+    //      cout << "1";
+    //  }  else     if(current_assignment[pos] == Assignment::ZERO) {
+    //      cout << "0";
 
-    // 	} else {
-    // 	    cout << "X";
-    // 	}
+    //  } else {
+    //      cout << "X";
+    //  }
     // }
     // cout << endl;
 
@@ -610,7 +610,7 @@ void SymVariables::put_facts(int fd_var,
         } else {
             put_facts(fd_var, current_assignment, facts, pos + 2, fact_value + value_pos, value_pos *2, price_value);
         }
-    } 
+    }
 }
 
 int SymVariables::get_ADD_fact_prices(LeafFactorID factor, DdNode *bdd, int current_fd_var,
@@ -651,7 +651,7 @@ int SymVariables::get_ADD_fact_prices(LeafFactorID factor, DdNode *bdd, int curr
     int fd_var = fd_vars[factor][bdd_var];
 
 
-    int price_value; 
+    int price_value;
     if (cache.count(bdd)) {
         price_value = cache[bdd];
     } else {
@@ -659,8 +659,8 @@ int SymVariables::get_ADD_fact_prices(LeafFactorID factor, DdNode *bdd, int curr
         DdNode * nodeT = cuddT(F);
         DdNode * nodeF = cuddE(F);
         // if (Cudd_IsComplement(bdd)) {
-        // 	nodeT = Cudd_Not(nodeT);
-        // 	nodeF = Cudd_Not(nodeF);
+        //  nodeT = Cudd_Not(nodeT);
+        //  nodeF = Cudd_Not(nodeF);
         // }
 
         current_assignment[bdd_var] = Assignment::ONE;

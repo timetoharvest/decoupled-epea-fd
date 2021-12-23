@@ -73,7 +73,7 @@ Permutation Group::compose_permutation(Trace &perm_index) const {
     return new_perm;
 }
 
-const vector<int> & Group::get_canonical_state(const State &state) const {
+const vector<int> & Group::get_canonical_state(const GlobalState &state) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i) {
         tmp_state[i] = state[i];
     }
@@ -107,7 +107,7 @@ void Group::dump_generators() const {
     cout << endl;
 }
 
-void Group::get_trace(const State &state, Trace& full_trace) {
+void Group::get_trace(const GlobalState &state, Trace& full_trace) {
     int size = get_num_generators();
     if (size == 0){
         return;

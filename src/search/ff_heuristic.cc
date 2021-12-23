@@ -28,7 +28,7 @@ FFHeuristic::FFHeuristic(const Options &opts)
 }
 
 void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
-    const State &state, PropID goal_id) {
+    const GlobalState &state, PropID goal_id) {
     Proposition *goal = get_proposition(goal_id);
     if (!goal->marked) { // Only consider each subgoal once.
         goal->marked = true;
@@ -58,7 +58,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
                 relaxed_plan[operator_no] = true;
                 if (is_preferred) {
                     const Operator &op = g_operators[operator_no];
-                    if (heuristic_type == HEURISTIC_TYPE::STD || 
+                    if (heuristic_type == HEURISTIC_TYPE::STD ||
                             op.get_affected_factor() == LeafFactorID::CENTER) {
                         // don't mark leaf ops as preferred
                         assert(op.is_applicable(state));
@@ -70,7 +70,7 @@ void FFHeuristic::mark_preferred_operators_and_relaxed_plan(
     }
 }
 
-void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &state) {
+void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const GlobalState &state) {
     if (heuristic_type == HEURISTIC_TYPE::CENTER){
         const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
         cpg->populate_reached_leaf_facts(function<void(int, int)> ([&] (int var, int val) {
@@ -107,14 +107,14 @@ void FFHeuristic::setup_exploration_queue_decoupled_leaf_states(const State &sta
     }
 }
 
-int FFHeuristic::compute_heuristic(const State &state) {
+int FFHeuristic::compute_heuristic(const GlobalState &state) {
     current_leaf_cost = 0;
     setup_exploration_queue();
-    
+
     if (heuristic_type != HEURISTIC_TYPE::STD){
         setup_exploration_queue_decoupled_leaf_states(state);
     }
-    
+
     int h_add = compute_add_and_ff(state);
     if (h_add == DEAD_END)
         return h_add;

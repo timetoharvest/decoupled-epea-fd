@@ -12,7 +12,7 @@
 // TODO: Fix duplication with the other relaxation heuristics.
 
 class Operator;
-class State;
+class GlobalState;
 struct RelaxedProposition;
 struct RelaxedOperator;
 
@@ -125,19 +125,19 @@ protected:
     size_t num_art_center_pre_pre;
     size_t num_art_center_goal_eff;
     std::vector<RelaxedProposition> artificial_leaf_goals;
-    
+
 
     virtual void initialize();
-    virtual int compute_heuristic(const State &state);
+    virtual int compute_heuristic(const GlobalState &state);
     void build_relaxed_operator(const Operator &op);
     void add_relaxed_operator(const std::vector<RelaxedProposition *> &precondition,
                               const std::vector<RelaxedProposition *> &effects,
                               const Operator *op, int base_cost);
     void setup_exploration_queue();
-    void setup_exploration_queue_state(const State &state);
-    void first_exploration(const State &state);
+    void setup_exploration_queue_state(const GlobalState &state);
+    void first_exploration(const GlobalState &state);
     void first_exploration_incremental(std::vector<RelaxedOperator *> &cut);
-    void second_exploration(const State &state, std::vector<RelaxedProposition *> &queue,
+    void second_exploration(const GlobalState &state, std::vector<RelaxedProposition *> &queue,
                             std::vector<RelaxedOperator *> &cut);
 
     void enqueue_if_necessary(RelaxedProposition *prop, int cost) {

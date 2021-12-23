@@ -26,7 +26,7 @@ private:
     bool solution_found;
     mutable Plan plan;
     StateID cheapest_goal_state;
-    bool is_optimal_leaf_plan(const State &state, const CompliantPathGraph &cpg);
+    bool is_optimal_leaf_plan(const GlobalState &state, const CompliantPathGraph &cpg);
 protected:
     SearchSpace search_space;
     SearchProgress search_progress;
@@ -39,7 +39,7 @@ protected:
     virtual SearchStatus step() = 0;
 
     void set_plan(const Plan &plan);
-    bool check_goal_and_set_plan(const State &state);
+    bool check_goal_and_set_plan(const GlobalState &state);
     int get_adjusted_cost(OperatorID op) const;
     int get_adjusted_cost(const Operator &op) const;
 public:

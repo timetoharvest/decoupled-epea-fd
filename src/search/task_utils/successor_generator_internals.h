@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-class State;
+class GlobalState;
 
 namespace successor_generator {
 class GeneratorBase {
@@ -16,7 +16,7 @@ public:
     virtual ~GeneratorBase() {}
 
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const = 0;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const = 0;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const = 0;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -32,7 +32,7 @@ public:
         std::unique_ptr<GeneratorBase> generator1,
         std::unique_ptr<GeneratorBase> generator2);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
                 const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -45,7 +45,7 @@ class GeneratorForkMulti : public GeneratorBase {
 public:
     GeneratorForkMulti(std::vector<std::unique_ptr<GeneratorBase>> children);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -61,7 +61,7 @@ public:
         int switch_var_id,
         std::vector<std::unique_ptr<GeneratorBase>> &&generator_for_value);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -77,7 +77,7 @@ public:
         int switch_var_id,
         std::unordered_map<int, std::unique_ptr<GeneratorBase>> &&generator_for_value);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -94,7 +94,7 @@ public:
         int switch_var_id, int value,
         std::unique_ptr<GeneratorBase> generator_for_value);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -107,7 +107,7 @@ class GeneratorLeafVector : public GeneratorBase {
 public:
     GeneratorLeafVector(std::vector<OperatorID> &&applicable_operators);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(
@@ -120,7 +120,7 @@ class GeneratorLeafSingle : public GeneratorBase {
 public:
     GeneratorLeafSingle(OperatorID applicable_operator);
     virtual void generate_applicable_ops(
-        const State &state, std::vector<OperatorID> &applicable_ops) const override;
+        const GlobalState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops(
             const LeafState &state, std::vector<OperatorID> &applicable_ops) const override;
     virtual void generate_applicable_ops_ignore_outside_pre(

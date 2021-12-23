@@ -37,7 +37,7 @@ EnforcedHillClimbingSearch::~EnforcedHillClimbingSearch() {
     delete g_evaluator;
 }
 
-void EnforcedHillClimbingSearch::evaluate(const State &parent, OperatorID op, const State &state) {
+void EnforcedHillClimbingSearch::evaluate(const GlobalState &parent, OperatorID op, const GlobalState &state) {
     search_progress.inc_evaluated_states();
 
     if (!preferred_contains_eval) {
@@ -93,7 +93,7 @@ void EnforcedHillClimbingSearch::initialize() {
     }
 }
 
-void EnforcedHillClimbingSearch::get_successors(const State &state, vector<OperatorID> &ops) {
+void EnforcedHillClimbingSearch::get_successors(const GlobalState &state, vector<OperatorID> &ops) {
     if (!use_preferred || preferred_usage == RANK_PREFERRED_FIRST) {
         g_successor_generator->generate_applicable_ops(state, ops);
 
@@ -162,14 +162,14 @@ SearchStatus EnforcedHillClimbingSearch::ehc() {
     while (!open_list->empty()) {
         OpenListEntryEHC next = open_list->remove_min();
         StateID last_parent_id = next.first;
-        State last_parent = g_state_registry->lookup_state(last_parent_id);
+        GlobalState last_parent = g_state_registry->lookup_state(last_parent_id);
         int d = next.second.first;
         const Operator &last_op = g_operators[next.second.second];
 
         if (search_space.get_node(last_parent).get_real_g() + last_op.get_cost() >= bound)
             continue;
 
-        State s = g_state_registry->get_successor_state(last_parent, last_op);
+        GlobalState s = g_state_registry->get_successor_state(last_parent, last_op);
         search_progress.inc_generated();
 
         SearchNode node = search_space.get_node(s);

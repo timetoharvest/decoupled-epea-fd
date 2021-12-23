@@ -69,13 +69,13 @@ protected:
     static std::vector<size_t> curr_leaf_state_max_id;
 
 
-    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const State &new_center_state, const Operator &op) const override = 0;
+    virtual std::unique_ptr<CompliantPathGraph> get_successor_via_center_action(const GlobalState &new_center_state, const Operator &op) const override = 0;
 
-    virtual DOMINANCE check_dominance(const State &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) override = 0;
+    virtual DOMINANCE check_dominance(const GlobalState &other, int g_advantage = 0, DOMINANCE needed = DOMINANCE::NONE) override = 0;
 
-    virtual void store_new_cpg(const State &state) override = 0;
+    virtual void store_new_cpg(const GlobalState &state) override = 0;
 
-    virtual bool is_hypercube_covered(const State &base_state, int curr_number_duplicates) const override = 0;
+    virtual bool is_hypercube_covered(const GlobalState &base_state, int curr_number_duplicates) const override = 0;
 
 public:
 

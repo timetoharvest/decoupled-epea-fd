@@ -134,7 +134,7 @@ void LandmarkCutHeuristicSymbolic::initialize() {
                 push_back(RelaxedOperator(precondition, effects, nullptr, 0));
             }
         }
-    }  
+    }
 }
 
 #ifdef USE_CUDD
@@ -175,26 +175,26 @@ void LandmarkCutHeuristicSymbolic::update_leaf_prices(LeafFactorID factor, ADD p
 #endif
 
     // for (auto var : g_leaves[factor]){
-    // 	for (int val = 0; val < g_variable_domain[var]; ++val){
-    // 	    if(init || leaf_facts_price [var][val] < numeric_limits<int>::max()) {
-    // 		BDD fact = sym_manager->preBDD(var, val);
+    //  for (int val = 0; val < g_variable_domain[var]; ++val){
+    //      if(init || leaf_facts_price [var][val] < numeric_limits<int>::max()) {
+    //      BDD fact = sym_manager->preBDD(var, val);
 
-    // 		ADD intersection  = (pricing_function*fact.Add()) + 
-    // 		    (((!fact).Add())*sym_manager->getADD(numeric_limits<int>::max()));
+    //      ADD intersection  = (pricing_function*fact.Add()) +
+    //          (((!fact).Add())*sym_manager->getADD(numeric_limits<int>::max()));
 
-    // 		int new_val = Cudd_V(intersection.FindMin().getRegularNode());
+    //      int new_val = Cudd_V(intersection.FindMin().getRegularNode());
 
-    // 		assert(new_val >= 0);
-    // 		assert(init || new_val <= leaf_facts_price [var][val]);
+    //      assert(new_val >= 0);
+    //      assert(init || new_val <= leaf_facts_price [var][val]);
 
-    // 		leaf_facts_price [var][val] = new_val;
-    // 	    }
-    // 	}
+    //      leaf_facts_price [var][val] = new_val;
+    //      }
+    //  }
     // }
 }
 #endif
 
-int LandmarkCutHeuristicSymbolic::compute_heuristic(const State &state) {
+int LandmarkCutHeuristicSymbolic::compute_heuristic(const GlobalState &state) {
 #ifdef USE_CUDD
     const CuddCPG<SymPricingFunction> *cpg = static_cast<const CuddCPG<SymPricingFunction>*>(cpg_storage->get_cpg(state));
     vector<ADD> prices_factor;
@@ -203,7 +203,7 @@ int LandmarkCutHeuristicSymbolic::compute_heuristic(const State &state) {
     }
 #endif
 
-    dereference_ops(); 
+    dereference_ops();
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
 #ifdef USE_CUDD

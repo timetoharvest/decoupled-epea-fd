@@ -71,7 +71,7 @@ DecoupledGroup::DecoupledGroup(const Group &group) {
 }
 
 
-const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &center, 
+const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const GlobalState &center,
                                                                   SymmetryCPG &leaves,
                                                                   const LexicographicOrdering &lex_ordering) const {
 
@@ -86,7 +86,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
         changed = false;
         generators_stable_center.clear();
         for (const auto &gen : generators_center) {
-            cmp_t cmp = gen->replace_if_less_center(tmp_state, leaves); 
+            cmp_t cmp = gen->replace_if_less_center(tmp_state, leaves);
             if (cmp == cmp_t::LESS){
                 changed = true;
             } else if (cmp == cmp_t::EQUAL && gen->affects_leaves()){
@@ -113,7 +113,7 @@ const vector<int> & DecoupledGroup::get_canonical_decoupled_state(const State &c
     return tmp_state;
 }
 
-vector<const DecoupledPermutation *> DecoupledGroup::get_stabilized_permutations(const State &center) const {
+vector<const DecoupledPermutation *> DecoupledGroup::get_stabilized_permutations(const GlobalState &center) const {
     vector<const DecoupledPermutation *> permutations;
     for (const auto &gen : generators_only_leaves){
         permutations.push_back(gen.get());
@@ -121,7 +121,7 @@ vector<const DecoupledPermutation *> DecoupledGroup::get_stabilized_permutations
     for (const auto &gen : generators_center) {
         if (gen->affects_leaves() && gen->stabilizes_center(center)) {
             permutations.push_back(gen.get());
-        } 
+        }
     }
 
     return permutations;
@@ -131,16 +131,16 @@ vector<const DecoupledPermutation *> DecoupledGroup::get_stabilized_permutations
 void DecoupledGroup::statistics() const {
     // for (int i = 0; i < get_num_generators(); i++) {
     //     cout << "Generator " << i << endl;
-	// << " center: " <<  generators[i].affects_center()
-	// << " num_leafs: " << generators[i].num_leafs_affected() << endl;
+    // << " center: " <<  generators[i].affects_center()
+    // << " num_leafs: " << generators[i].num_leafs_affected() << endl;
     // }
 }
 
 
-DecoupledTrace DecoupledGroup::get_trace(const State &center, 
+DecoupledTrace DecoupledGroup::get_trace(const GlobalState &center,
                                 const SymmetryCPG &leaves,
                                 const LexicographicOrdering &lex_ordering) const {
-    
+
     DecoupledTrace res;
 
     res.canonical_cpg = leaves.clone();
@@ -156,7 +156,7 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
         changed = false;
         generators_stable_center.clear();
         for (const auto &gen : generators_center) {
-            cmp_t cmp = gen->replace_if_less_center(res.canonical_center, *(res.canonical_cpg)); 
+            cmp_t cmp = gen->replace_if_less_center(res.canonical_center, *(res.canonical_cpg));
             if (cmp == cmp_t::LESS) {
                 res.trace.push_back(gen.get());
                 changed = true;
@@ -180,7 +180,7 @@ DecoupledTrace DecoupledGroup::get_trace(const State &center,
             for (const auto gen : generators_stable_center) {
                 if (gen->replace_if_less_leaves(*(res.canonical_cpg), lex_ordering)) {
                     changed = true;
-                    res.trace.push_back(gen);   
+                    res.trace.push_back(gen);
                 }
             }
         }

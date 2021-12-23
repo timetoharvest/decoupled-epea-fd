@@ -40,7 +40,7 @@ class HMHeuristic : public Heuristic {
     void extend_tuple(Tuple &t, const Operator &op);
 
     int check_tuple_in_tuple(const Tuple &tup, const Tuple &big_tuple) const;
-    void state_to_tuple(const State &state, Tuple &t) const;
+    void state_to_tuple(const GlobalState &state, Tuple &t) const;
 
     int get_operator_pre_value(const Operator &op, int var) const;
     void get_operator_pre(const Operator &op, Tuple &t) const;
@@ -61,7 +61,7 @@ class HMHeuristic : public Heuristic {
     void dump_tuple(Tuple &tup) const;
 
 protected:
-    virtual int compute_heuristic(const State &state);
+    virtual int compute_heuristic(const GlobalState &state);
     virtual void initialize();
 
 public:

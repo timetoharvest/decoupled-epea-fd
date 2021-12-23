@@ -13,7 +13,7 @@ namespace stubborn_sets_simple {
    Disjunctive action landmarks are computed trivially.*/
 
 // Return the first unsatified goal pair, or (-1, -1) if there is none.
-static inline pair<int, int> find_unsatisfied_goal(const State &state) {
+static inline pair<int, int> find_unsatisfied_goal(const GlobalState &state) {
     for (const pair<int, int> &goal : g_goal) {
         int goal_var = goal.first;
         int goal_value = goal.second;
@@ -25,7 +25,7 @@ static inline pair<int, int> find_unsatisfied_goal(const State &state) {
 
 // Return the first unsatified precondition, or (-1, -1) if there is none.
 static inline pair<int, int> find_unsatisfied_precondition(
-    OperatorID op_no, const State &state) {
+    OperatorID op_no, const GlobalState &state) {
     for (const Condition &precondition : g_operators[op_no].get_preconditions()) {
         int var = precondition.var;
         int value = precondition.val;
@@ -76,14 +76,14 @@ void StubbornSetsSimple::add_interfering(OperatorID op_no) {
     }
 }
 
-void StubbornSetsSimple::initialize_stubborn_set(const State &state) {
+void StubbornSetsSimple::initialize_stubborn_set(const GlobalState &state) {
     // Add a necessary enabling set for an unsatisfied goal.
     pair<int, int> unsatisfied_goal = find_unsatisfied_goal(state);
     assert(unsatisfied_goal.first != -1);
     add_necessary_enabling_set(unsatisfied_goal);
 }
 
-void StubbornSetsSimple::handle_stubborn_operator(const State &state,
+void StubbornSetsSimple::handle_stubborn_operator(const GlobalState &state,
                                                   OperatorID op_no) {
     pair<int, int> unsatisfied_precondition = find_unsatisfied_precondition(op_no, state);
     if (unsatisfied_precondition.first == -1) {
@@ -121,7 +121,7 @@ static shared_ptr<PruningMethod> _parse(OptionParser &parser) {
             " and Scheduling (ICAPS 2014)"
             "323-331"
             "AAAI Press, 2014");
-    
+
     stubborn_sets::StubbornSets::add_options_to_parser(parser);
 
     if (parser.dry_run()) {

@@ -46,7 +46,7 @@ void FrontierPrices::resize() {
     // TODO why dont we resize effective_prices + number/frontier..? see also above comment
 }
 
-unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const State &new_center_state,
+unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(const GlobalState &new_center_state,
                                                                                const Operator&) const {
     unique_ptr<FrontierPrices> tmp_p_price(new FrontierPrices(*this));
     if (frontier.empty()){
@@ -67,14 +67,14 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_successor_via_center_action(c
     return tmp_p_price;
 }
 
-void FrontierPrices::update(const State &new_center_state) {
+void FrontierPrices::update(const GlobalState &new_center_state) {
 
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ STARTING UPDATE" << endl;
 #endif
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        
+
         if (g_goals_per_factor[factor].empty()){
             // skip fork leaves that don't have a goal!
             continue;
@@ -90,20 +90,20 @@ void FrontierPrices::update(const State &new_center_state) {
             lookup_leaf_state(LeafStateID(i, factor)).dump_pddl();
         }
         cout << "       " << new_tag.get_number_states(factor) << " fact(s) initially true in leaf factor " << factor << endl;
-#endif 
-             
+#endif
+
         vector<int> best_prices(g_state_registry->size(factor), numeric_limits<int>::max());
-        
+
         bool change = true;
 
         while (change) {
-           
+
             change = false;
-            
+
             size_t num_leaf_states = 0;
 
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
-                
+
                 if (has_leaf_state(id, factor)){
 
                     ++num_leaf_states;
@@ -115,11 +115,11 @@ void FrontierPrices::update(const State &new_center_state) {
                         }
                         continue;
                     }
-                
+
                     int cost = get_cost_of_state(id, factor);
-                    
+
                     best_prices[id] = cost;
-                    
+
                     assert(id < leaf_state_successors[factor].size());
 
                     bool all_applicable = !pruning->propagate_goal_prices();
@@ -127,7 +127,7 @@ void FrontierPrices::update(const State &new_center_state) {
                         const Operator &op = g_operators[leaf_state_successors[factor][id][o].first];
                         if (op.is_center_applicable(new_center_state)){
                             LeafStateHash successor = leaf_state_successors[factor][id][o].second;
-                            bool added = add_state(successor, factor, 
+                            bool added = add_state(successor, factor,
                                                    cost + get_adjusted_action_cost(op, cost_type));
                             change |= added;
                             if (added){
@@ -149,7 +149,7 @@ void FrontierPrices::update(const State &new_center_state) {
                     if (num_leaf_states == get_number_states(factor)){
                         break;
                     }
-                    
+
                     // TODO probably reintroduce this for optimal search again
                     // keep in mind to change the pruning methods accordingly! + change the corresponding expression in PathPrices
                     // when introducing this, also have a shortcut at the beginning of the outmost for loop
@@ -161,13 +161,13 @@ void FrontierPrices::update(const State &new_center_state) {
                 }
             }
         }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "   UPDATE for leaf factor " << factor << " finished" << endl;
 #endif
 
     }
-        
+
 #ifdef DEBUG_SEARCH
     cout << "+++++++++++++++ UPDATE FINISHED" << endl;
 #endif
@@ -181,33 +181,33 @@ void FrontierPrices::update(const State &new_center_state) {
     }
 }
 
-DOMINANCE FrontierPrices::check_dominance(const State &other, int, DOMINANCE needed) {
+DOMINANCE FrontierPrices::check_dominance(const GlobalState &other, int, DOMINANCE needed) {
     // TODO implement g-values
     FrontierPrices *other_cpg = &cpg_storage->cpgs[other];
 
     compute_cost_frontier();
     other_cpg->compute_cost_frontier();
-        
+
     bool dominated = needed != DOMINANCE::DOMINATES;
     bool dominates = needed != DOMINANCE::DOMINATED;
-    
+
     // TODO also add some counting here? i.e. if one frontier is larger than the number of reachable states..
-    
+
     // compare prices
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         if (g_goals_per_factor[factor].empty()){
             continue;
         }
         if (get_goal_cost(factor) != CompliantPathGraph::INF || other_cpg->get_goal_cost(factor) != CompliantPathGraph::INF){
-            if (get_goal_cost(factor) == CompliantPathGraph::INF || 
+            if (get_goal_cost(factor) == CompliantPathGraph::INF ||
                 (other_cpg->get_goal_cost(factor) != CompliantPathGraph::INF &&
                     get_goal_cost(factor) > other_cpg->get_goal_cost(factor))) {
                 dominates = false;
-            } else if (other_cpg->get_goal_cost(factor) == CompliantPathGraph::INF || 
+            } else if (other_cpg->get_goal_cost(factor) == CompliantPathGraph::INF ||
                         (get_goal_cost(factor) != CompliantPathGraph::INF &&
                         other_cpg->get_goal_cost(factor) > get_goal_cost (factor))) {
                 dominated = false;
-            } 
+            }
 #ifndef NDEBUG
             else {
                 assert(get_goal_cost(factor) == other_cpg->get_goal_cost(factor));
@@ -217,13 +217,13 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, int, DOMINANCE nee
 
         for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
             if (!ExplicitStateCPG::is_leaf_goal_state(id, factor)){
-                if (dominates && other_cpg->has_leaf_state(id, factor) && other_cpg->frontier[factor][id]){                    
+                if (dominates && other_cpg->has_leaf_state(id, factor) && other_cpg->frontier[factor][id]){
                     if (has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_cost_of_state(id, factor);
                         int new_cost = get_effective_cost_of_state(id, factor);
                         assert(old_cost != CompliantPathGraph::INF);
                         assert(new_cost != CompliantPathGraph::INF);
-                        
+
                         if (old_cost < new_cost){
                             dominates = false;
                         }
@@ -231,13 +231,13 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, int, DOMINANCE nee
                         dominates = false;
                     }
                 }
-                if (dominated && has_leaf_state(id, factor) && frontier[factor][id]){                    
+                if (dominated && has_leaf_state(id, factor) && frontier[factor][id]){
                     if (other_cpg->has_effective_leaf_state(id, factor)){
                         int old_cost = other_cpg->get_effective_cost_of_state(id, factor);
                         int new_cost = get_cost_of_state(id, factor);
                         assert(old_cost != CompliantPathGraph::INF);
                         assert(new_cost != CompliantPathGraph::INF);
-                        
+
                         if (old_cost > new_cost){
                             dominated = false;
                         }
@@ -255,17 +255,17 @@ DOMINANCE FrontierPrices::check_dominance(const State &other, int, DOMINANCE nee
     if (dominated && dominates){
 #ifdef DEBUG_PRUNING
         cout << "old tag is equal to new one" << endl;
-#endif          
+#endif
         return DOMINANCE::EQUAL;
     } else if (dominated){
 #ifdef DEBUG_PRUNING
         cout << "new tag is dominated by old one" << endl;
-#endif          
+#endif
         return DOMINANCE::DOMINATED;
     } else if (dominates){
 #ifdef DEBUG_PRUNING
         cout << "new tag dominates old one" << endl;
-#endif          
+#endif
         return DOMINANCE::DOMINATES;
     }
     return DOMINANCE::NONE;
@@ -277,7 +277,7 @@ void FrontierPrices::apply_symmetry_permutation(const symmetries::LeavesPermutat
     compute_cost_frontier();
 }
 
-void FrontierPrices::store_new_cpg(const State &state) {
+void FrontierPrices::store_new_cpg(const GlobalState &state) {
     cpg_storage->store_cpg(state, *this);
 }
 
@@ -286,24 +286,24 @@ unique_ptr<CompliantPathGraph> FrontierPrices::get_init_state_cpg() {
     init_frontierprices->resize();
 
     init_frontierprices->frontier.resize(g_leaves.size());
-    
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         init_frontierprices->add_state(LeafStateHash(0), factor, 0);
         init_frontierprices->frontier[factor] = boost::dynamic_bitset<>(g_state_registry->size(factor), false);
         init_frontierprices->frontier[factor][0] = true;
     }
     init_frontierprices->update(g_state_registry->get_center_state(g_initial_state_data));
-    
+
     return init_frontierprices;
 }
 
 void FrontierPrices::goal_price_propagation() {
     assert(g_factoring->get_profile() == FORK);
-     
+
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor) {
-        
+
         vector<bool> closed(g_state_registry->size(factor), false);
-        
+
         boost::dynamic_bitset<> sim_frontier;
         if (pruning->propagate_simulation_prices()){
             sim_frontier = frontier[factor];
@@ -315,7 +315,7 @@ void FrontierPrices::goal_price_propagation() {
         // effort. Probably worth it to reduce overhead
         // Alvaro: Use a heap_queue?
         priority_queues::HeapQueue<LeafStateHash, priority_queues::compare_pair_first_greater<LeafStateHash> > open;
-        
+
         for (LeafStateHash s : leaf_goal_states[factor]) {
             open.push(goal_cost[factor], s);
         }
@@ -323,22 +323,22 @@ void FrontierPrices::goal_price_propagation() {
         while (!open.empty()) {
             pair<int, LeafStateHash> entry = open.pop();
             LeafStateHash state = entry.second;
-            
+
             if (closed[state]){
                 continue;
             }
-            
+
             int value = entry.first;
 
             closed[state] = true;
-            
+
             if (value != INF) {
                 add_effective_state(state, factor, value);
             }
 
             for (const auto &transition : leaf_state_predecessors[factor][state]) {
                 LeafStateHash t = transition.second;
-                
+
                 if (closed[t]) {
                     continue;
                 }
@@ -351,7 +351,7 @@ void FrontierPrices::goal_price_propagation() {
 
                 int vt = min(previous_t_val, propagated_val);
                 open.push((vt == numeric_limits<int>::max() ? INF : vt), t);
-                
+
                 if (has_leaf_state(t, factor) && get_cost_of_state(t, factor) < propagated_val) {
                     if (!pruning->propagate_simulation_prices() || sim_frontier[t]){
                         frontier[factor][t] = true;
@@ -364,7 +364,7 @@ void FrontierPrices::goal_price_propagation() {
 
 void FrontierPrices::propagate_dominance_prices() {
     const vector<vector<vector<LeafStateHash> > > &simulated_states = SimulationRelation::get_simulation_relation();
-    
+
     for (LeafFactorID factor(0); factor < simulated_states.size(); ++factor){
         for (LeafStateHash s(0); s < simulated_states[factor].size(); ++s) {
             if(has_effective_leaf_state(s, factor)){
@@ -378,14 +378,14 @@ void FrontierPrices::propagate_dominance_prices() {
                 }
             }
         }
-    }  
+    }
 }
 
 void FrontierPrices::compute_cost_frontier() {
     if (frontier.empty()){
         // frontier is only stored for states for which the dominance was already checked at some point
         //assert(!frontier.empty() || g_state_registry->state_duplicate_counter[center.get_id().hash()] == 0);
-        
+
         frontier.resize(g_leaves.size());
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             compute_cost_frontier(factor);
@@ -407,7 +407,7 @@ void FrontierPrices::compute_cost_frontier() {
 
 void FrontierPrices::compute_cost_frontier(LeafFactorID factor) {
     frontier[factor].resize(g_state_registry->size(factor), false);
-    
+
     size_t num_states = get_number_states(factor);
     LeafStateHash id(0);
     while (num_states > 0){

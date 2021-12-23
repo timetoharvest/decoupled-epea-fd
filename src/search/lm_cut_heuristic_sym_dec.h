@@ -17,7 +17,7 @@
     std::vector<std::vector<int> > leaf_facts_price;
 
     virtual void initialize() override;
-    virtual int compute_heuristic(const State &state) override;
+    virtual int compute_heuristic(const GlobalState &state) override;
 
 #ifdef USE_CUDD
     void update_leaf_prices(LeafFactorID factor, ADD pricing_function, bool init);

@@ -34,7 +34,7 @@ void HMHeuristic::initialize() {
 }
 
 
-int HMHeuristic::compute_heuristic(const State &state) {
+int HMHeuristic::compute_heuristic(const GlobalState &state) {
     if (test_goal(state)) {
         return 0;
     } else {
@@ -191,7 +191,7 @@ int HMHeuristic::check_tuple_in_tuple(
 }
 
 
-void HMHeuristic::state_to_tuple(const State &state, Tuple &t) const {
+void HMHeuristic::state_to_tuple(const GlobalState &state, Tuple &t) const {
     for (size_t i = 0; i < g_variable_domain.size(); ++i)
         t.push_back(make_pair(i, state[i]));
 }

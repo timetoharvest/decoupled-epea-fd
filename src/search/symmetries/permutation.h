@@ -13,7 +13,7 @@ enum class cmp_t {LESS, EQUAL, GREATER};
 class FactIndex {
 // Alvaro: Putting all the static data members in one class, so that it
 // is easier to have two separated instances for center and leaves.
-public: 
+public:
     int initial_index;
     unsigned int length;
     std::vector<int> var_by_val;
@@ -30,13 +30,13 @@ class Permutation {
     friend class LeavesPermutation;
     friend class Group;
     friend class GraphCreator;
-    
+
     static FactIndex findex;
 
     static void init_fact_index();
-    
+
 protected:
-    
+
     std::vector<int> value;
     std::vector<int> inverse_value;
     std::vector<int> vars_affected;
@@ -55,14 +55,14 @@ protected:
     void _deallocate();
     void _copy_value_from_permutation(const Permutation &perm);
     void _inverse_value_from_permutation(const Permutation &perm);
-    
+
 public:
     Permutation();
     Permutation(const unsigned int*);
     Permutation(const Permutation &perm, bool invert = false);
     Permutation(const Permutation &perm1, const Permutation& perm2);
     ~Permutation() = default;
-    
+
     Permutation& operator=(const Permutation &other){
         value = other.value;
         inverse_value = other.inverse_value;
@@ -74,22 +74,22 @@ public:
     }
 
     bool identity() const;
-    
+
     // Michael: version for the trace_back
-    void permute_state(const State &from_state, std::vector<int> &to_state) const;
-    
+    void permute_state(const GlobalState &from_state, std::vector<int> &to_state) const;
+
     void print_cycle_notation() const;
-    
+
     void set_value(int ind, int val);
-    
-    int get_value(int ind) const { 
+
+    int get_value(int ind) const {
         return value[ind];
     }
-    
+
     int get_inverse_value(int ind) const {
         return inverse_value[ind];
     }
-    
+
     void dump() const;
 
     std::pair<int, int> get_new_var_val_by_old_var_val(int var, int val) const;
@@ -98,14 +98,14 @@ public:
 
     cmp_t replace_if_less(std::vector<int> &state) const;
 
-    bool stabilizes (const State &state) const;
+    bool stabilizes (const GlobalState &state) const;
 
     void permute(std::vector<int> &state) const;
 
     bool affects_center() const;
 
     size_t number_leaves_affected() const;
-    
+
 };
 
 }

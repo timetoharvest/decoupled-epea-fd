@@ -13,8 +13,10 @@ using namespace std;
 State::State(const AbstractTask &task, const StateRegistry &registry,
              StateID id, const PackedStateBin *buffer)
     : task(&task), registry(&registry), id(id), buffer(buffer), values(nullptr),
-      state_packer(&registry.get_state_packer()),
-      num_variables(registry.get_num_variables()) {
+//      state_packer(&registry.get_state_packer()), TODO
+      state_packer(nullptr),
+//      num_variables(registry.get_num_variables()) TODO
+      num_variables(0) {
     assert(id != StateID::no_state);
     assert(buffer);
     assert(num_variables == task.get_num_variables());
@@ -47,14 +49,16 @@ State State::get_unregistered_successor(const OperatorProxy &op) const {
             new_values[effect_fact.var] = effect_fact.value;
         }
     }
-
-    if (task->get_num_axioms() > 0) {
-        AxiomEvaluator &axiom_evaluator = g_axiom_evaluators[TaskProxy(*task)];
-        axiom_evaluator.evaluate(new_values);
-    }
+// TODO
+//    if (task->get_num_axioms() > 0) {
+//        AxiomEvaluator &axiom_evaluator = g_axiom_evaluators[TaskProxy(*task)];
+//        axiom_evaluator.evaluate(new_values);
+//    }
     return State(*task, move(new_values));
 }
 
 const causal_graph::CausalGraph &TaskProxy::get_causal_graph() const {
-    return causal_graph::get_causal_graph(task);
+//    return causal_graph::get_causal_graph(task);
+// TODO
+    return causal_graph::get_causal_graph();
 }

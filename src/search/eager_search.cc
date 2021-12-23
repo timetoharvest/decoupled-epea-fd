@@ -85,7 +85,7 @@ void EagerSearch::initialize() {
 
     assert(!heuristics.empty());
 
-    const State &initial_state = g_initial_state();
+    const GlobalState &initial_state = g_initial_state();
     for (size_t i = 0; i < heuristics.size(); ++i)
         heuristics[i]->evaluate(initial_state);
     open_list->evaluate(0, false);
@@ -106,7 +106,7 @@ void EagerSearch::initialize() {
 
         open_list->insert(initial_state.get_id());
     }
-    
+
     if (pruning_method){
         pruning_method->initialize();
     }
@@ -126,7 +126,7 @@ SearchStatus EagerSearch::step() {
         return FAILED;
     }
     SearchNode node = n.first;
-    
+
     if (g_factoring &&
         g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
@@ -135,7 +135,7 @@ SearchStatus EagerSearch::step() {
         return SOLVED;
     }
 
-    State s = node.get_state();
+    GlobalState s = node.get_state();
     if (check_goal_and_set_plan(s)){
         return SOLVED;
     }
@@ -144,7 +144,7 @@ SearchStatus EagerSearch::step() {
     set<OperatorID> preferred_ops;
 
     g_successor_generator->generate_applicable_ops(s, applicable_ops);
-    
+
     // Note that when preferred operators are in use, a preferred
     // operator will be considered by the preferred operator queues
     // even when pruned by the pruning method.
@@ -175,7 +175,7 @@ SearchStatus EagerSearch::step() {
             continue;
         }
 
-        State succ_state = g_state_registry->get_successor_state(s, op);
+        GlobalState succ_state = g_state_registry->get_successor_state(s, op);
         search_progress.inc_generated();
         bool is_preferred = (preferred_ops.find(op_id) != preferred_ops.end());
 
@@ -217,7 +217,7 @@ SearchStatus EagerSearch::step() {
             // division of responsibilities is a bit tricky here -- we
             // may want to refactor this later.
             open_list->evaluate(node.get_g() + get_adjusted_cost(op) + g_inc_g_by, is_preferred);
-	    
+
             bool dead_end = open_list->is_dead_end();
             if (dead_end) {
                 succ_node.mark_as_dead_end();
@@ -237,7 +237,7 @@ SearchStatus EagerSearch::step() {
                 }
             }
             succ_node.open(succ_h, node, op_id);
-            
+
             if (!insert_state(succ_node)){
                 // pruning for SDA* / ASDA*
                 continue;
@@ -247,9 +247,9 @@ SearchStatus EagerSearch::step() {
             if (search_progress.check_h_progress(succ_node.get_g())) {
                 reward_progress();
             }
-            
+
         } else if (succ_node.get_g() > node.get_g() + get_adjusted_cost(op) + g_inc_g_by) {
-            
+
             if (!g_factoring || !PruningOptions::ignore_current_state()){
                 // We found a new cheapest path to an open or closed state.
                 if (reopen_closed_nodes) {
@@ -293,14 +293,14 @@ SearchStatus EagerSearch::step() {
                         // pruning for SDA* / ASDA*
                         continue;
                     }
-                    
+
                     open_list->insert(succ_state.get_id());
                 } else {
                     // in decoupled eager_greedy search, without this check
                     // a cheaper path to a dominating state would be updated
-                    // rendering plan construction impossible for leaf states not 
+                    // rendering plan construction impossible for leaf states not
                     // reachable on the new path
-                    
+
                     // if we do not reopen closed nodes, we just update the parent pointers
                     // Note that this could cause an incompatibility between
                     // the g-value and the actual path that is traced back
@@ -349,7 +349,7 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             }
             // HACK! HACK! we do this because SearchNode has no default/copy constructor
             SearchNode dummy_node = search_space.get_node(g_initial_state());
-	    
+
             return make_pair(dummy_node, false);
         }
         vector<int> last_key_removed;
@@ -357,15 +357,15 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             use_multi_path_dependence ? &last_key_removed : 0);
         // TODO is there a way we can avoid creating the state here and then
         //      recreate it outside of this function with node.get_state()?
-        //      One way would be to store State objects inside SearchNodes
+        //      One way would be to store GlobalState objects inside SearchNodes
         //      instead of StateIDs
-        State s = g_state_registry->lookup_state(id);
+        GlobalState s = g_state_registry->lookup_state(id);
         SearchNode node = search_space.get_node(s);
 
         if (node.is_closed()) {
             continue;
         }
-        
+
         // upper bound pruning for decoupled search
         if (g_factoring && found_solution()){
             // prune states that cannot possibly result in a cheaper solution

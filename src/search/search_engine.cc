@@ -72,9 +72,9 @@ void SearchEngine::search() {
             g_state_registry->permute_initial_state();
         }
     }
-    
+
     initialize();
-    
+
     utils::CountdownTimer timer(max_time);
     while (status == IN_PROGRESS) {
         status = step();
@@ -96,7 +96,7 @@ inline void print_solution_cost(int cost) {
     cout << endl;
 }
 
-bool SearchEngine::check_goal_and_set_plan(const State &state) {
+bool SearchEngine::check_goal_and_set_plan(const GlobalState &state) {
     if (test_goal(state)) {
         if (g_factoring){
             const SearchNode &info = search_space.get_node(state);
@@ -172,7 +172,7 @@ void SearchEngine::add_options_to_parser(OptionParser &parser) {
         "experiments. Timed-out searches are treated as failed searches, "
         "just like incomplete search algorithms that exhaust their search space.",
         "infinity");
-    parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry", 
+    parser.add_option<shared_ptr<symmetries::GraphCreator>>("symmetry",
             "use symmetries",
             OptionParser::NONE);
 }
