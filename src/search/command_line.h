@@ -10,6 +10,7 @@ namespace options {
 class Registry;
 }
 
+class Factoring;
 class SearchEngine;
 
 class ArgError : public utils::Exception {
@@ -23,6 +24,9 @@ public:
 extern std::shared_ptr<SearchEngine> parse_cmd_line(
     int argc, const char **argv, options::Registry &registry, bool dry_run,
     bool is_unit_cost);
+
+extern std::shared_ptr<Factoring> parse_decoupled_search(
+    int argc, const char **argv, options::Registry &registry, bool dry_run);
 
 extern std::string usage(const std::string &progname);
 

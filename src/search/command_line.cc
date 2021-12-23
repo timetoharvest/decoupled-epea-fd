@@ -1,5 +1,6 @@
 #include "command_line.h"
 
+#include "factoring.h"
 #include "option_parser.h"
 #include "plan_manager.h"
 #include "search_engine.h"
@@ -92,6 +93,9 @@ static shared_ptr<SearchEngine> parse_cmd_line_aux(
             }
             cout << "Help output finished." << endl;
             exit(0);
+        } else if (arg == "--decoupling") {
+            // this is parsed separately
+            ++i;
         } else if (arg == "--internal-plan-file") {
             if (is_last)
                 throw ArgError("missing argument after --internal-plan-file");
@@ -131,6 +135,70 @@ static shared_ptr<SearchEngine> parse_cmd_line_aux(
     return engine;
 }
 
+static shared_ptr<Factoring> parse_decoupled_search_aux(
+    const vector<string> &args, options::Registry &registry, bool dry_run) {
+
+    // so far no predefinitions are allowed for decoupled search
+    options::Predefinitions predefinitions;
+
+    shared_ptr<Factoring> decoupling;
+    /*
+      Note that we don’t sanitize all arguments beforehand because filenames should remain as-is
+      (no conversion to lower-case, no conversion of newlines to spaces).
+    */
+    // TODO: Remove code duplication.
+    for (size_t i = 0; i < args.size(); ++i) {
+        string arg = sanitize_arg_string(args[i]);
+        bool is_last = (i == args.size() - 1);
+        if (arg == "--decoupling") {
+            if (is_last)
+                throw ArgError("missing argument after --decoupling");
+            ++i;
+            OptionParser parser(sanitize_arg_string(args[i]), registry,
+                                predefinitions, dry_run);
+            decoupling = parser.start_parsing<shared_ptr<Factoring>>();
+        } else if (arg == "--help" && dry_run) {
+            cout << "Help:" << endl;
+            bool txt2tags = false;
+            vector<string> plugin_names;
+            for (size_t j = i + 1; j < args.size(); ++j) {
+                string help_arg = sanitize_arg_string(args[j]);
+                if (help_arg == "--txt2tags") {
+                    txt2tags = true;
+                } else {
+                    plugin_names.push_back(help_arg);
+                }
+            }
+            unique_ptr<options::DocPrinter> doc_printer;
+            if (txt2tags)
+                doc_printer = utils::make_unique_ptr<options::Txt2TagsPrinter>(
+                    cout, registry);
+            else
+                doc_printer = utils::make_unique_ptr<options::PlainPrinter>(
+                    cout, registry);
+            if (plugin_names.empty()) {
+                doc_printer->print_all();
+            } else {
+                for (const string &name : plugin_names) {
+                    doc_printer->print_plugin(name);
+                }
+            }
+            cout << "Help output finished." << endl;
+            exit(0);
+        } else if (arg == "--internal-plan-file") {
+            ++i;
+        } else if (arg == "--internal-previous-portfolio-plans") {
+            ++i;
+        } else if (utils::startswith(arg, "--")) {
+            ++i;
+        } else {
+            throw ArgError("unknown option " + arg);
+        }
+    }
+
+    return decoupling;
+}
+
 
 shared_ptr<SearchEngine> parse_cmd_line(
     int argc, const char **argv, options::Registry &registry, bool dry_run, bool is_unit_cost) {
@@ -153,10 +221,34 @@ shared_ptr<SearchEngine> parse_cmd_line(
     return parse_cmd_line_aux(args, registry, dry_run);
 }
 
+shared_ptr<Factoring> parse_decoupled_search(
+    int argc, const char **argv, options::Registry &registry, bool dry_run) {
+    vector<string> args;
+    bool active = true;
+    for (int i = 1; i < argc; ++i) {
+        string arg = sanitize_arg_string(argv[i]);
+
+        if (arg == "--if-unit-cost") {
+            // TODO since we need to parse decoupled search before reading the input, this does not work
+            active = true; // is_unit_cost;
+        } else if (arg == "--if-non-unit-cost") {
+            // TODO since we need to parse decoupled search before reading the input, this does not work
+            active = true; // !is_unit_cost;
+        } else if (arg == "--always") {
+            active = true;
+        } else if (active) {
+            // We use the unsanitized arguments because sanitizing is inappropriate for things like filenames.
+            args.push_back(argv[i]);
+        }
+    }
+    return parse_decoupled_search_aux(args, registry, dry_run);
+}
+
 
 string usage(const string &progname) {
     return "usage: \n" +
-           progname + " [OPTIONS] --search SEARCH < OUTPUT\n\n"
+           progname + " [OPTIONS] [--decoupling DECOUPLING] --search SEARCH < OUTPUT\n\n"
+           "* DECOUPLING (Factoring): configuration of decoupled search\n"
            "* SEARCH (SearchEngine): configuration of the search algorithm\n"
            "* OUTPUT (filename): translator output\n\n"
            "Options:\n"

@@ -457,7 +457,7 @@ int g_max_action_cost = 0;
 
 int MAX_DUPLICATE_COUNTER;
 
-unique_ptr<Factoring> g_factoring;
+shared_ptr<Factoring> g_factoring;
 
 int g_inc_g_by;
 

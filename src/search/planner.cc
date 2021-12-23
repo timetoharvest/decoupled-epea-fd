@@ -22,13 +22,22 @@ int main(int argc, const char **argv) {
     }
 
     if (static_cast<string>(argv[1]) != "--help"){
-    try {
-//      OptionParser::parse_decoupled_search(argc, argv); // TODO implement this
-    } catch (ArgError &error) {
-        error.print();
-        usage(argv[0]);
-        exit_with(ExitCode::SEARCH_INPUT_ERROR);
-    }
+        try {
+            options::Registry registry(*options::RawRegistry::instance());
+            parse_decoupled_search(argc, argv, registry, true);
+            g_factoring = parse_decoupled_search(argc, argv, registry, false);
+        } catch (const ArgError &error) {
+            error.print();
+            usage(argv[0]);
+            utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+        } catch (const OptionParserError &error) {
+            error.print();
+            usage(argv[0]);
+            utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+        } catch (const ParseError &error) {
+            error.print();
+            utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
+        }
         read_everything(cin);
         tasks::create_root_task();
     }
