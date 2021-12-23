@@ -110,7 +110,7 @@ class FactorManager {
     BDD nonRelVarsCube, nonRelVarsCubeWithPrimes;
 
     BDD goal;
-    BDD initialGlobalState;
+    BDD initialState;
 
     // The following methods use center_preconditions_checked to
     // boost efficiency.
@@ -167,7 +167,7 @@ public:
     }
 
     const BDD & get_initial_state() const {
-        return initialGlobalState;
+        return initialState;
     }
 
     std::shared_ptr<SymStateSpaceManager> get_leaf_state_space(const SymParamsMgr &params,

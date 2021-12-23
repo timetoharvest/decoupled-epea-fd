@@ -30,7 +30,7 @@ public:
     }
 
     // from Heuristic
-    virtual void evaluate(const State &/*state*/) {
+    virtual void evaluate(const GlobalState &/*state*/) {
         std::cerr << "ERROR: This code must not be called (evaluator.h)!" << std::endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
@@ -46,8 +46,8 @@ public:
         std::cerr << "ERROR: This code must not be called (evaluator.h)!" << std::endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
-    virtual bool reach_state(const State &/*parent_state*/, OperatorID /*op*/,
-            const State &/*state*/) {
+    virtual bool reach_state(const GlobalState &/*parent_state*/, OperatorID /*op*/,
+            const GlobalState &/*state*/) {
         std::cerr << "ERROR: This code must not be called (evaluator.h)!" << std::endl;
         utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
     }
