@@ -137,6 +137,7 @@ fast_downward_plugin(
         utils/hash
         utils/language
         utils/logging
+        utils/markup
         utils/math
         utils/memory
         utils/rng
