@@ -135,9 +135,9 @@ protected:
     static void init_action_schemas();
 
 
-    size_t max_leaf_size;
+    int max_leaf_size;
     
-    size_t min_number_leaves;
+    int min_number_leaves;
     
     // TODO so-far, this is only considered by LP-based, incident arcs, and MIS factorings; all other factorings ignore the limit
     utils::CountdownTimer factoring_timer;

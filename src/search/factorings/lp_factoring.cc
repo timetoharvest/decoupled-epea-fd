@@ -1015,7 +1015,7 @@ vector<LPFactoring::PotentialLeaf> LPFactoring::get_potential_leaves(const vecto
         utils::HashMap<std::vector<int>, size_t> leaf_lookup;
         for (size_t as = 0; as < action_schemas.size(); ++as) {
             const ActionSchema &action_schema = action_schemas[as];
-            uint64_t size = 1;
+            int64_t size = 1;
             for (int var : action_schema.eff_vars){
                 size *= g_variable_domain[var];
                 if (max_leaf_size != 0 && size > max_leaf_size){
