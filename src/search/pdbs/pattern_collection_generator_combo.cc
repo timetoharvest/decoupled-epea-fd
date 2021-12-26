@@ -29,7 +29,7 @@ PatternCollectionInformation PatternCollectionGeneratorCombo::generate(
     TaskProxy task_proxy(*task);
     shared_ptr<PatternCollection> patterns = make_shared<PatternCollection>();
 
-    PatternGeneratorGreedy large_pattern_generator(max_states);
+    PatternGeneratorGreedy large_pattern_generator(max_states, nullptr);
     Pattern large_pattern = large_pattern_generator.generate(task).get_pattern();
     set<int> used_vars(large_pattern.begin(), large_pattern.end());
     patterns->push_back(move(large_pattern));

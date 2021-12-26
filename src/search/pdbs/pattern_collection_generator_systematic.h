@@ -23,6 +23,7 @@ class Options;
 
 namespace pdbs {
 class CanonicalPDBsHeuristic;
+class PatternFilter;
 
 // Invariant: patterns are always sorted.
 class PatternCollectionGeneratorSystematic : public PatternCollectionGenerator {
@@ -30,6 +31,7 @@ class PatternCollectionGeneratorSystematic : public PatternCollectionGenerator {
 
     const size_t max_pattern_size;
     const bool only_interesting_patterns;
+    std::shared_ptr<PatternFilter> pattern_filter;
     std::shared_ptr<PatternCollection> patterns;
     PatternSet pattern_set;  // Cleared after pattern computation.
 

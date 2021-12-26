@@ -2,6 +2,7 @@
 
 #include "cegar.h"
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -20,6 +21,7 @@ namespace pdbs {
 PatternGeneratorCEGAR::PatternGeneratorCEGAR(options::Options &opts)
     : max_pdb_size(opts.get<int>("max_pdb_size")),
       max_time(opts.get<double>("max_time")),
+      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
       use_wildcard_plans(opts.get<bool>("use_wildcard_plans")),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)) {
@@ -74,6 +76,10 @@ static shared_ptr<PatternGenerator> _parse(options::OptionParser &parser) {
         "maximum time in seconds for the pattern generation",
         "infinity",
         Bounds("0.0", "infinity"));
+    parser.add_option<shared_ptr<PatternFilter>>(
+        "pattern_filter",
+        "restrict patterns to certain variables",
+        OptionParser::NONE);
     add_cegar_wildcard_option_to_parser(parser);
     utils::add_verbosity_option_to_parser(parser);
     utils::add_rng_options(parser);

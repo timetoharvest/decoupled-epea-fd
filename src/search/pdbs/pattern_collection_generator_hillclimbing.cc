@@ -3,6 +3,7 @@
 #include "canonical_pdbs_heuristic.h"
 #include "incremental_canonical_pdbs.h"
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "utils.h"
 #include "validation.h"
 
@@ -118,6 +119,7 @@ PatternCollectionGeneratorHillclimbing::PatternCollectionGeneratorHillclimbing(c
       num_samples(opts.get<int>("num_samples")),
       min_improvement(opts.get<int>("min_improvement")),
       max_time(opts.get<double>("max_time")),
+      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
       rng(utils::parse_rng_from_options(opts)),
       num_rejected(0),
       hill_climbing_timer(0) {
@@ -527,6 +529,10 @@ void add_hillclimbing_options(OptionParser &parser) {
         "spent for pruning dominated patterns.",
         "infinity",
         Bounds("0.0", "infinity"));
+    parser.add_option<shared_ptr<PatternFilter>>(
+        "pattern_filter",
+        "restrict patterns to certain variables",
+        OptionParser::NONE);
     utils::add_rng_options(parser);
 }
 

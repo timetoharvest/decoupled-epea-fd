@@ -1,5 +1,6 @@
 #include "pattern_collection_generator_systematic.h"
 
+#include "pattern_filter.h"
 #include "utils.h"
 #include "validation.h"
 
@@ -50,7 +51,8 @@ static void compute_union_pattern(
 PatternCollectionGeneratorSystematic::PatternCollectionGeneratorSystematic(
     const Options &opts)
     : max_pattern_size(opts.get<int>("pattern_max_size")),
-      only_interesting_patterns(opts.get<bool>("only_interesting_patterns")) {
+      only_interesting_patterns(opts.get<bool>("only_interesting_patterns")),
+      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")) {
 }
 
 void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(
@@ -306,6 +308,10 @@ static shared_ptr<PatternCollectionGenerator> _parse(OptionParser &parser) {
         "Only consider the union of two disjoint patterns if the union has "
         "more information than the individual patterns.",
         "true");
+    parser.add_option<shared_ptr<PatternFilter>>(
+        "pattern_filter",
+        "restrict patterns to certain variables",
+        OptionParser::NONE);
 
     Options opts = parser.parse();
     if (parser.dry_run())

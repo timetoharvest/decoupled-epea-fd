@@ -28,6 +28,7 @@ namespace pdbs {
 class CanonicalPDBsHeuristic;
 class IncrementalCanonicalPDBs;
 class PatternDatabase;
+class PatternFilter;
 
 // Implementation of the pattern generation algorithm by Haslum et al.
 class PatternCollectionGeneratorHillclimbing : public PatternCollectionGenerator {
@@ -39,6 +40,7 @@ class PatternCollectionGeneratorHillclimbing : public PatternCollectionGenerator
     // minimal improvement required for hill climbing to continue search
     const int min_improvement;
     const double max_time;
+    std::shared_ptr<PatternFilter> pattern_filter;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
 
     std::unique_ptr<IncrementalCanonicalPDBs> current_pdbs;

@@ -1,6 +1,7 @@
 #include "pattern_collection_generator_multiple.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -26,6 +27,7 @@ PatternCollectionGeneratorMultiple::PatternCollectionGeneratorMultiple(
       stagnation_limit(opts.get<double>("stagnation_limit")),
       blacklisting_start_time(total_max_time * opts.get<double>("blacklist_trigger_percentage")),
       enable_blacklist_on_stagnation(opts.get<bool>("enable_blacklist_on_stagnation")),
+      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)),
       random_seed(opts.get<int>("random_seed")),
@@ -343,6 +345,10 @@ void add_multiple_options_to_parser(options::OptionParser &parser) {
         "generation is terminated already the first time stagnation_limit is "
         "hit.",
         "true");
+    parser.add_option<shared_ptr<PatternFilter>>(
+        "pattern_filter",
+        "restrict patterns to certain variables",
+        OptionParser::NONE);
     utils::add_verbosity_option_to_parser(parser);
     utils::add_rng_options(parser);
 }
