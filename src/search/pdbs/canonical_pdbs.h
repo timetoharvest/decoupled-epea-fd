@@ -5,6 +5,7 @@
 
 #include <memory>
 
+class GlobalState;
 class State;
 
 namespace pdbs {
@@ -19,6 +20,7 @@ public:
     ~CanonicalPDBs() = default;
 
     int get_value(const State &state) const;
+    int get_value(const GlobalState &state) const;
 };
 }
 

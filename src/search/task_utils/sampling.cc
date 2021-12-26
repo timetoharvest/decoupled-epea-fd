@@ -1,6 +1,6 @@
 #include "sampling.h"
 
-#include "successor_generator.h"
+#include "../successor_generator/successor_generator.h"
 
 #include "../task_proxy.h"
 
@@ -15,7 +15,7 @@ namespace sampling {
 static State sample_state_with_random_walk(
     const OperatorsProxy &operators,
     const State &initial_state,
-    const successor_generator::SuccessorGenerator &successor_generator,
+    const new_successor_generator::SuccessorGenerator &successor_generator,
     int init_h,
     double average_operator_cost,
     utils::RandomNumberGenerator &rng,
@@ -42,7 +42,7 @@ static State sample_state_with_random_walk(
     // Calculate length of random walk according to a binomial distribution.
     int length = 0;
     for (int j = 0; j < n; ++j) {
-        double random = rng.random(); // [0..1)
+        double random = rng(); // [0..1)
         if (random < p)
             ++length;
     }
@@ -78,7 +78,7 @@ RandomWalkSampler::RandomWalkSampler(
     const TaskProxy &task_proxy,
     utils::RandomNumberGenerator &rng)
     : operators(task_proxy.get_operators()),
-      successor_generator(utils::make_unique_ptr<successor_generator::SuccessorGenerator>(task_proxy)),
+      successor_generator(utils::make_unique_ptr<new_successor_generator::SuccessorGenerator>(task_proxy)),
       initial_state(task_proxy.get_initial_state()),
       average_operator_costs(task_properties::get_average_operator_cost(task_proxy)),
       rng(rng) {

@@ -7,6 +7,8 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
+
 #include "../utils/logging.h"
 #include "../utils/timer.h"
 
@@ -64,12 +66,11 @@ CanonicalPDBs get_canonical_pdbs_from_options(
 
 CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
     : Heuristic(opts),
-      canonical_pdbs(get_canonical_pdbs_from_options(task, opts)) {
+      canonical_pdbs(get_canonical_pdbs_from_options(tasks::g_root_task, opts)) {
 }
 
 int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    State state = convert_ancestor_state(ancestor_state);
-    int h = canonical_pdbs.get_value(state);
+    int h = canonical_pdbs.get_value(ancestor_state);
     if (h == numeric_limits<int>::max()) {
         return DEAD_END;
     } else {
@@ -77,7 +78,7 @@ int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state)
     }
 }
 
-void add_canonical_pdbs_options_to_parser(OptionParser &parser) {
+void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
     parser.add_option<double>(
         "max_time_dominance_pruning",
         "The maximum time in seconds spent on dominance pruning. Using 0.0 "

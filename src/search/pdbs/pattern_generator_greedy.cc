@@ -30,8 +30,9 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
     utils::g_log << "Generating a pattern using the greedy generator..." << endl;
     TaskProxy task_proxy(*task);
     Pattern pattern;
+    // TODO: needs the task proxy in modern FD
     variable_order_finder::VariableOrderFinder order(
-        task_proxy, variable_order_finder::GOAL_CG_LEVEL);
+        variable_order_finder::GOAL_CG_LEVEL);
     VariablesProxy variables = task_proxy.get_variables();
 
     int size = 1;

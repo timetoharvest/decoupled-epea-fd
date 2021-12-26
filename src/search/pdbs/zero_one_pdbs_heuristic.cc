@@ -5,6 +5,8 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
+
 #include <limits>
 
 using namespace std;
@@ -25,12 +27,11 @@ ZeroOnePDBs get_zero_one_pdbs_from_options(
 ZeroOnePDBsHeuristic::ZeroOnePDBsHeuristic(
     const options::Options &opts)
     : Heuristic(opts),
-      zero_one_pdbs(get_zero_one_pdbs_from_options(task, opts)) {
+      zero_one_pdbs(get_zero_one_pdbs_from_options(tasks::g_root_task, opts)) {
 }
 
 int ZeroOnePDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    State state = convert_ancestor_state(ancestor_state);
-    int h = zero_one_pdbs.get_value(state);
+    int h = zero_one_pdbs.get_value(ancestor_state);
     if (h == numeric_limits<int>::max())
         return DEAD_END;
     return h;

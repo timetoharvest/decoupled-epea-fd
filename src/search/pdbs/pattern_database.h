@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+class GlobalState;
+
 namespace utils {
 class RandomNumberGenerator;
 }
@@ -158,6 +160,7 @@ class PatternDatabase {
       (distances) during search.
     */
     int hash_index(const std::vector<int> &state) const;
+    int hash_index(const GlobalState &state) const;
 public:
     /*
       Important: It is assumed that the pattern (passed via Options) is
@@ -172,7 +175,7 @@ public:
        distances of the PDB. This requires a RNG object passed via rng.
        compute_wildcard_plan: when computing a plan (see compute_plan), compute
        a wildcard plan, i.e., a sequence of parallel operators inducing an
-       optimal plan. Otherwise, compute a simple plan (a sequence of operators).
+       optimal plan. Otherwise, compuGlobalStatete a simple plan (a sequence of operators).
     */
     PatternDatabase(
         const TaskProxy &task_proxy,
@@ -185,6 +188,7 @@ public:
     ~PatternDatabase() = default;
 
     int get_value(const std::vector<int> &state) const;
+    int get_value(const GlobalState &state) const;
 
     // Returns the pattern (i.e. all variables used) of the PDB
     const Pattern &get_pattern() const {

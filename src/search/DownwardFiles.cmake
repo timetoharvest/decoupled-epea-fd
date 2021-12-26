@@ -447,7 +447,7 @@ fast_downward_plugin(
     HELP "Sampling"
     SOURCES
         task_utils/sampling
-    DEPENDS SUCCESSOR_GENERATOR TASK_PROPERTIES
+    DEPENDS NEW_SUCCESSOR_GENERATOR TASK_PROPERTIES
     DEPENDENCY_ONLY
 )
 
@@ -458,6 +458,17 @@ fast_downward_plugin(
         task_utils/successor_generator
         task_utils/successor_generator_factory
         task_utils/successor_generator_internals
+    DEPENDS TASK_PROPERTIES
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME NEW_SUCCESSOR_GENERATOR
+    HELP "New successor generator"
+    SOURCES
+        successor_generator/successor_generator
+        successor_generator/successor_generator_factory
+        successor_generator/successor_generator_internals
     DEPENDS TASK_PROPERTIES
     DEPENDENCY_ONLY
 )

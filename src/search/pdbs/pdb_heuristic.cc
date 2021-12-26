@@ -5,6 +5,9 @@
 
 #include "../option_parser.h"
 #include "../plugin.h"
+#include "../state.h"
+
+#include "../tasks/root_task.h"
 
 #include <limits>
 #include <memory>
@@ -22,12 +25,12 @@ shared_ptr<PatternDatabase> get_pdb_from_options(const shared_ptr<AbstractTask> 
 
 PDBHeuristic::PDBHeuristic(const Options &opts)
     : Heuristic(opts),
-      pdb(get_pdb_from_options(task, opts)) {
+    // TODO: change back to task
+      pdb(get_pdb_from_options(tasks::g_root_task, opts)) {
 }
 
 int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    State state = convert_ancestor_state(ancestor_state);
-    int h = pdb->get_value(state.get_unpacked_values());
+    int h = pdb->get_value(ancestor_state);
     if (h == numeric_limits<int>::max())
         return DEAD_END;
     return h;

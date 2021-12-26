@@ -74,7 +74,8 @@ vector<vector<int>> compute_cg_neighbors(
     bool bidirectional) {
     TaskProxy task_proxy(*task);
     int num_vars = task_proxy.get_variables().size();
-    const causal_graph::CausalGraph &cg = causal_graph::get_causal_graph(task.get());
+    // TODO: needs the task in modern FD
+    const causal_graph::CausalGraph &cg = causal_graph::get_causal_graph();
     vector<vector<int>> cg_neighbors(num_vars);
     for (int var_id = 0; var_id < num_vars; ++var_id) {
         cg_neighbors[var_id] = cg.get_predecessors(var_id);

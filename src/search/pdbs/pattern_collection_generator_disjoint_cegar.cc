@@ -7,6 +7,7 @@
 #include "../plugin.h"
 
 #include "../utils/logging.h"
+#include "../utils/rng.h"
 #include "../utils/rng_options.h"
 
 using namespace std;
