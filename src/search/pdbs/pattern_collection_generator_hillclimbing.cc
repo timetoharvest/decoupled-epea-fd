@@ -119,7 +119,7 @@ PatternCollectionGeneratorHillclimbing::PatternCollectionGeneratorHillclimbing(c
       num_samples(opts.get<int>("num_samples")),
       min_improvement(opts.get<int>("min_improvement")),
       max_time(opts.get<double>("max_time")),
-      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
+      pattern_filter(get_pattern_filter_from_options(opts)),
       rng(utils::parse_rng_from_options(opts)),
       num_rejected(0),
       hill_climbing_timer(0) {

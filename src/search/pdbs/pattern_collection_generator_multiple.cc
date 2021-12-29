@@ -27,7 +27,7 @@ PatternCollectionGeneratorMultiple::PatternCollectionGeneratorMultiple(
       stagnation_limit(opts.get<double>("stagnation_limit")),
       blacklisting_start_time(total_max_time * opts.get<double>("blacklist_trigger_percentage")),
       enable_blacklist_on_stagnation(opts.get<bool>("enable_blacklist_on_stagnation")),
-      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
+      pattern_filter(get_pattern_filter_from_options(opts)),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)),
       random_seed(opts.get<int>("random_seed")),

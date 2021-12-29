@@ -52,7 +52,7 @@ PatternCollectionGeneratorSystematic::PatternCollectionGeneratorSystematic(
     const Options &opts)
     : max_pattern_size(opts.get<int>("pattern_max_size")),
       only_interesting_patterns(opts.get<bool>("only_interesting_patterns")),
-      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")) {
+      pattern_filter(get_pattern_filter_from_options(opts)) {
 }
 
 void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(

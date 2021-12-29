@@ -21,7 +21,7 @@ namespace pdbs {
 PatternGeneratorCEGAR::PatternGeneratorCEGAR(options::Options &opts)
     : max_pdb_size(opts.get<int>("max_pdb_size")),
       max_time(opts.get<double>("max_time")),
-      pattern_filter(opts.get<shared_ptr<PatternFilter>>("pattern_filter")),
+      pattern_filter(get_pattern_filter_from_options(opts)),
       use_wildcard_plans(opts.get<bool>("use_wildcard_plans")),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)) {

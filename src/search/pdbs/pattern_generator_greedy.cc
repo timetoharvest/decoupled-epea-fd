@@ -21,7 +21,7 @@ namespace pdbs {
 PatternGeneratorGreedy::PatternGeneratorGreedy(const Options &opts)
     : PatternGeneratorGreedy(
         opts.get<int>("max_states"),
-        opts.get<shared_ptr<PatternFilter>>("pattern_filter")) {
+        get_pattern_filter_from_options(opts)) {
 }
 
 PatternGeneratorGreedy::PatternGeneratorGreedy(int max_states, const shared_ptr<PatternFilter> &pattern_filter)

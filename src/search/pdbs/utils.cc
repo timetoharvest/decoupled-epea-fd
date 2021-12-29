@@ -4,6 +4,7 @@
 #include "pattern_database.h"
 #include "pattern_information.h"
 
+#include "../options/options.h"
 #include "../task_proxy.h"
 
 #include "../task_utils/causal_graph.h"
@@ -136,5 +137,13 @@ string get_rovner_et_al_reference() {
         "362-367",
         "AAAI Press",
         "2019");
+}
+
+shared_ptr<PatternFilter> get_pattern_filter_from_options(
+    const options::Options &opts) {
+    if (opts.contains("pattern_filter")) {
+        return opts.get<shared_ptr<PatternFilter>>("pattern_filter");
+    }
+    return nullptr;
 }
 }
