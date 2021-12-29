@@ -20,6 +20,8 @@
 using namespace std;
 
 namespace pdbs {
+static const bool DEBUG = true;
+
 static bool patterns_are_disjoint(
     const Pattern &pattern1, const Pattern &pattern2) {
     size_t i = 0;
@@ -66,7 +68,17 @@ void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(
     // Compute neighbors.
     for (int var : pattern) {
         const vector<int> &neighbors = cg.get_eff_to_pre(var);
-        candidates.insert(neighbors.begin(), neighbors.end());
+        for (int neighbor : neighbors) {
+            if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,neighbor)) {
+                candidates.insert(neighbor);
+            } else {
+                if (DEBUG) {
+                    cout << "excluded var " << var
+                         << " from being considered neighbor of "
+                         << pattern << endl;
+                }
+            }
+        }
     }
 
     // Remove elements of pattern.
@@ -101,7 +113,17 @@ void PatternCollectionGeneratorSystematic::compute_connection_points(
     // Handle rule 1.
     for (int var : pattern) {
         const vector<int> &succ = cg.get_successors(var);
-        candidates.insert(succ.begin(), succ.end());
+        for (int s : succ) {
+            if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,s)) {
+                candidates.insert(s);
+            } else {
+                if (DEBUG) {
+                    cout << "excluded var " << var
+                         << " from being considered connection point of "
+                         << pattern << endl;
+                }
+            }
+        }
     }
 
     // Handle rules 2 and 3.
@@ -227,9 +249,16 @@ void PatternCollectionGeneratorSystematic::build_patterns(
                 if (pattern1.size() + pattern2.size() > max_pattern_size)
                     break;  // All remaining candidates are too large.
                 if (patterns_are_disjoint(pattern1, pattern2)) {
-                    Pattern new_pattern;
-                    compute_union_pattern(pattern1, pattern2, new_pattern);
-                    enqueue_pattern_if_new(new_pattern);
+                    if (!pattern_filter || pattern_filter->can_merge_patterns(pattern1, pattern2)) {
+                        Pattern new_pattern;
+                        compute_union_pattern(pattern1, pattern2, new_pattern);
+                        enqueue_pattern_if_new(new_pattern);
+                    } else {
+                        if (DEBUG) {
+                            cout << "forbid merging patterns " << pattern1
+                                 << " and " << pattern2 << endl;
+                        }
+                    }
                 }
             }
         }
@@ -250,10 +279,18 @@ void PatternCollectionGeneratorSystematic::build_patterns_naive(
             if (i > 0)
                 max_var = current_pattern.back();
             for (int var = max_var + 1; var < num_variables; ++var) {
-                Pattern pattern = current_pattern;
-                pattern.push_back(var);
-                next_patterns.push_back(pattern);
-                patterns->push_back(pattern);
+                if (!pattern_filter || pattern_filter->can_add_var_to_pattern(current_pattern, var)) {
+                    Pattern pattern = current_pattern;
+                    pattern.push_back(var);
+                    next_patterns.push_back(pattern);
+                    patterns->push_back(pattern);
+                } else {
+                    if (DEBUG) {
+                        cout << "excluded var " << var
+                             << " from being added to "
+                             << current_pattern << endl;
+                    }
+                }
             }
         }
         next_patterns.swap(current_patterns);
@@ -274,6 +311,11 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
         build_patterns(task_proxy);
     } else {
         build_patterns_naive(task_proxy);
+    }
+    if (pattern_filter) {
+        for (const Pattern &pattern: *patterns) {
+            assert(pattern_filter->is_pattern_ok(pattern));
+        }
     }
     PatternCollectionInformation pci(task_proxy, patterns);
     /* Do not dump the collection since it can be very large for

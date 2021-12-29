@@ -8,10 +8,11 @@ class PatternFilter {
 public:
     virtual ~PatternFilter() = default;
 
-    virtual bool is_allowed(
-        const Pattern &pattern, int var) = 0;
-    virtual void filter_variables(
-        const Pattern &pattern, std::vector<int> &variables) = 0;
+    virtual bool is_pattern_ok(const Pattern &pattern) const = 0;
+    virtual bool can_add_var_to_pattern(
+        const Pattern &pattern, int var) const = 0;
+    virtual bool can_merge_patterns(
+        const Pattern &pattern1, const Pattern &pattern2) const = 0;
 };
 }
 
