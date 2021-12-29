@@ -13,6 +13,7 @@
 #include "state.h"
 #include "state_registry.h"
 #include "symmetries/graph_creator.h"
+#include "tasks/root_task.h"
 #include "task_utils/successor_generator.h"
 #include "utils/system.h"
 #include "utils/timer.h"
@@ -269,6 +270,10 @@ void read_everything(istream &in) {
     read_axioms(in);
 
     cout << "done reading input! [t=" << utils::g_timer << "]" << endl;
+
+    // TODO: this has to happen *before* factoring does anything in order to
+    // keep a copy of g_goal.
+    tasks::create_root_task();
 
 
     if (g_factoring){

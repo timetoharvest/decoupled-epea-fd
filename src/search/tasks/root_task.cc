@@ -23,6 +23,7 @@ namespace tasks {
 shared_ptr<AbstractTask> g_root_task = nullptr;
 
 class RootTask : public AbstractTask {
+    vector<pair<int, int>> goal;
 public:
     explicit RootTask();
 
@@ -66,6 +67,10 @@ public:
 };
 
 RootTask::RootTask() {
+    // TODO: this hack keeps a copy of g_goal which is possibly modified by
+    // factoring.
+    assert(!g_goal.empty());
+    goal = g_goal;
 }
 
 int RootTask::get_num_variables() const {
@@ -177,12 +182,12 @@ int RootTask::get_num_axioms() const {
 }
 
 int RootTask::get_num_goals() const {
-    return g_goal.size();
+    return goal.size();
 }
 
 FactPair RootTask::get_goal_fact(int index) const {
-    assert(utils::in_bounds(index, g_goal));
-    return FactPair(g_goal[index].first, g_goal[index].second);
+    assert(utils::in_bounds(index, goal));
+    return FactPair(goal[index].first, goal[index].second);
 }
 
 vector<int> RootTask::get_initial_state_values() const {

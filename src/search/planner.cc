@@ -6,7 +6,6 @@
 #include "options/registries.h"
 #include "utils/system.h"
 #include "utils/timer.h"
-#include "tasks/root_task.h"
 
 #include <iostream>
 
@@ -39,7 +38,6 @@ int main(int argc, const char **argv) {
             utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
         }
         read_everything(cin);
-        tasks::create_root_task();
     }
 
     shared_ptr<SearchEngine> engine;
