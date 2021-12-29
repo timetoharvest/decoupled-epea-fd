@@ -68,17 +68,7 @@ void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(
     // Compute neighbors.
     for (int var : pattern) {
         const vector<int> &neighbors = cg.get_eff_to_pre(var);
-        for (int neighbor : neighbors) {
-            if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,neighbor)) {
-                candidates.insert(neighbor);
-            } else {
-                if (DEBUG) {
-                    cout << "excluded var " << var
-                         << " from being considered neighbor of "
-                         << pattern << endl;
-                }
-            }
-        }
+        candidates.insert(neighbors.begin(), neighbors.end());
     }
 
     // Remove elements of pattern.
@@ -86,7 +76,17 @@ void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(
         candidates.erase(var);
     }
 
-    result.assign(candidates.begin(), candidates.end());
+    for (int candidate : candidates) {
+        if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,candidate)) {
+            result.push_back(candidate);
+        } else {
+            if (DEBUG) {
+                cout << "excluded eff pre neighbor " << candidate
+                     << " from being considered for "
+                     << pattern << endl;
+            }
+        }
+    }
 }
 
 void PatternCollectionGeneratorSystematic::compute_connection_points(
@@ -113,17 +113,7 @@ void PatternCollectionGeneratorSystematic::compute_connection_points(
     // Handle rule 1.
     for (int var : pattern) {
         const vector<int> &succ = cg.get_successors(var);
-        for (int s : succ) {
-            if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,s)) {
-                candidates.insert(s);
-            } else {
-                if (DEBUG) {
-                    cout << "excluded var " << var
-                         << " from being considered connection point of "
-                         << pattern << endl;
-                }
-            }
-        }
+        candidates.insert(succ.begin(), succ.end());
     }
 
     // Handle rules 2 and 3.
@@ -136,7 +126,17 @@ void PatternCollectionGeneratorSystematic::compute_connection_points(
             candidates.erase(pre_var);
     }
 
-    result.assign(candidates.begin(), candidates.end());
+    for (int candidate : candidates) {
+        if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,candidate)) {
+            result.push_back(candidate);
+        } else {
+            if (DEBUG) {
+                cout << "excluded connection point " << candidate
+                     << " from being considered for "
+                     << pattern << endl;
+            }
+        }
+    }
 }
 
 void PatternCollectionGeneratorSystematic::enqueue_pattern_if_new(
