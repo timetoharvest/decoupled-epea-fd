@@ -9,6 +9,8 @@ enum class Verbosity;
 }
 
 namespace pdbs {
+class PatternFilter;
+
 /*
   This pattern collection generator uses the CEGAR algorithm to compute a
   disjoint pattern collection for the given task. See cegar.h for more details.
@@ -18,6 +20,7 @@ class PatternCollectionGeneratorDisjointCegar : public PatternCollectionGenerato
     const int max_collection_size;
     const double max_time;
     const bool use_wildcard_plans;
+    std::shared_ptr<PatternFilter> pattern_filter;
     const utils::Verbosity verbosity;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
 public:

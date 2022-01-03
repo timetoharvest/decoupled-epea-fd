@@ -350,10 +350,7 @@ static shared_ptr<PatternCollectionGenerator> _parse(OptionParser &parser) {
         "Only consider the union of two disjoint patterns if the union has "
         "more information than the individual patterns.",
         "true");
-    parser.add_option<shared_ptr<PatternFilter>>(
-        "pattern_filter",
-        "restrict patterns to certain variables",
-        OptionParser::NONE);
+    add_pattern_filter_option_to_parser(parser);
 
     Options opts = parser.parse();
     if (parser.dry_run())

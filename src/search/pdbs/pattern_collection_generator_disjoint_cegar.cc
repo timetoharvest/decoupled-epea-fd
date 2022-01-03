@@ -1,6 +1,7 @@
 #include "pattern_collection_generator_disjoint_cegar.h"
 
 #include "cegar.h"
+#include "pattern_filter.h"
 #include "utils.h"
 
 #include "../option_parser.h"
@@ -19,6 +20,7 @@ PatternCollectionGeneratorDisjointCegar::PatternCollectionGeneratorDisjointCegar
       max_collection_size(opts.get<int>("max_collection_size")),
       max_time(opts.get<double>("max_time")),
       use_wildcard_plans(opts.get<bool>("use_wildcard_plans")),
+      pattern_filter(get_pattern_filter_from_options(opts)),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)) {
 }
@@ -42,7 +44,8 @@ PatternCollectionInformation PatternCollectionGeneratorDisjointCegar::generate(
         verbosity,
         rng,
         task,
-        move(goals));
+        move(goals),
+        pattern_filter);
 }
 
 static shared_ptr<PatternCollectionGenerator> _parse(
@@ -78,6 +81,7 @@ static shared_ptr<PatternCollectionGenerator> _parse(
         "infinity",
         Bounds("0.0", "infinity"));
     add_cegar_wildcard_option_to_parser(parser);
+    add_pattern_filter_option_to_parser(parser);
     utils::add_verbosity_option_to_parser(parser);
     utils::add_rng_options(parser);
 

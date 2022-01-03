@@ -1,5 +1,6 @@
 #include "cegar.h"
 
+#include "pattern_filter.h"
 #include "types.h"
 #include "utils.h"
 
@@ -88,6 +89,7 @@ class CEGAR {
     const shared_ptr<AbstractTask> &task;
     const TaskProxy task_proxy;
     const vector<FactPair> &goals;
+    shared_ptr<PatternFilter> pattern_filter;
     unordered_set<int> blacklisted_variables;
 
     vector<unique_ptr<PatternInfo>> pattern_collection;
@@ -154,6 +156,7 @@ public:
         const shared_ptr<utils::RandomNumberGenerator> &rng,
         const shared_ptr<AbstractTask> &task,
         const vector<FactPair> &goals,
+        const shared_ptr<PatternFilter> &pattern_filter,
         unordered_set<int> &&blacklisted_variables = unordered_set<int>());
     PatternCollectionInformation compute_pattern_collection();
 };
@@ -167,6 +170,7 @@ CEGAR::CEGAR(
     const shared_ptr<utils::RandomNumberGenerator> &rng,
     const shared_ptr<AbstractTask> &task,
     const vector<FactPair> &goals,
+    const shared_ptr<PatternFilter> &pattern_filter,
     unordered_set<int> &&blacklisted_variables)
     : max_pdb_size(max_pdb_size),
       max_collection_size(max_collection_size),
@@ -177,6 +181,7 @@ CEGAR::CEGAR(
       task(task),
       task_proxy(*task),
       goals(goals),
+      pattern_filter(pattern_filter),
       blacklisted_variables(move(blacklisted_variables)),
       collection_size(0) {
 #ifndef NDEBUG
@@ -680,6 +685,7 @@ PatternCollectionInformation generate_pattern_collection_with_cegar(
     const shared_ptr<utils::RandomNumberGenerator> &rng,
     const shared_ptr<AbstractTask> &task,
     const vector<FactPair> &goals,
+    const shared_ptr<PatternFilter> &pattern_filter,
     unordered_set<int> &&blacklisted_variables) {
     CEGAR cegar(
         max_pdb_size,
@@ -690,6 +696,7 @@ PatternCollectionInformation generate_pattern_collection_with_cegar(
         rng,
         task,
         goals,
+        pattern_filter,
         move(blacklisted_variables));
     return cegar.compute_pattern_collection();
 }
@@ -702,6 +709,7 @@ PatternInformation generate_pattern_with_cegar(
     const shared_ptr<utils::RandomNumberGenerator> &rng,
     const shared_ptr<AbstractTask> &task,
     const FactPair &goal,
+    const shared_ptr<PatternFilter> &pattern_filter,
     unordered_set<int> &&blacklisted_variables) {
     vector<FactPair> goals = {goal};
     CEGAR cegar(
@@ -713,6 +721,7 @@ PatternInformation generate_pattern_with_cegar(
         rng,
         task,
         goals,
+        pattern_filter,
         move(blacklisted_variables));
     PatternCollectionInformation collection_info = cegar.compute_pattern_collection();
     shared_ptr<PatternCollection> new_patterns = collection_info.get_patterns();

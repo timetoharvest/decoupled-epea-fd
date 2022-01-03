@@ -18,8 +18,8 @@ class PatternFilter;
 class PatternGeneratorCEGAR : public PatternGenerator {
     const int max_pdb_size;
     const int max_time;
-    std::shared_ptr<PatternFilter> pattern_filter;
     const bool use_wildcard_plans;
+    std::shared_ptr<PatternFilter> pattern_filter;
     const utils::Verbosity verbosity;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
 public:

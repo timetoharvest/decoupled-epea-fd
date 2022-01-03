@@ -18,6 +18,8 @@ enum class Verbosity;
 }
 
 namespace pdbs {
+class PatternFilter;
+
 /*
   This function implements the CEGAR algorithm for computing disjoint pattern
   collections.
@@ -44,6 +46,7 @@ extern PatternCollectionInformation generate_pattern_collection_with_cegar(
     const std::shared_ptr<utils::RandomNumberGenerator> &rng,
     const std::shared_ptr<AbstractTask> &task,
     const std::vector<FactPair> &goals,
+    const std::shared_ptr<PatternFilter> &pattern_filter,
     std::unordered_set<int> &&blacklisted_variables = std::unordered_set<int>());
 
 /*
@@ -59,6 +62,7 @@ extern PatternInformation generate_pattern_with_cegar(
     const std::shared_ptr<utils::RandomNumberGenerator> &rng,
     const std::shared_ptr<AbstractTask> &task,
     const FactPair &goal,
+    const std::shared_ptr<PatternFilter> &pattern_filter,
     std::unordered_set<int> &&blacklisted_variables = std::unordered_set<int>());
 
 extern void add_cegar_implementation_notes_to_parser(options::OptionParser &parser);

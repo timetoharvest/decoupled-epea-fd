@@ -33,6 +33,7 @@ PatternInformation PatternCollectionGeneratorMultipleCegar::compute_pattern(
         rng,
         task,
         goal,
+        pattern_filter,
         move(blacklisted_variables));
 }
 

@@ -45,7 +45,6 @@ class PatternCollectionGeneratorMultiple : public PatternCollectionGenerator {
     const double stagnation_limit;
     const double blacklisting_start_time;
     const bool enable_blacklist_on_stagnation;
-    std::shared_ptr<PatternFilter> pattern_filter;
     const utils::Verbosity verbosity;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
     const int random_seed;
@@ -67,6 +66,8 @@ class PatternCollectionGeneratorMultiple : public PatternCollectionGenerator {
     bool time_limit_reached(const utils::CountdownTimer &timer) const;
     bool check_for_stagnation(const utils::CountdownTimer &timer);
 protected:
+    std::shared_ptr<PatternFilter> pattern_filter;
+
     virtual void initialize(const std::shared_ptr<AbstractTask> &task) = 0;
     virtual PatternInformation compute_pattern(
         int max_pdb_size,

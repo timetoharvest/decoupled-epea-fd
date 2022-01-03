@@ -16,7 +16,6 @@ class RandomNumberGenerator;
 
 namespace pdbs {
 class PatternCollectionInformation;
-class PatternFilter;
 class PatternInformation;
 
 extern int compute_pdb_size(const TaskProxy &task_proxy, const Pattern &pattern);
@@ -61,9 +60,6 @@ extern void dump_pattern_collection_generation_statistics(
     const PatternCollectionInformation &pci);
 
 extern std::string get_rovner_et_al_reference();
-
-extern std::shared_ptr<PatternFilter> get_pattern_filter_from_options(
-    const options::Options &opts);
 }
 
 #endif

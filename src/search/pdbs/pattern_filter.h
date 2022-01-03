@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+namespace options {
+class OptionParser;
+class Options;
+}
+
 namespace pdbs {
 class PatternFilter {
 public:
@@ -14,6 +19,10 @@ public:
     virtual bool can_merge_patterns(
         const Pattern &pattern1, const Pattern &pattern2) const = 0;
 };
+
+extern void add_pattern_filter_option_to_parser(options::OptionParser &parser);
+extern std::shared_ptr<PatternFilter> get_pattern_filter_from_options(
+    const options::Options &opts);
 }
 
 #endif
