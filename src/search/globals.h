@@ -95,6 +95,7 @@ extern std::vector<int> g_initial_state_data;
 // TODO The following function returns the initial state that is registered
 //      in g_state_registry. This is only a short-term solution. In the
 //      medium term, we should get rid of the global registry.
+// in decoupled search, the state returned is a center state only.
 extern const GlobalState &g_initial_state();
 
 // in decoupled search, this only contains the center goals (if any)

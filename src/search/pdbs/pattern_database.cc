@@ -2,7 +2,6 @@
 
 #include "match_tree.h"
 
-#include "../globals.h"
 #include "../state.h"
 
 #include "../algorithms/priority_queues.h"
@@ -308,7 +307,7 @@ void PatternDatabase::create_pdb(
         State initial_state = task_proxy.get_initial_state();
         initial_state.unpack();
         int current_state =
-            hash_index(g_initial_state());
+            hash_index(initial_state.get_unpacked_values());
         if (distances[current_state] != numeric_limits<int>::max()) {
             while (!is_goal_state(current_state, abstract_goals, variables)) {
                 int op_id = generating_op_ids[current_state];
