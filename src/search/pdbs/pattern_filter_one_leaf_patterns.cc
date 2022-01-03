@@ -4,6 +4,8 @@
 #include "../leaf_state_id.h"
 #include "../plugin.h"
 
+#include "../utils/logging.h"
+
 #include <memory>
 #include <unordered_set>
 
@@ -39,22 +41,28 @@ LeafFactorID get_leaf_factor_of_pattern(const Pattern &pattern) {
 
 bool PatternFilterOneLeafPatterns::can_add_var_to_pattern(
     const Pattern &pattern, int var) const {
+//    utils::g_log << "can add " << var << " to " << pattern << "? ";
     LeafFactorID var_factor_id = g_belongs_to_factor[var];
     LeafFactorID leaf_factor_id = get_leaf_factor_of_pattern(pattern);
     if (var_factor_id == LeafFactorID::CENTER || leaf_factor_id == LeafFactorID::CENTER) {
+//        utils::g_log << "yes" << endl;
         return true;
     } else {
+//        utils::g_log << (leaf_factor_id == var_factor_id ? "yes" : "no") << endl;
         return leaf_factor_id == var_factor_id;
     }
 }
 
 bool PatternFilterOneLeafPatterns::can_merge_patterns(
     const Pattern &pattern1, const Pattern &pattern2) const {
+//    utils::g_log << "can merge " << pattern1 << " and " << pattern2 << "? ";
     LeafFactorID leaf_factor_id_1 = get_leaf_factor_of_pattern(pattern1);
     LeafFactorID leaf_factor_id_2 = get_leaf_factor_of_pattern(pattern2);
     if (leaf_factor_id_1 == LeafFactorID::CENTER || leaf_factor_id_2 == LeafFactorID::CENTER) {
+//        utils::g_log << "yes" << endl;
         return true;
     } else {
+//        utils::g_log << (leaf_factor_id_1 == leaf_factor_id_2 ? "yes" : "no") << endl;
         return leaf_factor_id_1 == leaf_factor_id_2;
     }
 }
