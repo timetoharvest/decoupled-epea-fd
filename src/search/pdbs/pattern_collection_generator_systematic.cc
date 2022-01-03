@@ -314,7 +314,11 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
     }
     if (pattern_filter) {
         for (const Pattern &pattern: *patterns) {
-            assert(pattern_filter->is_pattern_ok(pattern));
+            if (!pattern_filter->is_pattern_ok(pattern)) {
+                cerr << "generated pattern is illegal according to "
+                        "pattern filter" << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
         }
     }
     PatternCollectionInformation pci(task_proxy, patterns);
