@@ -91,6 +91,7 @@ class CEGAR {
     const vector<FactPair> &goals;
     shared_ptr<PatternFilter> pattern_filter;
     unordered_set<int> blacklisted_variables;
+    vector<unordered_set<int>> filtered_variables;
 
     vector<unique_ptr<PatternInfo>> pattern_collection;
     /*
@@ -107,6 +108,13 @@ class CEGAR {
     void compute_initial_collection();
 
     /*
+      Return true iff variable var cannot be added to the pattern at
+      collection_index due to the pattern filter. Update filtered_variables
+      which serves as a cache for filtered variables.
+     */
+    bool filter_variable(int collection_index, int var);
+
+    /*
       Check if operator op is applicable in state, ignoring blacklisted
       variables. If it is, return an empty (flaw) list. Otherwise, return the
       violated preconditions.
@@ -114,7 +122,7 @@ class CEGAR {
     FlawList get_violated_preconditions(
         int collection_index,
         const OperatorProxy &op,
-        const vector<int> &current_state) const;
+        const vector<int> &current_state);
     /*
       Try to apply the plan of the pattern at the given index in the
       concrete task starting at the given state. During application,
@@ -123,7 +131,7 @@ class CEGAR {
       of all operators of the failing plan step. When the method returns,
       current is the last state reached when executing the plan.
      */
-    FlawList apply_plan(int collection_index, vector<int> &current_state) const;
+    FlawList apply_plan(int collection_index, vector<int> &current_state);
     /*
       Use apply_plan to generate flaws. Return true if there are no flaws and
       no blacklisted variables, in which case the concrete task is solved.
@@ -288,16 +296,37 @@ void apply_op_to_state(vector<int> &state, const OperatorProxy &op) {
     }
 }
 
+bool CEGAR::filter_variable(int collection_index, int var) {
+    if (filtered_variables[collection_index].count(var)) {
+        return true;
+    } else {
+        const Pattern &pattern = pattern_collection[collection_index]->get_pattern();
+        if (pattern_filter && !pattern_filter->can_add_var_to_pattern(pattern, var)) {
+            filtered_variables[collection_index].insert(var);
+            utils::g_log << "forbid variable " << var << " from being added "
+                            "to pattern " << pattern << endl;
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
 FlawList CEGAR::get_violated_preconditions(
     int collection_index,
     const OperatorProxy &op,
-    const vector<int> &current_state) const {
+    const vector<int> &current_state) {
     FlawList flaws;
     for (FactProxy precondition : op.get_preconditions()) {
         int var_id = precondition.get_variable().get_id();
 
         // Ignore blacklisted variables.
         if (blacklisted_variables.count(var_id)) {
+            continue;
+        }
+
+        // Ignore forbidden (= filtered) variables.
+        if (filter_variable(collection_index, var_id)) {
             continue;
         }
 
@@ -308,7 +337,7 @@ FlawList CEGAR::get_violated_preconditions(
     return flaws;
 }
 
-FlawList CEGAR::apply_plan(int collection_index, vector<int> &current_state) const {
+FlawList CEGAR::apply_plan(int collection_index, vector<int> &current_state) {
     PatternInfo &pattern_info = *pattern_collection[collection_index];
     const vector<vector<OperatorID>> &plan = pattern_info.get_plan();
     if (verbosity >= utils::Verbosity::VERBOSE) {
@@ -372,10 +401,10 @@ bool CEGAR::get_flaws_for_pattern(
             if (verbosity >= utils::Verbosity::VERBOSE) {
                 utils::g_log << "plan led to a concrete goal state: ";
             }
-            if (blacklisted_variables.empty()) {
+            if (blacklisted_variables.empty() && filtered_variables[collection_index].empty()) {
                 if (verbosity >= utils::Verbosity::VERBOSE) {
-                    utils::g_log << "there are no blacklisted variables, "
-                        "task solved." << endl;
+                    utils::g_log << "there are no blacklisted and filtered "
+                        "variables, task solved." << endl;
                 }
                 return true;
             } else {
@@ -393,7 +422,8 @@ bool CEGAR::get_flaws_for_pattern(
             for (const FactPair &goal : goals) {
                 int goal_var_id = goal.var;
                 if (final_state[goal_var_id].get_value() != goal.value &&
-                    !blacklisted_variables.count(goal_var_id)) {
+                    !blacklisted_variables.count(goal_var_id) &&
+                    !filter_variable(collection_index, goal_var_id)) {
                     flaws.emplace_back(collection_index, goal_var_id);
                     raise_goal_flaw = true;
                 }
@@ -404,8 +434,8 @@ bool CEGAR::get_flaws_for_pattern(
                 }
             } else {
                 if (verbosity >= utils::Verbosity::VERBOSE) {
-                    utils::g_log << "there are no non-blacklisted goal variables "
-                        "left, marking pattern as solved." << endl;
+                    utils::g_log << "there are no non-blacklisted or filtered "
+                        "goal variables left, marking pattern as solved." << endl;
                 }
                 pattern_info.mark_as_solved();
             }
@@ -435,6 +465,7 @@ int CEGAR::get_flaws(const State &concrete_init, FlawList &flaws) {
 
 void CEGAR::add_pattern_for_var(int var) {
     pattern_collection.push_back(compute_pattern_info({var}));
+    filtered_variables.emplace_back();
     variable_to_collection_index[var] = pattern_collection.size() - 1;
     collection_size += pattern_collection.back()->get_pdb()->get_size();
 }
@@ -530,7 +561,15 @@ void CEGAR::refine(const FlawList &flaws) {
             utils::g_log << "var" << var << " is already in pattern "
                          << pattern_collection[other_index]->get_pattern() << endl;
         }
-        if (can_merge_patterns(collection_index, other_index)) {
+        // TODO: testing for pattern filter only here is somewhat problematic
+        // because not merging the patterns will lead to the variable that
+        // should be added to a pattern being blacklisted rather than
+        // excluded for the pattern only. This is only problematic for
+        // disjoint_cegar, though.
+        if (can_merge_patterns(collection_index, other_index) &&
+            (!pattern_filter || pattern_filter->can_merge_patterns(
+                pattern_collection[collection_index]->get_pattern(),
+                pattern_collection[other_index]->get_pattern()))) {
             if (verbosity >= utils::Verbosity::VERBOSE) {
                 utils::g_log << "merge the two patterns" << endl;
             }
@@ -671,6 +710,16 @@ PatternCollectionInformation CEGAR::compute_pattern_collection() {
             "CEGAR",
             timer.get_elapsed_time(),
             pattern_collection_information);
+    }
+
+    if (pattern_filter) {
+        for (const Pattern &pattern: *patterns) {
+            if (!pattern_filter->is_pattern_ok(pattern)) {
+                cerr << "generated pattern is illegal according to "
+                        "pattern filter" << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
+        }
     }
 
     return pattern_collection_information;
