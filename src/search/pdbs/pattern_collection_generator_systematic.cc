@@ -294,7 +294,7 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
         "Systematic generator", timer(), pci);
 
     if (pattern_filter) {
-        for (const Pattern &pattern: *patterns) {
+        for (const Pattern &pattern : *patterns) {
             if (!pattern_filter->is_pattern_ok(pattern)) {
                 cerr << "generated pattern is illegal according to "
                         "pattern filter" << endl;
@@ -302,7 +302,7 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
             }
         }
     }
-    
+
     return pci;
 }
 

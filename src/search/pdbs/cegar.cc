@@ -713,7 +713,7 @@ PatternCollectionInformation CEGAR::compute_pattern_collection() {
     }
 
     if (pattern_filter) {
-        for (const Pattern &pattern: *patterns) {
+        for (const Pattern &pattern : *patterns) {
             if (!pattern_filter->is_pattern_ok(pattern)) {
                 cerr << "generated pattern is illegal according to "
                         "pattern filter" << endl;
