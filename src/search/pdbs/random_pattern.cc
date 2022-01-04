@@ -1,5 +1,7 @@
 #include "random_pattern.h"
 
+#include "pattern_filter.h"
+
 #include "../option_parser.h"
 
 #include "../task_proxy.h"
@@ -28,6 +30,7 @@ static bool time_limit_reached(
 Pattern generate_random_pattern(
     int max_pdb_size,
     double max_time,
+    const shared_ptr<PatternFilter> &pattern_filter,
     utils::Verbosity verbosity,
     const shared_ptr<utils::RandomNumberGenerator> &rng,
     const TaskProxy &task_proxy,
@@ -36,7 +39,9 @@ Pattern generate_random_pattern(
     utils::CountdownTimer timer(max_time);
     int current_var = goal_variable;
     unordered_set<int> visited_vars;
+    unordered_set<int> filtered_vars;
     visited_vars.insert(current_var);
+    Pattern pattern(visited_vars.begin(), visited_vars.end());
     VariablesProxy variables = task_proxy.get_variables();
     int pdb_size = variables[current_var].get_domain_size();
     while (!time_limit_reached(timer, verbosity)) {
@@ -49,10 +54,18 @@ Pattern generate_random_pattern(
         bool found_neighbor = false;
         for (int neighbor : cg_neighbors[current_var]) {
             int neighbor_dom_size = variables[neighbor].get_domain_size();
-            if (!visited_vars.count(neighbor) && utils::is_product_within_limit(
+            if (!visited_vars.count(neighbor) &&
+                !filtered_vars.count(neighbor) &&
+                utils::is_product_within_limit(
                     pdb_size, neighbor_dom_size, max_pdb_size)) {
+                if (pattern_filter && !pattern_filter->can_add_var_to_pattern(
+                    pattern,neighbor)) {
+                    filtered_vars.insert(neighbor);
+                    continue;
+                }
                 pdb_size *= neighbor_dom_size;
                 visited_vars.insert(neighbor);
+                pattern.push_back(neighbor);
                 current_var = neighbor;
                 found_neighbor = true;
                 break;
@@ -64,7 +77,6 @@ Pattern generate_random_pattern(
         }
     }
 
-    Pattern pattern(visited_vars.begin(), visited_vars.end());
     sort(pattern.begin(), pattern.end());
     return pattern;
 }

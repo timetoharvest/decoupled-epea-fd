@@ -37,6 +37,7 @@ PatternInformation PatternCollectionGeneratorMultipleRandom::compute_pattern(
     Pattern pattern = generate_random_pattern(
         max_pdb_size,
         max_time,
+        pattern_filter,
         utils::Verbosity::SILENT,
         rng,
         TaskProxy(*task),

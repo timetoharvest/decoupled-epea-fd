@@ -1,6 +1,7 @@
 #include "pattern_generator_random.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "random_pattern.h"
 #include "utils.h"
 
@@ -21,6 +22,7 @@ PatternGeneratorRandom::PatternGeneratorRandom(options::Options &opts)
     : max_pdb_size(opts.get<int>("max_pdb_size")),
       max_time(opts.get<double>("max_time")),
       bidirectional(opts.get<bool>("bidirectional")),
+      pattern_filter(get_pattern_filter_from_options(opts)),
       verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)) {
 }
@@ -41,6 +43,7 @@ PatternInformation PatternGeneratorRandom::generate(
     Pattern pattern = generate_random_pattern(
         max_pdb_size,
         max_time,
+        pattern_filter,
         verbosity,
         rng,
         task_proxy,
@@ -78,6 +81,7 @@ static shared_ptr<PatternGenerator> _parse(options::OptionParser &parser) {
         "infinity",
         Bounds("0.0", "infinity"));
     add_random_pattern_bidirectional_option_to_parser(parser);
+    add_pattern_filter_option_to_parser(parser);
     utils::add_verbosity_option_to_parser(parser);
     utils::add_rng_options(parser);
 
