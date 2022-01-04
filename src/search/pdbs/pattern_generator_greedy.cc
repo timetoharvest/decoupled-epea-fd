@@ -59,6 +59,15 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
     PatternInformation pattern_info(task_proxy, move(pattern));
     dump_pattern_generation_statistics(
         "Greedy generator", timer(), pattern_info);
+
+    if (pattern_filter) {
+        if (!pattern_filter->is_pattern_ok(pattern_info.get_pattern())) {
+            cerr << "generated pattern is illegal according to "
+                    "pattern filter" << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
+    }
+
     return pattern_info;
 }
 

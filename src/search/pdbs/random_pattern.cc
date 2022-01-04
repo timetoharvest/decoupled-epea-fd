@@ -78,6 +78,15 @@ Pattern generate_random_pattern(
     }
 
     sort(pattern.begin(), pattern.end());
+
+    if (pattern_filter) {
+        if (!pattern_filter->is_pattern_ok(pattern)) {
+            cerr << "generated pattern is illegal according to "
+                    "pattern filter" << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
+    }
+
     return pattern;
 }
 
