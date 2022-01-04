@@ -394,6 +394,11 @@ void PatternDatabase::compute_min_distance_decoupled(const ExplicitStateCPG *cpg
         int sum_prices,
         int &min_d) const {
 
+    if (sum_prices >= min_d){
+        // we cannot possibly improve the heuristic
+        return;
+    }
+
     int number_states = cpg->get_number_states(aff_leaves[i]);
     LeafStateHash id(0);
     while (number_states > 0){
