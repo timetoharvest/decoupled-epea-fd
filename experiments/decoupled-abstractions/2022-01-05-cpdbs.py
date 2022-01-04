@@ -3,6 +3,7 @@
 import itertools
 import math
 import os
+from pathlib import Path
 import subprocess
 
 from lab.environments import LocalEnvironment, BaselSlurmEnvironment
@@ -16,7 +17,8 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISIONS = ["e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"]
+REVISION = "e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"
+REVISIONS = [REVISION]
 TIME_LIMIT=2
 if common_setup.is_running_on_cluster():
     TIME_LIMIT=100
@@ -80,5 +82,39 @@ attributes = [
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
+
+BASELINE_REV=REVISION
+exp.add_fetcher('data/2022-01-05-baseline-cpdbs-eval', merge=True)
+
+class Filter:
+    def __init__(self):
+        self.excluded_tasks = set()
+
+    def collect_non_factorable_tasks(self, run):
+        error = run.get('error')
+        if error is not None and error == 'exitcode-19':
+            self.excluded_tasks.add(f"{run['domain']}:{run['problem']}")
+        return True
+
+    def filter_interesting_tasks(self, run):
+        return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
+
+f = Filter()
+report_name=f'{exp.name}-compare-baseline-pdb'
+report_file=Path(exp.eval_dir) / f'{report_name}.html'
+exp.add_report(
+    ComparativeReport(
+        attributes=attributes,
+        algorithm_pairs=[
+            (f'{BASELINE_REV}-cpdbscegar', f'{REVISION}-incarcs-oneleafpatterns-cpdbscegar'),
+            (f'{BASELINE_REV}-cpdbshc', f'{REVISION}-incarcs-oneleafpatterns-cpdbshc'),
+            (f'{BASELINE_REV}-cpdbssys2', f'{REVISION}-incarcs-oneleafpatterns-cpdbssys2'),
+        ],
+        filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 exp.run_steps()

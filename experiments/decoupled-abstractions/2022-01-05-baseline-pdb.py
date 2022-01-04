@@ -18,9 +18,9 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
 REVISIONS = ["e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"]
 CONFIGS = [
-    IssueConfig('incarcs-oneleafpatterns-pdbcegar', ['--search',  'astar(pdb(cegar_pattern()))'], build_options=['release64'], driver_options=['--build', 'release64']),
-    IssueConfig('incarcs-oneleafpatterns-pdbgreedy', ['--search',  'astar(pdb(greedy()))'], build_options=['release64'], driver_options=['--build', 'release64']),
-    IssueConfig('incarcs-oneleafpatterns-pdbrandom', ['--search',  'astar(pdb(random_pattern()))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('pdbcegar', ['--search',  'astar(pdb(cegar_pattern()))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('pdbgreedy', ['--search',  'astar(pdb(greedy()))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('pdbrandom', ['--search',  'astar(pdb(random_pattern()))'], build_options=['release64'], driver_options=['--build', 'release64']),
 ]
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE

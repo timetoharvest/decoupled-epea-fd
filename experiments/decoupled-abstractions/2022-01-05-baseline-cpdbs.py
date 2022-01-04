@@ -21,9 +21,9 @@ TIME_LIMIT=2
 if common_setup.is_running_on_cluster():
     TIME_LIMIT=100
 CONFIGS = [
-    IssueConfig('incarcs-oneleafpatterns-cpdbscegar', ['--search',  f'astar(cpdbs(multiple_cegar(total_max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64']),
-    IssueConfig('incarcs-oneleafpatterns-cpdbshc', ['--search',  f'astar(cpdbs(hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64']),
-    IssueConfig('incarcs-oneleafpatterns-cpdbssys2', ['--search',  'astar(cpdbs(systematic(2)))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('cpdbscegar', ['--search',  f'astar(cpdbs(multiple_cegar(total_max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('cpdbshc', ['--search',  f'astar(cpdbs(hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64']),
+    IssueConfig('cpdbssys2', ['--search',  'astar(cpdbs(systematic(2)))'], build_options=['release64'], driver_options=['--build', 'release64']),
 ]
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
