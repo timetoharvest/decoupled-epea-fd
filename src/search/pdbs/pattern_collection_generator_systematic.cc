@@ -287,6 +287,12 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
     } else {
         build_patterns_naive(task_proxy);
     }
+    PatternCollectionInformation pci(task_proxy, patterns);
+    /* Do not dump the collection since it can be very large for
+       pattern_max_size >= 3. */
+    dump_pattern_collection_generation_statistics(
+        "Systematic generator", timer(), pci);
+
     if (pattern_filter) {
         for (const Pattern &pattern: *patterns) {
             if (!pattern_filter->is_pattern_ok(pattern)) {
@@ -296,11 +302,7 @@ PatternCollectionInformation PatternCollectionGeneratorSystematic::generate(
             }
         }
     }
-    PatternCollectionInformation pci(task_proxy, patterns);
-    /* Do not dump the collection since it can be very large for
-       pattern_max_size >= 3. */
-    dump_pattern_collection_generation_statistics(
-        "Systematic generator", timer(), pci);
+    
     return pci;
 }
 
