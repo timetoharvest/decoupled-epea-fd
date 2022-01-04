@@ -303,8 +303,10 @@ bool CEGAR::filter_variable(int collection_index, int var) {
         const Pattern &pattern = pattern_collection[collection_index]->get_pattern();
         if (pattern_filter && !pattern_filter->can_add_var_to_pattern(pattern, var)) {
             filtered_variables[collection_index].insert(var);
-            utils::g_log << "forbid variable " << var << " from being added "
-                            "to pattern " << pattern << endl;
+            if (verbosity >= utils::Verbosity::DEBUG) {
+                utils::g_log << "forbid variable " << var << " from being added "
+                                "to pattern " << pattern << endl;
+            }
             return true;
         } else {
             return false;
@@ -713,7 +715,7 @@ PatternCollectionInformation CEGAR::compute_pattern_collection() {
     }
 
     if (pattern_filter) {
-        for (const Pattern &pattern: *patterns) {
+        for (const Pattern &pattern : *patterns) {
             if (!pattern_filter->is_pattern_ok(pattern)) {
                 cerr << "generated pattern is illegal according to "
                         "pattern filter" << endl;

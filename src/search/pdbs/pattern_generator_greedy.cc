@@ -33,9 +33,8 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
     utils::g_log << "Generating a pattern using the greedy generator..." << endl;
     TaskProxy task_proxy(*task);
     Pattern pattern;
-    // TODO: needs the task proxy in modern FD
     variable_order_finder::VariableOrderFinder order(
-        variable_order_finder::GOAL_CG_LEVEL);
+        task_proxy, variable_order_finder::GOAL_CG_LEVEL);
     VariablesProxy variables = task_proxy.get_variables();
 
     int size = 1;
@@ -49,6 +48,10 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
         if (!utils::is_product_within_limit(size, next_var_size, max_states))
             break;
 
+        if (pattern_filter && !pattern_filter->can_add_var_to_pattern(pattern, next_var_id)) {
+            continue;
+        }
+
         pattern.push_back(next_var_id);
         size *= next_var_size;
     }
@@ -56,6 +59,15 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
     PatternInformation pattern_info(task_proxy, move(pattern));
     dump_pattern_generation_statistics(
         "Greedy generator", timer(), pattern_info);
+
+    if (pattern_filter) {
+        if (!pattern_filter->is_pattern_ok(pattern_info.get_pattern())) {
+            cerr << "generated pattern is illegal according to "
+                    "pattern filter" << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+        }
+    }
+
     return pattern_info;
 }
 
@@ -65,10 +77,7 @@ static shared_ptr<PatternGenerator> _parse(OptionParser &parser) {
         "maximal number of abstract states in the pattern database.",
         "1000000",
         Bounds("1", "infinity"));
-    parser.add_option<shared_ptr<PatternFilter>>(
-        "pattern_filter",
-        "restrict patterns to certain variables",
-        OptionParser::NONE);
+        add_pattern_filter_option_to_parser(parser);
 
     Options opts = parser.parse();
     if (parser.dry_run())

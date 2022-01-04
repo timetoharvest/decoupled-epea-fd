@@ -17,6 +17,8 @@ enum class Verbosity;
 }
 
 namespace pdbs {
+class PatternFilter;
+
 /*
   This function computes a pattern for the given task. Starting with the given
   goal variable, the algorithm executes a random walk on the causal graph. In
@@ -27,6 +29,7 @@ namespace pdbs {
 extern Pattern generate_random_pattern(
     int max_pdb_size,
     double max_time,
+    const std::shared_ptr<PatternFilter> &pattern_filter,
     utils::Verbosity verbosity,
     const std::shared_ptr<utils::RandomNumberGenerator> &rng,
     const TaskProxy &task_proxy,

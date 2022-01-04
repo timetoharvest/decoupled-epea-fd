@@ -134,6 +134,7 @@ int PatternCollectionGeneratorHillclimbing::generate_candidate_pdbs(
     const Pattern &pattern = pdb.get_pattern();
     int pdb_size = pdb.get_size();
     int max_pdb_size = 0;
+    unordered_set<int> filtered_vars;
     for (int pattern_var : pattern) {
         assert(utils::in_bounds(pattern_var, relevant_neighbours));
         const vector<int> &connected_vars = relevant_neighbours[pattern_var];
@@ -146,6 +147,10 @@ int PatternCollectionGeneratorHillclimbing::generate_candidate_pdbs(
             back_inserter(relevant_vars));
 
         for (int rel_var_id : relevant_vars) {
+            if (filtered_vars.count(rel_var_id) || (pattern_filter && !pattern_filter->can_add_var_to_pattern(pattern, rel_var_id))) {
+                filtered_vars.insert(rel_var_id);
+                continue;
+            }
             VariableProxy rel_var = task_proxy.get_variables()[rel_var_id];
             int rel_var_size = rel_var.get_domain_size();
             if (utils::is_product_within_limit(pdb_size, rel_var_size,
@@ -434,6 +439,17 @@ PatternCollectionInformation PatternCollectionGeneratorHillclimbing::generate(
     PatternCollectionInformation pci = current_pdbs->get_pattern_collection_information();
     dump_pattern_collection_generation_statistics(
         "Hill climbing generator", timer(), pci);
+
+    if (pattern_filter) {
+        for (const Pattern &pattern : *pci.get_patterns()) {
+            if (!pattern_filter->is_pattern_ok(pattern)) {
+                cerr << "generated pattern is illegal according to "
+                        "pattern filter" << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
+        }
+    }
+
     return pci;
 }
 
