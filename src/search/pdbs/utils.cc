@@ -138,8 +138,8 @@ void dump_pattern_collection_generation_statistics(
             summed_num_affected_factors += num_affected_factors;
             max_num_affected_factors = max(max_num_affected_factors, num_affected_factors);
         }
-        utils::g_log << identifier << " summed number of affected leaf factors: "
-                     << summed_num_affected_factors << endl;
+        utils::g_log << identifier << " average number of affected leaf factors: "
+                     << summed_num_affected_factors/static_cast<double>(pattern_collection.size()) << endl;
         utils::g_log << identifier << " maximum number of affected leaf factors: "
                      << max_num_affected_factors << endl;
     }
