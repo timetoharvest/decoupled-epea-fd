@@ -2,9 +2,12 @@
 
 #include "match_tree.h"
 
+#include "../globals.h"
 #include "../state.h"
 
 #include "../algorithms/priority_queues.h"
+#include "../compliant_paths/cpg_storage.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
 #include "../utils/logging.h"
@@ -85,6 +88,11 @@ PatternDatabase::PatternDatabase(
     assert(operator_costs.empty() ||
            operator_costs.size() == task_proxy.get_operators().size());
     assert(utils::is_sorted_unique(pattern));
+
+    if (g_factoring && g_factoring->get_leaf_representation_type() == SYMBOLIC){
+        cerr << "PatternDatabase only supports explicit-state pricing functions." << endl;
+        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+    }
 
     utils::Timer timer;
     hash_multipliers.reserve(pattern.size());
@@ -379,7 +387,67 @@ int PatternDatabase::get_value(const vector<int> &state) const {
     return distances[hash_index(state)];
 }
 
+void PatternDatabase::compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
+        const vector<LeafFactorID> &aff_leaves,
+        vector<int> &state,
+        int i,
+        int sum_prices,
+        int &min_d) const {
+
+    int number_states = cpg->get_number_states(aff_leaves[i]);
+    LeafStateHash id(0);
+    while (number_states > 0){
+        if (cpg->has_leaf_state(id, aff_leaves[i])){
+            --number_states;
+
+            LeafState lstate = g_state_registry->lookup_leaf_state(id, aff_leaves[i]);
+            for (int var : g_leaves[aff_leaves[i]]){
+                state[var] = lstate[var];
+            }
+
+            int price = cpg->get_cost_of_state(id, aff_leaves[i]);
+            if (i < static_cast<int>(aff_leaves.size()) - 1){
+                // recursion
+                compute_min_distance_decoupled(cpg, aff_leaves, state, i + 1, sum_prices + price, min_d);
+            } else {
+                // end recursion
+                min_d = min(min_d, sum_prices + price + distances[hash_index(state)]);
+            }
+        }
+        ++id;
+    }
+}
+
 int PatternDatabase::get_value(const GlobalState &state) const {
+    if (g_factoring){
+        // used to call get_value(vector<int>) for all member states
+        vector<int> member_state(g_variable_domain.size(), -1);
+        for (int var : g_center){
+            member_state[var] = state[var];
+        }
+
+        // TODO avoid recomputation
+        vector<LeafFactorID> affected_leaves;
+        for (int var : pattern){
+            LeafFactorID factor = g_belongs_to_factor[var];
+            if (factor != LeafFactorID::CENTER &&
+                    find(affected_leaves.begin(),
+                            affected_leaves.end(),
+                            factor) == affected_leaves.end()){
+                affected_leaves.push_back(factor);
+            }
+        }
+
+        int min_h = numeric_limits<int>::max();
+        if (affected_leaves.empty()){
+            min_h = distances[hash_index(member_state)];
+        } else {
+            const ExplicitStateCPG *cpg = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+            compute_min_distance_decoupled(cpg, affected_leaves, member_state, 0, 0, min_h);
+        }
+
+        return min_h;
+    }
     return distances[hash_index(state)];
 }
 

@@ -8,7 +8,9 @@
 #include <utility>
 #include <vector>
 
+class ExplicitStateCPG;
 class GlobalState;
+class LeafFactorID;
 
 namespace utils {
 class RandomNumberGenerator;
@@ -161,6 +163,14 @@ class PatternDatabase {
     */
     int hash_index(const std::vector<int> &state) const;
     int hash_index(const GlobalState &state) const;
+
+    // sets min_d to the minimum distance of all member states of cpg
+    void compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
+            const std::vector<LeafFactorID> &aff_leaves,
+            std::vector<int> &state,
+            int i,
+            int sum_prices,
+            int &min_d) const;
 public:
     /*
       Important: It is assumed that the pattern (passed via Options) is
