@@ -2,8 +2,10 @@
 
 #include "pattern_collection_information.h"
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "pattern_information.h"
 
+#include "../globals.h"
 #include "../task_proxy.h"
 
 #include "../task_utils/causal_graph.h"
@@ -110,6 +112,11 @@ void dump_pattern_generation_statistics(
     utils::g_log << identifier << " PDB size: "
                  << compute_pdb_size(pattern_info.get_task_proxy(), pattern) << endl;
     utils::g_log << identifier << " computation time: " << runtime << endl;
+    if (g_factoring) {
+        int num_affected_factors = get_leaf_factors_of_pattern(pattern).size();
+        utils::g_log << identifier << " number of affected leaf factors: "
+                     << num_affected_factors << endl;
+    }
 }
 
 void dump_pattern_collection_generation_statistics(
@@ -123,6 +130,19 @@ void dump_pattern_collection_generation_statistics(
     utils::g_log << compute_total_pdb_size(
         pci.get_task_proxy(), pattern_collection) << endl;
     utils::g_log << identifier << " computation time: " << runtime << endl;
+    if (g_factoring) {
+        int summed_num_affected_factors = 0;
+        int max_num_affected_factors = -1;
+        for (const Pattern &pattern : pattern_collection) {
+            int num_affected_factors = get_leaf_factors_of_pattern(pattern).size();
+            summed_num_affected_factors += num_affected_factors;
+            max_num_affected_factors = max(max_num_affected_factors, num_affected_factors);
+        }
+        utils::g_log << identifier << " summed number of affected leaf factors: "
+                     << summed_num_affected_factors << endl;
+        utils::g_log << identifier << " maximum number of affected leaf factors: "
+                     << max_num_affected_factors << endl;
+    }
 }
 
 string get_rovner_et_al_reference() {

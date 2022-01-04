@@ -12,17 +12,6 @@
 using namespace std;
 
 namespace pdbs {
-unordered_set<unsigned short> get_leaf_factors_of_pattern(const Pattern &pattern) {
-    unordered_set<unsigned short> leaf_factors;
-    for (int var : pattern) {
-        LeafFactorID leaf_factor = g_belongs_to_factor[var];
-        if (leaf_factor != LeafFactorID::CENTER) {
-            leaf_factors.insert(leaf_factor);
-        }
-    }
-    return leaf_factors;
-}
-
 bool PatternFilterOneLeafPatterns::is_pattern_ok(const Pattern &pattern) const {
     return get_leaf_factors_of_pattern(pattern).size() <= 1;
 }
