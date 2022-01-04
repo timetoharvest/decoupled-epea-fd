@@ -20,8 +20,6 @@
 using namespace std;
 
 namespace pdbs {
-static const bool DEBUG = true;
-
 static bool patterns_are_disjoint(
     const Pattern &pattern1, const Pattern &pattern2) {
     size_t i = 0;
@@ -79,12 +77,6 @@ void PatternCollectionGeneratorSystematic::compute_eff_pre_neighbors(
     for (int candidate : candidates) {
         if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,candidate)) {
             result.push_back(candidate);
-        } else {
-            if (DEBUG) {
-                cout << "excluded eff pre neighbor " << candidate
-                     << " from being considered for "
-                     << pattern << endl;
-            }
         }
     }
 }
@@ -129,12 +121,6 @@ void PatternCollectionGeneratorSystematic::compute_connection_points(
     for (int candidate : candidates) {
         if (!pattern_filter || pattern_filter->can_add_var_to_pattern(pattern,candidate)) {
             result.push_back(candidate);
-        } else {
-            if (DEBUG) {
-                cout << "excluded connection point " << candidate
-                     << " from being considered for "
-                     << pattern << endl;
-            }
         }
     }
 }
@@ -253,11 +239,6 @@ void PatternCollectionGeneratorSystematic::build_patterns(
                         Pattern new_pattern;
                         compute_union_pattern(pattern1, pattern2, new_pattern);
                         enqueue_pattern_if_new(new_pattern);
-                    } else {
-                        if (DEBUG) {
-                            cout << "forbid merging patterns " << pattern1
-                                 << " and " << pattern2 << endl;
-                        }
                     }
                 }
             }
@@ -284,12 +265,6 @@ void PatternCollectionGeneratorSystematic::build_patterns_naive(
                     pattern.push_back(var);
                     next_patterns.push_back(pattern);
                     patterns->push_back(pattern);
-                } else {
-                    if (DEBUG) {
-                        cout << "excluded var " << var
-                             << " from being added to "
-                             << current_pattern << endl;
-                    }
                 }
             }
         }
