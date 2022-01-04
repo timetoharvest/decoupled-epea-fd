@@ -50,7 +50,7 @@ PatternInformation PatternGeneratorCEGAR::generate(
 
     if (verbosity >= utils::Verbosity::NORMAL) {
         dump_pattern_generation_statistics(
-            "CEGAR",
+            "CEGAR pattern",
             timer.stop(),
             pattern_info);
     }
