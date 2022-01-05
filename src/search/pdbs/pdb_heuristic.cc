@@ -3,10 +3,13 @@
 #include "pattern_database.h"
 #include "pattern_generator.h"
 
+#include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 #include "../state.h"
 
+#include "../compliant_paths/cpg_storage.h"
+#include "../compliant_paths/explicit_state_cpg.h"
 #include "../tasks/root_task.h"
 
 #include <limits>
@@ -30,7 +33,13 @@ PDBHeuristic::PDBHeuristic(const Options &opts)
 }
 
 int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    int h = pdb->get_value(ancestor_state);
+    int h;
+    if (g_factoring){
+        h = pdb->get_value(ancestor_state,
+                static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)));
+    } else {
+        h = pdb->get_value(ancestor_state);
+    }
     if (h == numeric_limits<int>::max())
         return DEAD_END;
     return h;
