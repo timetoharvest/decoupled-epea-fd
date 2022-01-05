@@ -79,9 +79,9 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 exp.add_absolute_report_step(
     attributes=attributes,
     filter_algorithm=[
-        f'{REVISION}-pdbcegar',
-        f'{REVISION}-pdbgreedy',
-        f'{REVISION}-pdbrandom',
+        f'{REVISION}-incarcs-oneleafpatterns-pdbcegar',
+        f'{REVISION}-incarcs-oneleafpatterns-pdbgreedy',
+        f'{REVISION}-incarcs-oneleafpatterns-pdbrandom',
     ]
 )
 
