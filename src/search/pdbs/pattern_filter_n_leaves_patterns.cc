@@ -1,4 +1,4 @@
-#include "pattern_filter_one_leaf_patterns.h"
+#include "pattern_filter_n_leaves_patterns.h"
 
 #include "../globals.h"
 #include "../leaf_state_id.h"
@@ -12,15 +12,15 @@
 using namespace std;
 
 namespace pdbs {
-PatternFilterOneLeafPatterns::PatternFilterOneLeafPatterns(const options::Options &opts)
+PatternFilterNLeavesPatterns::PatternFilterNLeavesPatterns(const options::Options &opts)
     : PatternFilter(), n(opts.get<int>("n")) {
 }
 
-bool PatternFilterOneLeafPatterns::is_pattern_ok(const Pattern &pattern) const {
+bool PatternFilterNLeavesPatterns::is_pattern_ok(const Pattern &pattern) const {
     return static_cast<int>(get_leaf_factors_of_pattern(pattern).size()) <= n;
 }
 
-bool PatternFilterOneLeafPatterns::can_add_var_to_pattern(
+bool PatternFilterNLeavesPatterns::can_add_var_to_pattern(
     const Pattern &pattern, int var) const {
 //    utils::g_log << "can add " << var << " to " << pattern << "? ";
     LeafFactorID var_factor_id = g_belongs_to_factor[var];
@@ -41,7 +41,7 @@ bool PatternFilterOneLeafPatterns::can_add_var_to_pattern(
     }
 }
 
-bool PatternFilterOneLeafPatterns::can_merge_patterns(
+bool PatternFilterNLeavesPatterns::can_merge_patterns(
     const Pattern &pattern1, const Pattern &pattern2) const {
 //    utils::g_log << "can merge " << pattern1 << " and " << pattern2 << "? ";
     unordered_set<unsigned short> union_leaf_factors;
@@ -62,7 +62,7 @@ static shared_ptr<PatternFilter> _parse(options::OptionParser &parser) {
     if (parser.dry_run()) {
         return nullptr;
     }
-    return make_shared<PatternFilterOneLeafPatterns>(opts);
+    return make_shared<PatternFilterNLeavesPatterns>(opts);
 }
 
 static Plugin<PatternFilter> _plugin("n_leaves_patterns", _parse);

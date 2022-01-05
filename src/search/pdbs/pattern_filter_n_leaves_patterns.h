@@ -1,5 +1,5 @@
-#ifndef PDBS_PATTERN_FILTER_ONE_LEAF_PATTERNS_H
-#define PDBS_PATTERN_FILTER_ONE_LEAF_PATTERNS_H
+#ifndef PDBS_PATTERN_FILTER_N_LEAVES_PATTERNS_H
+#define PDBS_PATTERN_FILTER_N_LEAVES_PATTERNS_H
 
 #include "pattern_filter.h"
 
@@ -8,11 +8,11 @@ class Options;
 }
 
 namespace pdbs {
-class PatternFilterOneLeafPatterns : public PatternFilter {
+class PatternFilterNLeavesPatterns : public PatternFilter {
     const int n;
 public:
-    explicit PatternFilterOneLeafPatterns(const options::Options &opts);
-    virtual ~PatternFilterOneLeafPatterns() = default;
+    explicit PatternFilterNLeavesPatterns(const options::Options &opts);
+    virtual ~PatternFilterNLeavesPatterns() = default;
 
     virtual bool is_pattern_ok(const Pattern &pattern) const override;
     virtual bool can_add_var_to_pattern(
