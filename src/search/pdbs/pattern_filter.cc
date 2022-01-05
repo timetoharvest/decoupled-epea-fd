@@ -9,15 +9,21 @@
 using namespace std;
 
 namespace pdbs {
-unordered_set<unsigned short> get_leaf_factors_of_pattern(const Pattern &pattern) {
+void get_leaf_factors_of_pattern(
+    const Pattern &pattern, unordered_set<unsigned short> &leaf_factors) {
     assert(g_factoring);
-    unordered_set<unsigned short> leaf_factors;
     for (int var : pattern) {
         LeafFactorID leaf_factor = g_belongs_to_factor[var];
         if (leaf_factor != LeafFactorID::CENTER) {
             leaf_factors.insert(leaf_factor);
         }
     }
+}
+
+unordered_set<unsigned short> get_leaf_factors_of_pattern(const Pattern &pattern) {
+    assert(g_factoring);
+    unordered_set<unsigned short> leaf_factors;
+    get_leaf_factors_of_pattern(pattern, leaf_factors);
     return leaf_factors;
 }
 

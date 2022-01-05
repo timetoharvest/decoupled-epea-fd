@@ -3,10 +3,15 @@
 
 #include "pattern_filter.h"
 
+namespace options {
+class Options;
+}
+
 namespace pdbs {
 class PatternFilterOneLeafPatterns : public PatternFilter {
+    const int n;
 public:
-    PatternFilterOneLeafPatterns() = default;
+    explicit PatternFilterOneLeafPatterns(const options::Options &opts);
     virtual ~PatternFilterOneLeafPatterns() = default;
 
     virtual bool is_pattern_ok(const Pattern &pattern) const override;
