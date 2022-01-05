@@ -65,5 +65,5 @@ static shared_ptr<PatternFilter> _parse(options::OptionParser &parser) {
     return make_shared<PatternFilterOneLeafPatterns>(opts);
 }
 
-static Plugin<PatternFilter> _plugin("n_leaf_patterns", _parse);
+static Plugin<PatternFilter> _plugin("n_leaves_patterns", _parse);
 }
