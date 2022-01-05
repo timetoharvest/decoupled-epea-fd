@@ -76,7 +76,14 @@ attributes = [
 
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
-exp.add_absolute_report_step(attributes=attributes)
+exp.add_absolute_report_step(
+    attributes=attributes,
+    filter_algorithm=[
+        f'{REVISION}-pdbcegar',
+        f'{REVISION}-pdbgreedy',
+        f'{REVISION}-pdbrandom',
+    ]
+)
 
 BASELINE_REV=REVISION
 exp.add_fetcher('data/2022-01-05-baseline-pdb-eval', merge=True)
