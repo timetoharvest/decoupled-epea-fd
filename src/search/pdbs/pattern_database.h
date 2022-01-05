@@ -164,7 +164,7 @@ class PatternDatabase {
     int hash_index(const std::vector<int> &state) const;
     int hash_index(const GlobalState &state) const;
 
-    // sets min_d to the minimum distance of all member states of cpg
+    // sets min_d to the minimum sum of prices and distance of all member states of cpg
     void compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
             const std::vector<LeafFactorID> &aff_leaves,
             std::vector<int> &state,
@@ -199,6 +199,7 @@ public:
 
     int get_value(const std::vector<int> &state) const;
     int get_value(const GlobalState &state) const;
+    int get_value(const GlobalState &center, const ExplicitStateCPG *prices) const;
 
     // Returns the pattern (i.e. all variables used) of the PDB
     const Pattern &get_pattern() const {
