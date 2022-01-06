@@ -19,10 +19,17 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
 REVISION = "e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"
 REVISIONS = [REVISION]
-CONFIGS = [
-    IssueConfig('incarcs-blind', ['--decoupling', 'incarcs()', '--search',  'astar(blind())'], build_options=['release64'], driver_options=['--build', 'release64']),
-    IssueConfig('incarcs-lmcut', ['--decoupling', 'incarcs()', '--search',  'astar(lmcut())'], build_options=['release64'], driver_options=['--build', 'release64']),
-]
+CONFIGS = []
+decoupling = {
+    'fork' : 'fork()',
+    'ifork' : 'ifork()',
+    'incarcs' : 'incarcs()',
+    'mmstrict' : 'lp_factoring(factoring_type=strict, strategy=mm)',
+    'mmgeneral' : 'lp_factoring(factoring_type=general, strategy=mm)',
+}
+for name, dec in decoupling.items():
+    CONFIGS.append(IssueConfig(f'{dec}-blind', ['--decoupling', dec, '--search',  'astar(blind())'], build_options=['release64'], driver_options=['--build', 'release64'])),
+    CONFIGS.append(IssueConfig(f'{name}-lmcut', ['--decoupling', dec, '--search',  'astar(lmcut())'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
