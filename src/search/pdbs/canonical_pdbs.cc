@@ -82,11 +82,14 @@ int CanonicalPDBs::get_value(const GlobalState &state) const {
     int max_h = 0;
     vector<int> h_values;
     h_values.reserve(pdbs->size());
+    const ExplicitStateCPG *prices = 0;
+    if (g_factoring){
+        prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    }
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
         int h;
         if (g_factoring){
-            h = pdb->get_value(state,
-                    static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state)));
+            h = pdb->get_value(state, prices);
         } else {
             h = pdb->get_value(state);
         }
