@@ -496,6 +496,8 @@ fast_downward_plugin(
         pdbs/canonical_pdbs
         pdbs/canonical_pdbs_heuristic
         pdbs/cegar
+        pdbs/decoupled_pdbs
+        pdbs/decoupled_pdbs_heuristic
         pdbs/dominance_pruning
         pdbs/incremental_canonical_pdbs
         pdbs/match_tree
