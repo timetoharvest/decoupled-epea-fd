@@ -19,7 +19,15 @@ class CanonicalPDBs {
     // only needed for decoupled exponential lookup
     std::vector<LeafFactorID> affected_leaves;
 
-    void compute_min_distance_decoupled_exponential(const ExplicitStateCPG *cpg,
+    // only needed for decoupled single-leaf lookup
+    std::vector<std::vector<PatternID>> affecting_patterns;
+
+    int get_min_distance_decoupled_single_leaf(const ExplicitStateCPG *prices,
+            std::vector<int> &member_state,
+            LeafFactorID leaf,
+            const PatternClique &clique) const;
+
+    void compute_min_distance_decoupled_exponential(const ExplicitStateCPG *prices,
             std::vector<int> &member_state,
             int i,
             int sum_prices,

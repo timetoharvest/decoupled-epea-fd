@@ -36,6 +36,16 @@ CanonicalPDBs::CanonicalPDBs(
                 }
             }
         }
+        // TODO this is only needed for the decoupled single-leaf lookup
+        affecting_patterns.resize(g_leaves.size());
+        for (PatternID p_id = 0; p_id < static_cast<int>(pdbs->size()); ++p_id) {
+            for (int var : (*pdbs)[p_id]->get_pattern()){
+                LeafFactorID factor = g_belongs_to_factor[var];
+                if (factor != LeafFactorID::CENTER){
+                    affecting_patterns[factor].push_back(p_id);
+                }
+            }
+        }
     }
 }
 
@@ -114,10 +124,54 @@ int CanonicalPDBs::get_value_dec_approx(const GlobalState &state) const {
 int CanonicalPDBs::get_value_dec_single_leaf(const GlobalState &state) const {
     // If we have an empty collection, then pattern_cliques = { \emptyset }.
     assert(!pattern_cliques->empty());
+    const ExplicitStateCPG *prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    vector<int> member_state(g_variable_domain.size(), -1);
+    for (int var : g_center){
+        // TODO make a method for this
+        member_state[var] = state[var];
+    }
     int max_h = 0;
-    cerr << "Not implemented, yet." << endl;
-    utils::exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    for (const PatternClique &clique : *pattern_cliques) {
+        int clique_h = 0;
+        for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
+            clique_h += get_min_distance_decoupled_single_leaf(prices, member_state, leaf, clique);
+        }
+        max_h = max(max_h, clique_h);
+    }
     return max_h;
+}
+
+int CanonicalPDBs::get_min_distance_decoupled_single_leaf(const ExplicitStateCPG *prices,
+        vector<int> &member_state,
+        LeafFactorID leaf,
+        const PatternClique &clique) const {
+
+    int min_d = numeric_limits<int>::max();
+
+    int number_states = prices->get_number_states(leaf);
+    LeafStateHash id(0);
+    while (number_states > 0){
+        if (prices->has_leaf_state(id, leaf)){
+            --number_states;
+
+            LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
+            for (int var : g_leaves[leaf]){
+                member_state[var] = lstate[var];
+            }
+
+            int sum_dists = 0;
+            for (PatternID p_id : affecting_patterns[leaf]){
+                // TODO better store affecting patterns per clique?
+                if (find(clique.begin(), clique.end(), p_id) != clique.end()){
+                    sum_dists += (*pdbs)[p_id]->get_value(member_state);
+                }
+            }
+
+            min_d = min(min_d, prices->get_cost_of_state(id, leaf) + sum_dists);
+        }
+        ++id;
+    }
+    return min_d;
 }
 
 int CanonicalPDBs::get_value_dec_exponential(const GlobalState &state) const {

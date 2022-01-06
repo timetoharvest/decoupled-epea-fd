@@ -26,18 +26,35 @@ CanonicalPDBs get_canonical_pdbs_from_options(
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
     utils::Timer timer;
     utils::g_log << "Initializing canonical PDB heuristic..." << endl;
+    DecoupledPatternCollectionLookUp dec_lookup_type(opts.get<DecoupledPatternCollectionLookUp>("dec_lookup_type"));
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<PatternCollection> patterns =
         pattern_collection_info.get_patterns();
+
+    if (g_factoring && dec_lookup_type == DecoupledPatternCollectionLookUp::SINGLE_LEAF){
+        // verify that every pattern affects at most one leaf factor
+        for (const Pattern &pattern : *patterns){
+            set<LeafFactorID> affected_leaves;
+            for (int var : pattern){
+                LeafFactorID leaf = g_belongs_to_factor[var];
+                if (leaf != LeafFactorID::CENTER){
+                    affected_leaves.insert(leaf);
+                }
+            }
+            if (affected_leaves.size() > 1){
+                cerr << "Every pattern may affect at most one leaf for SINGLE_LEAF decoupled lookup." << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+            }
+        }
+    }
+
     /*
       We compute PDBs and pattern cliques here (if they have not been
       computed before) so that their computation is not taken into account
       for dominance pruning time.
     */
     shared_ptr<PDBCollection> pdbs = pattern_collection_info.get_pdbs();
-
-    DecoupledPatternCollectionLookUp dec_lookup_type(opts.get<DecoupledPatternCollectionLookUp>("dec_lookup_type"));
 
     shared_ptr<vector<PatternClique>> pattern_cliques;
     if (g_factoring && dec_lookup_type == DecoupledPatternCollectionLookUp::APPROX){
