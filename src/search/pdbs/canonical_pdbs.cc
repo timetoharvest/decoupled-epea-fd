@@ -24,27 +24,15 @@ CanonicalPDBs::CanonicalPDBs(
     assert(pattern_cliques);
 
     if (g_factoring){
-        // sanity check: no patterns in a clique may affect the same leaf
-        // otherwise taking the sum of the values may not be admissible
-        for (const PatternClique &clique : *pattern_cliques) {
-            set<LeafFactorID> aff_leaves_clique;
-            for (PatternID pdb_index : clique) {
-                set<LeafFactorID> aff_leaves_pattern;
-                for (int var : (*pdbs)[pdb_index]->get_pattern()){
-                    LeafFactorID factor = g_belongs_to_factor[var];
-                    if (factor != LeafFactorID::CENTER){
-                        if (find(aff_leaves_clique.begin(),
-                                aff_leaves_clique.end(),
-                                factor) != aff_leaves_clique.end() &&
-                                find(aff_leaves_pattern.begin(),
-                                        aff_leaves_pattern.end(),
-                                        factor) == aff_leaves_pattern.end()){
-                            cerr << "Multiple patterns of a clique affect the same leaf, so are not orthogonal." << endl;
-                            utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-                        }
-                        aff_leaves_clique.insert(factor);
-                        aff_leaves_pattern.insert(factor);
-                    }
+        // TODO this is only needed for the decoupled exponential lookup
+        for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+            for (int var : pdb->get_pattern()){
+                LeafFactorID factor = g_belongs_to_factor[var];
+                if (factor != LeafFactorID::CENTER &&
+                        find(affected_leaves.begin(),
+                                affected_leaves.end(),
+                                factor) == affected_leaves.end()){
+                    affected_leaves.push_back(factor);
                 }
             }
         }
@@ -54,7 +42,6 @@ CanonicalPDBs::CanonicalPDBs(
 int CanonicalPDBs::get_value(const State &state) const {
     // If we have an empty collection, then pattern_cliques = { \emptyset }.
     assert(!pattern_cliques->empty());
-    assert(!g_factoring);
     int max_h = 0;
     vector<int> h_values;
     h_values.reserve(pdbs->size());
@@ -79,20 +66,12 @@ int CanonicalPDBs::get_value(const State &state) const {
 int CanonicalPDBs::get_value(const GlobalState &state) const {
     // If we have an empty collection, then pattern_cliques = { \emptyset }.
     assert(!pattern_cliques->empty());
+    assert(!g_factoring);
     int max_h = 0;
     vector<int> h_values;
     h_values.reserve(pdbs->size());
-    const ExplicitStateCPG *prices = 0;
-    if (g_factoring){
-        prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    }
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-        int h;
-        if (g_factoring){
-            h = pdb->get_value(state, prices);
-        } else {
-            h = pdb->get_value(state);
-        }
+        int h = pdb->get_value(state);
         if (h == numeric_limits<int>::max()) {
             return numeric_limits<int>::max();
         }
@@ -106,5 +85,128 @@ int CanonicalPDBs::get_value(const GlobalState &state) const {
         max_h = max(max_h, clique_h);
     }
     return max_h;
+}
+
+int CanonicalPDBs::get_value_dec_approx(const GlobalState &state) const {
+    // If we have an empty collection, then pattern_cliques = { \emptyset }.
+    assert(!pattern_cliques->empty());
+    int max_h = 0;
+    vector<int> h_values;
+    h_values.reserve(pdbs->size());
+    const ExplicitStateCPG *prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+        int h = pdb->get_value(state, prices);
+        if (h == numeric_limits<int>::max()) {
+            return numeric_limits<int>::max();
+        }
+        h_values.push_back(h);
+    }
+    for (const PatternClique &clique : *pattern_cliques) {
+        int clique_h = 0;
+        for (PatternID pdb_index : clique) {
+            clique_h += h_values[pdb_index];
+        }
+        max_h = max(max_h, clique_h);
+    }
+    return max_h;
+}
+
+int CanonicalPDBs::get_value_dec_single_leaf(const GlobalState &state) const {
+    // If we have an empty collection, then pattern_cliques = { \emptyset }.
+    assert(!pattern_cliques->empty());
+    int max_h = 0;
+    cerr << "Not implemented, yet." << endl;
+    utils::exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
+    return max_h;
+}
+
+int CanonicalPDBs::get_value_dec_exponential(const GlobalState &state) const {
+    // If we have an empty collection, then pattern_cliques = { \emptyset }.
+    assert(!pattern_cliques->empty());
+
+    if (affected_leaves.empty()){
+        // compute maximal heuristic value for the center state
+        int max_h = 0;
+        vector<int> h_values;
+        h_values.reserve(pdbs->size());
+        for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+            int h = pdb->get_value(state);
+            if (h == numeric_limits<int>::max()) {
+                return numeric_limits<int>::max();
+            }
+            h_values.push_back(h);
+        }
+        for (const PatternClique &clique : *pattern_cliques) {
+            int clique_h = 0;
+            for (PatternID pdb_index : clique) {
+                clique_h += h_values[pdb_index];
+            }
+            max_h = max(max_h, clique_h);
+        }
+        return max_h;
+    } else {
+        // compute minimum heuristic value across all member states
+        vector<int> member_state(g_variable_domain.size(), -1);
+        for (int var : g_center){
+            member_state[var] = state[var];
+        }
+        int min_h = numeric_limits<int>::max();
+        const ExplicitStateCPG *prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+        compute_min_distance_decoupled_exponential(prices, member_state, 0, 0, min_h);
+        return min_h;
+    }
+}
+
+void CanonicalPDBs::compute_min_distance_decoupled_exponential(const ExplicitStateCPG *cpg,
+        vector<int> &member_state,
+        int i,
+        int sum_prices,
+        int &min_d) const {
+
+    if (sum_prices >= min_d){
+        // we cannot possibly improve the heuristic
+        return;
+    }
+
+    int number_states = cpg->get_number_states(affected_leaves[i]);
+    LeafStateHash id(0);
+    while (number_states > 0){
+        if (cpg->has_leaf_state(id, affected_leaves[i])){
+            --number_states;
+
+            LeafState lstate = g_state_registry->lookup_leaf_state(id, affected_leaves[i]);
+            for (int var : g_leaves[affected_leaves[i]]){
+                member_state[var] = lstate[var];
+            }
+
+            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
+            if (i < static_cast<int>(affected_leaves.size()) - 1){
+                // recursion
+                compute_min_distance_decoupled_exponential(cpg, member_state, i + 1, sum_prices + price, min_d);
+            } else {
+                // end recursion
+                int max_h = 0;
+                vector<int> h_values;
+                h_values.reserve(pdbs->size());
+                for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+                    int h = pdb->get_value(member_state);
+                    if (h == numeric_limits<int>::max()) {
+                        // dead end member state
+                        return;
+                    }
+                    h_values.push_back(h);
+                }
+                for (const PatternClique &clique : *pattern_cliques) {
+                    int clique_h = 0;
+                    for (PatternID pdb_index : clique) {
+                        clique_h += h_values[pdb_index];
+                    }
+                    max_h = max(max_h, clique_h);
+                }
+                min_d = min(min_d, sum_prices + price + max_h);
+            }
+        }
+        ++id;
+    }
 }
 }

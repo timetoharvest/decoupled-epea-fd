@@ -12,6 +12,7 @@ class OptionParser;
 namespace pdbs {
 // Implements the canonical heuristic function.
 class CanonicalPDBsHeuristic : public Heuristic {
+    DecoupledPatternCollectionLookUp dec_lookup_type;
     CanonicalPDBs canonical_pdbs;
 
 protected:
