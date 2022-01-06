@@ -8,6 +8,7 @@
 
 #include "../option_parser.h"
 
+#include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
 #include "../utils/logging.h"
@@ -197,7 +198,9 @@ shared_ptr<Evaluator> get_max_cp_heuristic(options::OptionParser &parser, CPFunc
     if (parser.dry_run())
         return nullptr;
 
-    shared_ptr<AbstractTask> task = opts.get<shared_ptr<AbstractTask>>("transform");
+    // TODO: in modern FD, use the task from options
+//    shared_ptr<AbstractTask> task = opts.get<shared_ptr<AbstractTask>>("transform");
+    shared_ptr<AbstractTask> task = tasks::g_root_task;
     TaskProxy task_proxy(*task);
     vector<int> costs = task_properties::get_operator_costs(task_proxy);
     Abstractions abstractions = generate_abstractions(

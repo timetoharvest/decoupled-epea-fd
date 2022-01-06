@@ -53,7 +53,9 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         return nullptr;
 
     Abstractions abstractions = generate_abstractions(
-        opts.get<shared_ptr<AbstractTask>>("transform"),
+        // TODO: in modern FD, use the task from options
+//        opts.get<shared_ptr<AbstractTask>>("transform"),
+        tasks::g_root_task,
         opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"));
 
     return make_shared<MaxHeuristic>(opts, move(abstractions));

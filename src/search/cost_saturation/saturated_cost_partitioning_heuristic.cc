@@ -10,6 +10,7 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/markup.h"
 
@@ -135,7 +136,9 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
 
-    shared_ptr<AbstractTask> task = opts.get<shared_ptr<AbstractTask>>("transform");
+    // TODO: in modern FD, use the task from options
+//    shared_ptr<AbstractTask> task = opts.get<shared_ptr<AbstractTask>>("transform");
+    shared_ptr<AbstractTask> task = tasks::g_root_task;
     TaskProxy task_proxy(*task);
     vector<int> costs = task_properties::get_operator_costs(task_proxy);
     Abstractions abstractions = generate_abstractions(
