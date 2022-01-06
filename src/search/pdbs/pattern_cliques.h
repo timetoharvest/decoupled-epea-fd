@@ -23,7 +23,9 @@ extern bool are_patterns_additive(const Pattern &pattern1,
   Computes pattern cliques of the given patterns.
 */
 extern std::shared_ptr<std::vector<PatternClique>> compute_pattern_cliques(
-    const PatternCollection &patterns, const VariableAdditivity &are_additive);
+    const PatternCollection &patterns,
+    const VariableAdditivity &are_additive,
+    bool restrict_to_single_leaf = false);
 
 /*
   We compute pattern cliques S with the property that we could

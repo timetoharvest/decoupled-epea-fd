@@ -27,7 +27,7 @@ class PatternCollectionInformation {
     std::shared_ptr<std::vector<PatternClique>> pattern_cliques;
 
     void create_pdbs_if_missing();
-    void create_pattern_cliques_if_missing();
+    void create_pattern_cliques_if_missing(bool restrict_to_single_leaf = false);
 
     bool information_is_valid() const;
 public:
@@ -46,7 +46,7 @@ public:
 
     std::shared_ptr<PatternCollection> get_patterns() const;
     std::shared_ptr<PDBCollection> get_pdbs();
-    std::shared_ptr<std::vector<PatternClique>> get_pattern_cliques();
+    std::shared_ptr<std::vector<PatternClique>> get_pattern_cliques(bool restrict_to_single_leaf = false);
 };
 }
 

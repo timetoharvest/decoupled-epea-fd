@@ -2,6 +2,8 @@
 
 #include "pattern_database.h"
 
+#include "../globals.h"
+#include "../leaf_state_id.h"
 #include "../task_proxy.h"
 
 #include "../algorithms/max_cliques.h"
@@ -39,14 +41,34 @@ VariableAdditivity compute_additive_vars(const TaskProxy &task_proxy) {
 }
 
 shared_ptr<vector<PatternClique>> compute_pattern_cliques(
-    const PatternCollection &patterns, const VariableAdditivity &are_additive) {
+        const PatternCollection &patterns,
+        const VariableAdditivity &are_additive,
+        bool restrict_to_single_leaf) {
     // Initialize compatibility graph.
     vector<vector<int>> cgraph;
     cgraph.resize(patterns.size());
 
     for (size_t i = 0; i < patterns.size(); ++i) {
         for (size_t j = i + 1; j < patterns.size(); ++j) {
-            if (are_patterns_additive(patterns[i], patterns[j], are_additive)) {
+            bool affect_same_leaf = false;
+            if (restrict_to_single_leaf){
+                // only relevant for decoupled search
+                // ensures that patterns that affect the same leaf
+                // cannot be in the same clique
+                for (int var1 : patterns[i]){
+                    LeafFactorID factor1 = g_belongs_to_factor[var1];
+                    for (int var2 : patterns[j]){
+                        if (factor1 == g_belongs_to_factor[var2]){
+                            affect_same_leaf = true;
+                            break;
+                        }
+                    }
+                    if (affect_same_leaf){
+                        break;
+                    }
+                }
+            }
+            if (!affect_same_leaf && are_patterns_additive(patterns[i], patterns[j], are_additive)) {
                 /* If the two patterns are additive, there is an edge in the
                    compatibility graph. */
                 cgraph[i].push_back(j);
