@@ -94,7 +94,7 @@ void InfluenceGraph::get_ordering(vector <int> &ordering) const {
 void InfluenceGraph::randomize(vector <int> &ordering, vector<int> &new_order) {
     utils::RandomNumberGenerator rng;
     for (size_t i = 0; i < ordering.size(); i++) {
-        int rnd_pos = rng(ordering.size() - i);
+        int rnd_pos = rng.random(ordering.size() - i);
         int pos = -1;
         do {
             pos++;
@@ -127,8 +127,8 @@ long InfluenceGraph::optimize_variable_ordering_gamer(vector <int> &order,
     //Repeat iterations times
     for (int counter = 0; counter < iterations; counter++) {
         //Swap variable
-        int swapIndex1 = rng(order.size());
-        int swapIndex2 = rng(order.size());
+        int swapIndex1 = rng.random(order.size());
+        int swapIndex2 = rng.random(order.size());
         if (swapIndex1 == swapIndex2)
             continue;
 
@@ -203,11 +203,11 @@ void InfluenceGraph::optimize_variable_ordering_gamer(vector <int> &order,
     //Repeat iterations times
     for (int counter = 0; counter < iterations; counter++) {
         //Swap variable
-        int partition = rng(partition_begin.size());
+        int partition = rng.random(partition_begin.size());
         if (partition_sizes[partition] <= 1)
             continue;
-        int swapIndex1 = partition_begin[partition] + rng(partition_sizes[partition]);
-        int swapIndex2 = partition_begin[partition] + rng(partition_sizes[partition]);
+        int swapIndex1 = partition_begin[partition] + rng.random(partition_sizes[partition]);
+        int swapIndex2 = partition_begin[partition] + rng.random(partition_sizes[partition]);
         if (swapIndex1 == swapIndex2)
             continue;
 
