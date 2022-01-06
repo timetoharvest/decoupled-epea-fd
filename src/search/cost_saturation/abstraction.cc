@@ -9,6 +9,11 @@ Abstraction::Abstraction(unique_ptr<AbstractionFunction> abstraction_function)
     : abstraction_function(move(abstraction_function)) {
 }
 
+int Abstraction::get_abstract_state_id(const GlobalState &concrete_state) const {
+    assert(abstraction_function);
+    return abstraction_function->get_abstract_state_id(concrete_state);
+}
+
 int Abstraction::get_abstract_state_id(const State &concrete_state) const {
     assert(abstraction_function);
     return abstraction_function->get_abstract_state_id(concrete_state);

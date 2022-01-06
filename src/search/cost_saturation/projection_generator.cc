@@ -29,8 +29,7 @@ ProjectionGenerator::ProjectionGenerator(const options::Options &opts)
 }
 
 Abstractions ProjectionGenerator::generate_abstractions(
-    const shared_ptr<AbstractTask> &task,
-    DeadEnds *dead_ends) {
+    const shared_ptr<AbstractTask> &task) {
     utils::Timer patterns_timer;
     utils::Log log;
     TaskProxy task_proxy(*task);
@@ -47,13 +46,10 @@ Abstractions ProjectionGenerator::generate_abstractions(
     }
 
     log << "Compute patterns" << endl;
-    pattern_generator->set_dead_ends_store(dead_ends);
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<pdbs::PatternCollection> patterns =
         pattern_collection_info.get_patterns();
-    shared_ptr<pdbs::ProjectionCollection> projections =
-        pattern_collection_info.get_projections();
 
     int max_pattern_size = 0;
     for (const pdbs::Pattern &pattern : *patterns) {
@@ -80,10 +76,7 @@ Abstractions ProjectionGenerator::generate_abstractions(
     Abstractions abstractions;
     for (const pdbs::Pattern &pattern : *patterns) {
         unique_ptr<Abstraction> projection;
-        if (projections) {
-            // Projections have already been computed by the generator.
-            projection = move((*projections)[abstractions.size()]);
-        } else if (create_complete_transition_system) {
+        if (create_complete_transition_system) {
             projection = ExplicitProjectionFactory(
                 task_proxy, pattern, use_add_after_delete_semantics).convert_to_abstraction();
         } else {

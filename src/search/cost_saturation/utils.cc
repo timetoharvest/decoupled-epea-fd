@@ -8,7 +8,6 @@
 
 #include "../option_parser.h"
 
-#include "../algorithms/partial_state_tree.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
 #include "../utils/logging.h"
@@ -23,13 +22,12 @@ using namespace std;
 namespace cost_saturation {
 Abstractions generate_abstractions(
     const shared_ptr<AbstractTask> &task,
-    const vector<shared_ptr<AbstractionGenerator>> &abstraction_generators,
-    DeadEnds *dead_ends) {
+    const vector<shared_ptr<AbstractionGenerator>> &abstraction_generators) {
     Abstractions abstractions;
     vector<int> abstractions_per_generator;
     for (const shared_ptr<AbstractionGenerator> &generator : abstraction_generators) {
         int abstractions_before = abstractions.size();
-        for (auto &abstraction : generator->generate_abstractions(task, dead_ends)) {
+        for (auto &abstraction : generator->generate_abstractions(task)) {
             abstractions.push_back(move(abstraction));
         }
         abstractions_per_generator.push_back(abstractions.size() - abstractions_before);
@@ -202,16 +200,14 @@ shared_ptr<Evaluator> get_max_cp_heuristic(options::OptionParser &parser, CPFunc
     shared_ptr<AbstractTask> task = opts.get<shared_ptr<AbstractTask>>("transform");
     TaskProxy task_proxy(*task);
     vector<int> costs = task_properties::get_operator_costs(task_proxy);
-    unique_ptr<DeadEnds> dead_ends = utils::make_unique_ptr<DeadEnds>();
     Abstractions abstractions = generate_abstractions(
-        task, opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"), dead_ends.get());
+        task, opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"));
     vector<CostPartitioningHeuristic> cp_heuristics =
         get_cp_heuristic_collection_generator_from_options(opts).generate_cost_partitionings(
             task_proxy, abstractions, costs, cp_function);
     return make_shared<MaxCostPartitioningHeuristic>(
         opts,
         move(abstractions),
-        move(cp_heuristics),
-        move(dead_ends));
+        move(cp_heuristics));
 }
 }

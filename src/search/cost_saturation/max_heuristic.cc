@@ -7,6 +7,7 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 
 using namespace std;
@@ -14,18 +15,18 @@ using namespace std;
 namespace cost_saturation {
 MaxHeuristic::MaxHeuristic(const Options &opts, Abstractions abstractions)
     : Heuristic(opts) {
-    vector<int> costs = task_properties::get_operator_costs(task_proxy);
+    // TODO: in modern FD, this is the task of the heuristic
+    vector<int> costs = task_properties::get_operator_costs(TaskProxy(*tasks::g_root_task));
     for (auto &abstraction : abstractions) {
         h_values_by_abstraction.push_back(abstraction->compute_goal_distances(costs));
         abstraction_functions.push_back(abstraction->extract_abstraction_function());
     }
 }
 
-int MaxHeuristic::compute_heuristic(const State &ancestor_state) {
-    State state = convert_ancestor_state(ancestor_state);
+int MaxHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     int max_h = 0;
     for (size_t i = 0; i < abstraction_functions.size(); ++i) {
-        int local_state_id = abstraction_functions[i]->get_abstract_state_id(state);
+        int local_state_id = abstraction_functions[i]->get_abstract_state_id(ancestor_state);
         int h = h_values_by_abstraction[i][local_state_id];
         assert(h >= 0);
         if (h == INF) {

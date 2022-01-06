@@ -2,6 +2,7 @@
 
 #include "types.h"
 
+#include "../state.h"
 #include "../task_proxy.h"
 
 #include "../algorithms/priority_queues.h"
@@ -229,6 +230,14 @@ ProjectionFunction::ProjectionFunction(
     for (size_t i = 0; i < pattern.size(); ++i) {
         variables_and_multipliers.emplace_back(pattern[i], hash_multipliers[i]);
     }
+}
+
+int ProjectionFunction::get_abstract_state_id(const GlobalState &concrete_state) const {
+    int index = 0;
+    for (const VariableAndMultiplier &pair : variables_and_multipliers) {
+        index += pair.hash_multiplier * concrete_state[pair.pattern_var];
+    }
+    return index;
 }
 
 int ProjectionFunction::get_abstract_state_id(const State &concrete_state) const {

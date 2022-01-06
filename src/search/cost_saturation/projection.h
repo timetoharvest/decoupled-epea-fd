@@ -81,6 +81,7 @@ public:
     ProjectionFunction(
         const pdbs::Pattern &pattern, const std::vector<int> &hash_multipliers);
 
+    virtual int get_abstract_state_id(const GlobalState &concrete_state) const override;
     virtual int get_abstract_state_id(const State &concrete_state) const override;
 };
 

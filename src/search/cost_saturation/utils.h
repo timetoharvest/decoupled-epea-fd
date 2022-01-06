@@ -22,8 +22,7 @@ class CostPartitioningHeuristicCollectionGenerator;
 
 extern Abstractions generate_abstractions(
     const std::shared_ptr<AbstractTask> &task,
-    const std::vector<std::shared_ptr<AbstractionGenerator>> &abstraction_generators,
-    DeadEnds *dead_ends = nullptr);
+    const std::vector<std::shared_ptr<AbstractionGenerator>> &abstraction_generators);
 
 extern Order get_default_order(int num_abstractions);
 
@@ -36,6 +35,23 @@ extern int compute_max_h(
     const CPHeuristics &cp_heuristics,
     const std::vector<int> &abstract_state_ids,
     std::vector<int> *num_best_order = nullptr);
+
+template<typename AbstractionsOrFunctions>
+std::vector<int> get_abstract_state_ids(
+    const AbstractionsOrFunctions &abstractions, const GlobalState &state) {
+    std::vector<int> abstract_state_ids;
+    abstract_state_ids.reserve(abstractions.size());
+    for (auto &abstraction : abstractions) {
+        if (abstraction) {
+            // Only add local state IDs for useful abstractions.
+            abstract_state_ids.push_back(abstraction->get_abstract_state_id(state));
+        } else {
+            // Add dummy value if abstraction will never be used.
+            abstract_state_ids.push_back(-1);
+        }
+    }
+    return abstract_state_ids;
+}
 
 template<typename AbstractionsOrFunctions>
 std::vector<int> get_abstract_state_ids(

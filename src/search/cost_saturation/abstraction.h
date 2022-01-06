@@ -7,6 +7,7 @@
 #include <ostream>
 #include <vector>
 
+class GlobalState;
 class State;
 
 namespace cost_saturation {
@@ -44,6 +45,7 @@ struct Transition {
 class AbstractionFunction {
 public:
     virtual ~AbstractionFunction() = default;
+    virtual int get_abstract_state_id(const GlobalState &concrete_state) const = 0;
     virtual int get_abstract_state_id(const State &concrete_state) const = 0;
 };
 
@@ -78,6 +80,7 @@ public:
     virtual int get_num_states() const = 0;
     virtual const std::vector<int> &get_goal_states() const = 0;
 
+    int get_abstract_state_id(const GlobalState &concrete_state) const;
     int get_abstract_state_id(const State &concrete_state) const;
     std::unique_ptr<AbstractionFunction> extract_abstraction_function();
 
