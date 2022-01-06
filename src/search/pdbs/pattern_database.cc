@@ -393,7 +393,7 @@ int PatternDatabase::get_value(const GlobalState &state) const {
 
 void PatternDatabase::compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
         const vector<LeafFactorID> &aff_leaves,
-        vector<int> &state,
+        vector<int> &member_state,
         int i,
         int sum_prices,
         int &min_d) const {
@@ -413,16 +413,16 @@ void PatternDatabase::compute_min_distance_decoupled(const ExplicitStateCPG *cpg
 
             LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
             for (int var : g_leaves[leaf]){
-                state[var] = lstate[var];
+                member_state[var] = lstate[var];
             }
 
             int price = cpg->get_cost_of_state(id, leaf);
             if (i < static_cast<int>(aff_leaves.size()) - 1){
                 // recursion
-                compute_min_distance_decoupled(cpg, aff_leaves, state, i + 1, sum_prices + price, min_d);
+                compute_min_distance_decoupled(cpg, aff_leaves, member_state, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
-                min_d = min(min_d, sum_prices + price + distances[hash_index(state)]);
+                min_d = min(min_d, sum_prices + price + distances[hash_index(member_state)]);
             }
         }
         ++id;

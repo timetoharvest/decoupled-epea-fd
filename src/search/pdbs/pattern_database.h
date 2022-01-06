@@ -167,7 +167,7 @@ class PatternDatabase {
     // sets min_d to the minimum sum of prices and distance of all member states of cpg
     void compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
             const std::vector<LeafFactorID> &aff_leaves,
-            std::vector<int> &state,
+            std::vector<int> &member_state,
             int i,
             int sum_prices,
             int &min_d) const;
