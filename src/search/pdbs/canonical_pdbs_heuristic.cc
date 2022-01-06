@@ -4,6 +4,7 @@
 #include "pattern_generator.h"
 #include "utils.h"
 
+#include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 
@@ -36,7 +37,7 @@ CanonicalPDBs get_canonical_pdbs_from_options(
     */
     shared_ptr<PDBCollection> pdbs = pattern_collection_info.get_pdbs();
     shared_ptr<vector<PatternClique>> pattern_cliques =
-        pattern_collection_info.get_pattern_cliques();
+        pattern_collection_info.get_pattern_cliques(bool(g_factoring));
 
     double max_time_dominance_pruning = opts.get<double>("max_time_dominance_pruning");
     if (max_time_dominance_pruning > 0.0) {
