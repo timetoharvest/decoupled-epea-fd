@@ -1,5 +1,8 @@
 #include "canonical_pdbs_heuristic.h"
 
+#include "decoupled_canonical_pdbs_approximate.h"
+#include "decoupled_canonical_pdbs_exponential.h"
+#include "decoupled_canonical_pdbs_single_leaf.h"
 #include "dominance_pruning.h"
 #include "pattern_filter.h"
 #include "pattern_generator.h"
@@ -22,6 +25,9 @@
 using namespace std;
 
 namespace pdbs {
+
+enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP};
+
 CanonicalPDBs get_canonical_pdbs_from_options(
     const shared_ptr<AbstractTask> &task, const Options &opts) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
@@ -36,6 +42,8 @@ CanonicalPDBs get_canonical_pdbs_from_options(
 
     if (g_factoring && dec_lookup_type == DecoupledPatternCollectionLookUp::SINGLE_LEAF){
         // verify that every pattern affects at most one leaf factor
+        // we want to check this here and not in the constructor of DecoupledCanonicalPDBsSingleLeaf
+        // because non-complying patterns might be filtered by dominance pruning beforehand
         for (const Pattern &pattern : *patterns){
             unordered_set<LeafFactorID> affected_leaves = get_leaf_factors_of_pattern(pattern);
             if (affected_leaves.size() > 1){
@@ -84,29 +92,27 @@ CanonicalPDBs get_canonical_pdbs_from_options(
     // Do not dump pattern collections for size reasons.
     dump_pattern_collection_generation_statistics(
         "Canonical PDB heuristic", timer(), pattern_collection_info);
+
+    if (g_factoring){
+        switch (dec_lookup_type){
+        case DecoupledPatternCollectionLookUp::APPROX: return DecoupledCanonicalPDBsApproximate(pdbs, pattern_cliques);
+        case DecoupledPatternCollectionLookUp::EXP: return DecoupledCanonicalPDBsExponential(pdbs, pattern_cliques);
+        case DecoupledPatternCollectionLookUp::SINGLE_LEAF: return DecoupledCanonicalPDBsSingleLeaf(pdbs, pattern_cliques);
+        default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, or SINGLE_LEAF." << endl;
+        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+        }
+    }
+
     return CanonicalPDBs(pdbs, pattern_cliques);
 }
 
 CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
     : Heuristic(opts),
-      dec_lookup_type(opts.get<DecoupledPatternCollectionLookUp>("dec_lookup_type")),
-      canonical_pdbs(get_canonical_pdbs_from_options(tasks::g_root_task, opts)) {
+      canonical_pdbs(make_unique<CanonicalPDBs>(get_canonical_pdbs_from_options(tasks::g_root_task, opts))) {
 }
 
 int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    int h;
-    if (g_factoring){
-        switch (dec_lookup_type){
-        case DecoupledPatternCollectionLookUp::APPROX: h = canonical_pdbs.get_value_dec_approx(ancestor_state); break;
-        case DecoupledPatternCollectionLookUp::SINGLE_LEAF: h = canonical_pdbs.get_value_dec_single_leaf(ancestor_state); break;
-        case DecoupledPatternCollectionLookUp::EXP: h = canonical_pdbs.get_value_dec_exponential(ancestor_state); break;
-
-        default: cerr << "Unknown value for dec_lookup_type, options are APPROX, SINGLE_LEAF, or EXP." << endl;
-                 utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-        }
-    } else {
-        h = canonical_pdbs.get_value(ancestor_state);
-    }
+    int h = canonical_pdbs->get_value(ancestor_state);
     if (h == numeric_limits<int>::max()) {
         return DEAD_END;
     } else {

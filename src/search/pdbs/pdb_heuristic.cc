@@ -36,7 +36,7 @@ int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     int h;
     if (g_factoring){
         h = pdb->get_value(ancestor_state,
-                static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)));
+                dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)));
     } else {
         h = pdb->get_value(ancestor_state);
     }
