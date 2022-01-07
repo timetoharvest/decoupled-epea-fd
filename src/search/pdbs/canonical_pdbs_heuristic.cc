@@ -120,6 +120,27 @@ int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state)
     }
 }
 
+void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser) {
+    vector<string> lookup_types;
+    vector<string> lookup_descriptions;
+    lookup_types.push_back("APPROX");
+    lookup_descriptions.push_back("Sum over the minimum leaf state per leaf."
+                                  "Ensures that no two patterns in a clique affect the same leaf"
+                                  "by adapting the compatibility graph.");
+    lookup_types.push_back("SINGLE_LEAF");
+    lookup_descriptions.push_back("An efficient lookup that only supports patterns"
+                                  "that affect a single leaf.");
+    lookup_types.push_back("EXP");
+    lookup_descriptions.push_back("Minimizes the heuristic value over all"
+                                  "member states of a decoupled state.");
+    parser.add_enum_option<DecoupledPatternCollectionLookUp>(
+        "dec_lookup_type",
+        lookup_types,
+        "Specifies the way the heuristic is computed for decoupled states.",
+        "APPROX",
+        lookup_descriptions);
+}
+
 void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
     parser.add_option<double>(
         "max_time_dominance_pruning",
@@ -129,25 +150,6 @@ void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
         "value because there are dominating subsets in the collection.",
         "infinity",
         Bounds("0.0", "infinity"));
-
-    vector<string> lookup_types;
-    vector<string> lookup_descriptions;
-    lookup_types.push_back("APPROX");
-    lookup_descriptions.push_back("Sum over the minimum leaf state per leaf."
-            "Ensures that no two patterns in a clique affect the same leaf"
-            "by adapting the compatibility graph.");
-    lookup_types.push_back("SINGLE_LEAF");
-    lookup_descriptions.push_back("An efficient lookup that only supports patterns"
-            "that affect a single leaf.");
-    lookup_types.push_back("EXP");
-    lookup_descriptions.push_back("Minimizes the heuristic value over all"
-            "member states of a decoupled state.");
-    parser.add_enum_option<DecoupledPatternCollectionLookUp>(
-            "dec_lookup_type",
-            lookup_types,
-            "Specifies the way the heuristic is computed for decoupled states.",
-            "APPROX",
-            lookup_descriptions);
 }
 
 static shared_ptr<Heuristic> _parse(OptionParser &parser) {
@@ -173,6 +175,7 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         "systematic(1)");
 
     add_canonical_pdbs_options_to_parser(parser);
+    add_decoupled_lookup_types_option_to_parser(parser);
 
     Heuristic::add_options_to_parser(parser);
 

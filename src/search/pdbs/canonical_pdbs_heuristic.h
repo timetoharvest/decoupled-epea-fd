@@ -22,7 +22,8 @@ public:
     virtual ~CanonicalPDBsHeuristic() = default;
 };
 
-void add_canonical_pdbs_options_to_parser(options::OptionParser &parser);
+extern void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser);
+extern void add_canonical_pdbs_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

@@ -1,6 +1,5 @@
 #include "projection_generator.h"
 
-#include "explicit_projection_factory.h"
 #include "projection.h"
 
 #include "../option_parser.h"
@@ -23,8 +22,6 @@ ProjectionGenerator::ProjectionGenerator(const options::Options &opts)
           opts.get<shared_ptr<pdbs::PatternCollectionGenerator>>("patterns")),
       dominance_pruning(opts.get<bool>("dominance_pruning")),
       combine_labels(opts.get<bool>("combine_labels")),
-      create_complete_transition_system(opts.get<bool>("create_complete_transition_system")),
-      use_add_after_delete_semantics(opts.get<bool>("use_add_after_delete_semantics")),
       debug(opts.get<bool>("debug")) {
 }
 
@@ -35,15 +32,6 @@ Abstractions ProjectionGenerator::generate_abstractions(
     TaskProxy task_proxy(*task);
 
     task_properties::verify_no_axioms(task_proxy);
-    if (!create_complete_transition_system) {
-        if (task_properties::has_conditional_effects(task_proxy)) {
-            cerr << "Error: configuration doesn't support conditional effects. "
-                "Use projections(..., create_complete_transition_system=true) "
-                "to build projections that support conditional effects."
-                 << endl;
-            utils::exit_with(utils::ExitCode::SEARCH_UNSUPPORTED);
-        }
-    }
 
     log << "Compute patterns" << endl;
     PatternCollectionInformation pattern_collection_info =
@@ -75,14 +63,8 @@ Abstractions ProjectionGenerator::generate_abstractions(
     shared_ptr<TaskInfo> task_info = make_shared<TaskInfo>(task_proxy);
     Abstractions abstractions;
     for (const pdbs::Pattern &pattern : *patterns) {
-        unique_ptr<Abstraction> projection;
-        if (create_complete_transition_system) {
-            projection = ExplicitProjectionFactory(
-                task_proxy, pattern, use_add_after_delete_semantics).convert_to_abstraction();
-        } else {
-            projection = utils::make_unique_ptr<Projection>(
-                task_proxy, task_info, pattern, combine_labels);
-        }
+        unique_ptr<Abstraction> projection = utils::make_unique_ptr<Projection>(
+            task_proxy, task_info, pattern, combine_labels);
 
         if (debug) {
             log << "Pattern " << abstractions.size() + 1 << ": "
@@ -120,14 +102,6 @@ static shared_ptr<AbstractionGenerator> _parse(OptionParser &parser) {
         "combine_labels",
         "group labels that only induce parallel transitions",
         "true");
-    parser.add_option<bool>(
-        "create_complete_transition_system",
-        "create complete transition system",
-        "false");
-    parser.add_option<bool>(
-        "use_add_after_delete_semantics",
-        "skip transitions that are invalid according to add-after-delete semantics",
-        "false");
     parser.add_option<bool>(
         "debug",
         "print debugging info",
