@@ -1,10 +1,12 @@
 #include "canonical_pdbs_heuristic.h"
 
 #include "dominance_pruning.h"
+#include "pattern_filter.h"
 #include "pattern_generator.h"
 #include "utils.h"
 
 #include "../globals.h"
+#include "../leaf_state_id.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 
@@ -35,13 +37,7 @@ CanonicalPDBs get_canonical_pdbs_from_options(
     if (g_factoring && dec_lookup_type == DecoupledPatternCollectionLookUp::SINGLE_LEAF){
         // verify that every pattern affects at most one leaf factor
         for (const Pattern &pattern : *patterns){
-            set<LeafFactorID> affected_leaves;
-            for (int var : pattern){
-                LeafFactorID leaf = g_belongs_to_factor[var];
-                if (leaf != LeafFactorID::CENTER){
-                    affected_leaves.insert(leaf);
-                }
-            }
+            unordered_set<LeafFactorID> affected_leaves = get_leaf_factors_of_pattern(pattern);
             if (affected_leaves.size() > 1){
                 cerr << "Every pattern may affect at most one leaf for SINGLE_LEAF decoupled lookup." << endl;
                 utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);

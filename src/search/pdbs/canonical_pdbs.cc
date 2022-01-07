@@ -103,7 +103,7 @@ int CanonicalPDBs::get_value_dec_approx(const GlobalState &state) const {
     int max_h = 0;
     vector<int> h_values;
     h_values.reserve(pdbs->size());
-    const ExplicitStateCPG *prices = static_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
         int h = pdb->get_value(state, prices);
         if (h == numeric_limits<int>::max()) {

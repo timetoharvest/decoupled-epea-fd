@@ -31,10 +31,19 @@ public:
     void operator++() {
         ++val;
     }
+    bool operator==(const LeafFactorID other) const {
+        return val == other.val;
+    }
     static const LeafFactorID CENTER;
 };
 
 
+template <>
+struct std::hash<LeafFactorID> {
+    std::size_t operator()(const LeafFactorID & key) const {
+        return key;
+    }
+};
 
 class LeafStateID {
     friend class StateRegistry;

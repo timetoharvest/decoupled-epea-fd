@@ -6,7 +6,7 @@
 
 class Condition;
 class Effect;
-class LeafFactorID;
+struct LeafFactorID;
 class Operator;
 
 

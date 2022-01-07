@@ -5,7 +5,7 @@
 #include <vector>
 
 
-class LeafFactorID;
+struct LeafFactorID;
 
 namespace successor_generator {
 class GeneratorBase;

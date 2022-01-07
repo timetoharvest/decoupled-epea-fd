@@ -7,7 +7,7 @@
 
 class CompliantPathGraph;
 class LeafState;
-class LeafFactorID;
+struct LeafFactorID;
 class OperatorID;
 class GlobalState;
 

@@ -10,7 +10,7 @@ using namespace std;
 
 namespace pdbs {
 void get_leaf_factors_of_pattern(
-    const Pattern &pattern, unordered_set<unsigned short> &leaf_factors) {
+    const Pattern &pattern, unordered_set<LeafFactorID> &leaf_factors) {
     assert(g_factoring);
     for (int var : pattern) {
         LeafFactorID leaf_factor = g_belongs_to_factor[var];
@@ -20,9 +20,9 @@ void get_leaf_factors_of_pattern(
     }
 }
 
-unordered_set<unsigned short> get_leaf_factors_of_pattern(const Pattern &pattern) {
+unordered_set<LeafFactorID> get_leaf_factors_of_pattern(const Pattern &pattern) {
     assert(g_factoring);
-    unordered_set<unsigned short> leaf_factors;
+    unordered_set<LeafFactorID> leaf_factors;
     get_leaf_factors_of_pattern(pattern, leaf_factors);
     return leaf_factors;
 }

@@ -391,12 +391,13 @@ int PatternDatabase::get_value(const GlobalState &state) const {
     return distances[hash_index(state)];
 }
 
-void PatternDatabase::compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
-        const vector<LeafFactorID> &aff_leaves,
-        vector<int> &member_state,
-        int i,
-        int sum_prices,
-        int &min_d) const {
+void PatternDatabase::compute_min_distance_decoupled(
+    const ExplicitStateCPG *cpg,
+    const vector<LeafFactorID> &aff_leaves,
+    vector<int> &member_state,
+    int i,
+    int sum_prices,
+    int &min_d) const {
 
     if (sum_prices >= min_d){
         // we cannot possibly improve the heuristic

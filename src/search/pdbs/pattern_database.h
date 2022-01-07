@@ -10,7 +10,7 @@
 
 class ExplicitStateCPG;
 class GlobalState;
-class LeafFactorID;
+struct LeafFactorID;
 
 namespace utils {
 class RandomNumberGenerator;
@@ -165,12 +165,13 @@ class PatternDatabase {
     int hash_index(const GlobalState &state) const;
 
     // sets min_d to the minimum sum of prices and distance of all member states of cpg
-    void compute_min_distance_decoupled(const ExplicitStateCPG *cpg,
-            const std::vector<LeafFactorID> &aff_leaves,
-            std::vector<int> &member_state,
-            int i,
-            int sum_prices,
-            int &min_d) const;
+    void compute_min_distance_decoupled(
+        const ExplicitStateCPG *cpg,
+        const std::vector<LeafFactorID> &aff_leaves,
+        std::vector<int> &member_state,
+        int i,
+        int sum_prices,
+        int &min_d) const;
 public:
     /*
       Important: It is assumed that the pattern (passed via Options) is
@@ -185,7 +186,7 @@ public:
        distances of the PDB. This requires a RNG object passed via rng.
        compute_wildcard_plan: when computing a plan (see compute_plan), compute
        a wildcard plan, i.e., a sequence of parallel operators inducing an
-       optimal plan. Otherwise, compuGlobalStatete a simple plan (a sequence of operators).
+       optimal plan. Otherwise, compute a simple plan (a sequence of operators).
     */
     PatternDatabase(
         const TaskProxy &task_proxy,

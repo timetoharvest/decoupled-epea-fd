@@ -10,6 +10,8 @@ class OptionParser;
 }
 
 namespace pdbs {
+enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP};
+
 // Implements the canonical heuristic function.
 class CanonicalPDBsHeuristic : public Heuristic {
     DecoupledPatternCollectionLookUp dec_lookup_type;

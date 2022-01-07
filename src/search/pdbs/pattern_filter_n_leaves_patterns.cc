@@ -29,7 +29,7 @@ bool PatternFilterNLeavesPatterns::can_add_var_to_pattern(
         return true;
     }
 
-    unordered_set<unsigned short> leaf_factors = get_leaf_factors_of_pattern(pattern);
+    unordered_set<LeafFactorID> leaf_factors = get_leaf_factors_of_pattern(pattern);
     int num_leaves = leaf_factors.size();
     assert(num_leaves <= n);
     if (num_leaves < n) {
@@ -44,7 +44,7 @@ bool PatternFilterNLeavesPatterns::can_add_var_to_pattern(
 bool PatternFilterNLeavesPatterns::can_merge_patterns(
     const Pattern &pattern1, const Pattern &pattern2) const {
 //    utils::g_log << "can merge " << pattern1 << " and " << pattern2 << "? ";
-    unordered_set<unsigned short> union_leaf_factors;
+    unordered_set<LeafFactorID> union_leaf_factors;
     get_leaf_factors_of_pattern(pattern1, union_leaf_factors);
     get_leaf_factors_of_pattern(pattern2, union_leaf_factors);
     int num_leaves = union_leaf_factors.size();

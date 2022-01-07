@@ -6,6 +6,7 @@
 #include "pattern_information.h"
 
 #include "../globals.h"
+#include "../leaf_state_id.h"
 #include "../task_proxy.h"
 
 #include "../task_utils/causal_graph.h"

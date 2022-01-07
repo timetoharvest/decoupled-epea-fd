@@ -7,7 +7,7 @@
 
 class Condition;
 class ExplicitStateCPG;
-class LeafFactorID;
+struct LeafFactorID;
 class LeafStateHash;
 template<class T>
 class OpsLeafProps;
