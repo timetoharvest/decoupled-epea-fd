@@ -11,13 +11,29 @@
 using namespace std;
 
 namespace pdbs {
-bool are_patterns_additive(const Pattern &pattern1,
-                           const Pattern &pattern2,
-                           const VariableAdditivity &are_additive) {
+/* Returns true iff the two patterns are additive i.e. there is no operator
+   which affects variables in pattern one as well as in pattern two. */
+static bool are_patterns_additive(
+    const Pattern &pattern1,
+    const Pattern &pattern2,
+    const VariableAdditivity &are_additive,
+    bool restrict_to_single_leaf = false) {
     for (int v1 : pattern1) {
         for (int v2 : pattern2) {
             if (!are_additive[v1][v2]) {
                 return false;
+            }
+            if (restrict_to_single_leaf) {
+                // only relevant for decoupled search
+                // ensures that patterns that affect the same leaf
+                // cannot be in the same clique
+                LeafFactorID v1_leaf_factor = g_belongs_to_factor[v1];
+                LeafFactorID v2_leaf_factor = g_belongs_to_factor[v2];
+                if (v1_leaf_factor != LeafFactorID::CENTER &&
+                    v2_leaf_factor != LeafFactorID::CENTER &&
+                    v1_leaf_factor == v2_leaf_factor) {
+                    return false;
+                }
             }
         }
     }
@@ -50,25 +66,7 @@ shared_ptr<vector<PatternClique>> compute_pattern_cliques(
 
     for (size_t i = 0; i < patterns.size(); ++i) {
         for (size_t j = i + 1; j < patterns.size(); ++j) {
-            bool affect_same_leaf = false;
-            if (restrict_to_single_leaf){
-                // only relevant for decoupled search
-                // ensures that patterns that affect the same leaf
-                // cannot be in the same clique
-                for (int var1 : patterns[i]){
-                    LeafFactorID factor1 = g_belongs_to_factor[var1];
-                    for (int var2 : patterns[j]){
-                        if (factor1 == g_belongs_to_factor[var2]){
-                            affect_same_leaf = true;
-                            break;
-                        }
-                    }
-                    if (affect_same_leaf){
-                        break;
-                    }
-                }
-            }
-            if (!affect_same_leaf && are_patterns_additive(patterns[i], patterns[j], are_additive)) {
+            if (are_patterns_additive(patterns[i], patterns[j], are_additive, restrict_to_single_leaf)) {
                 /* If the two patterns are additive, there is an edge in the
                    compatibility graph. */
                 cgraph[i].push_back(j);
