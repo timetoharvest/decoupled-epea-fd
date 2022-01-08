@@ -17,18 +17,18 @@
 using namespace std;
 
 namespace cost_saturation {
-CostPartitioningHeuristic compute_saturated_cost_partitioning(
+unique_ptr<CostPartitioningHeuristic> compute_saturated_cost_partitioning(
     const Abstractions &abstractions,
     const vector<int> &order,
     vector<int> &remaining_costs,
     const vector<int> &) {
     assert(abstractions.size() == order.size());
-    CostPartitioningHeuristic cp_heuristic;
+    unique_ptr<CostPartitioningHeuristic> cp_heuristic = utils::make_unique_ptr<CostPartitioningHeuristic>();
     for (int pos : order) {
         const Abstraction &abstraction = *abstractions[pos];
         vector<int> h_values = abstraction.compute_goal_distances(remaining_costs);
         vector<int> saturated_costs = abstraction.compute_saturated_costs(h_values);
-        cp_heuristic.add_h_values(pos, move(h_values));
+        cp_heuristic->add_h_values(pos, move(h_values));
         reduce_costs(remaining_costs, saturated_costs);
     }
     return cp_heuristic;
@@ -43,33 +43,33 @@ static void cap_h_values(int h_cap, vector<int> &h_values) {
     }
 }
 
-CostPartitioningHeuristic compute_perim_saturated_cost_partitioning(
+unique_ptr<CostPartitioningHeuristic> compute_perim_saturated_cost_partitioning(
     const Abstractions &abstractions,
     const vector<int> &order,
     vector<int> &remaining_costs,
     const vector<int> &abstract_state_ids) {
     assert(abstractions.size() == order.size());
-    CostPartitioningHeuristic cp_heuristic;
+    unique_ptr<CostPartitioningHeuristic> cp_heuristic = utils::make_unique_ptr<CostPartitioningHeuristic>();
     for (int pos : order) {
         const Abstraction &abstraction = *abstractions[pos];
         vector<int> h_values = abstraction.compute_goal_distances(remaining_costs);
         int h_cap = h_values[abstract_state_ids[pos]];
         cap_h_values(h_cap, h_values);
         vector<int> saturated_costs = abstraction.compute_saturated_costs(h_values);
-        cp_heuristic.add_h_values(pos, move(h_values));
+        cp_heuristic->add_h_values(pos, move(h_values));
         reduce_costs(remaining_costs, saturated_costs);
     }
     return cp_heuristic;
 }
 
-static CostPartitioningHeuristic compute_perimstar_saturated_cost_partitioning(
+static unique_ptr<CostPartitioningHeuristic> compute_perimstar_saturated_cost_partitioning(
     const Abstractions &abstractions,
     const vector<int> &order,
     vector<int> &remaining_costs,
     const vector<int> &abstract_state_ids) {
-    CostPartitioningHeuristic cp = compute_perim_saturated_cost_partitioning(
+    unique_ptr<CostPartitioningHeuristic> cp = compute_perim_saturated_cost_partitioning(
         abstractions, order, remaining_costs, abstract_state_ids);
-    cp.add(compute_saturated_cost_partitioning(
+    cp->add(compute_saturated_cost_partitioning(
                abstractions, order, remaining_costs, abstract_state_ids));
     return cp;
 }
@@ -144,7 +144,7 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     Abstractions abstractions = generate_abstractions(
         task, opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"));
     CPFunction cp_function = get_cp_function_from_options(opts);
-    vector<CostPartitioningHeuristic> cp_heuristics =
+    CPHeuristics cp_heuristics =
         get_cp_heuristic_collection_generator_from_options(opts).generate_cost_partitionings(
             task_proxy, abstractions, costs, cp_function);
     return make_shared<MaxCostPartitioningHeuristic>(

@@ -22,7 +22,7 @@ class CostPartitioningHeuristic;
 */
 class MaxCostPartitioningHeuristic : public Heuristic {
     std::vector<std::unique_ptr<AbstractionFunction>> abstraction_functions;
-    std::vector<CostPartitioningHeuristic> cp_heuristics;
+    std::vector<std::unique_ptr<CostPartitioningHeuristic>> cp_heuristics;
     UnsolvabilityHeuristic unsolvability_heuristic;
 
     // For statistics.
@@ -37,7 +37,7 @@ public:
     MaxCostPartitioningHeuristic(
         const options::Options &opts,
         Abstractions &&abstractions,
-        std::vector<CostPartitioningHeuristic> &&cp_heuristics);
+        std::vector<std::unique_ptr<CostPartitioningHeuristic>> &&cp_heuristics);
     virtual ~MaxCostPartitioningHeuristic() override;
 };
 }

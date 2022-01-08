@@ -37,7 +37,7 @@ public:
         double max_optimization_time,
         const std::shared_ptr<utils::RandomNumberGenerator> &rng);
 
-    std::vector<CostPartitioningHeuristic> generate_cost_partitionings(
+    CPHeuristics generate_cost_partitionings(
         const TaskProxy &task_proxy,
         const Abstractions &abstractions,
         const std::vector<int> &costs,

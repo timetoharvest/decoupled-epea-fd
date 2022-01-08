@@ -22,7 +22,7 @@ UnsolvabilityHeuristic::UnsolvabilityHeuristic(
     // Collect unsolvable states from cost-partitioned heuristics.
     vector<bool> has_unsolvable_states(num_abstractions, false);
     for (auto &cp : cp_heuristics) {
-        for (const auto &lookup_table : cp.lookup_tables) {
+        for (const auto &lookup_table : cp->lookup_tables) {
             for (size_t state = 0; state < lookup_table.h_values.size(); ++state) {
                 if (lookup_table.h_values[state] == INF) {
                     unsolvable[lookup_table.abstraction_id][state] = true;
@@ -41,7 +41,7 @@ UnsolvabilityHeuristic::UnsolvabilityHeuristic(
 
     // Remove lookup tables that only contain entries equal to 0 or infinity.
     for (auto &cp : cp_heuristics) {
-        auto &tables = cp.lookup_tables;
+        auto &tables = cp->lookup_tables;
         tables.erase(
             remove_if(tables.begin(), tables.end(),
                       [](const CostPartitioningHeuristic::LookupTable &table) {

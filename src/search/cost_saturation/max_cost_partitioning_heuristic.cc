@@ -11,14 +11,14 @@ using namespace std;
 namespace cost_saturation {
 static void log_info_about_stored_lookup_tables(
     const Abstractions &abstractions,
-    const vector<CostPartitioningHeuristic> &cp_heuristics) {
+    const CPHeuristics &cp_heuristics) {
     int num_abstractions = abstractions.size();
 
     // Print statistics about the number of lookup tables.
     int num_lookup_tables = num_abstractions * cp_heuristics.size();
     int num_stored_lookup_tables = 0;
     for (const auto &cp_heuristic: cp_heuristics) {
-        num_stored_lookup_tables += cp_heuristic.get_num_lookup_tables();
+        num_stored_lookup_tables += cp_heuristic->get_num_lookup_tables();
     }
     utils::Log() << "Stored lookup tables: " << num_stored_lookup_tables << "/"
                  << num_lookup_tables << " = "
@@ -28,7 +28,7 @@ static void log_info_about_stored_lookup_tables(
     // Print statistics about the number of stored values.
     int num_stored_values = 0;
     for (const auto &cp_heuristic : cp_heuristics) {
-        num_stored_values += cp_heuristic.get_num_heuristic_values();
+        num_stored_values += cp_heuristic->get_num_heuristic_values();
     }
     int num_total_values = 0;
     for (const auto &abstraction : abstractions) {
@@ -41,7 +41,7 @@ static void log_info_about_stored_lookup_tables(
 }
 
 static AbstractionFunctions extract_abstraction_functions_from_useful_abstractions(
-    const vector<CostPartitioningHeuristic> &cp_heuristics,
+    const CPHeuristics &cp_heuristics,
     const UnsolvabilityHeuristic &unsolvability_heuristic,
     Abstractions &abstractions) {
     int num_abstractions = abstractions.size();
@@ -50,7 +50,7 @@ static AbstractionFunctions extract_abstraction_functions_from_useful_abstractio
     vector<bool> useful_abstractions(num_abstractions, false);
     unsolvability_heuristic.mark_useful_abstractions(useful_abstractions);
     for (const auto &cp_heuristic : cp_heuristics) {
-        cp_heuristic.mark_useful_abstractions(useful_abstractions);
+        cp_heuristic->mark_useful_abstractions(useful_abstractions);
     }
 
     AbstractionFunctions abstraction_functions;
@@ -69,7 +69,7 @@ static AbstractionFunctions extract_abstraction_functions_from_useful_abstractio
 MaxCostPartitioningHeuristic::MaxCostPartitioningHeuristic(
     const options::Options &opts,
     Abstractions &&abstractions,
-    vector<CostPartitioningHeuristic> &&cp_heuristics_)
+    CPHeuristics &&cp_heuristics_)
     : Heuristic(opts),
       cp_heuristics(move(cp_heuristics_)),
       unsolvability_heuristic(abstractions, cp_heuristics) {

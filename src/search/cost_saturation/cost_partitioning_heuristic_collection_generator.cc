@@ -64,7 +64,7 @@ CostPartitioningHeuristicCollectionGenerator::CostPartitioningHeuristicCollectio
       rng(rng) {
 }
 
-vector<CostPartitioningHeuristic>
+CPHeuristics
 CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
     const TaskProxy &task_proxy,
     const Abstractions &abstractions,
@@ -82,21 +82,23 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
     Order order_for_init = order_generator->compute_order_for_state(
         abstract_state_ids_for_init, true);
     vector<int> remaining_costs = costs;
-    CostPartitioningHeuristic cp_for_init = cp_function(
+    unique_ptr<CostPartitioningHeuristic> cp_for_init = cp_function(
         abstractions, order_for_init, remaining_costs, abstract_state_ids_for_init);
-    int init_h = cp_for_init.compute_heuristic(abstract_state_ids_for_init);
+    int init_h = cp_for_init->compute_heuristic(abstract_state_ids_for_init);
 
     if (init_h == INF) {
         log << "Initial state is unsolvable." << endl;
-        return {
-                   cp_for_init
-        };
+        CPHeuristics result;
+        result.push_back(move(cp_for_init));
+        return result;
     }
+
+    CostPartitioningHeuristic copied_cp_for_init(*cp_for_init);
 
     sampling::RandomWalkSampler sampler(task_proxy, *rng);
     DeadEndDetector is_dead_end =
-        [&abstractions, &cp_for_init](const State &state) {
-            return cp_for_init.compute_heuristic(
+        [&abstractions, &copied_cp_for_init](const State &state) {
+            return copied_cp_for_init.compute_heuristic(
                 get_abstract_state_ids(abstractions, state)) == INF;
         };
 
@@ -109,7 +111,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
     }
 
     log << "Start computing cost partitionings" << endl;
-    vector<CostPartitioningHeuristic> cp_heuristics;
+    vector<unique_ptr<CostPartitioningHeuristic>> cp_heuristics;
     int evaluated_orders = 0;
     int size_kb = 0;
     while (static_cast<int>(cp_heuristics.size()) < max_orders &&
@@ -119,12 +121,12 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
 
         vector<int> abstract_state_ids;
         Order order;
-        CostPartitioningHeuristic cp_heuristic;
+        unique_ptr<CostPartitioningHeuristic> cp_heuristic;
         if (is_first_order) {
             // Use initial state as first sample.
             abstract_state_ids = abstract_state_ids_for_init;
             order = order_for_init;
-            cp_heuristic = cp_for_init;
+            cp_heuristic = move(cp_for_init);
         } else {
             abstract_state_ids = get_abstract_state_ids(
                 abstractions, sampler.sample_state(init_h, is_dead_end));
@@ -139,7 +141,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
             static_cast<double>(timer.get_remaining_time()), max_optimization_time);
         if (optimization_time > 0) {
             utils::CountdownTimer opt_timer(optimization_time);
-            int incumbent_h_value = cp_heuristic.compute_heuristic(abstract_state_ids);
+            int incumbent_h_value = cp_heuristic->compute_heuristic(abstract_state_ids);
             optimize_order_with_hill_climbing(
                 cp_function, opt_timer, abstractions, costs, abstract_state_ids, order,
                 cp_heuristic, incumbent_h_value, is_first_order);
@@ -151,8 +153,8 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
 
         // If diversify=true, only add order if it improves upon previously
         // added orders.
-        if (!diversifier || diversifier->is_diverse(cp_heuristic)) {
-            size_kb += cp_heuristic.estimate_size_in_kb();
+        if (!diversifier || diversifier->is_diverse(*cp_heuristic)) {
+            size_kb += cp_heuristic->estimate_size_in_kb();
             cp_heuristics.push_back(move(cp_heuristic));
             if (diversifier) {
                 log << "Average finite h-value for " << num_samples
