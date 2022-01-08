@@ -22,12 +22,14 @@ DecoupledCanonicalPDBsSingleLeaf::DecoupledCanonicalPDBsSingleLeaf(
     const shared_ptr<vector<PatternClique>> &pattern_cliques)
     : CanonicalPDBs(pdbs, pattern_cliques) {
 
+    vector<bool> is_leaf_pattern(pdbs->size(), false);
     affecting_patterns.resize(pattern_cliques->size());
     for (int c_id = 0; c_id < static_cast<int>(pattern_cliques->size()); ++c_id) {
         for (PatternID p_id : (*pattern_cliques)[c_id]) {
             for (int var : (*pdbs)[p_id]->get_pattern()){
                 LeafFactorID factor = g_belongs_to_factor[var];
                 if (factor != LeafFactorID::CENTER){
+                    is_leaf_pattern[p_id] = true;
                     if (affecting_patterns[c_id].size() <= factor){
                         affecting_patterns[c_id].resize(factor + 1);
                     }
@@ -36,29 +38,51 @@ DecoupledCanonicalPDBsSingleLeaf::DecoupledCanonicalPDBsSingleLeaf(
             }
         }
     }
+    for (PatternID p_id = 0; p_id < static_cast<int>(pdbs->size()); ++p_id){
+        if (!is_leaf_pattern[p_id]){
+            center_only_patterns.push_back(p_id);
+        }
+    }
 }
 
 int DecoupledCanonicalPDBsSingleLeaf::get_value(const GlobalState &state) const {
     // If we have an empty collection, then pattern_cliques = { \emptyset }.
     assert(!pattern_cliques->empty());
-    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    vector<int> member_state(g_variable_domain.size(), -1);
-    set_center_facts(state, member_state);
-    // TODO we never account for patterns that only affect the center unless they are
-    // contained in a clique in which all patterns only affect the center; this has to be fixed
+
+    // these can be precomputed as usual, since they do not depend on the pricing function
+    vector<int> c_only_h_values(pdbs->size(), -1);
+    for (PatternID p_id : center_only_patterns) {
+        int h = (*pdbs)[p_id]->get_value(state);
+        if (h == numeric_limits<int>::max()) {
+            return numeric_limits<int>::max();
+        }
+        c_only_h_values[p_id] = h;
+    }
+
     int max_h = 0;
     for (int clique_id = 0; clique_id < static_cast<int>(pattern_cliques->size()); ++clique_id) {
         int clique_h = 0;
         if (affecting_patterns[clique_id].empty()){
-            // clique affects only the center
+            // entire clique affects only the center
             for (PatternID pdb_index : (*pattern_cliques)[clique_id]) {
-                int h = (*pdbs)[pdb_index]->get_value(state);
+                int h = c_only_h_values[pdb_index];
+                assert(h != -1);
                 if (h == numeric_limits<int>::max()) {
                     return numeric_limits<int>::max();
                 }
                 clique_h += h;
             }
         } else {
+            for (PatternID pdb_index : (*pattern_cliques)[clique_id]) {
+                // TODO should we store the center-only patterns for each clique?
+                if (c_only_h_values[pdb_index] != -1){
+                    // it's a center-only pattern
+                    clique_h += c_only_h_values[pdb_index];
+                }
+            }
+            const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+            vector<int> member_state(g_variable_domain.size(), -1);
+            set_center_facts(state, member_state);
             for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
                 if (leaf < affecting_patterns[clique_id].size() && !affecting_patterns[clique_id][leaf].empty()){
                     clique_h += get_min_distance(prices, member_state, leaf, clique_id);

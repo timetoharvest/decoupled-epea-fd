@@ -14,6 +14,8 @@ class DecoupledCanonicalPDBsSingleLeaf : public CanonicalPDBs {
     // clique that affect the leaf
     std::vector<std::vector<std::vector<PatternID>>> affecting_patterns;
 
+    std::vector<PatternID> center_only_patterns;
+
     int get_min_distance(const ExplicitStateCPG *prices,
             std::vector<int> &member_state,
             LeafFactorID leaf,
