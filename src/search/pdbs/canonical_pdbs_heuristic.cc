@@ -28,7 +28,7 @@ namespace pdbs {
 
 enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP};
 
-CanonicalPDBs get_canonical_pdbs_from_options(
+unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     const shared_ptr<AbstractTask> &task, const Options &opts) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
@@ -95,20 +95,20 @@ CanonicalPDBs get_canonical_pdbs_from_options(
 
     if (g_factoring){
         switch (dec_lookup_type){
-        case DecoupledPatternCollectionLookUp::APPROX: return DecoupledCanonicalPDBsApproximate(pdbs, pattern_cliques);
-        case DecoupledPatternCollectionLookUp::EXP: return DecoupledCanonicalPDBsExponential(pdbs, pattern_cliques);
-        case DecoupledPatternCollectionLookUp::SINGLE_LEAF: return DecoupledCanonicalPDBsSingleLeaf(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::APPROX: return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::EXP: return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
+        case DecoupledPatternCollectionLookUp::SINGLE_LEAF: return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
         default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, or SINGLE_LEAF." << endl;
         utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
 
-    return CanonicalPDBs(pdbs, pattern_cliques);
+    return utils::make_unique_ptr<CanonicalPDBs>(pdbs, pattern_cliques);
 }
 
 CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
     : Heuristic(opts),
-      canonical_pdbs(make_unique<CanonicalPDBs>(get_canonical_pdbs_from_options(tasks::g_root_task, opts))) {
+      canonical_pdbs(get_canonical_pdbs_from_options(tasks::g_root_task, opts)) {
 }
 
 int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
