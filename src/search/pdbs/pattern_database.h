@@ -102,6 +102,9 @@ class PatternDatabase {
     // multipliers for each variable for perfect hash function
     std::vector<int> hash_multipliers;
 
+    // only needed and initialized for decoupled search
+    std::vector<LeafFactorID> affected_leaves;
+
     /*
       Recursive method; called by build_abstract_operators. In the case
       of a precondition with value = -1 in the concrete operator, all
@@ -167,7 +170,6 @@ class PatternDatabase {
     // sets min_d to the minimum sum of prices and distance of all member states of cpg
     void compute_min_distance_decoupled(
         const ExplicitStateCPG *cpg,
-        const std::vector<LeafFactorID> &aff_leaves,
         std::vector<int> &member_state,
         int i,
         int sum_prices,
