@@ -9,8 +9,11 @@ using namespace std;
 
 namespace pdbs {
 IncrementalCanonicalPDBs::IncrementalCanonicalPDBs(
-    const TaskProxy &task_proxy, const PatternCollection &intitial_patterns)
+    const TaskProxy &task_proxy,
+    const PatternCollection &intitial_patterns,
+    bool restrict_to_single_leaf)
     : task_proxy(task_proxy),
+      restrict_to_single_leaf(restrict_to_single_leaf),
       patterns(make_shared<PatternCollection>(intitial_patterns.begin(),
                                               intitial_patterns.end())),
       pattern_databases(make_shared<PDBCollection>()),
@@ -37,13 +40,14 @@ void IncrementalCanonicalPDBs::add_pdb(const shared_ptr<PatternDatabase> &pdb) {
 
 void IncrementalCanonicalPDBs::recompute_pattern_cliques() {
     pattern_cliques = compute_pattern_cliques(*patterns,
-                                              are_additive);
+                                              are_additive,
+                                              restrict_to_single_leaf);
 }
 
 vector<PatternClique> IncrementalCanonicalPDBs::get_pattern_cliques(
     const Pattern &new_pattern) {
     return pdbs::compute_pattern_cliques_with_pattern(
-        *patterns, *pattern_cliques, new_pattern, are_additive);
+        *patterns, *pattern_cliques, new_pattern, are_additive, restrict_to_single_leaf);
 }
 
 int IncrementalCanonicalPDBs::get_value(const State &state) const {
@@ -63,7 +67,7 @@ PatternCollectionInformation
 IncrementalCanonicalPDBs::get_pattern_collection_information() const {
     PatternCollectionInformation result(task_proxy, patterns);
     result.set_pdbs(pattern_databases);
-    result.set_pattern_cliques(pattern_cliques);
+    result.set_pattern_cliques(pattern_cliques, restrict_to_single_leaf);
     return result;
 }
 }

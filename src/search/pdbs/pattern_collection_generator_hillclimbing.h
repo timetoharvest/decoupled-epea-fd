@@ -41,6 +41,7 @@ class PatternCollectionGeneratorHillclimbing : public PatternCollectionGenerator
     const int min_improvement;
     const double max_time;
     std::shared_ptr<PatternFilter> pattern_filter;
+    const bool restrict_to_single_leaf;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
 
     std::unique_ptr<IncrementalCanonicalPDBs> current_pdbs;

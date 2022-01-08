@@ -19,7 +19,7 @@ extern VariableAdditivity compute_additive_vars(const TaskProxy &task_proxy);
 extern std::shared_ptr<std::vector<PatternClique>> compute_pattern_cliques(
     const PatternCollection &patterns,
     const VariableAdditivity &are_additive,
-    bool restrict_to_single_leaf = false);
+    bool restrict_to_single_leaf);
 
 /*
   We compute pattern cliques S with the property that we could
@@ -70,7 +70,8 @@ extern std::vector<PatternClique> compute_pattern_cliques_with_pattern(
     const PatternCollection &patterns,
     const std::vector<PatternClique> &known_pattern_cliques,
     const Pattern &new_pattern,
-    const VariableAdditivity &are_additive);
+    const VariableAdditivity &are_additive,
+    bool restrict_to_single_leaf);
 }
 
 #endif

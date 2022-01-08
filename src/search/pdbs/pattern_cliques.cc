@@ -17,7 +17,7 @@ static bool are_patterns_additive(
     const Pattern &pattern1,
     const Pattern &pattern2,
     const VariableAdditivity &are_additive,
-    bool restrict_to_single_leaf = false) {
+    bool restrict_to_single_leaf) {
     for (int v1 : pattern1) {
         for (int v2 : pattern2) {
             if (!are_additive[v1][v2]) {
@@ -84,7 +84,8 @@ vector<PatternClique> compute_pattern_cliques_with_pattern(
     const PatternCollection &patterns,
     const vector<PatternClique> &known_pattern_cliques,
     const Pattern &new_pattern,
-    const VariableAdditivity &are_additive) {
+    const VariableAdditivity &are_additive,
+    bool restrict_to_single_leaf) {
     vector<PatternClique> cliques_additive_with_pattern;
     for (const PatternClique &known_clique : known_pattern_cliques) {
         // Take all patterns which are additive to new_pattern.
@@ -92,7 +93,7 @@ vector<PatternClique> compute_pattern_cliques_with_pattern(
         new_clique.reserve(known_clique.size());
         for (PatternID pattern_id : known_clique) {
             if (are_patterns_additive(
-                    new_pattern, patterns[pattern_id], are_additive)) {
+                    new_pattern, patterns[pattern_id], are_additive, restrict_to_single_leaf)) {
                 new_clique.push_back(pattern_id);
             }
         }

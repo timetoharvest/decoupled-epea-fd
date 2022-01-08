@@ -95,9 +95,12 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
 
     if (g_factoring){
         switch (dec_lookup_type){
-            case DecoupledPatternCollectionLookUp::APPROX: return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques);
-            case DecoupledPatternCollectionLookUp::EXP: return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
-        case DecoupledPatternCollectionLookUp::SINGLE_LEAF: return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::APPROX:
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::EXP:
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::SINGLE_LEAF:
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
         default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, or SINGLE_LEAF." << endl;
         utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }

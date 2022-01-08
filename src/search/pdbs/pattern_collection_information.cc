@@ -69,7 +69,11 @@ void PatternCollectionInformation::create_pdbs_if_missing() {
 }
 
 void PatternCollectionInformation::create_pattern_cliques_if_missing(bool restrict_to_single_leaf) {
-    if (!pattern_cliques) {
+    if (!pattern_cliques || (restrict_to_single_leaf && !pattern_cliques_restricted_to_single_leaf)) {
+        if (pattern_cliques) {
+            pattern_cliques = nullptr;
+            cout << "need to recompute pattern cliques" << endl;
+        }
         utils::Timer timer;
         utils::g_log << "Computing pattern cliques for pattern collection..." << endl;
         VariableAdditivity are_additive = compute_additive_vars(task_proxy);
@@ -85,8 +89,10 @@ void PatternCollectionInformation::set_pdbs(const shared_ptr<PDBCollection> &pdb
 }
 
 void PatternCollectionInformation::set_pattern_cliques(
-    const shared_ptr<vector<PatternClique>> &pattern_cliques_) {
+    const shared_ptr<vector<PatternClique>> &pattern_cliques_,
+    bool pattern_cliques_restricted_to_single_leaf_) {
     pattern_cliques = pattern_cliques_;
+    pattern_cliques_restricted_to_single_leaf = pattern_cliques_restricted_to_single_leaf_;
     assert(information_is_valid());
 }
 
@@ -100,7 +106,8 @@ shared_ptr<PDBCollection> PatternCollectionInformation::get_pdbs() {
     return pdbs;
 }
 
-shared_ptr<vector<PatternClique>> PatternCollectionInformation::get_pattern_cliques(bool restrict_to_single_leaf) {
+shared_ptr<vector<PatternClique>> PatternCollectionInformation::get_pattern_cliques(
+    bool restrict_to_single_leaf) {
     create_pattern_cliques_if_missing(restrict_to_single_leaf);
     return pattern_cliques;
 }

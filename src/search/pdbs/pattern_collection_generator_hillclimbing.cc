@@ -120,6 +120,7 @@ PatternCollectionGeneratorHillclimbing::PatternCollectionGeneratorHillclimbing(c
       min_improvement(opts.get<int>("min_improvement")),
       max_time(opts.get<double>("max_time")),
       pattern_filter(get_pattern_filter_from_options(opts)),
+      restrict_to_single_leaf(opts.get<bool>("restrict_to_single_leaf")),
       rng(utils::parse_rng_from_options(opts)),
       num_rejected(0),
       hill_climbing_timer(0) {
@@ -428,7 +429,7 @@ PatternCollectionInformation PatternCollectionGeneratorHillclimbing::generate(
         initial_pattern_collection.emplace_back(1, goal_var_id);
     }
     current_pdbs = utils::make_unique_ptr<IncrementalCanonicalPDBs>(
-        task_proxy, initial_pattern_collection);
+        task_proxy, initial_pattern_collection, restrict_to_single_leaf);
     utils::g_log << "Done calculating initial pattern collection: " << timer << endl;
 
     State initial_state = task_proxy.get_initial_state();
@@ -549,6 +550,10 @@ void add_hillclimbing_options(OptionParser &parser) {
         "pattern_filter",
         "restrict patterns to certain variables",
         OptionParser::NONE);
+    parser.add_option<bool>(
+        "restrict_to_single_leaf",
+        "restrict additivity of canonical PDBs",
+        "false");
     utils::add_rng_options(parser);
 }
 
