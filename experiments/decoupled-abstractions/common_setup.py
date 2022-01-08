@@ -168,7 +168,7 @@ class IssueConfig(object):
 class IssueExperiment(FastDownwardExperiment):
     """Subclass of FastDownwardExperiment with some convenience features."""
 
-    DEFAULT_TEST_SUITE = ["depot:p01.pddl", "gripper:prob01.pddl"]
+    DEFAULT_TEST_SUITE = ["depot:p01.pddl", "gripper:prob01.pddl", "logistics00:probLOGISTICS-4-0.pddl"]
 
     DEFAULT_TABLE_ATTRIBUTES = [
         "cost",
