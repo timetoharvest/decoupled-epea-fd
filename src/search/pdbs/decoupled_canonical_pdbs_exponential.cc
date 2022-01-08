@@ -55,6 +55,9 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
         }
         return max_h;
     } else {
+        // TODO in case there exists a center-only pattern that detects the center
+        // state as a deadend, we can spare ourselves all the recursion!
+
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
         set_center_facts(state, member_state);
@@ -94,6 +97,9 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                 vector<int> h_values;
                 h_values.reserve(pdbs->size());
                 for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+                    // TODO no need to recompute the values here for patterns
+                    // that only affect the center; this could be done only once
+                    // in the beginning.
                     int h = pdb->get_value(member_state);
                     if (h == numeric_limits<int>::max()) {
                         // dead end member state
