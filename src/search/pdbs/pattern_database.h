@@ -3,6 +3,7 @@
 
 #include "types.h"
 
+#include "../leaf_state_id.h"
 #include "../task_proxy.h"
 
 #include <utility>
@@ -10,7 +11,6 @@
 
 class ExplicitStateCPG;
 class GlobalState;
-struct LeafFactorID;
 
 namespace utils {
 class RandomNumberGenerator;
