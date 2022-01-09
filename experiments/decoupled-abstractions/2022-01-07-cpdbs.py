@@ -123,9 +123,6 @@ class Filter:
             return True
         error = run.get('error')
         if error is not None and error == 'search-abstained':
-            if run['domain'] == 'depot':
-                print(run['domain'], run['problem'])
-                print(run)
             self.excluded_tasks.add(f"{run['domain']}:{run['problem']}")
         return True
 
