@@ -21,7 +21,7 @@ class CostPartitioningHeuristic {
     // Allow this class to extract and compress information about unsolvable states.
     friend class UnsolvabilityHeuristic;
 
-protected:
+public:
     struct LookupTable {
         int abstraction_id;
         /* h_values[i] is the goal distance of abstract state i under the cost
@@ -35,6 +35,7 @@ protected:
     };
 
     std::vector<LookupTable> lookup_tables;
+private:
 
     int get_lookup_table_index(int abstraction_id) const;
     void merge_h_values(int abstraction_id, std::vector<int> &&h_values);

@@ -4,6 +4,7 @@
 #include "abstraction_generator.h"
 
 namespace options {
+class OptionParser;
 class Options;
 }
 
@@ -24,6 +25,8 @@ public:
     Abstractions generate_abstractions(
         const std::shared_ptr<AbstractTask> &task);
 };
+
+extern void add_projection_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

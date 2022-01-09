@@ -248,6 +248,14 @@ int ProjectionFunction::get_abstract_state_id(const State &concrete_state) const
     return index;
 }
 
+int ProjectionFunction::get_abstract_state_id(const vector<int> &concrete_state) const {
+    int index = 0;
+    for (const VariableAndMultiplier &pair : variables_and_multipliers) {
+        index += pair.hash_multiplier * concrete_state[pair.pattern_var];
+    }
+    return index;
+}
+
 
 Projection::Projection(
     const TaskProxy &task_proxy,

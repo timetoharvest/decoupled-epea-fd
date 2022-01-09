@@ -85,11 +85,7 @@ Abstractions ProjectionGenerator::generate_abstractions(
     return abstractions;
 }
 
-static shared_ptr<AbstractionGenerator> _parse(OptionParser &parser) {
-    parser.document_synopsis(
-        "Projection generator",
-        "");
-
+void add_projection_options_to_parser(OptionParser &parser) {
     parser.add_option<shared_ptr<pdbs::PatternCollectionGenerator>>(
         "patterns",
         "pattern generation method",
@@ -106,6 +102,14 @@ static shared_ptr<AbstractionGenerator> _parse(OptionParser &parser) {
         "debug",
         "print debugging info",
         "false");
+}
+
+static shared_ptr<AbstractionGenerator> _parse(OptionParser &parser) {
+    parser.document_synopsis(
+        "Projection generator",
+        "");
+
+    add_projection_options_to_parser(parser);
 
     Options opts = parser.parse();
     if (parser.dry_run())

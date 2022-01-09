@@ -503,6 +503,7 @@ fast_downward_plugin(
         pdbs/incremental_canonical_pdbs
         pdbs/match_tree
         pdbs/max_cliques
+        pdbs/max_scp_heuristic
         pdbs/pattern_cliques
         pdbs/pattern_collection_information
         pdbs/pattern_collection_generator_combo

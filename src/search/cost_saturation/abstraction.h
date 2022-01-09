@@ -47,6 +47,7 @@ public:
     virtual ~AbstractionFunction() = default;
     virtual int get_abstract_state_id(const GlobalState &concrete_state) const = 0;
     virtual int get_abstract_state_id(const State &concrete_state) const = 0;
+    virtual int get_abstract_state_id(const std::vector<int> &concrete_state) const = 0;
 };
 
 

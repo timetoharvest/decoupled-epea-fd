@@ -26,8 +26,6 @@ using namespace std;
 
 namespace pdbs {
 
-enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP};
-
 unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     const shared_ptr<AbstractTask> &task, const Options &opts) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
