@@ -45,8 +45,8 @@ void CostPartitioningHeuristic::merge_h_values(
     }
 }
 
-void CostPartitioningHeuristic::add(unique_ptr<CostPartitioningHeuristic> other) {
-    for (LookupTable &table : other->lookup_tables) {
+void CostPartitioningHeuristic::add(CostPartitioningHeuristic &&other) {
+    for (LookupTable &table : other.lookup_tables) {
         merge_h_values(table.abstraction_id, move(table.h_values));
     }
 }

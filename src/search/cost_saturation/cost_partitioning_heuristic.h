@@ -41,11 +41,9 @@ private:
     void merge_h_values(int abstraction_id, std::vector<int> &&h_values);
 
 public:
-    CostPartitioningHeuristic() = default;
-    virtual ~CostPartitioningHeuristic() = default;
     void add_h_values(int abstraction_id, std::vector<int> &&h_values);
 
-    void add(std::unique_ptr<CostPartitioningHeuristic> other);
+    void add(CostPartitioningHeuristic &&other);
 
     /*
       Compute cost-partitioned heuristic value for a concrete state s. Callers
@@ -53,7 +51,7 @@ public:
       abstraction with the get_abstract_state_ids() function. The result is the
       sum of all goal distances of the abstract states corresponding to s.
     */
-    virtual int compute_heuristic(const std::vector<int> &abstract_state_ids) const;
+    int compute_heuristic(const std::vector<int> &abstract_state_ids) const;
 
     // Return the number of useful abstractions.
     int get_num_lookup_tables() const;

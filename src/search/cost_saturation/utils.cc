@@ -68,7 +68,7 @@ int compute_max_h(
     int best_id = -1;
     int current_id = 0;
     for (const auto &cp_heuristic : cp_heuristics) {
-        int sum_h = cp_heuristic->compute_heuristic(abstract_state_ids);
+        int sum_h = cp_heuristic.compute_heuristic(abstract_state_ids);
         if (sum_h > max_h) {
             max_h = sum_h;
             best_id = current_id;
@@ -205,7 +205,7 @@ shared_ptr<Evaluator> get_max_cp_heuristic(options::OptionParser &parser, CPFunc
     vector<int> costs = task_properties::get_operator_costs(task_proxy);
     Abstractions abstractions = generate_abstractions(
         task, opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"));
-    vector<unique_ptr<CostPartitioningHeuristic>> cp_heuristics =
+    vector<CostPartitioningHeuristic> cp_heuristics =
         get_cp_heuristic_collection_generator_from_options(opts).generate_cost_partitionings(
             task_proxy, abstractions, costs, cp_function);
     return make_shared<MaxCostPartitioningHeuristic>(

@@ -23,7 +23,7 @@ static bool search_improving_successor(
     const vector<int> &costs,
     const vector<int> &abstract_state_ids,
     vector<int> &incumbent_order,
-    unique_ptr<CostPartitioningHeuristic> &incumbent_cp,
+    CostPartitioningHeuristic &incumbent_cp,
     int &incumbent_h_value,
     bool verbose) {
     int num_abstractions = abstractions.size();
@@ -32,10 +32,10 @@ static bool search_improving_successor(
             swap(incumbent_order[i], incumbent_order[j]);
 
             vector<int> remaining_costs = costs;
-            unique_ptr<CostPartitioningHeuristic> neighbor_cp =
+            CostPartitioningHeuristic neighbor_cp =
                 cp_function(abstractions, incumbent_order, remaining_costs, abstract_state_ids);
 
-            int h = neighbor_cp->compute_heuristic(abstract_state_ids);
+            int h = neighbor_cp.compute_heuristic(abstract_state_ids);
             if (h > incumbent_h_value) {
                 incumbent_cp = move(neighbor_cp);
                 incumbent_h_value = h;
@@ -60,7 +60,7 @@ void optimize_order_with_hill_climbing(
     const vector<int> &costs,
     const vector<int> &abstract_state_ids,
     vector<int> &incumbent_order,
-    unique_ptr<CostPartitioningHeuristic> &incumbent_cp,
+    CostPartitioningHeuristic &incumbent_cp,
     int incumbent_h_value,
     bool verbose) {
     if (verbose) {

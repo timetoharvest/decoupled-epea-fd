@@ -18,7 +18,7 @@ static void log_info_about_stored_lookup_tables(
     int num_lookup_tables = num_abstractions * cp_heuristics.size();
     int num_stored_lookup_tables = 0;
     for (const auto &cp_heuristic: cp_heuristics) {
-        num_stored_lookup_tables += cp_heuristic->get_num_lookup_tables();
+        num_stored_lookup_tables += cp_heuristic.get_num_lookup_tables();
     }
     utils::Log() << "Stored lookup tables: " << num_stored_lookup_tables << "/"
                  << num_lookup_tables << " = "
@@ -28,7 +28,7 @@ static void log_info_about_stored_lookup_tables(
     // Print statistics about the number of stored values.
     int num_stored_values = 0;
     for (const auto &cp_heuristic : cp_heuristics) {
-        num_stored_values += cp_heuristic->get_num_heuristic_values();
+        num_stored_values += cp_heuristic.get_num_heuristic_values();
     }
     int num_total_values = 0;
     for (const auto &abstraction : abstractions) {
@@ -50,7 +50,7 @@ static AbstractionFunctions extract_abstraction_functions_from_useful_abstractio
     vector<bool> useful_abstractions(num_abstractions, false);
     unsolvability_heuristic.mark_useful_abstractions(useful_abstractions);
     for (const auto &cp_heuristic : cp_heuristics) {
-        cp_heuristic->mark_useful_abstractions(useful_abstractions);
+        cp_heuristic.mark_useful_abstractions(useful_abstractions);
     }
 
     AbstractionFunctions abstraction_functions;

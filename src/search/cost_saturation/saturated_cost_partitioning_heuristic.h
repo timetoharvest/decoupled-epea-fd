@@ -13,13 +13,13 @@ class Options;
 namespace cost_saturation {
 class CostPartitioningHeuristic;
 
-extern std::unique_ptr<CostPartitioningHeuristic> compute_saturated_cost_partitioning(
+extern CostPartitioningHeuristic compute_saturated_cost_partitioning(
     const Abstractions &abstractions,
     const std::vector<int> &order,
     std::vector<int> &remaining_costs,
     const std::vector<int> &abstract_state_ids);
 
-extern std::unique_ptr<CostPartitioningHeuristic> compute_perim_saturated_cost_partitioning(
+extern CostPartitioningHeuristic compute_perim_saturated_cost_partitioning(
     const Abstractions &abstractions,
     const std::vector<int> &order,
     std::vector<int> &remaining_costs,
