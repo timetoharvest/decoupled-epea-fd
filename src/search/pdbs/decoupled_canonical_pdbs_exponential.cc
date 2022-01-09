@@ -23,9 +23,19 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
     const shared_ptr<vector<PatternClique>> &pattern_cliques)
     : CanonicalPDBs(pdbs, pattern_cliques) {
 
+    is_center_only_pattern.reserve(pdbs->size());
+
     unordered_set<LeafFactorID> aff_leaves;
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-        get_leaf_factors_of_pattern(pdb->get_pattern(), aff_leaves);
+        unordered_set<LeafFactorID> tmp;
+        get_leaf_factors_of_pattern(pdb->get_pattern(), tmp);
+        if (tmp.empty()){
+            is_center_only_pattern.push_back(true);
+            center_only_patterns.push_back(is_center_only_pattern.size() - 1);
+        } else {
+            is_center_only_pattern.push_back(false);
+            aff_leaves.insert(tmp.begin(), tmp.end());
+        }
     }
     affected_leaves = vector<LeafFactorID>(aff_leaves.begin(), aff_leaves.end());
 }
@@ -55,15 +65,26 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
         }
         return max_h;
     } else {
-        // TODO in case there exists a center-only pattern that detects the center
-        // state as a deadend, we can spare ourselves all the recursion!
-
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
         set_center_facts(state, member_state);
+
+        vector<int> c_only_h_values;
+        if (!center_only_patterns.empty()){
+            // the heuristic value of these patterns is independent of the leaves
+            c_only_h_values.resize(pdbs->size(), -1);
+            for (PatternID p_id : center_only_patterns){
+                c_only_h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
+                if (c_only_h_values[p_id] == numeric_limits<int>::max()){
+                    // center state is detected as deadend
+                    return numeric_limits<int>::max();
+                }
+            }
+        }
+
         int min_h = numeric_limits<int>::max();
         const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-        compute_min_distance_decoupled_exponential(prices, member_state, 0, 0, min_h);
+        compute_min_distance_decoupled_exponential(prices, member_state, c_only_h_values, 0, 0, min_h);
         return min_h;
     }
 }
@@ -71,6 +92,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
 void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponential(
         const ExplicitStateCPG *cpg,
         vector<int> &member_state,
+        const vector<int> &c_only_h_values,
         int i,
         int sum_prices,
         int &min_d) const {
@@ -91,35 +113,39 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
             int price = cpg->get_cost_of_state(id, affected_leaves[i]);
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
-                compute_min_distance_decoupled_exponential(cpg, member_state, i + 1, sum_prices + price, min_d);
+                compute_min_distance_decoupled_exponential(cpg, member_state, c_only_h_values, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
                 vector<int> h_values;
                 h_values.reserve(pdbs->size());
-                for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-                    // TODO no need to recompute the values here for patterns
-                    // that only affect the center; this could be done only once
-                    // in the beginning.
-                    int h = pdb->get_value(member_state);
-                    if (h == numeric_limits<int>::max()) {
-                        // dead end member state
-                        return;
-                    }
-                    h_values.push_back(h);
-                }
-                int max_h = 0;
-                for (const PatternClique &clique : *pattern_cliques) {
-                    int clique_h = 0;
-                    for (PatternID pdb_index : clique) {
-                        clique_h += h_values[pdb_index];
-                    }
-                    max_h = max(max_h, clique_h);
-                    if (sum_prices + price + max_h >= min_d){
-                        // we cannot possibly improve the heuristic
-                        return;
+                bool is_dead_end_member_state = false;
+                for (int p_id = 0; p_id < static_cast<int>(pdbs->size()); ++p_id) {
+                    if (!is_center_only_pattern[p_id]){
+                        int h = (*pdbs)[p_id]->get_value(member_state);
+                        if (h == numeric_limits<int>::max()) {
+                            is_dead_end_member_state = true;
+                            break;
+                        }
+                        h_values.push_back(h);
+                    } else {
+                        h_values.push_back(c_only_h_values[p_id]);
                     }
                 }
-                min_d = min(min_d, sum_prices + price + max_h);
+                if (!is_dead_end_member_state){
+                    int max_h = 0;
+                    for (const PatternClique &clique : *pattern_cliques) {
+                        int clique_h = 0;
+                        for (PatternID pdb_index : clique) {
+                            clique_h += h_values[pdb_index];
+                        }
+                        max_h = max(max_h, clique_h);
+                        if (sum_prices + price + max_h >= min_d){
+                            // we cannot possibly improve the heuristic
+                            break;
+                        }
+                    }
+                    min_d = min(min_d, sum_prices + price + max_h);
+                }
             }
         }
         ++id;

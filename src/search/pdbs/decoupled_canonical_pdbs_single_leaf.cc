@@ -1,6 +1,7 @@
 #include "decoupled_canonical_pdbs_single_leaf.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "utils.h"
 
 #include "../globals.h"
@@ -26,15 +27,14 @@ DecoupledCanonicalPDBsSingleLeaf::DecoupledCanonicalPDBsSingleLeaf(
     affecting_patterns.resize(pattern_cliques->size());
     for (int c_id = 0; c_id < static_cast<int>(pattern_cliques->size()); ++c_id) {
         for (PatternID p_id : (*pattern_cliques)[c_id]) {
-            for (int var : (*pdbs)[p_id]->get_pattern()){
-                LeafFactorID factor = g_belongs_to_factor[var];
-                if (factor != LeafFactorID::CENTER){
-                    is_leaf_pattern[p_id] = true;
-                    if (affecting_patterns[c_id].size() <= factor){
-                        affecting_patterns[c_id].resize(factor + 1);
-                    }
-                    affecting_patterns[c_id][factor].push_back(p_id);
+            unordered_set<LeafFactorID> affected_leaves;
+            get_leaf_factors_of_pattern((*pdbs)[p_id]->get_pattern(), affected_leaves);
+            for (LeafFactorID leaf : affected_leaves){
+                is_leaf_pattern[p_id] = true;
+                if (affecting_patterns[c_id].size() <= leaf){
+                    affecting_patterns[c_id].resize(leaf + 1);
                 }
+                affecting_patterns[c_id][leaf].push_back(p_id);
             }
         }
     }
@@ -50,13 +50,16 @@ int DecoupledCanonicalPDBsSingleLeaf::get_value(const GlobalState &state) const 
     assert(!pattern_cliques->empty());
 
     // these can be precomputed as usual, since they do not depend on the pricing function
-    vector<int> c_only_h_values(pdbs->size(), -1);
-    for (PatternID p_id : center_only_patterns) {
-        int h = (*pdbs)[p_id]->get_value(state);
-        if (h == numeric_limits<int>::max()) {
-            return numeric_limits<int>::max();
+    vector<int> c_only_h_values;
+    if (!center_only_patterns.empty()){
+        c_only_h_values.resize(pdbs->size(), -1);
+        for (PatternID p_id : center_only_patterns) {
+            int h = (*pdbs)[p_id]->get_value(state);
+            if (h == numeric_limits<int>::max()) {
+                return numeric_limits<int>::max();
+            }
+            c_only_h_values[p_id] = h;
         }
-        c_only_h_values[p_id] = h;
     }
 
     int max_h = 0;
@@ -73,19 +76,26 @@ int DecoupledCanonicalPDBsSingleLeaf::get_value(const GlobalState &state) const 
                 clique_h += h;
             }
         } else {
-            for (PatternID pdb_index : (*pattern_cliques)[clique_id]) {
-                // TODO should we store the center-only patterns for each clique?
-                if (c_only_h_values[pdb_index] != -1){
-                    // it's a center-only pattern
-                    clique_h += c_only_h_values[pdb_index];
+            if (!center_only_patterns.empty()){
+                for (PatternID pdb_index : (*pattern_cliques)[clique_id]) {
+                    // TODO should we store the center-only patterns for each clique?
+                    if (c_only_h_values[pdb_index] != -1){
+                        // it's a center-only pattern
+                        clique_h += c_only_h_values[pdb_index];
+                    }
                 }
             }
             const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
             vector<int> member_state(g_variable_domain.size(), -1);
             set_center_facts(state, member_state);
-            for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
-                if (leaf < affecting_patterns[clique_id].size() && !affecting_patterns[clique_id][leaf].empty()){
-                    clique_h += get_min_distance(prices, member_state, leaf, clique_id);
+            for (LeafFactorID leaf(0); leaf < affecting_patterns[clique_id].size(); ++leaf) {
+                if (!affecting_patterns[clique_id][leaf].empty()){
+                    int h = get_min_distance(prices, member_state, leaf, clique_id);
+                    if (h == numeric_limits<int>::max()){
+                        // all reached leaf states are dead-ends
+                        return numeric_limits<int>::max();
+                    }
+                    clique_h += h;
                 }
             }
         }
@@ -112,15 +122,23 @@ int DecoupledCanonicalPDBsSingleLeaf::get_min_distance(
 
             int price = prices->get_cost_of_state(id, leaf);
 
+            bool is_dead_end_member_state = false;
             int sum_dists = 0;
             for (PatternID p_id : affecting_patterns[clique_id][leaf]){
-                sum_dists += (*pdbs)[p_id]->get_value(member_state);
+                int h = (*pdbs)[p_id]->get_value(member_state);
+                if (h == numeric_limits<int>::max()){
+                    is_dead_end_member_state = true;
+                    break;
+                }
+                sum_dists += h;
                 if (price + sum_dists >= min_d){
                     break;
                 }
             }
 
-            min_d = min(min_d, price + sum_dists);
+            if (!is_dead_end_member_state){
+                min_d = min(min_d, price + sum_dists);
+            }
         }
         ++id;
     }
