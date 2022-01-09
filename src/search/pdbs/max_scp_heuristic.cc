@@ -61,7 +61,7 @@ static void log_info_about_stored_lookup_tables(
                  << num_stored_values / static_cast<double>(num_total_values) << endl;
 }
 
-static AbstractionFunctions extract_abstraction_functions_from_useful_abstractions(
+static AbstractionFunctions extract_abstraction_functions_and_patterns_from_useful_abstractions(
     const CPHeuristics &cp_heuristics,
     const UnsolvabilityHeuristic &unsolvability_heuristic,
     Abstractions &abstractions,
@@ -105,7 +105,7 @@ MaxSCPHeuristic::MaxSCPHeuristic(
 
     // We only need abstraction functions during search and no transition systems.
     // We additionally extract the patterns.
-    abstraction_functions = extract_abstraction_functions_from_useful_abstractions(
+    abstraction_functions = extract_abstraction_functions_and_patterns_from_useful_abstractions(
         cp_heuristics, unsolvability_heuristic, abstractions, patterns);
 
     int num_abstractions = abstractions.size();
@@ -473,5 +473,5 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
         move(cp_heuristics));
 }
 
-static Plugin<Evaluator> _plugin("max_scp", _parse, "heuristics_cost_partitioning");
+static Plugin<Evaluator> _plugin("max_scp", _parse);
 }
