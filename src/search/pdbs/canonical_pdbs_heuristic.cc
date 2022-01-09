@@ -115,6 +115,9 @@ CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
 }
 
 int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
+    // TODO for all decoupled search variants: for all leaves that are not affected
+    // by any pattern, we need to increase h by the minimum price of any reached leaf state
+    // This is only relevant when g-value adaptation is disabled, which is enabled by default.
     int h = canonical_pdbs->get_value(ancestor_state);
     if (h == numeric_limits<int>::max()) {
         return DEAD_END;
