@@ -3,6 +3,8 @@
 
 #include "../heuristic.h"
 
+#include "../leaf_state_id.h"
+
 namespace options {
 class Options;
 }
@@ -13,6 +15,7 @@ class PatternDatabase;
 // Implements a heuristic for a single PDB.
 class PDBHeuristic : public Heuristic {
     std::shared_ptr<PatternDatabase> pdb;
+    std::vector<LeafFactorID> affected_leaves;
 protected:
     virtual int compute_heuristic(const GlobalState &ancestor_state) override;
 public:

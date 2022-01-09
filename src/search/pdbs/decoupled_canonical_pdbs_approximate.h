@@ -3,10 +3,13 @@
 
 #include "canonical_pdbs.h"
 
+#include "../leaf_state_id.h"
+
 class GlobalState;
 
 namespace pdbs {
 class DecoupledCanonicalPDBsApproximate : public CanonicalPDBs {
+    std::vector<std::vector<LeafFactorID>> affected_leaves_by_pattern;
 public:
     DecoupledCanonicalPDBsApproximate(
         const std::shared_ptr<PDBCollection> &pdbs,

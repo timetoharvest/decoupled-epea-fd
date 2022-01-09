@@ -1,6 +1,7 @@
 #include "pdb_heuristic.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 #include "pattern_generator.h"
 
 #include "../globals.h"
@@ -30,13 +31,17 @@ PDBHeuristic::PDBHeuristic(const Options &opts)
     : Heuristic(opts),
     // TODO: change back to task
       pdb(get_pdb_from_options(tasks::g_root_task, opts)) {
+    unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
+    affected_leaves.assign(aff_leaves.begin(), aff_leaves.end());
 }
 
 int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     int h;
     if (g_factoring){
-        h = pdb->get_value(ancestor_state,
-                dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)));
+        h = pdb->get_value(
+            ancestor_state,
+            dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)),
+            affected_leaves);
     } else {
         h = pdb->get_value(ancestor_state);
     }

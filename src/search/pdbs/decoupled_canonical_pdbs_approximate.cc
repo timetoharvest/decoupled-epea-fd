@@ -1,6 +1,7 @@
 #include "decoupled_canonical_pdbs_approximate.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 
 #include "../globals.h"
 #include "../state.h"
@@ -24,6 +25,11 @@ DecoupledCanonicalPDBsApproximate::DecoupledCanonicalPDBsApproximate(
     // clique affect the same leaf? Maybe in a #ifndef NDEBUG block?
     // This is ensured by the construction of patterns in
     // CanonicalPDBsHeuristic, though.
+    affected_leaves_by_pattern.reserve(pdbs->size());
+    for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
+        unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
+        affected_leaves_by_pattern.emplace_back(aff_leaves.begin(), aff_leaves.end());
+    }
 }
 
 int DecoupledCanonicalPDBsApproximate::get_value(const GlobalState &state) const {
@@ -33,8 +39,9 @@ int DecoupledCanonicalPDBsApproximate::get_value(const GlobalState &state) const
     vector<int> h_values;
     h_values.reserve(pdbs->size());
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-        int h = pdb->get_value(state, prices);
+    for (size_t index = 0; index < pdbs->size(); ++index) {
+        const shared_ptr<PatternDatabase> &pdb = (*pdbs)[index];
+        int h = pdb->get_value(state, prices, affected_leaves_by_pattern[index]);
         if (h == numeric_limits<int>::max()) {
             return numeric_limits<int>::max();
         }
