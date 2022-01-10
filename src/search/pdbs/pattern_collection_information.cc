@@ -68,8 +68,8 @@ void PatternCollectionInformation::create_pdbs_if_missing() {
     }
 }
 
-void PatternCollectionInformation::create_pattern_cliques_if_missing(bool restrict_to_single_leaf) {
-    if (!pattern_cliques || (restrict_to_single_leaf && !pattern_cliques_restricted_to_single_leaf)) {
+void PatternCollectionInformation::create_pattern_cliques_if_missing(bool disjoint_leaf_additivity) {
+    if (!pattern_cliques || (disjoint_leaf_additivity && !pattern_cliques_are_leaf_disjoint)) {
         if (pattern_cliques) {
             pattern_cliques = nullptr;
             cout << "need to recompute pattern cliques" << endl;
@@ -77,7 +77,7 @@ void PatternCollectionInformation::create_pattern_cliques_if_missing(bool restri
         utils::Timer timer;
         utils::g_log << "Computing pattern cliques for pattern collection..." << endl;
         VariableAdditivity are_additive = compute_additive_vars(task_proxy);
-        pattern_cliques = compute_pattern_cliques(*patterns, are_additive, restrict_to_single_leaf);
+        pattern_cliques = compute_pattern_cliques(*patterns, are_additive, disjoint_leaf_additivity);
         utils::g_log << "Done computing pattern cliques for pattern collection: "
                      << timer << endl;
     }
@@ -90,9 +90,9 @@ void PatternCollectionInformation::set_pdbs(const shared_ptr<PDBCollection> &pdb
 
 void PatternCollectionInformation::set_pattern_cliques(
     const shared_ptr<vector<PatternClique>> &pattern_cliques_,
-    bool pattern_cliques_restricted_to_single_leaf_) {
+    bool pattern_cliques_are_leaf_disjoint_) {
     pattern_cliques = pattern_cliques_;
-    pattern_cliques_restricted_to_single_leaf = pattern_cliques_restricted_to_single_leaf_;
+    pattern_cliques_are_leaf_disjoint = pattern_cliques_are_leaf_disjoint_;
     assert(information_is_valid());
 }
 
@@ -107,8 +107,8 @@ shared_ptr<PDBCollection> PatternCollectionInformation::get_pdbs() {
 }
 
 shared_ptr<vector<PatternClique>> PatternCollectionInformation::get_pattern_cliques(
-    bool restrict_to_single_leaf) {
-    create_pattern_cliques_if_missing(restrict_to_single_leaf);
+    bool disjoint_leaf_additivity) {
+    create_pattern_cliques_if_missing(disjoint_leaf_additivity);
     return pattern_cliques;
 }
 }

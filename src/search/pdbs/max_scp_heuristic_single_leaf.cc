@@ -36,7 +36,7 @@ MaxSCPHeuristicSingleLeaf::MaxSCPHeuristicSingleLeaf(
         Projection *projection = dynamic_cast<Projection *>(abstraction.get());
         unordered_set<LeafFactorID> affected_leaves = get_leaf_factors_of_pattern(projection->get_pattern());
         if (affected_leaves.size() > 1){
-            cerr << "Every pattern may affect at most one leaf for SINGLE_LEAF decoupled lookup." << endl;
+            cerr << "Every pattern may affect at most one leaf for max SCP single leaf." << endl;
             utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }

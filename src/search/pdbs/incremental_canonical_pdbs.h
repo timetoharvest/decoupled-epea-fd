@@ -12,7 +12,7 @@
 namespace pdbs {
 class IncrementalCanonicalPDBs {
     TaskProxy task_proxy;
-    const bool restrict_to_single_leaf;
+    const bool disjoint_leaf_additivity;
 
     std::shared_ptr<PatternCollection> patterns;
     std::shared_ptr<PDBCollection> pattern_databases;
@@ -31,7 +31,7 @@ class IncrementalCanonicalPDBs {
 public:
     IncrementalCanonicalPDBs(const TaskProxy &task_proxy,
                              const PatternCollection &intitial_patterns,
-                             bool restrict_to_single_leaf);
+                             bool disjoint_leaf_additivity);
     virtual ~IncrementalCanonicalPDBs() = default;
 
     // Adds a new PDB to the collection and recomputes pattern_cliques.

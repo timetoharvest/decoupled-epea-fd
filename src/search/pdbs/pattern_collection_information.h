@@ -25,10 +25,10 @@ class PatternCollectionInformation {
     std::shared_ptr<PatternCollection> patterns;
     std::shared_ptr<PDBCollection> pdbs;
     std::shared_ptr<std::vector<PatternClique>> pattern_cliques;
-    bool pattern_cliques_restricted_to_single_leaf;
+    bool pattern_cliques_are_leaf_disjoint;
 
     void create_pdbs_if_missing();
-    void create_pattern_cliques_if_missing(bool restrict_to_single_leaf = false);
+    void create_pattern_cliques_if_missing(bool disjoint_leaf_additivity = false);
 
     bool information_is_valid() const;
 public:
@@ -40,7 +40,7 @@ public:
     void set_pdbs(const std::shared_ptr<PDBCollection> &pdbs);
     void set_pattern_cliques(
         const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
-        bool pattern_cliques_restricted_to_single_leaf);
+        bool pattern_cliques_are_leaf_disjoint);
 
     TaskProxy get_task_proxy() const {
         return task_proxy;
@@ -49,7 +49,7 @@ public:
     std::shared_ptr<PatternCollection> get_patterns() const;
     std::shared_ptr<PDBCollection> get_pdbs();
     std::shared_ptr<std::vector<PatternClique>> get_pattern_cliques(
-        bool restrict_to_single_leaf = false);
+        bool disjoint_leaf_additivity = false);
 };
 }
 
