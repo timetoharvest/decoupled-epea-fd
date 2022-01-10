@@ -50,14 +50,12 @@ static void log_info_about_stored_lookup_tables(
 
 static AbstractionFunctions extract_abstraction_functions_and_patterns_from_useful_abstractions(
     const CPHeuristics &cp_heuristics,
-    const UnsolvabilityHeuristic &unsolvability_heuristic,
     Abstractions &abstractions,
     vector<Pattern> &patterns) {
     int num_abstractions = abstractions.size();
 
     // Collect IDs of useful abstractions.
     vector<bool> useful_abstractions(num_abstractions, false);
-    unsolvability_heuristic.mark_useful_abstractions(useful_abstractions);
     for (const auto &cp_heuristic : cp_heuristics) {
         cp_heuristic.mark_useful_abstractions(useful_abstractions);
     }
@@ -85,14 +83,13 @@ MaxSCPHeuristic::MaxSCPHeuristic(
     Abstractions &&abstractions,
     CPHeuristics &&cp_heuristics_)
     : Heuristic(opts),
-      cp_heuristics(move(cp_heuristics_)),
-      unsolvability_heuristic(abstractions, cp_heuristics) {
+      cp_heuristics(move(cp_heuristics_)) {
     log_info_about_stored_lookup_tables(abstractions, cp_heuristics);
 
     // We only need abstraction functions during search and no transition systems.
     // We additionally extract the patterns.
     abstraction_functions = extract_abstraction_functions_and_patterns_from_useful_abstractions(
-        cp_heuristics, unsolvability_heuristic, abstractions, patterns);
+        cp_heuristics, abstractions, patterns);
 
     int num_abstractions = abstractions.size();
     int num_useless_abstractions = count(

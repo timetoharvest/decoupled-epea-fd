@@ -6,7 +6,6 @@
 #include "types.h"
 
 #include "../cost_saturation/types.h"
-#include "../cost_saturation/unsolvability_heuristic.h"
 
 #include <unordered_set>
 
@@ -29,7 +28,6 @@ class MaxSCPHeuristic : public Heuristic {
 protected:
     std::vector<std::unique_ptr<cost_saturation::AbstractionFunction>> abstraction_functions;
     cost_saturation::CPHeuristics cp_heuristics;
-    cost_saturation::UnsolvabilityHeuristic unsolvability_heuristic;
 
     std::vector<Pattern> patterns;
 

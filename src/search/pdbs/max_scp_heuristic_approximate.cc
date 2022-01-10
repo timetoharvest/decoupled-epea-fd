@@ -74,7 +74,10 @@ static void compute_min_distance(
                 compute_min_distance(cpg, distances, abstraction_function, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
-                min_d = min(min_d, sum_prices + price + distances[abstraction_function.get_abstract_state_id(member_state)]);
+                int h = distances[abstraction_function.get_abstract_state_id(member_state)];
+                if (h != numeric_limits<int>::max()) {
+                    min_d = min(min_d, sum_prices + price + h);
+                }
             }
         }
         ++id;
@@ -83,12 +86,13 @@ static void compute_min_distance(
 
 int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
     const GlobalState &state,
-    const vector<int> &abstract_state_ids,
     const CostPartitioningHeuristic::LookupTable &lookup_table,
     const ExplicitStateCPG* prices) const {
     int min_h = numeric_limits<int>::max();
     int abs_id = lookup_table.abstraction_id;
     if (affected_leaves_by_abstraction[abs_id].empty()) {
+        vector<int> abstract_state_ids = get_abstract_state_ids(
+            abstraction_functions, state);
         assert(utils::in_bounds(abs_id, abstract_state_ids));
         int state_id = abstract_state_ids[abs_id];
         assert(utils::in_bounds(state_id, lookup_table.h_values));
@@ -111,12 +115,6 @@ int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
 }
 
 int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
-    vector<int> abstract_state_ids = get_abstract_state_ids(
-        abstraction_functions, state);
-    if (unsolvability_heuristic.is_unsolvable(abstract_state_ids)) {
-        return DEAD_END;
-    }
-
     int max_h = 0;
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     for (const auto &cp_heuristic : cp_heuristics) {
@@ -133,7 +131,10 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
             }
             if (projection_leaf_disjoint) {
                 affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
-                int h = compute_pdb_value_with_prices(state, abstract_state_ids, lookup_table, prices);
+                int h = compute_pdb_value_with_prices(state, lookup_table, prices);
+                if (h == INF) {
+                    return INF;
+                }
                 sum_h += h;
                 assert(sum_h >= 0);
             }

@@ -15,7 +15,6 @@ class MaxSCPHeuristicApproximate : public MaxSCPHeuristic {
 
     int compute_pdb_value_with_prices(
         const GlobalState &state,
-        const std::vector<int> &abstract_state_ids,
         const cost_saturation::CostPartitioningHeuristic::LookupTable &lookup_table,
         const ExplicitStateCPG* prices) const;
 protected:

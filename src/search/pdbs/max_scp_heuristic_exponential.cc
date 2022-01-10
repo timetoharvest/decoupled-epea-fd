@@ -67,16 +67,23 @@ void MaxSCPHeuristicExponential::compute_min_distance(
             } else {
                 // end recursion
                 int max_h = 0;
+                bool is_dead_end_member_state = false;
                 vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
                 for (const auto &cp_heuristic : cp_heuristics) {
                     int sum_h = cp_heuristic.compute_heuristic(member_abs_state_ids);
+                    if (sum_h == INF) {
+                        is_dead_end_member_state = true;
+                        break;
+                    }
                     max_h = max(max_h, sum_h);
                     if (sum_prices + price + max_h >= min_d){
                         // we cannot possibly improve the heuristic
                         break;
                     }
                 }
-                min_d = min(min_d, sum_prices + price + max_h);
+                if (!is_dead_end_member_state) {
+                    min_d = min(min_d, sum_prices + price + max_h);
+                }
             }
         }
         ++id;
@@ -84,14 +91,10 @@ void MaxSCPHeuristicExponential::compute_min_distance(
 }
 
 int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
-    vector<int> abstract_state_ids = get_abstract_state_ids(
-        abstraction_functions, state);
-    if (unsolvability_heuristic.is_unsolvable(abstract_state_ids)) {
-        return DEAD_END;
-    }
-
     if (affected_leaves.empty()){
         // compute maximal heuristic value for the center state
+        vector<int> abstract_state_ids = get_abstract_state_ids(
+            abstraction_functions, state);
         return compute_max_h(cp_heuristics, abstract_state_ids);
     } else {
         // compute minimum heuristic value across all member states

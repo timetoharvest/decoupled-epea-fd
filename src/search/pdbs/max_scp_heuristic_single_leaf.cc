@@ -110,23 +110,18 @@ int MaxSCPHeuristicSingleLeaf::compute_min_distance(
 }
 
 int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
-    vector<int> abstract_state_ids = get_abstract_state_ids(
-        abstraction_functions, state);
-    if (unsolvability_heuristic.is_unsolvable(abstract_state_ids)) {
-        return DEAD_END;
-    }
-
     int max_h = 0;
     for (const auto &cp_heuristic : cp_heuristics) {
         int sum_h = 0;
         if (affecting_patterns.empty()){
             // all patterns only affect the center
+            vector<int> abstract_state_ids = get_abstract_state_ids(
+                abstraction_functions, state);
             sum_h = cp_heuristic.compute_heuristic(abstract_state_ids);
         } else {
             for (const auto &lookup_table : cp_heuristic.lookup_tables) {
                 if (center_only_patterns.count(lookup_table.abstraction_id)) {
-                    assert(utils::in_bounds(lookup_table.abstraction_id, abstract_state_ids));
-                    int state_id = abstract_state_ids[lookup_table.abstraction_id];
+                    int state_id = abstraction_functions[lookup_table.abstraction_id]->get_abstract_state_id(state);
                     assert(utils::in_bounds(state_id, lookup_table.h_values));
                     int h = lookup_table.h_values[state_id];
                     assert(h >= 0);
