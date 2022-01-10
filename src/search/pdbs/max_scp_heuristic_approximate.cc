@@ -124,15 +124,19 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
         unordered_set<LeafFactorID> affected_leaves_so_far;
         for (const auto &lookup_table : cp_heuristic.lookup_tables) {
             const vector<LeafFactorID> &abs_aff_leaves = affected_leaves_by_abstraction[lookup_table.abstraction_id];
+            bool projection_leaf_disjoint = true;
             for (LeafFactorID leaf_id : abs_aff_leaves) {
                 if (affected_leaves_so_far.count(leaf_id)) {
-                    continue;
+                    projection_leaf_disjoint = false;
+                    break;
                 }
             }
-            affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
-            int h = compute_pdb_value_with_prices(state, abstract_state_ids, lookup_table, prices);
-            sum_h += h;
-            assert(sum_h >= 0);
+            if (projection_leaf_disjoint) {
+                affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
+                int h = compute_pdb_value_with_prices(state, abstract_state_ids, lookup_table, prices);
+                sum_h += h;
+                assert(sum_h >= 0);
+            }
         }
 
         if (sum_h > max_h) {
@@ -144,6 +148,34 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
     }
     assert(max_h >= 0);
     return max_h;
+}
+
+CostPartitioningHeuristic compute_saturated_cost_partitioning_leaf_disjoint(
+    const Abstractions &abstractions,
+    const vector<int> &order,
+    vector<int> &remaining_costs,
+    const vector<int> &) {
+    assert(abstractions.size() == order.size());
+    CostPartitioningHeuristic cp_heuristic;
+    unordered_set<LeafFactorID> affected_leaves_so_far;
+    for (int pos : order) {
+        const Projection *projection = dynamic_cast<const Projection *>(abstractions[pos].get());
+        unordered_set<LeafFactorID> projection_leaves = get_leaf_factors_of_pattern(projection->get_pattern());
+        bool projection_leaf_disjoint = true;
+        for (LeafFactorID leaf_id : projection_leaves) {
+            if (affected_leaves_so_far.count(leaf_id)) {
+                projection_leaf_disjoint = false;
+                break;
+            }
+        }
+        if (projection_leaf_disjoint) {
+            vector<int> h_values = projection->compute_goal_distances(remaining_costs);
+            vector<int> saturated_costs = projection->compute_saturated_costs(h_values);
+            cp_heuristic.add_h_values(pos, move(h_values));
+            reduce_costs(remaining_costs, saturated_costs);
+        }
+    }
+    return cp_heuristic;
 }
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {

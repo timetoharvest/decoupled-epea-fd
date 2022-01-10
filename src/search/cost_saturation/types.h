@@ -19,6 +19,7 @@ enum class Saturator {
     ALL,
     PERIM,
     PERIMSTAR,
+    ALL_LEAF_DISJOINT,
 };
 
 using Abstractions = std::vector<std::unique_ptr<Abstraction>>;
