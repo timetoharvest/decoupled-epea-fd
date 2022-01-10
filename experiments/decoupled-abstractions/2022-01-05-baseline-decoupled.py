@@ -28,7 +28,7 @@ decoupling = {
     'mmgeneral' : 'lp_factoring(factoring_type=general, strategy=mm)',
 }
 for name, dec in decoupling.items():
-    CONFIGS.append(IssueConfig(f'{dec}-blind', ['--decoupling', dec, '--search',  'astar(blind())'], build_options=['release64'], driver_options=['--build', 'release64'])),
+    CONFIGS.append(IssueConfig(f'{name}-blind', ['--decoupling', dec, '--search',  'astar(blind())'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-lmcut', ['--decoupling', dec, '--search',  'astar(lmcut())'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE

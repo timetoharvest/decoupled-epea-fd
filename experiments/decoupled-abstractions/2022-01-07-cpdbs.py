@@ -89,7 +89,6 @@ attributes = [
 
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
-
 for name, _ in decoupling.items():
     algorithms=[
         f'{REVISION}-{name}-cpdbsapprox-hc',
@@ -109,8 +108,13 @@ for name, _ in decoupling.items():
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
-BASELINE_REV="e22d209b842073127f173fe954494e4d8a54e478"
+BASELINE_CPDBS_REV="e22d209b842073127f173fe954494e4d8a54e478"
 exp.add_fetcher('data/2022-01-07-baseline-cpdbs-eval', merge=True)
+BASELINE_DECOUPLED_REVISION = "e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"
+for name, _ in decoupling.items():
+    exp.add_fetcher('data/2022-01-05-baseline-decoupled-eval', merge=True,filter_algorithm=[
+        f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
+    ],name=f'fetch-baseline-decoupled-{name}')
 
 class Filter:
     def __init__(self, dec):
@@ -131,16 +135,39 @@ class Filter:
 
 for name, _ in decoupling.items():
     f = Filter(name)
+    algorithms=[
+        f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
+        f'{BASELINE_CPDBS_REV}-cpdbs-hc',
+        f'{REVISION}-{name}-cpdbsapprox-hc',
+        f'{REVISION}-{name}-cpdbsapprox-hcrestrictsingleleaf',
+        f'{REVISION}-{name}-cpdbsexp-hc',
+        f'{REVISION}-{name}-cpdbssingleleaf-hc1leaf',
+    ]
+    report_name=f'{exp.name}-absolute-with-baselines-{name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=attributes,
+            filter_algorithm=algorithms,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+for name, _ in decoupling.items():
+    f = Filter(name)
     report_name=f'{exp.name}-compare-{name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.html'
     exp.add_report(
         ComparativeReport(
             attributes=attributes,
             algorithm_pairs=[
-                (f'{BASELINE_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsapprox-hc'),
-                (f'{BASELINE_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsapprox-hcrestrictsingleleaf'),
-                (f'{BASELINE_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsexp-hc'),
-                (f'{BASELINE_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbssingleleaf-hc1leaf'),
+                (f'{BASELINE_CPDBS_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsapprox-hc'),
+                (f'{BASELINE_CPDBS_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsapprox-hcrestrictsingleleaf'),
+                (f'{BASELINE_CPDBS_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbsexp-hc'),
+                (f'{BASELINE_CPDBS_REV}-cpdbs-hc', f'{REVISION}-{name}-cpdbssingleleaf-hc1leaf'),
             ],
             filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
         ),

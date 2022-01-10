@@ -19,7 +19,7 @@ BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
 REVISIONS = ["e22d209b842073127f173fe954494e4d8a54e478"]
 TIME_LIMIT=2
 if common_setup.is_running_on_cluster():
-    TIME_LIMIT=100
+    TIME_LIMIT=900
 CONFIGS = [
     IssueConfig('cpdbs-hc', ['--search',  f'astar(cpdbs(hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64']),
 ]
