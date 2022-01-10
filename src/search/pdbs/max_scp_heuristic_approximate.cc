@@ -42,15 +42,16 @@ MaxSCPHeuristicApproximate::MaxSCPHeuristicApproximate(
         }
     }
 }
-void MaxSCPHeuristicApproximate::compute_min_distance_approx(
+
+static void compute_min_distance(
     const ExplicitStateCPG *cpg,
     const vector<int> &distances,
     const AbstractionFunction &abstraction_function,
-    const vector<LeafFactorID> affected_leaves,
+    const vector<LeafFactorID> &affected_leaves,
     vector<int> &member_state,
     int i,
     int sum_prices,
-    int &min_d) const {
+    int &min_d) {
 
     if (sum_prices >= min_d){
         // we cannot possibly improve the heuristic
@@ -70,7 +71,7 @@ void MaxSCPHeuristicApproximate::compute_min_distance_approx(
             int price = cpg->get_cost_of_state(id, leaf);
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
-                compute_min_distance_approx(cpg, distances, abstraction_function, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
+                compute_min_distance(cpg, distances, abstraction_function, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
                 min_d = min(min_d, sum_prices + price + distances[abstraction_function.get_abstract_state_id(member_state)]);
@@ -78,6 +79,35 @@ void MaxSCPHeuristicApproximate::compute_min_distance_approx(
         }
         ++id;
     }
+}
+
+int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
+    const GlobalState &state,
+    const vector<int> &abstract_state_ids,
+    const CostPartitioningHeuristic::LookupTable &lookup_table,
+    const ExplicitStateCPG* prices) const {
+    int min_h = numeric_limits<int>::max();
+    int abs_id = lookup_table.abstraction_id;
+    if (affected_leaves_by_abstraction[abs_id].empty()) {
+        assert(utils::in_bounds(abs_id, abstract_state_ids));
+        int state_id = abstract_state_ids[abs_id];
+        assert(utils::in_bounds(state_id, lookup_table.h_values));
+        min_h = lookup_table.h_values[state_id];
+    } else {
+        // used to call get_value(vector<int>) for all member states
+        vector<int> member_state(g_variable_domain.size(), -1);
+        set_center_facts(state, member_state);
+        compute_min_distance(
+            prices,
+            lookup_table.h_values,
+            *abstraction_functions[abs_id],
+            affected_leaves_by_abstraction[abs_id],
+            member_state,
+            0,
+            0,
+            min_h);
+    }
+    return min_h;
 }
 
 int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
@@ -91,32 +121,16 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     for (const auto &cp_heuristic : cp_heuristics) {
         int sum_h = 0;
+        unordered_set<LeafFactorID> affected_leaves_so_far;
         for (const auto &lookup_table : cp_heuristic.lookup_tables) {
-            int abs_id = lookup_table.abstraction_id;
-            int h;
-            if (affected_leaves_by_abstraction[abs_id].empty()) {
-                assert(utils::in_bounds(abs_id, abstract_state_ids));
-                int state_id = abstract_state_ids[abs_id];
-                assert(utils::in_bounds(state_id, lookup_table.h_values));
-                h = lookup_table.h_values[state_id];
-                assert(h >= 0);
-                if (h == INF) {
-                    return INF;
+            const vector<LeafFactorID> &abs_aff_leaves = affected_leaves_by_abstraction[lookup_table.abstraction_id];
+            for (LeafFactorID leaf_id : abs_aff_leaves) {
+                if (affected_leaves_so_far.count(leaf_id)) {
+                    continue;
                 }
-            } else {
-                // used to call get_value(vector<int>) for all member states
-                vector<int> member_state(g_variable_domain.size(), -1);
-                set_center_facts(state, member_state);
-                compute_min_distance_approx(
-                    prices,
-                    lookup_table.h_values,
-                    *abstraction_functions[abs_id],
-                    affected_leaves_by_abstraction[abs_id],
-                    member_state,
-                    0,
-                    0,
-                    h);
             }
+            affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
+            int h = compute_pdb_value_with_prices(state, abstract_state_ids, lookup_table, prices);
             sum_h += h;
             assert(sum_h >= 0);
         }
@@ -134,7 +148,8 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     add_projection_options_to_parser(parser);
-    cost_saturation::add_order_options_to_parser(parser);
+    add_saturator_option(parser);
+    add_order_options_to_parser(parser);
     Heuristic::add_options_to_parser(parser);
 
     options::Options opts = parser.parse();
@@ -161,5 +176,5 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
         move(cp_heuristics));
 }
 
-static Plugin<Evaluator> _plugin("max_scp_approximate", _parse);
+static Plugin<Evaluator> _plugin("max_scp_approx", _parse);
 }
