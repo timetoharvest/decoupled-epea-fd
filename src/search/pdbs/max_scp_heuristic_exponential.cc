@@ -73,7 +73,7 @@ void MaxSCPHeuristicExponential::compute_min_distance(
                     max_h = max(max_h, sum_h);
                     if (sum_prices + price + max_h >= min_d){
                         // we cannot possibly improve the heuristic
-                        return;
+                        break;
                     }
                 }
                 min_d = min(min_d, sum_prices + price + max_h);
@@ -92,21 +92,8 @@ int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
 
     if (affected_leaves.empty()){
         // compute maximal heuristic value for the center state
-        int max_h = 0;
-        for (const auto &cp_heuristic : cp_heuristics) {
-            int sum_h = cp_heuristic.compute_heuristic(abstract_state_ids);
-            if (sum_h > max_h) {
-                max_h = sum_h;
-            }
-            if (max_h == INF) {
-                break;
-            }
-        }
-        return max_h;
+        return compute_max_h(cp_heuristics, abstract_state_ids);
     } else {
-        // TODO in case there exists a center-only pattern that detects the center
-        // state as a deadend, we can spare ourselves all the recursion!
-
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
         set_center_facts(state, member_state);
@@ -119,7 +106,8 @@ int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     add_projection_options_to_parser(parser);
-    cost_saturation::add_order_options_to_parser(parser);
+    add_saturator_option(parser);
+    add_order_options_to_parser(parser);
     Heuristic::add_options_to_parser(parser);
 
     options::Options opts = parser.parse();
@@ -146,5 +134,5 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
         move(cp_heuristics));
 }
 
-static Plugin<Evaluator> _plugin("max_scp_exponential", _parse);
+static Plugin<Evaluator> _plugin("max_scp_exp", _parse);
 }

@@ -27,5 +27,11 @@ public:
         cost_saturation::CPHeuristics &&cp_heuristics);
     virtual ~MaxSCPHeuristicApproximate() override = default;
 };
+
+extern cost_saturation::CostPartitioningHeuristic compute_saturated_cost_partitioning_leaf_disjoint(
+    const cost_saturation::Abstractions &abstractions,
+    const std::vector<int> &order,
+    std::vector<int> &remaining_costs,
+    const std::vector<int> &);
 }
 #endif

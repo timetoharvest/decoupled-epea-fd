@@ -111,10 +111,10 @@ for name, _ in decoupling.items():
 BASELINE_CPDBS_REV="e22d209b842073127f173fe954494e4d8a54e478"
 exp.add_fetcher('data/2022-01-07-baseline-cpdbs-eval', merge=True)
 BASELINE_DECOUPLED_REVISION = "e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784"
-for name, _ in decoupling.items():
-    exp.add_fetcher('data/2022-01-05-baseline-decoupled-eval', merge=True,filter_algorithm=[
-        f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
-    ],name=f'fetch-baseline-decoupled-{name}')
+baseline_algos=[
+    f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut' for name in decoupling.keys()
+]
+exp.add_fetcher('data/2022-01-05-baseline-decoupled-eval', merge=True,filter_algorithm=baseline_algos)
 
 class Filter:
     def __init__(self, dec):

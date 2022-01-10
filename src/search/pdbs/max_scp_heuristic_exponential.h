@@ -10,6 +10,7 @@ class ExplicitStateCPG;
 namespace pdbs {
 class MaxSCPHeuristicExponential : public MaxSCPHeuristic {
     std::vector<LeafFactorID> affected_leaves;
+
     void compute_min_distance(
         const ExplicitStateCPG *prices,
         std::vector<int> &member_state,

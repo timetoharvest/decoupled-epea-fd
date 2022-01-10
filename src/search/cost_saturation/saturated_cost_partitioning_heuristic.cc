@@ -5,11 +5,13 @@
 #include "cost_partitioning_heuristic.h"
 #include "cost_partitioning_heuristic_collection_generator.h"
 #include "max_cost_partitioning_heuristic.h"
+#include "projection.h"
 #include "utils.h"
 
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../pdbs/max_scp_heuristic_approximate.h"
 #include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/markup.h"
@@ -77,12 +79,13 @@ static CostPartitioningHeuristic compute_perimstar_saturated_cost_partitioning(
 void add_saturator_option(OptionParser &parser) {
     parser.add_enum_option<Saturator>(
         "saturator",
-        {"all", "perim", "perimstar"},
+        {"all", "perim", "perimstar", "all_leaf_disjoint"},
         "function that computes saturated cost functions",
         "all",
         {"preserve estimates of all states",
          "preserve estimates of states in perimeter around goal",
-         "compute 'perim' first and then 'all' with remaining costs"});
+         "compute 'perim' first and then 'all' with remaining costs",
+         "like all but requires patterns to be leaf disjoint"});
 }
 
 CPFunction get_cp_function_from_options(const Options &opts) {
@@ -94,6 +97,8 @@ CPFunction get_cp_function_from_options(const Options &opts) {
         cp_function = compute_perim_saturated_cost_partitioning;
     } else if (saturator_type == Saturator::PERIMSTAR) {
         cp_function = compute_perimstar_saturated_cost_partitioning;
+    } else if (saturator_type == Saturator::ALL_LEAF_DISJOINT) {
+        cp_function = pdbs::compute_saturated_cost_partitioning_leaf_disjoint;
     } else {
         ABORT("Invalid value for saturator.");
     }

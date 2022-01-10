@@ -17,13 +17,13 @@ static bool are_patterns_additive(
     const Pattern &pattern1,
     const Pattern &pattern2,
     const VariableAdditivity &are_additive,
-    bool restrict_to_single_leaf) {
+    bool disjoint_leaf_additivity) {
     for (int v1 : pattern1) {
         for (int v2 : pattern2) {
             if (!are_additive[v1][v2]) {
                 return false;
             }
-            if (restrict_to_single_leaf) {
+            if (disjoint_leaf_additivity) {
                 // only relevant for decoupled search
                 // ensures that patterns that affect the same leaf
                 // cannot be in the same clique
@@ -59,14 +59,14 @@ VariableAdditivity compute_additive_vars(const TaskProxy &task_proxy) {
 shared_ptr<vector<PatternClique>> compute_pattern_cliques(
         const PatternCollection &patterns,
         const VariableAdditivity &are_additive,
-        bool restrict_to_single_leaf) {
+        bool disjoint_leaf_additivity) {
     // Initialize compatibility graph.
     vector<vector<int>> cgraph;
     cgraph.resize(patterns.size());
 
     for (size_t i = 0; i < patterns.size(); ++i) {
         for (size_t j = i + 1; j < patterns.size(); ++j) {
-            if (are_patterns_additive(patterns[i], patterns[j], are_additive, restrict_to_single_leaf)) {
+            if (are_patterns_additive(patterns[i], patterns[j], are_additive, disjoint_leaf_additivity)) {
                 /* If the two patterns are additive, there is an edge in the
                    compatibility graph. */
                 cgraph[i].push_back(j);
@@ -85,7 +85,7 @@ vector<PatternClique> compute_pattern_cliques_with_pattern(
     const vector<PatternClique> &known_pattern_cliques,
     const Pattern &new_pattern,
     const VariableAdditivity &are_additive,
-    bool restrict_to_single_leaf) {
+    bool disjoint_leaf_additivity) {
     vector<PatternClique> cliques_additive_with_pattern;
     for (const PatternClique &known_clique : known_pattern_cliques) {
         // Take all patterns which are additive to new_pattern.
@@ -93,7 +93,7 @@ vector<PatternClique> compute_pattern_cliques_with_pattern(
         new_clique.reserve(known_clique.size());
         for (PatternID pattern_id : known_clique) {
             if (are_patterns_additive(
-                    new_pattern, patterns[pattern_id], are_additive, restrict_to_single_leaf)) {
+                    new_pattern, patterns[pattern_id], are_additive, disjoint_leaf_additivity)) {
                 new_clique.push_back(pattern_id);
             }
         }
