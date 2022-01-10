@@ -517,6 +517,7 @@ LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafF
 void StateRegistry::print_decoupled_search_statistics() const {
     // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
+    int num_member_states = 0;
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         dec_size += sizeof(PackedStateBin) * g_leaf_factor_packers[factor]->get_num_bins() * size(factor);
@@ -524,8 +525,21 @@ void StateRegistry::print_decoupled_search_statistics() const {
 
     for (size_t i = 0; i < CPGStorage::storage->size(this); ++i){
         dec_size += CPGStorage::storage->get_cpg(lookup_state(StateID(i)))->get_memory_footprint();
+        if (g_factoring->get_leaf_representation_type() == LEAF_REPRESENTATION_TYPE::EXPLICIT){
+            const ExplicitStateCPG *cpg = static_cast<const ExplicitStateCPG *>(CPGStorage::storage->get_cpg(lookup_state(StateID(i))));
+            int num_member_states_state = 1;
+            for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf){
+                num_member_states_state *= cpg->get_number_states(leaf);
+            }
+            num_member_states += num_member_states_state;
+        }
     }
     cout << "decoupled state space size " << dec_size << endl;
+
+    if (g_factoring->get_leaf_representation_type() == LEAF_REPRESENTATION_TYPE::EXPLICIT){
+        cout << "Average number of member states (generated decoupled states): "
+                << (num_member_states / CPGStorage::storage->size(this)) << endl;
+    }
 
     cout << "Time spent on dominance pruning: " << dominance_pruning_timer.count() << "s" << endl;
 
