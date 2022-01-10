@@ -80,6 +80,7 @@ int MaxSCPHeuristicSingleLeaf::compute_min_distance(
             int price = prices->get_cost_of_state(id, leaf);
             vector<int> abstract_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
 
+            bool is_dead_end_member_state = false;
             int sum_dists = 0;
             for (const auto &lookup_table : cp_heuristic.lookup_tables) {
                 if (affecting_patterns[leaf].count(lookup_table.abstraction_id)) {
@@ -88,17 +89,20 @@ int MaxSCPHeuristicSingleLeaf::compute_min_distance(
                     assert(utils::in_bounds(state_id, lookup_table.h_values));
                     int h = lookup_table.h_values[state_id];
                     assert(h >= 0);
-                    if (h == INF) {
-                        return INF;
+                    if (h == numeric_limits<int>::max()){
+                        is_dead_end_member_state = true;
+                        break;
                     }
                     sum_dists += h;
                     if (price + sum_dists >= min_d){
                         break;
                     }
-                    }
+                }
             }
 
-            min_d = min(min_d, price + sum_dists);
+            if (!is_dead_end_member_state){
+                min_d = min(min_d, price + sum_dists);
+            }
         }
         ++id;
     }
@@ -136,8 +140,13 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
             vector<int> member_state(g_variable_domain.size(), -1);
             set_center_facts(state, member_state);
             for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
-                if (leaf < affecting_patterns.size() && !affecting_patterns[leaf].empty()){
-                    sum_h += compute_min_distance(prices, cp_heuristic, member_state, leaf);
+                if (!affecting_patterns[leaf].empty()){
+                    int h = compute_min_distance(prices, cp_heuristic, member_state, leaf);
+                    if (h == numeric_limits<int>::max()){
+                        // all reached leaf states are dead-ends
+                        return numeric_limits<int>::max();
+                    }
+                    sum_h += h;
                 }
             }
         }
@@ -148,7 +157,8 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     add_projection_options_to_parser(parser);
-    cost_saturation::add_order_options_to_parser(parser);
+    add_saturator_option(parser);
+    add_order_options_to_parser(parser);
     Heuristic::add_options_to_parser(parser);
 
     options::Options opts = parser.parse();
