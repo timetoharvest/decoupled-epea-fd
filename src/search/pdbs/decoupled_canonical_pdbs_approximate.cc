@@ -63,7 +63,10 @@ void compute_min_distance(
                 compute_min_distance(pdb, cpg, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
-                min_d = min(min_d, sum_prices + price + pdb.get_value(member_state));
+                int h = pdb.get_value(member_state);
+                if (h != numeric_limits<int>::max()) {
+                    min_d = min(min_d, sum_prices + price + h);
+                }
             }
         }
         ++id;
