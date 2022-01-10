@@ -189,6 +189,7 @@ for name in decoupling.keys():
                 f'{REVISION}-{name}-cpdbsexp-hc',
             ],
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
         ),
         name=report_name,
         outfile=report_file,
