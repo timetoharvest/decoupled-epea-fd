@@ -27,8 +27,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
 
     unordered_set<LeafFactorID> aff_leaves;
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-        unordered_set<LeafFactorID> tmp;
-        get_leaf_factors_of_pattern(pdb->get_pattern(), tmp);
+        unordered_set<LeafFactorID> tmp = get_leaf_factors_of_pattern(pdb->get_pattern());
         if (tmp.empty()){
             is_center_only_pattern.push_back(true);
             center_only_patterns.push_back(is_center_only_pattern.size() - 1);
@@ -46,24 +45,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
 
     if (affected_leaves.empty()){
         // compute maximal heuristic value for the center state
-        int max_h = 0;
-        vector<int> h_values;
-        h_values.reserve(pdbs->size());
-        for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
-            int h = pdb->get_value(state);
-            if (h == numeric_limits<int>::max()) {
-                return numeric_limits<int>::max();
-            }
-            h_values.push_back(h);
-        }
-        for (const PatternClique &clique : *pattern_cliques) {
-            int clique_h = 0;
-            for (PatternID pdb_index : clique) {
-                clique_h += h_values[pdb_index];
-            }
-            max_h = max(max_h, clique_h);
-        }
-        return max_h;
+        return CanonicalPDBs::get_value(state);
     } else {
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
