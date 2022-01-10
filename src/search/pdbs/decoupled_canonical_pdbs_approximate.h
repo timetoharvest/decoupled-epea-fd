@@ -5,6 +5,7 @@
 
 #include "../leaf_state_id.h"
 
+class ExplicitStateCPG;
 class GlobalState;
 
 namespace pdbs {
@@ -18,6 +19,12 @@ public:
 
     virtual int get_value(const GlobalState &state) const override;
 };
+
+extern int compute_pdb_value_with_prices(
+    const GlobalState &state,
+    const PatternDatabase &pdb,
+    const ExplicitStateCPG* prices,
+    const std::vector<LeafFactorID> &affected_leaves);
 }
 
 #endif

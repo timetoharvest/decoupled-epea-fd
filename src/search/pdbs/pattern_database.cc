@@ -1,15 +1,10 @@
 #include "pattern_database.h"
 
 #include "match_tree.h"
-#include "pattern_filter.h"
-#include "utils.h"
 
-#include "../globals.h"
 #include "../state.h"
 
 #include "../algorithms/priority_queues.h"
-#include "../compliant_paths/cpg_storage.h"
-#include "../compliant_paths/explicit_state_cpg.h"
 #include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
 #include "../utils/logging.h"
@@ -91,11 +86,6 @@ PatternDatabase::PatternDatabase(
            operator_costs.size() == task_proxy.get_operators().size());
     assert(utils::is_sorted_unique(pattern));
 
-    if (g_factoring && g_factoring->get_leaf_representation_type() == SYMBOLIC){
-        cerr << "PatternDatabase only supports explicit-state pricing functions." << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-    }
-
     utils::Timer timer;
     hash_multipliers.reserve(pattern.size());
     num_states = 1;
@@ -112,7 +102,6 @@ PatternDatabase::PatternDatabase(
         }
     }
     create_pdb(task_proxy, operator_costs, compute_plan, rng, compute_wildcard_plan);
-
     if (dump)
         utils::g_log << "PDB construction time: " << timer << endl;
 }
@@ -392,58 +381,6 @@ int PatternDatabase::get_value(const vector<int> &state) const {
 
 int PatternDatabase::get_value(const GlobalState &state) const {
     return distances[hash_index(state)];
-}
-
-void PatternDatabase::compute_min_distance_decoupled(
-    const ExplicitStateCPG *cpg,
-    const vector<LeafFactorID> &affected_leaves,
-    vector<int> &member_state,
-    int i,
-    int sum_prices,
-    int &min_d) const {
-
-    if (sum_prices >= min_d){
-        // we cannot possibly improve the heuristic
-        return;
-    }
-
-    LeafFactorID leaf = affected_leaves[i];
-
-    int number_states = cpg->get_number_states(leaf);
-    LeafStateHash id(0);
-    while (number_states > 0){
-        if (cpg->has_leaf_state(id, leaf)){
-            --number_states;
-
-            set_leaf_facts(id, leaf, member_state);
-
-            int price = cpg->get_cost_of_state(id, leaf);
-            if (i < static_cast<int>(affected_leaves.size()) - 1){
-                // recursion
-                compute_min_distance_decoupled(cpg, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
-            } else {
-                // end recursion
-                min_d = min(min_d, sum_prices + price + distances[hash_index(member_state)]);
-            }
-        }
-        ++id;
-    }
-}
-
-int PatternDatabase::get_value(
-    const GlobalState &center,
-    const ExplicitStateCPG *prices,
-    const vector<LeafFactorID> &affected_leaves) const {
-    int min_h = numeric_limits<int>::max();
-    if (affected_leaves.empty()){
-        min_h = distances[hash_index(center)];
-    } else {
-        // used to call get_value(vector<int>) for all member states
-        vector<int> member_state(g_variable_domain.size(), -1);
-        set_center_facts(center, member_state);
-        compute_min_distance_decoupled(prices, affected_leaves, member_state, 0, 0, min_h);
-    }
-    return min_h;
 }
 
 double PatternDatabase::compute_mean_finite_h() const {

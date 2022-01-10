@@ -1,5 +1,6 @@
 #include "pdb_heuristic.h"
 
+#include "decoupled_canonical_pdbs_approximate.h"
 #include "pattern_database.h"
 #include "pattern_filter.h"
 #include "pattern_generator.h"
@@ -38,9 +39,10 @@ PDBHeuristic::PDBHeuristic(const Options &opts)
 int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     int h;
     if (g_factoring){
-        h = pdb->get_value(
+        h = compute_pdb_value_with_prices(
             ancestor_state,
-            dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state)),
+            *pdb,
+            dynamic_cast<const ExplicitStateCPG *>(CPGStorage::storage->get_cpg(ancestor_state)),
             affected_leaves);
     } else {
         h = pdb->get_value(ancestor_state);
