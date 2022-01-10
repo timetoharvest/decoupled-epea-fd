@@ -504,6 +504,9 @@ fast_downward_plugin(
         pdbs/match_tree
         pdbs/max_cliques
         pdbs/max_scp_heuristic
+        pdbs/max_scp_heuristic_approximate
+        pdbs/max_scp_heuristic_exponential
+        pdbs/max_scp_heuristic_single_leaf
         pdbs/pattern_cliques
         pdbs/pattern_collection_information
         pdbs/pattern_collection_generator_combo
