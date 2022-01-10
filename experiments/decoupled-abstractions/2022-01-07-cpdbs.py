@@ -123,7 +123,7 @@ class Filter:
 
     def collect_non_factorable_tasks(self, run):
         # Only consider algorithms of the right factoring.
-        if self.decoupling not in run['algorithm']:
+        if f'-{self.decoupling}-' not in run['algorithm']:
             return True
         error = run.get('error')
         if error is not None and error == 'search-abstained':
