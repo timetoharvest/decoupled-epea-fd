@@ -517,7 +517,7 @@ LeafStateHash StateRegistry::get_leaf_state_hash(const vector<int> &facts, LeafF
 void StateRegistry::print_decoupled_search_statistics() const {
     // sum_leaves(|leaf| * #reachable leaf states) + sum_s(|center| + sum_leaves(#reachable leaf states in s))
     size_t dec_size = sizeof(PackedStateBin) * g_state_packer->get_num_bins() * size();
-    int num_member_states = 0;
+    uint64_t num_member_states = 0;
 
     for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
         dec_size += sizeof(PackedStateBin) * g_leaf_factor_packers[factor]->get_num_bins() * size(factor);
