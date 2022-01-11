@@ -523,9 +523,13 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
 #endif
         }
     }
-    vector<pair<int, int> >::iterator it = g_goal.begin();
-    for (int i = indeces_to_remove.size() - 1; i >= 0; --i){
-        g_goal.erase(it + indeces_to_remove[i]);
+    if (abstain_type != ABSTAIN_TYPE::COMPUTE_FACTORING_RUN_STANDARD){
+        // TODO instead of this hack, do not modify g_goal at all, but
+        // introduce a g_center_goals variable
+        vector<pair<int, int> >::iterator it = g_goal.begin();
+        for (int i = indeces_to_remove.size() - 1; i >= 0; --i){
+            g_goal.erase(it + indeces_to_remove[i]);
+        }
     }
 #ifdef DEBUG_FACTORING
     if (!g_goal.empty()){
@@ -790,10 +794,11 @@ void Factoring::do_factoring_or_abstain() {
         cout << "No factoring with at least " << min_number_leaves << " leaves found!" << endl;
         switch (abstain_type){
             case ABSTAIN_TYPE::ABSTAIN_ON_FAILURE : exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
-            case ABSTAIN_TYPE::STANDARD_ON_FAILURE : return;
             case ABSTAIN_TYPE::NO_SEARCH :
-                cout << "Factoring failed, do not perform search." << endl;
-                exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
+                            cout << "Factoring failed, do not perform search." << endl;
+                            exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
+            case ABSTAIN_TYPE::COMPUTE_FACTORING_RUN_STANDARD: // fall through
+            case ABSTAIN_TYPE::STANDARD_ON_FAILURE : return;
         }
     }
 
@@ -1927,6 +1932,7 @@ void Factoring::add_options_to_parser(OptionParser &parser) {
     abstain_types.push_back("ABSTAIN_ON_FAILURE");
     abstain_types.push_back("STANDARD_ON_FAILURE");
     abstain_types.push_back("NO_SEARCH");
+    abstain_types.push_back("COMPUTE_FACTORING_RUN_STANDARD");
     parser.add_enum_option<ABSTAIN_TYPE>(
         "abstain_type",
         abstain_types,

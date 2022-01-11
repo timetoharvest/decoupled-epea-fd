@@ -154,9 +154,13 @@ class StateRegistry {
         std::vector<int> state_sizes;
         LeafStateIDSemanticHash(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
         : data_pool(state_data_pool_) {
-            state_sizes.resize(g_leaves.size());
-            for (size_t i = 0; i < g_leaves.size(); ++i){
-                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            if (g_factoring){
+                // we need the guard for abstain_type COMPUTE_RUN_STANDARD, where
+                // g_leaves is set, but we run explicit-state search
+                state_sizes.resize(g_leaves.size());
+                for (size_t i = 0; i < g_leaves.size(); ++i){
+                    state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+                }
             }
         }
         size_t operator() (const LeafStateID &id) const {
@@ -174,9 +178,13 @@ class StateRegistry {
         std::vector<int> state_sizes;
         LeafStateIDSemanticEqual(const std::vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* > &state_data_pool_)
         : data_pool(state_data_pool_) {
-            state_sizes.resize(g_leaves.size());
-            for (size_t i = 0; i < g_leaves.size(); ++i){
-                state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+            if (g_factoring){
+                // we need the guard for abstain_type COMPUTE_RUN_STANDARD, where
+                // g_leaves is set, but we run explicit-state search
+                state_sizes.resize(g_leaves.size());
+                for (size_t i = 0; i < g_leaves.size(); ++i){
+                    state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+                }
             }
         }
 

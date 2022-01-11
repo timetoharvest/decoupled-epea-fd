@@ -19,17 +19,19 @@ StateRegistry::StateRegistry()
     : dominance_pruning_timer(0.0),
       state_data_pool(g_state_packer->get_num_bins()),
       leaf_state_data_pool(vector<segmented_vector::SegmentedArrayVector<PackedStateBin>* >
-                                (g_leaves.size(), 0)),
+                                (g_factoring ? g_leaves.size() : 0, 0)),
       registered_states(0,
                         StateIDSemanticHash(state_data_pool, g_state_packer->get_num_bins()),
                         StateIDSemanticEqual(state_data_pool, g_state_packer->get_num_bins())),
-      registered_leaf_states(vector<LeafStateIDSet>(g_leaves.size(),
+      registered_leaf_states(vector<LeafStateIDSet>(g_factoring ? g_leaves.size() : 0,
                              LeafStateIDSet(0, LeafStateIDSemanticHash(leaf_state_data_pool),
                                                 LeafStateIDSemanticEqual(leaf_state_data_pool)))),
       cached_initial_state(0) {
-    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
-        leaf_state_data_pool[factor] = new segmented_vector::SegmentedArrayVector<PackedStateBin>
-                                    (g_leaf_factor_packers[factor]->get_num_bins());
+    if (g_factoring){
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            leaf_state_data_pool[factor] = new segmented_vector::SegmentedArrayVector<PackedStateBin>
+                                        (g_leaf_factor_packers[factor]->get_num_bins());
+        }
     }
 }
 

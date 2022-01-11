@@ -278,7 +278,7 @@ void read_everything(istream &in) {
 
     if (g_factoring){
         g_factoring->do_factoring_or_abstain();
-        if (g_factoring->run_standard_search_because_factoring_failed()){
+        if (g_factoring->reset_factoring()){
             g_factoring.reset();
         }
     }

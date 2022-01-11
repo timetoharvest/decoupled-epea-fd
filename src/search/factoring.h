@@ -78,10 +78,11 @@ class Options;
 
 class Factoring {
     
-    enum ABSTAIN_TYPE {
+    enum class ABSTAIN_TYPE {
         ABSTAIN_ON_FAILURE, // default, if no factoring is found, the planner stops
         STANDARD_ON_FAILURE, // run standard search if no factoring is found
-        NO_SEARCH   // stop after doing the factoring
+        NO_SEARCH,   // exit planner after doing the factoring
+        COMPUTE_FACTORING_RUN_STANDARD // compute and apply the factoring, but run standard search
     };
 
     DECOUPLED_SEARCH_TYPE search_type;
@@ -181,9 +182,10 @@ public:
         return leaf_type;
     }
 
-    bool run_standard_search_because_factoring_failed() const {
+    bool reset_factoring() const {
         // TODO hacky, fix this
-        return g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE;
+        return abstain_type == ABSTAIN_TYPE::COMPUTE_FACTORING_RUN_STANDARD ||
+                (g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE);
     }
 
     
