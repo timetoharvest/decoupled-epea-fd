@@ -11,6 +11,7 @@ from lab.reports import Attribute, geometric_mean, arithmetic_mean
 
 from downward.reports.absolute import AbsoluteReport
 from downward.reports.compare import ComparativeReport
+from downward.reports.scatter import ScatterPlotReport
 
 import common_setup
 from common_setup import IssueConfig, IssueExperiment
@@ -122,6 +123,7 @@ exp.add_fetcher('data/2022-01-10-baseline-scp-eval', merge=True,filter_algorithm
 ])
 BASELINE_DECOUPLED_REVISION = "c266104fac299b327cfaaf434a8ab36070233178"
 baseline_algos=[
+    f'{BASELINE_DECOUPLED_REVISION}-{name}-blind' for name in decoupling.keys()
     f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut' for name in decoupling.keys()
 ]
 exp.add_fetcher('data/2022-01-10-baseline-decoupled-eval', merge=True,filter_algorithm=baseline_algos)
@@ -146,6 +148,7 @@ class Filter:
 for name, _ in decoupling.items():
     f = Filter(name)
     algorithms=[
+        f'{BASELINE_DECOUPLED_REVISION}-{name}-blind',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
         f'{BASELINE_SCP_REV}-scp-cegar',
         f'{REVISION}-{name}-scpapprox-cegar-allorders',
@@ -185,5 +188,23 @@ for name, _ in decoupling.items():
         outfile=report_file,
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+for name in decoupling.keys():
+    f = Filter(name)
+    report_name=f'{exp.name}-plot-expansions-approx-vs-exp-{name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions_until_last_jump',
+            filter_algorithm=[
+                f'{REVISION}-{name}-scpapprox-cegar-allorders',
+                f'{REVISION}-{name}-scpexp-cegar-allorders',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
 
 exp.run_steps()
