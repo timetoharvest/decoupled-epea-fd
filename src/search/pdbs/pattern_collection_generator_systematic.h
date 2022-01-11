@@ -31,6 +31,7 @@ class PatternCollectionGeneratorSystematic : public PatternCollectionGenerator {
 
     const size_t max_pattern_size;
     const bool only_interesting_patterns;
+    const double max_time;
     std::shared_ptr<PatternFilter> pattern_filter;
     std::shared_ptr<PatternCollection> patterns;
     PatternSet pattern_set;  // Cleared after pattern computation.

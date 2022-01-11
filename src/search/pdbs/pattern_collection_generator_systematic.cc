@@ -9,6 +9,7 @@
 #include "../task_proxy.h"
 
 #include "../task_utils/causal_graph.h"
+#include "../utils/countdown_timer.h"
 #include "../utils/logging.h"
 #include "../utils/markup.h"
 #include "../utils/timer.h"
@@ -52,6 +53,7 @@ PatternCollectionGeneratorSystematic::PatternCollectionGeneratorSystematic(
     const Options &opts)
     : max_pattern_size(opts.get<int>("pattern_max_size")),
       only_interesting_patterns(opts.get<bool>("only_interesting_patterns")),
+      max_time(opts.get<double>("max_time")),
       pattern_filter(get_pattern_filter_from_options(opts)) {
 }
 
@@ -189,6 +191,8 @@ void PatternCollectionGeneratorSystematic::build_patterns(
     int num_variables = task_proxy.get_variables().size();
     const causal_graph::CausalGraph &cg = task_proxy.get_causal_graph();
 
+    utils::CountdownTimer timer(max_time);
+
     // Generate SGA (single-goal-ancestor) patterns.
     // They are generated into the patterns variable,
     // so we swap them from there.
@@ -222,6 +226,11 @@ void PatternCollectionGeneratorSystematic::build_patterns(
       during the computation.
     */
     for (size_t pattern_no = 0; pattern_no < patterns->size(); ++pattern_no) {
+        if (timer.is_expired()) {
+            utils::g_log << "Time limit reached, terminating." << endl;
+            break;
+        }
+
         // We must copy the pattern because references to patterns can be invalidated.
         Pattern pattern1 = (*patterns)[pattern_no];
 
@@ -251,6 +260,7 @@ void PatternCollectionGeneratorSystematic::build_patterns(
 
 void PatternCollectionGeneratorSystematic::build_patterns_naive(
     const TaskProxy &task_proxy) {
+    utils::CountdownTimer timer(max_time);
     int num_variables = task_proxy.get_variables().size();
     PatternCollection current_patterns(1);
     PatternCollection next_patterns;
@@ -270,6 +280,10 @@ void PatternCollectionGeneratorSystematic::build_patterns_naive(
         }
         next_patterns.swap(current_patterns);
         next_patterns.clear();
+        if (timer.is_expired()) {
+            utils::g_log << "Time limit reached, terminating." << endl;
+            break;
+        }
     }
 
     utils::g_log << "Found " << patterns->size() << " patterns." << endl;
@@ -331,6 +345,11 @@ static shared_ptr<PatternCollectionGenerator> _parse(OptionParser &parser) {
         "Only consider the union of two disjoint patterns if the union has "
         "more information than the individual patterns.",
         "true");
+    parser.add_option<double>(
+        "max_time",
+        "maximum time in seconds for generating patterns.",
+        "infinity",
+        Bounds("0.0", "infinity"));
     add_pattern_filter_option_to_parser(parser);
 
     Options opts = parser.parse();
