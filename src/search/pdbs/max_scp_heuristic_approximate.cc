@@ -21,6 +21,8 @@
 #include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 
+#include "../utils/logging.h"
+
 using namespace cost_saturation;
 using namespace std;
 
@@ -193,10 +195,9 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
 
     Saturator saturator_type = opts.get<Saturator>("saturator");
     if (saturator_type != Saturator::ALL_LEAF_DISJOINT) {
-        cerr << "with the approximate SCP heuristic, you have to use the "
-                "saturator which ensures all patterns in a CP are leaf "
-                "disjoint" << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+        utils::g_log << "WARNING! with the approximate SCP heuristic, you "
+                        "should to use the saturator which ensures all patterns "
+                        "in a CP are leaf disjoint" << endl;
     }
 
     if (parser.dry_run())
