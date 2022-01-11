@@ -15,7 +15,6 @@
 #include "../cost_saturation/cost_partitioning_heuristic.h"
 #include "../cost_saturation/cost_partitioning_heuristic_collection_generator.h"
 #include "../cost_saturation/projection.h"
-#include "../cost_saturation/projection_generator.h"
 #include "../cost_saturation/saturated_cost_partitioning_heuristic.h"
 #include "../cost_saturation/utils.h"
 
@@ -163,7 +162,7 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
 }
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
-    add_projection_options_to_parser(parser);
+    prepare_parser_for_cost_partitioning_heuristic(parser);
     add_saturator_option(parser);
     add_order_options_to_parser(parser);
     Heuristic::add_options_to_parser(parser);
@@ -180,8 +179,8 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     shared_ptr<AbstractTask> task = tasks::g_root_task;
     TaskProxy task_proxy(*task);
     vector<int> costs = task_properties::get_operator_costs(task_proxy);
-    shared_ptr<ProjectionGenerator> projection_generator = make_shared<ProjectionGenerator>(opts);
-    Abstractions abstractions = projection_generator->generate_abstractions(task);
+    Abstractions abstractions = generate_abstractions(
+        task, opts.get_list<shared_ptr<AbstractionGenerator>>("abstractions"));
     CPFunction cp_function = get_cp_function_from_options(opts);
     CPHeuristics cp_heuristics =
         get_cp_heuristic_collection_generator_from_options(opts).generate_cost_partitionings(
