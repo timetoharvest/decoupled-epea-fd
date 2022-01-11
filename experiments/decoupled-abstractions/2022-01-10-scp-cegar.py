@@ -171,7 +171,7 @@ for name, _ in decoupling.items():
 for name, _ in decoupling.items():
     f = Filter(name)
     report_name=f'{exp.name}-compare-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
     exp.add_report(
         ComparativeReport(
             attributes=attributes,
@@ -191,13 +191,82 @@ for name, _ in decoupling.items():
 for name in decoupling.keys():
     f = Filter(name)
     report_name=f'{exp.name}-plot-expansions-approx-vs-exp-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
     exp.add_report(
         ScatterPlotReport(
             attributes='expansions_until_last_jump',
             filter_algorithm=[
                 f'{REVISION}-{name}-scpapprox-cegar-allorders',
                 f'{REVISION}-{name}-scpexp-cegar-allorders',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+for name in decoupling.keys():
+    f = Filter(name)
+    report_name=f'{exp.name}-plot-evaluations-{name}-lmcut-vs-exp'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='evaluations',
+            filter_algorithm=[
+                f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
+                f'{REVISION}-{name}-scpexp-cegar-allorders',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+    f = Filter(name)
+    report_name=f'{exp.name}-plot-evaluations-{name}-lmcut-vs-singleleaf'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='evaluations',
+            filter_algorithm=[
+                f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
+                f'{REVISION}-{name}-scpsingleleaf-cegaroneleaf-allorders',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+    f = Filter(name)
+    report_name=f'{exp.name}-plot-evaluations-{name}-scp-vs-exp'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='evaluations',
+            filter_algorithm=[
+                f'{BASELINE_SCP_REV}-scp-cegar',
+                f'{REVISION}-{name}-scpexp-cegar-allorders',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            get_category=lambda run1, run2: run1['domain']
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+    f = Filter(name)
+    report_name=f'{exp.name}-plot-evaluations-{name}-scp-vs-singleleaf'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='evaluations',
+            filter_algorithm=[
+                f'{BASELINE_SCP_REV}-scp-cegar',
+                f'{REVISION}-{name}-scpsingleleaf-cegaroneleaf-allorders',
             ],
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
             get_category=lambda run1, run2: run1['domain']

@@ -120,7 +120,7 @@ exp.add_fetcher('data/2022-01-10-baseline-scp-eval', merge=True,filter_algorithm
 ])
 BASELINE_DECOUPLED_REVISION = "c266104fac299b327cfaaf434a8ab36070233178"
 baseline_algos=[
-    f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut' for name in decoupling.keys()
+    f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
 ]
 exp.add_fetcher('data/2022-01-10-baseline-decoupled-eval', merge=True,filter_algorithm=baseline_algos)
 
@@ -144,6 +144,7 @@ class Filter:
 for name, _ in decoupling.items():
     f = Filter(name)
     algorithms=[
+        f'{BASELINE_DECOUPLED_REVISION}-{name}-blind',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
         f'{BASELINE_SCP_REV}-scp-sys2',
         f'{REVISION}-{name}-scpapprox-sys2-allorders',
@@ -167,7 +168,7 @@ for name, _ in decoupling.items():
 for name, _ in decoupling.items():
     f = Filter(name)
     report_name=f'{exp.name}-compare-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    report_file=Path(exp.eval_dir) / f'{report_name}.png'
     exp.add_report(
         ComparativeReport(
             attributes=attributes,
