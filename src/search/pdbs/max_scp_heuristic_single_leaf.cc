@@ -109,6 +109,14 @@ int MaxSCPHeuristicSingleLeaf::compute_min_distance(
 
 int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
     int max_h = 0;
+    vector<int> member_state;
+    const ExplicitStateCPG *prices = nullptr;
+    if (!affecting_patterns.empty()) {
+        prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+        member_state.resize(g_variable_domain.size(), -1);
+        set_center_facts(state, member_state);
+    }
+
     for (const auto &cp_heuristic : cp_heuristics) {
         int sum_h = 0;
         if (affecting_patterns.empty()){
@@ -116,6 +124,10 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
             vector<int> abstract_state_ids = get_abstract_state_ids(
                 abstraction_functions, state);
             sum_h = cp_heuristic.compute_heuristic(abstract_state_ids);
+            if (sum_h == numeric_limits<int>::max()){
+                // all reached leaf states are dead-ends
+                return numeric_limits<int>::max();
+            }
         } else {
             for (const auto &lookup_table : cp_heuristic.lookup_tables) {
                 if (center_only_patterns.count(lookup_table.abstraction_id)) {
@@ -129,9 +141,7 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
                     sum_h += h;
                 }
             }
-            const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-            vector<int> member_state(g_variable_domain.size(), -1);
-            set_center_facts(state, member_state);
+
             for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
                 if (!affecting_patterns[leaf].empty()){
                     int h = compute_min_distance(prices, cp_heuristic, member_state, leaf);
