@@ -136,7 +136,7 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
                     int h = lookup_table.h_values[state_id];
                     assert(h >= 0);
                     if (h == INF) {
-                        return INF;
+                        return DEAD_END;
                     }
                     sum_h += h;
                 }
@@ -147,13 +147,17 @@ int MaxSCPHeuristicSingleLeaf::compute_heuristic(const GlobalState &state) {
                     int h = compute_min_distance(prices, cp_heuristic, member_state, leaf);
                     if (h == numeric_limits<int>::max()){
                         // all reached leaf states are dead-ends
-                        return numeric_limits<int>::max();
+                        return DEAD_END;
                     }
                     sum_h += h;
                 }
             }
         }
         max_h = max(max_h, sum_h);
+    }
+    assert(max_h >= 0);
+    if (max_h == INF) {
+        return DEAD_END;
     }
     return max_h;
 }

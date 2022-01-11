@@ -133,7 +133,7 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
                 affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
                 int h = compute_pdb_value_with_prices(state, lookup_table, prices);
                 if (h == INF) {
-                    return INF;
+                    return DEAD_END;
                 }
                 sum_h += h;
                 assert(sum_h >= 0);
@@ -148,6 +148,9 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
         }
     }
     assert(max_h >= 0);
+    if (max_h == INF) {
+        return DEAD_END;
+    }
     return max_h;
 }
 

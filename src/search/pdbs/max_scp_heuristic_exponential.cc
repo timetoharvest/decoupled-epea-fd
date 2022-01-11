@@ -91,11 +91,12 @@ void MaxSCPHeuristicExponential::compute_min_distance(
 }
 
 int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
+    int max_h;
     if (affected_leaves.empty()){
         // compute maximal heuristic value for the center state
         vector<int> abstract_state_ids = get_abstract_state_ids(
             abstraction_functions, state);
-        return compute_max_h(cp_heuristics, abstract_state_ids);
+        max_h = compute_max_h(cp_heuristics, abstract_state_ids);
     } else {
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
@@ -103,8 +104,13 @@ int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
         int min_h = numeric_limits<int>::max();
         const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
         compute_min_distance(prices, member_state, 0, 0, min_h);
-        return min_h;
+        max_h = min_h;
     }
+    assert(max_h >= 0);
+    if (max_h == INF) {
+        return DEAD_END;
+    }
+    return max_h;
 }
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
