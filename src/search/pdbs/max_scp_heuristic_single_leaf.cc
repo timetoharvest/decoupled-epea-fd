@@ -42,14 +42,12 @@ MaxSCPHeuristicSingleLeaf::MaxSCPHeuristicSingleLeaf(
     }
 
     vector<bool> is_leaf_pattern(patterns.size(), false);
+    affecting_patterns.resize(g_leaves.size());
     for (PatternID p_id = 0; p_id < static_cast<int>(patterns.size()); ++p_id) {
         for (int var : patterns[p_id]){
             LeafFactorID factor = g_belongs_to_factor[var];
             if (factor != LeafFactorID::CENTER){
                 is_leaf_pattern[p_id] = true;
-                if (affecting_patterns.size() <= factor){
-                    affecting_patterns.resize(factor + 1);
-                }
                 affecting_patterns[factor].insert(p_id);
             }
         }
