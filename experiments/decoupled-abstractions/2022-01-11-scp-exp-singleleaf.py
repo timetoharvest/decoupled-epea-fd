@@ -128,11 +128,16 @@ explicit_algos.extend([
     f'{BASELINE_EXPLICIT_REV}-explicit-lmcut',
 ])
 exp.add_fetcher('data/2022-01-11-baseline-explicit-eval', merge=True,filter_algorithm=explicit_algos)
-BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
+# BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
+# decoupled_algos=[
+    # f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
+# ]
+# exp.add_fetcher('data/2022-01-11-baseline-decoupled-eval', merge=True,filter_algorithm=decoupled_algos)
+BASELINE_DECOUPLED_REVISION = "c266104fac299b327cfaaf434a8ab36070233178"
 decoupled_algos=[
     f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
 ]
-exp.add_fetcher('data/2022-01-11-baseline-decoupled-eval', merge=True,filter_algorithm=decoupled_algos)
+exp.add_fetcher('data/2022-01-10-baseline-decoupled-eval', merge=True,filter_algorithm=decoupled_algos)
 
 class Filter:
     def __init__(self, dec):
