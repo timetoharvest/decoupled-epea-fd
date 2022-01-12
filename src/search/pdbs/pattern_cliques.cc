@@ -23,7 +23,7 @@ static bool are_patterns_additive(
             if (!are_additive[v1][v2]) {
                 return false;
             }
-            if (disjoint_leaf_additivity) {
+            if (disjoint_leaf_additivity && !g_belongs_to_factor.empty()) {
                 // only relevant for decoupled search
                 // ensures that patterns that affect the same leaf
                 // cannot be in the same clique

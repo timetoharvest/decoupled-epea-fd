@@ -8,6 +8,7 @@
 #include "projection.h"
 #include "utils.h"
 
+#include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
 
@@ -98,7 +99,11 @@ CPFunction get_cp_function_from_options(const Options &opts) {
     } else if (saturator_type == Saturator::PERIMSTAR) {
         cp_function = compute_perimstar_saturated_cost_partitioning;
     } else if (saturator_type == Saturator::ALL_LEAF_DISJOINT) {
-        cp_function = pdbs::compute_saturated_cost_partitioning_leaf_disjoint;
+        if (g_belongs_to_factor.empty()) {
+            cp_function = compute_saturated_cost_partitioning;
+        } else {
+            cp_function = pdbs::compute_saturated_cost_partitioning_leaf_disjoint;
+        }
     } else {
         ABORT("Invalid value for saturator.");
     }
