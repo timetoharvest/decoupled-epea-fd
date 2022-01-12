@@ -19,7 +19,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "050ae2844088108b6a1a5d5ea1289a234273dc55"
+REVISION = "14515ac7c622a1ea0e37069146eebb568a446472"
 REVISIONS = [REVISION]
 CEGAR_MAX_TIME=2
 SYS_MAX_TIME=2
@@ -129,7 +129,7 @@ explicit_algos.extend([
 ])
 exp.add_fetcher('data/2022-01-11-baseline-explicit-eval', merge=True,filter_algorithm=explicit_algos)
 
-BASELINE_EXPLICIT_APPROX_REV="050ae2844088108b6a1a5d5ea1289a234273dc55"
+BASELINE_EXPLICIT_APPROX_REV="14515ac7c622a1ea0e37069146eebb568a446472"
 explicit_approx_algos=[
     f'{BASELINE_EXPLICIT_APPROX_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc' for name in decoupling.keys()
 ]

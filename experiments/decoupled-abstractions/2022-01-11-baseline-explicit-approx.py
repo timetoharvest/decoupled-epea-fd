@@ -16,7 +16,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "050ae2844088108b6a1a5d5ea1289a234273dc55"
+REVISION = "14515ac7c622a1ea0e37069146eebb568a446472"
 REVISIONS = [REVISION]
 CEGAR_MAX_TIME=2
 SYS_MAX_TIME=2

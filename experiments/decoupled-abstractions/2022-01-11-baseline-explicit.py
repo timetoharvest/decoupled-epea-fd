@@ -103,4 +103,25 @@ exp.add_report(
 )
 exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
+exp.add_fetcher('data/2022-01-11-baseline-explicit-approx-eval', merge=True)
+exp.add_fetcher('data/2022-01-11-baseline-explicit-singleleaf-eval', merge=True)
+OTHER_BASELINE_REV='14515ac7c622a1ea0e37069146eebb568a446472'
+report_name=f'{exp.name}-compare-explicit-scp-vs-approx-and-singleleaf'
+report_file=Path(exp.eval_dir) / f'{report_name}.html'
+algo_pairs=[
+    (f'{REVISION}-explicit-scp-all-cegar-sys2-hc', f'{OTHER_BASELINE_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc') for name in decoupling.keys()
+]
+algo_pairs.extend([
+    (f'{REVISION}-explicit-scp-all-cegar-sys2-hc', f'{OTHER_BASELINE_REV}-{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf') for name in decoupling.keys()
+])
+exp.add_report(
+    ComparativeReport(
+        attributes=attributes,
+        algorithm_pairs=algo_pairs,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
 exp.run_steps()

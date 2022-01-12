@@ -128,6 +128,13 @@ explicit_algos.extend([
     f'{BASELINE_EXPLICIT_REV}-explicit-lmcut',
 ])
 exp.add_fetcher('data/2022-01-11-baseline-explicit-eval', merge=True,filter_algorithm=explicit_algos)
+
+BASELINE_EXPLICIT_SINGLE_LEAF_REV="14515ac7c622a1ea0e37069146eebb568a446472"
+explicit_approx_algos=[
+    f'{BASELINE_EXPLICIT_SINGLE_LEAF_REV}-{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf' for name in decoupling.keys()
+]
+exp.add_fetcher('data/2022-01-11-baseline-explicit-singleleaf-eval', merge=True,filter_algorithm=explicit_approx_algos)
+
 # BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
 # decoupled_algos=[
     # f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
@@ -162,6 +169,7 @@ for name, _ in decoupling.items():
         f'{BASELINE_DECOUPLED_REVISION}-{name}-blind',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
         f'{BASELINE_EXPLICIT_REV}-{name}-explicit-scp-all-cegar-sys2-hc',
+        f'{BASELINE_EXPLICIT_SINGLE_LEAF_REV}-{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf',
         f'{BASELINE_EXPLICIT_REV}-explicit-scp-all-cegar-sys2-hc',
         f'{REVISION}-{name}-scpexp-all-cegar-sys2-hc',
         f'{REVISION}-{name}-scpsingleleaf-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf',
