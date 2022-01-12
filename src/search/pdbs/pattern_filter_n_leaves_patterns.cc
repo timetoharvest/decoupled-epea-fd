@@ -17,13 +17,17 @@ PatternFilterNLeavesPatterns::PatternFilterNLeavesPatterns(const options::Option
 }
 
 bool PatternFilterNLeavesPatterns::is_pattern_ok(const Pattern &pattern) const {
-    assert(g_factoring);
+    if (g_belongs_to_factor.empty()) {
+        return true;
+    }
     return static_cast<int>(get_leaf_factors_of_pattern(pattern).size()) <= n;
 }
 
 bool PatternFilterNLeavesPatterns::can_add_var_to_pattern(
     const Pattern &pattern, int var) const {
-    assert(g_factoring);
+    if (g_belongs_to_factor.empty()) {
+        return true;
+    }
 //    utils::g_log << "can add " << var << " to " << pattern << "? ";
     LeafFactorID var_factor_id = g_belongs_to_factor[var];
     if (var_factor_id == LeafFactorID::CENTER) {
@@ -45,7 +49,9 @@ bool PatternFilterNLeavesPatterns::can_add_var_to_pattern(
 
 bool PatternFilterNLeavesPatterns::can_merge_patterns(
     const Pattern &pattern1, const Pattern &pattern2) const {
-    assert(g_factoring);
+    if (g_belongs_to_factor.empty()) {
+        return true;
+    }
 //    utils::g_log << "can merge " << pattern1 << " and " << pattern2 << "? ";
     unordered_set<LeafFactorID> union_leaf_factors;
     get_leaf_factors_of_pattern(pattern1, union_leaf_factors);
