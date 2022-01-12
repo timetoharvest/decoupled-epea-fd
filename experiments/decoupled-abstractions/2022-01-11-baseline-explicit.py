@@ -3,6 +3,7 @@
 import itertools
 import math
 import os
+from pathlib import Path
 import subprocess
 
 from lab.environments import LocalEnvironment, BaselSlurmEnvironment
@@ -86,5 +87,20 @@ attributes = [
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
+
+report_name=f'{exp.name}-compare-explicit-scp-without-vs-with-factoring'
+report_file=Path(exp.eval_dir) / f'{report_name}.html'
+algo_pairs=[
+    (f'{REVISION}-explicit-scp-all-cegar-sys2-hc', f'{REVISION}-{name}-explicit-scp-all-cegar-sys2-hc') for name in decoupling.keys()
+]
+exp.add_report(
+    ComparativeReport(
+        attributes=attributes,
+        algorithm_pairs=algo_pairs,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 exp.run_steps()
