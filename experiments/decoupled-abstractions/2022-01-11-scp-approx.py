@@ -19,7 +19,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
+REVISION = "050ae2844088108b6a1a5d5ea1289a234273dc55"
 REVISIONS = [REVISION]
 CEGAR_MAX_TIME=2
 SYS_MAX_TIME=2
@@ -121,7 +121,6 @@ for name in decoupling.keys():
 BASELINE_EXPLICIT_REV="f07d81fd0b063119d86add881dc1ac8ab6b9f171"
 explicit_algos=[
     f'{BASELINE_EXPLICIT_REV}-{name}-explicit-scp-all-cegar-sys2-hc' for name in decoupling.keys()
-    # f'{BASELINE_EXPLICIT_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc' for name in decoupling.keys()
 ]
 explicit_algos.extend([
     f'{BASELINE_EXPLICIT_REV}-explicit-scp-all-cegar-sys2-hc',
@@ -129,6 +128,13 @@ explicit_algos.extend([
     f'{BASELINE_EXPLICIT_REV}-explicit-lmcut',
 ])
 exp.add_fetcher('data/2022-01-11-baseline-explicit-eval', merge=True,filter_algorithm=explicit_algos)
+
+BASELINE_EXPLICIT_APPROX_REV="050ae2844088108b6a1a5d5ea1289a234273dc55"
+explicit_approx_algos=[
+    f'{BASELINE_EXPLICIT_APPROX_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc' for name in decoupling.keys()
+]
+exp.add_fetcher('data/2022-01-11-baseline-explicit-approx-eval', merge=True,filter_algorithm=explicit_approx_algos)
+
 BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
 decoupled_algos=[
     f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
@@ -158,10 +164,10 @@ for name, _ in decoupling.items():
         f'{BASELINE_DECOUPLED_REVISION}-{name}-blind',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
         f'{BASELINE_EXPLICIT_REV}-{name}-explicit-scp-all-cegar-sys2-hc',
-        # f'{BASELINE_EXPLICIT_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc',
+        f'{BASELINE_EXPLICIT_APPROX_REV}-{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc',
         f'{BASELINE_EXPLICIT_REV}-explicit-scp-all-cegar-sys2-hc',
-        f'{REVISION}-{name}-scpapprox-cegar-sys2-hc',
-        f'{REVISION}-{name}-scpapproxleafdisjoint-cegar-sys2-hc',
+        f'{REVISION}-{name}-scpapprox-all-cegar-sys2-hc',
+        f'{REVISION}-{name}-scpapprox-allleafdisjoint-cegar-sys2-hc',
     ]
     report_name=f'{exp.name}-absolute-with-baselines-{name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.html'
