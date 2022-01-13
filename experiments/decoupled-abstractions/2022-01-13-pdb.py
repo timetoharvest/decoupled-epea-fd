@@ -103,11 +103,17 @@ for name, _ in decoupling.items():
 
 BASELINE_EXPLICIT_REV="bc40844ff952e620cc4f671d5e01553009029422"
 exp.add_fetcher('data/2022-01-13-baseline-pdb-eval', merge=True)
+
 BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
 decoupled_algos=[
     f'{BASELINE_DECOUPLED_REVISION}-{name}-{heur}' for name in decoupling.keys() for heur in ['blind', 'lmcut']
 ]
 exp.add_fetcher('data/2022-01-11-baseline-decoupled-eval', merge=True,filter_algorithm=decoupled_algos)
+
+explicit_algos=[
+    f'{BASELINE_DECOUPLED_REVISION}-explicit-{heur}' for heur in ['blind', 'lmcut']
+]
+exp.add_fetcher('data/2022-01-11-baseline-explicit-eval', merge=True,filter_algorithm=explicit_algos)
 
 class Filter:
     def __init__(self, dec):
@@ -129,7 +135,9 @@ class Filter:
 for name, _ in decoupling.items():
     f = Filter(name)
     algorithms=[
+        f'{BASELINE_DECOUPLED_REVISION}-explicit-blind',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-blind',
+        f'{BASELINE_DECOUPLED_REVISION}-explicit-lmcut',
         f'{BASELINE_DECOUPLED_REVISION}-{name}-lmcut',
         f'{BASELINE_EXPLICIT_REV}-explicit-pdb-greedy',
         f'{REVISION}-{name}-pdb-greedy',
