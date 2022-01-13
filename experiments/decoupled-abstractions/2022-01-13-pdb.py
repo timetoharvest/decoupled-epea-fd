@@ -101,7 +101,7 @@ for name, _ in decoupling.items():
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
-BASELINE_EXPLICIT_REV="9e1e1d3bf58957161faac754d2c9ae9df5d05bf3"
+BASELINE_EXPLICIT_REV="bc40844ff952e620cc4f671d5e01553009029422"
 exp.add_fetcher('data/2022-01-13-baseline-pdb-eval', merge=True)
 BASELINE_DECOUPLED_REVISION = "f07d81fd0b063119d86add881dc1ac8ab6b9f171"
 decoupled_algos=[
