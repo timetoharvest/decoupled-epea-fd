@@ -17,7 +17,7 @@ class PatternFilter;
 
 class PatternGeneratorRandom : public PatternGenerator {
     const int max_pdb_size;
-    const int max_time;
+    const double max_time;
     const bool bidirectional;
     std::shared_ptr<PatternFilter> pattern_filter;
     const utils::Verbosity verbosity;
