@@ -32,13 +32,15 @@ PDBHeuristic::PDBHeuristic(const Options &opts)
     : Heuristic(opts),
     // TODO: change back to task
       pdb(get_pdb_from_options(tasks::g_root_task, opts)) {
-    unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
-    affected_leaves.assign(aff_leaves.begin(), aff_leaves.end());
+    if (g_factoring) {
+        unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
+        affected_leaves.assign(aff_leaves.begin(), aff_leaves.end());
+    }
 }
 
 int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     int h;
-    if (g_factoring){
+    if (g_factoring) {
         h = compute_pdb_value_with_prices(
             ancestor_state,
             *pdb,

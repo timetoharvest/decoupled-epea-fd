@@ -77,7 +77,7 @@ static shared_ptr<PatternGenerator> _parse(OptionParser &parser) {
         "maximal number of abstract states in the pattern database.",
         "1000000",
         Bounds("1", "infinity"));
-        add_pattern_filter_option_to_parser(parser);
+    add_pattern_filter_option_to_parser(parser);
 
     Options opts = parser.parse();
     if (parser.dry_run())
