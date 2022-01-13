@@ -97,14 +97,26 @@ exp.add_report(
 )
 exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
-report_name=f'{exp.name}-compare-explicit-cpdbs-vs-disjointleaf-and-singleleaf'
+report_name=f'{exp.name}-compare-explicit-cpdbs-vs-cpdbs-disjointleaf'
 report_file=Path(exp.eval_dir) / f'{report_name}.html'
 algo_pairs=[
     (f'{REVISION}-explicit-cpdbs-hc', f'{REVISION}-{name}-explicit-cpdbs-hcleafdisjoint') for name in decoupling.keys()
 ]
-algo_pairs.extend([
+exp.add_report(
+    ComparativeReport(
+        attributes=attributes,
+        algorithm_pairs=algo_pairs,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+report_name=f'{exp.name}-compare-explicit-cpdbs-hc-vs-hcsingleleaf'
+report_file=Path(exp.eval_dir) / f'{report_name}.html'
+algo_pairs=[
     (f'{REVISION}-explicit-cpdbs-hc', f'{REVISION}-{name}-explicit-cpdbs-hcsingleleaf') for name in decoupling.keys()
-])
+]
 exp.add_report(
     ComparativeReport(
         attributes=attributes,
