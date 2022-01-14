@@ -62,23 +62,22 @@ exp.add_parser(exp.EXITCODE_PARSER)
 exp.add_parser(exp.TRANSLATOR_PARSER)
 exp.add_parser(exp.SINGLE_SEARCH_PARSER)
 exp.add_parser(exp.PLANNER_PARSER)
-exp.add_parser('pattern-collection-filter-parser.py')
+exp.add_parser('pattern-parser.py')
 exp.add_parser('decoupled-parser.py')
 
 exp.add_step('build', exp.build)
 exp.add_step('start', exp.start_runs)
 exp.add_fetcher(name='fetch')
+exp.add_parse_again_step()
 
-# pattern filter attributes
-average_num_affected_leaf_factors = Attribute('average_num_affected_leaf_factors', absolute=False, min_wins=True, function=arithmetic_mean)
-maximum_num_affected_leaf_factors = Attribute('maximum_num_affected_leaf_factors', absolute=False, min_wins=True, function=arithmetic_mean)
+# pattern attributes
+num_affected_leaf_factors = Attribute('num_affected_leaf_factors', absolute=False, min_wins=True, function=arithmetic_mean)
 
 # decoupled attributes
 average_member_states = Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean)
 
 attributes = [
-    average_num_affected_leaf_factors,
-    maximum_num_affected_leaf_factors,
+    num_affected_leaf_factors,
     average_member_states,
 ]
 
