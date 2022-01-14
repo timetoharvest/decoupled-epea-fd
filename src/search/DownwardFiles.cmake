@@ -498,6 +498,7 @@ fast_downward_plugin(
         pdbs/cegar
         pdbs/decoupled_canonical_pdbs_approximate
         pdbs/decoupled_canonical_pdbs_exponential
+        pdbs/decoupled_canonical_pdbs_exponential_broken
         pdbs/decoupled_canonical_pdbs_single_leaf
         pdbs/dominance_pruning
         pdbs/incremental_canonical_pdbs
@@ -506,6 +507,7 @@ fast_downward_plugin(
         pdbs/max_scp_heuristic
         pdbs/max_scp_heuristic_approximate
         pdbs/max_scp_heuristic_exponential
+        pdbs/max_scp_heuristic_exponential_broken
         pdbs/max_scp_heuristic_single_leaf
         pdbs/pattern_cliques
         pdbs/pattern_collection_information
