@@ -167,7 +167,7 @@ for name in decoupling.keys():
             attributes='expansions',
             filter_algorithm=[
                 f'{EXP_REVISION}-{name}-scpexp-all-cegar-sys2-hc',
-                f'{REVISION}-{name}-expbroken-cegar-sys2-hc',
+                f'{REVISION}-{name}-scpexpbroken-all-cegar-sys2-hc',
             ],
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
             get_category=lambda run1, run2: run1['domain']
