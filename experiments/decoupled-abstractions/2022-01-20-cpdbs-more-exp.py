@@ -34,7 +34,7 @@ decoupling = {
 for name, dec in decoupling.items():
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp-hcsingleleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=exp,patterns=hillclimbing(pattern_filter=n_leaves_patterns(1),max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp-hcdisjointleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=exp,patterns=hillclimbing(max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
-    CONFIGS.append(IssueConfig(f'{name}-cpdbsexpbroken-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=exp,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
+    CONFIGS.append(IssueConfig(f'{name}-cpdbsexpbroken-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=exp_broken,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
