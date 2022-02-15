@@ -17,7 +17,17 @@ public:
     void operator++() {
         ++val;
     }
+    bool operator==(const LeafStateHash other) const {
+        return val == other.val;
+    }
     static const LeafStateHash MAX;
+};
+
+template <>
+struct std::hash<LeafStateHash> {
+    std::size_t operator()(const LeafStateHash & key) const {
+        return key;
+    }
 };
 
 struct LeafFactorID {

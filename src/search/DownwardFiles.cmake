@@ -499,6 +499,7 @@ fast_downward_plugin(
         pdbs/decoupled_canonical_pdbs_approximate
         pdbs/decoupled_canonical_pdbs_exponential
         pdbs/decoupled_canonical_pdbs_exponential_broken
+        pdbs/decoupled_canonical_pdbs_exponential_ilp
         pdbs/decoupled_canonical_pdbs_single_leaf
         pdbs/dominance_pruning
         pdbs/incremental_canonical_pdbs

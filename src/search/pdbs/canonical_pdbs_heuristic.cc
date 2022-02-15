@@ -3,6 +3,7 @@
 #include "decoupled_canonical_pdbs_approximate.h"
 #include "decoupled_canonical_pdbs_exponential.h"
 #include "decoupled_canonical_pdbs_exponential_broken.h"
+#include "decoupled_canonical_pdbs_exponential_ilp.h"
 #include "decoupled_canonical_pdbs_single_leaf.h"
 #include "dominance_pruning.h"
 #include "pattern_filter.h"
@@ -98,11 +99,13 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques);
             case DecoupledPatternCollectionLookUp::EXP:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
-        case DecoupledPatternCollectionLookUp::EXP_BROKEN:
-            return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialBroken>(pdbs, pattern_cliques);
+            case DecoupledPatternCollectionLookUp::EXP_BROKEN:
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialBroken>(pdbs, pattern_cliques);
             case DecoupledPatternCollectionLookUp::SINGLE_LEAF:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
-        default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, or SINGLE_LEAF." << endl;
+            case DecoupledPatternCollectionLookUp::EXP_ILP:
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialILP>(pdbs, pattern_cliques);
+        default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, EXP_BROKEN, EXP_ILP, or SINGLE_LEAF." << endl;
         utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
@@ -145,6 +148,9 @@ void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser) 
     lookup_descriptions.push_back("Minimizes the heuristic value over all"
                                   "member states of a decoupled state."
                                   "But it does not correctly maximize over the cliques.");
+
+    lookup_types.push_back("EXP_ILP");
+    lookup_descriptions.push_back("Same as EXP, but computed with an ILP.");
 
     parser.add_enum_option<DecoupledPatternCollectionLookUp>(
         "dec_lookup_type",
