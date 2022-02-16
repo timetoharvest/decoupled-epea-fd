@@ -19,11 +19,9 @@ namespace lp {
 
 namespace pdbs {
 class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
-    struct AbstractLeafStateInfo {
-        int price;
+    struct AbstractLeafStateInfo { // TODO remove this; used to have more fields
         std::vector<int> concrete_lstate_lp_var_ids;
-        AbstractLeafStateInfo() : price(std::numeric_limits<int>::max()) {
-        }
+        AbstractLeafStateInfo() {}
     };
 
     mutable double lp_infty;
@@ -40,7 +38,8 @@ class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
                                    std::vector<lp::LPConstraint> &constraints,
                                    const std::vector<utils::HashMap<std::vector<int>, AbstractLeafStateInfo>> &abstract_leaf_state_prices,
                                    int index,
-                                   std::vector<int> &abs_state) const;
+                                   std::vector<int> &abs_state,
+                                   std::vector<const std::vector<int>*> &lp_vars_l_states) const;
 
 public:
     DecoupledCanonicalPDBsExponentialILP(

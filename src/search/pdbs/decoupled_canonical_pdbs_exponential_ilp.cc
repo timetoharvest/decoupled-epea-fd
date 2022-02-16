@@ -56,54 +56,46 @@ void DecoupledCanonicalPDBsExponentialILP::enumerate_abstract_states(
         vector<lp::LPConstraint> &constraints,
         const vector<utils::HashMap<vector<int>, AbstractLeafStateInfo>> &abstract_leaf_state_info,
         int index,
-        vector<int> &abs_state) const {
+        vector<int> &abs_state,
+        vector<const vector<int>*> &lp_vars_l_states) const {
 
-    LeafFactorID leaf = affected_leaves_by_pdb[pdb_id][index];
     const Pattern &pattern = (*pdbs)[pdb_id]->get_pattern();
 
-    if (index == static_cast<int>(affected_leaves_by_pdb[pdb_id].size() - 1)){
+    if (index == static_cast<int>(affected_leaves_by_pdb[pdb_id].size())){
         // end of recursion
+#ifndef NDEBUG
+        for (int var : pattern){
+            assert(abs_state[var] != -1);
+        }
+#endif
 
-        for (const auto &l_state_info : abstract_leaf_state_info[leaf]){
-            int var_count = 0;
-            for (int var : pattern){
-                if (g_belongs_to_factor[var] == leaf){
-                    abs_state[var] = l_state_info.first[var_count];
-                    var_count++;
-                }
-            }
+        int h = (*pdbs)[pdb_id]->get_value(abs_state);
 
-            for (int var : pattern){ // TODO make this an asserttion
-                if (abs_state[var] == -1) {
-                    cerr << "ERROR.. variable " << var << " of factor " << g_belongs_to_factor[var] << " is not set" << endl;
-                    exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-                }
-            }
+        if (h != numeric_limits<int>::max()){
+            // lp var -- b_{s^P} -- for this abstract state
+            lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
 
-            int h = (*pdbs)[pdb_id]->get_value(abs_state);
-
-            if (h != numeric_limits<int>::max()){
-                // lp var -- b_{s^P} -- for this abstract state
-                lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
-
+            for (LeafFactorID l_factor : affected_leaves_by_pdb[pdb_id]){
                 // b_{s^P} <= \sum b_{s^L}, where s^P and s^L agree on common variables of leaf and pattern
                 lp::LPConstraint constraint(-lp_infty, 0.0);
                 constraint.insert(lp_variables.size() - 1, 1.0);
-                for (int lp_var_id : l_state_info.second.concrete_lstate_lp_var_ids) {
+                for (int lp_var_id : (*lp_vars_l_states[l_factor])){
                     constraint.insert(lp_var_id, -1.0);
                 }
                 constraints.push_back(constraint);
-
-                // make sure heuristic value of this PDB is at least as high as the heuristic for this abstract state
-                // v_P >= b_{s^P} * h(s^P)
-                constraint = lp::LPConstraint(-lp_infty, 0.0);
-                constraint.insert(pdb_lp_var, -1.0);
-                constraint.insert(lp_variables.size() - 1, h);
-                constraints.push_back(constraint);
             }
+
+            // make sure heuristic value of this PDB is at least as high as the heuristic for this abstract state
+            // v_P >= b_{s^P} * h(s^P)
+            lp::LPConstraint constraint(-lp_infty, 0.0);
+            constraint.insert(pdb_lp_var, -1.0);
+            constraint.insert(lp_variables.size() - 1, h);
+            constraints.push_back(constraint);
         }
         return;
     }
+
+    LeafFactorID leaf = affected_leaves_by_pdb[pdb_id][index];
 
     for (const auto &abs_lstate_info : abstract_leaf_state_info[leaf]){
         int var_count = 0;
@@ -113,13 +105,15 @@ void DecoupledCanonicalPDBsExponentialILP::enumerate_abstract_states(
                 var_count++;
             }
         }
+        lp_vars_l_states[leaf] = &abs_lstate_info.second.concrete_lstate_lp_var_ids; // TODO there should be some nicer way to do this
         enumerate_abstract_states(pdb_id,
                                   pdb_lp_var,
                                   lp_variables,
                                   constraints,
                                   abstract_leaf_state_info,
                                   index + 1,
-                                  abs_state);
+                                  abs_state,
+                                  lp_vars_l_states);
     }
 }
 
@@ -166,10 +160,12 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             vector<int> leaf_states_lp_vars;
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 if (prices->has_leaf_state(id, factor)){
-                    int price = prices->get_cost_of_state(id, factor);
                     leaf_states_lp_vars.push_back(lp_variables.size());
                     // a binary variable b_{s^L} for each reached leaf state
-                    lp_variables.push_back(lp::LPVariable(0.0, 1.0, price, true));
+                    lp_variables.push_back(lp::LPVariable(0.0,
+                                                          1.0,
+                                                          prices->get_cost_of_state(id, factor),
+                                                          true));
 
                     for (int pdb_id : affecting_patterns[factor]) {
                         const Pattern &pattern = (*pdbs)[pdb_id]->get_pattern();
@@ -185,7 +181,6 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
                         if (it == abstract_leaf_state_prices[pdb_id][factor].end()){
                             it = abstract_leaf_state_prices[pdb_id][factor].insert(make_pair(abs_leaf_state, AbstractLeafStateInfo())).first;
                         }
-                        it->second.price = min(it->second.price, price);
                         it->second.concrete_lstate_lp_var_ids.push_back(leaf_states_lp_vars.back());
                     }
                 }
@@ -197,10 +192,11 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             for (int leaf_state_lp_var : leaf_states_lp_vars){
                 constraint.insert(leaf_state_lp_var, 1.0);
             }
+            constraints.push_back(constraint);
         }
 
-        vector<int> pdb_lp_vars(pdbs->size());
-
+        vector<int> pdb_lp_vars;
+        pdb_lp_vars.reserve(pdbs->size());
         for (int pdb_id = 0; pdb_id < static_cast<int>(pdbs->size()); ++pdb_id){
             if (is_center_only_pattern[pdb_id]){
                 pdb_lp_vars.push_back(-1); // TODO think of a nicer solution
@@ -212,13 +208,15 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             lp_variables.push_back(lp::LPVariable(0.0, lp_infty, 0.0));
 
             int num_vars_before = lp_variables.size();
+            vector<const vector<int>*> tmp_l_state_lp_vars(g_leaves.size());
             enumerate_abstract_states(pdb_id,
                                       pdb_lp_vars.back(),
                                       lp_variables,
                                       constraints,
                                       abstract_leaf_state_prices[pdb_id],
                                       0,
-                                      member_state);
+                                      member_state,
+                                      tmp_l_state_lp_vars);
 
             if (num_vars_before == static_cast<int>(lp_variables.size())){
                 // if no new lp_variables have been added, this means that *all* reached abstract states of
@@ -232,19 +230,31 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             for (int new_lp_var = num_vars_before; new_lp_var < static_cast<int>(lp_variables.size()); ++new_lp_var){
                 constraint.insert(new_lp_var, 1.0);
             }
+            constraints.push_back(constraint);
         }
 
-        vector<int> clique_lp_vars(pattern_cliques->size());
+        vector<int> clique_lp_vars;
+        clique_lp_vars.reserve(pattern_cliques->size());
         for (const PatternClique &clique : *pattern_cliques) {
             // v_C variables that correspond to the heuristic value of clique C
             clique_lp_vars.push_back(lp_variables.size());
             lp_variables.push_back(lp::LPVariable(0.0, lp_infty, 0.0));
 
+            // we need to add the value of center-patterns of the clique as a constant to the constraint
+            int center_only_h_sum = 0;
+            for (PatternID pdb_index : clique) {
+                if (is_center_only_pattern[pdb_index]){
+                    center_only_h_sum += c_only_h_values[pdb_index];
+                }
+            }
+
             // v_C = \sum_{P \in C} v_P
-            lp::LPConstraint constraint(0.0, 0.0);
+            lp::LPConstraint constraint(center_only_h_sum, center_only_h_sum);
             constraint.insert(lp_variables.size() - 1, 1.0);
             for (PatternID pdb_index : clique) {
-                constraint.insert(pdb_lp_vars[pdb_index], -1.0);
+                if (!is_center_only_pattern[pdb_index]){
+                    constraint.insert(pdb_lp_vars[pdb_index], -1.0);
+                }
             }
             constraints.push_back(constraint);
         }
@@ -262,15 +272,13 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
 
         solver.load_problem(lp::LPObjectiveSense::MINIMIZE, lp_variables, constraints);
 
-//        solver.print_statistics();
+        // dump_lp(lp::LPObjectiveSense::MINIMIZE, lp_variables, constraints);
 
         solver.solve();
 
         if (solver.has_optimal_solution()){
-            //cout << to_string(solver.get_objective_value()) << endl;
-            return solver.get_objective_value();
+            return static_cast<int>(ceil(solver.get_objective_value() - 0.01));
         } else {
-            // TODO according to Alvaro, this means the decoupled state is a deadend.. double-check! :)
             return numeric_limits<int>::max();
         }
     }
