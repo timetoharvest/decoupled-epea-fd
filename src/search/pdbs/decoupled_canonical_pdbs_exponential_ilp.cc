@@ -80,24 +80,27 @@ void DecoupledCanonicalPDBsExponentialILP::enumerate_abstract_states(
                 }
             }
 
-            // lp var -- b_{s^P} -- for this abstract state
-            lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
-
-            // b_{s^P} <= \sum b_{s^L}, where s^P and s^L agree on common variables of leaf and pattern
-            lp::LPConstraint constraint(-lp_infty, 0.0);
-            constraint.insert(lp_variables.size() - 1, 1.0);
-            for (int lp_var_id : l_state_info.second.concrete_lstate_lp_var_ids) {
-                constraint.insert(lp_var_id, -1.0);
-            }
-            constraints.push_back(constraint);
-
             int h = (*pdbs)[pdb_id]->get_value(abs_state);
-            // make sure heuristic value of this PDB is at least as high as the heuristic for this abstract state
-            // v_P >= b_{s^P} * h(s^P)
-            constraint = lp::LPConstraint(-lp_infty, 0.0);
-            constraint.insert(pdb_lp_var, -1.0);
-            constraint.insert(lp_variables.size() - 1, h);
-            constraints.push_back(constraint);
+
+            if (h != numeric_limits<int>::max()){
+                // lp var -- b_{s^P} -- for this abstract state
+                lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+
+                // b_{s^P} <= \sum b_{s^L}, where s^P and s^L agree on common variables of leaf and pattern
+                lp::LPConstraint constraint(-lp_infty, 0.0);
+                constraint.insert(lp_variables.size() - 1, 1.0);
+                for (int lp_var_id : l_state_info.second.concrete_lstate_lp_var_ids) {
+                    constraint.insert(lp_var_id, -1.0);
+                }
+                constraints.push_back(constraint);
+
+                // make sure heuristic value of this PDB is at least as high as the heuristic for this abstract state
+                // v_P >= b_{s^P} * h(s^P)
+                constraint = lp::LPConstraint(-lp_infty, 0.0);
+                constraint.insert(pdb_lp_var, -1.0);
+                constraint.insert(lp_variables.size() - 1, h);
+                constraints.push_back(constraint);
+            }
         }
         return;
     }
@@ -217,6 +220,12 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
                                       0,
                                       member_state);
 
+            if (num_vars_before == static_cast<int>(lp_variables.size())){
+                // if no new lp_variables have been added, this means that *all* reached abstract states of
+                // this pattern are deadends -> the entire decoupled state is a deadend
+                return numeric_limits<int>::max();
+            }
+
             // make sure that exactly one abstract state of this pattern is selected
             // \sum b_{s^P} = 1, for all abstract states s^P of pattern P
             lp::LPConstraint constraint(1.0, 1.0);
@@ -257,11 +266,13 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
 
         solver.solve();
 
-        //cout << to_string(solver.get_objective_value()) << endl;
-
-        // TODO how do we handle deadend states?
-
-        return solver.get_objective_value();
+        if (solver.has_optimal_solution()){
+            //cout << to_string(solver.get_objective_value()) << endl;
+            return solver.get_objective_value();
+        } else {
+            // TODO according to Alvaro, this means the decoupled state is a deadend.. double-check! :)
+            return numeric_limits<int>::max();
+        }
     }
 }
 }
