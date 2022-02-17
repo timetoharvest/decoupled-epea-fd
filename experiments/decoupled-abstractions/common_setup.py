@@ -211,7 +211,7 @@ class IssueExperiment(FastDownwardExperiment):
         "run_dir",
         ]
 
-    def __init__(self, revisions=None, configs=None, path=None, **kwargs):
+    def __init__(self, revisions=[], configs=None, path=None, **kwargs):
         """
 
         You can either specify both *revisions* and *configs* or none
