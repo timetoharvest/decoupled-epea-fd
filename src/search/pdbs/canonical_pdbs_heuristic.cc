@@ -104,9 +104,9 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
             case DecoupledPatternCollectionLookUp::SINGLE_LEAF:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
             case DecoupledPatternCollectionLookUp::EXP_ILP:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialILP>(pdbs, pattern_cliques);
-        default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, EXP_BROKEN, EXP_ILP, or SINGLE_LEAF." << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialILP>(pdbs, pattern_cliques, opts.get<MIPType>("mip_type"));
+            default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, EXP_BROKEN, EXP_ILP, or SINGLE_LEAF." << endl;
+            utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
 
@@ -160,6 +160,27 @@ void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser) 
         lookup_descriptions);
 }
 
+void add_mip_options_to_parser(options::OptionParser &parser) {
+    vector<string> mip_type;
+    vector<string> mip_type_description;
+    mip_type.push_back("ip");
+    mip_type_description.push_back("both below variables are relaxed");
+    mip_type.push_back("leaf_lp");
+    mip_type_description.push_back("the variables for leaves are relaxed");
+    mip_type.push_back("abs_lp");
+    mip_type_description.push_back("the variables for abstract states are relaxed");
+    mip_type.push_back("lp");
+    mip_type_description.push_back("both above variables are relaxed");
+
+    parser.add_enum_option<MIPType>(
+        "mip_type",
+        mip_type,
+        "Option only relevant for dec_lookup_type=exp_ilp. Allow relaxing "
+        "some (or none) of the MIP variables.",
+        "ip",
+        mip_type_description);
+}
+
 void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
     parser.add_option<double>(
         "max_time_dominance_pruning",
@@ -195,6 +216,7 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
 
     add_canonical_pdbs_options_to_parser(parser);
     add_decoupled_lookup_types_option_to_parser(parser);
+    add_mip_options_to_parser(parser);
 
     Heuristic::add_options_to_parser(parser);
 

@@ -19,8 +19,9 @@ using namespace std;
 namespace pdbs {
 DecoupledCanonicalPDBsExponentialILP::DecoupledCanonicalPDBsExponentialILP(
     const shared_ptr<PDBCollection> &pdbs,
-    const shared_ptr<vector<PatternClique>> &pattern_cliques)
-    : CanonicalPDBs(pdbs, pattern_cliques) {
+    const shared_ptr<vector<PatternClique>> &pattern_cliques,
+    MIPType mip_type)
+    : CanonicalPDBs(pdbs, pattern_cliques), mip_type(mip_type) {
 
     is_center_only_pattern.reserve(pdbs->size());
     affected_leaves_by_pdb.reserve(pdbs->size());
@@ -73,7 +74,8 @@ void DecoupledCanonicalPDBsExponentialILP::enumerate_abstract_states(
 
         if (h != numeric_limits<int>::max()){
             // lp var -- b_{s^P} -- for this abstract state
-            lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, true));
+            bool is_integer = (mip_type == MIPType::IP || mip_type == MIPType::LeafLP);
+            lp_variables.push_back(lp::LPVariable(0.0, 1.0, 0.0, is_integer));
 
             for (LeafFactorID l_factor : affected_leaves_by_pdb[pdb_id]){
                 // b_{s^P} <= \sum b_{s^L}, where s^P and s^L agree on common variables of leaf and pattern
@@ -162,10 +164,11 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
                 if (prices->has_leaf_state(id, factor)){
                     leaf_states_lp_vars.push_back(lp_variables.size());
                     // a binary variable b_{s^L} for each reached leaf state
+                    bool is_integer = (mip_type == MIPType::IP || mip_type == MIPType::AbsLP);
                     lp_variables.push_back(lp::LPVariable(0.0,
                                                           1.0,
                                                           prices->get_cost_of_state(id, factor),
-                                                          true));
+                                                          is_integer));
 
                     for (int pdb_id : affecting_patterns[factor]) {
                         const Pattern &pattern = (*pdbs)[pdb_id]->get_pattern();

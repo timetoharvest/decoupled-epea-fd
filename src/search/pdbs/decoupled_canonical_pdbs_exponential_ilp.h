@@ -19,6 +19,8 @@ namespace lp {
 
 namespace pdbs {
 class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
+    MIPType mip_type;
+
     struct AbstractLeafStateInfo { // TODO remove this; used to have more fields
         std::vector<int> concrete_lstate_lp_var_ids;
         AbstractLeafStateInfo() {}
@@ -44,7 +46,8 @@ class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
 public:
     DecoupledCanonicalPDBsExponentialILP(
         const std::shared_ptr<PDBCollection> &pdbs,
-        const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques);
+        const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
+        MIPType mip_type);
     ~DecoupledCanonicalPDBsExponentialILP() = default;
 
     virtual int get_value(const GlobalState &state) const override;
