@@ -1,6 +1,7 @@
 #include "decoupled_pdb_utils.h"
 
 #include "pattern_database.h"
+#include "pattern_filter.h"
 
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/explicit_state_cpg.h"
@@ -81,8 +82,61 @@ static void compute_min_distance(
     }
 }
 
-int compute_price() {
-    // TODO
+int compute_price(const PatternDatabase &pdb,
+                  const GlobalState &state,
+                  const ExplicitStateCPG* prices,
+                  const vector<int> &abs_state) {
+    vector<vector<pair<int, int>>> abs_leaf_facts(g_leaves.size());
+    for (int i = 0; i < static_cast<int>(pdb.get_pattern().size()); ++i){
+        int var = pdb.get_pattern()[i];
+        LeafFactorID factor = g_belongs_to_factor[var];
+        if (factor == LeafFactorID::CENTER){
+            if (state[var] != abs_state[i]){
+                // abs_state is not reached in this decoupled state
+                return numeric_limits<int>::max();
+            }
+        } else {
+            // store leaf state assignments for efficient lookup
+            abs_leaf_facts[factor].push_back(make_pair(var, abs_state[i]));
+        }
+    }
+    int sum_prices = 0;
+    for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())) {
+        LeafStateHash id(0);
+        int num_states = prices->get_number_states(leaf);
+        int min_price = numeric_limits<int>::max();
+        while (num_states > 0){
+            if (prices->has_leaf_state(id, leaf)){
+                --num_states;
+                int price = prices->get_cost_of_state(id, leaf);
+                if (price < min_price){
+                    bool match = true;
+                    LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
+                    for (const auto &[var, val] : abs_leaf_facts[leaf]){
+                        if (lstate[var] != val){
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match){
+                        min_price = price;
+                        if (min_price == 0){
+                            // it cannot get lower than 0
+                            break;
+                        }
+                    }
+                }
+            }
+            ++id;
+        }
+        if (min_price == numeric_limits<int>::max()){
+            // abs_state is not reached in this decoupled state
+            return numeric_limits<int>::max();
+        } else {
+            sum_prices += min_price;
+        }
+    }
+    return sum_prices;
 }
 
 int compute_pdb_value_with_prices(
@@ -96,12 +150,15 @@ int compute_pdb_value_with_prices(
         min_h = pdb.get_value(state);
     } else {
         if (polynomial) {
-            int min_h = numeric_limits<int>::max();
             for (int index = 0; index < pdb.get_size(); ++index) {
-                vector<int> abs_state = unrank(pdb, index);
-                int price = compute_price();
                 int h = pdb.get_value(index);
-                min_h = min(min_h, h + price);
+                if (h != numeric_limits<int>::max()) { // no need for the expensive computation if it's a deadend
+                    vector<int> abs_state = unrank(pdb, index);
+                    int price = compute_price(pdb, state, prices, abs_state);
+                    if (price != numeric_limits<int>::max()) { // check if abs_state is reached in decoupled state
+                        min_h = min(min_h, h + price);
+                    }
+                }
             }
         } else {
             // used to call get_value(vector<int>) for all member states
