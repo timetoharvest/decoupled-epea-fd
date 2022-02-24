@@ -16,6 +16,8 @@ namespace pdbs {
 extern void set_center_facts(const GlobalState &center_state, std::vector<int> &state);
 extern void set_leaf_facts(LeafStateHash id, LeafFactorID factor, std::vector<int> &state);
 
+extern std::vector<int> unrank(const PatternDatabase& pdb, int rank);
+
 extern int compute_pdb_value_with_prices(
     const GlobalState &state,
     const PatternDatabase &pdb,

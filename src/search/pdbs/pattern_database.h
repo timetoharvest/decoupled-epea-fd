@@ -189,6 +189,7 @@ public:
 
     int get_value(const std::vector<int> &state) const;
     int get_value(const GlobalState &state) const;
+    int get_value(int rank) const;
 
     // Returns the pattern (i.e. all variables used) of the PDB
     const Pattern &get_pattern() const {
@@ -203,6 +204,10 @@ public:
     std::vector<std::vector<OperatorID>> && extract_wildcard_plan() {
         return std::move(wildcard_plan);
     };
+
+    const std::vector<int> &get_hash_multipliers() const {
+        return hash_multipliers;
+    }
 
     /*
       Returns the average h-value over all states, where dead-ends are

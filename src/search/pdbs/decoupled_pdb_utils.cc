@@ -6,6 +6,7 @@
 #include "../compliant_paths/explicit_state_cpg.h"
 
 #include "../globals.h"
+#include "../tasks/root_task.h"
 
 using namespace std;
 
@@ -23,6 +24,21 @@ void set_leaf_facts(LeafStateHash id, LeafFactorID factor, std::vector<int> &sta
     for (int var : g_leaves[factor]){
         state[var] = lstate[var];
     }
+}
+
+int unrank(const PatternDatabase& pdb, int rank, int pattern_index) {
+    int temp = rank / pdb.get_hash_multipliers()[pattern_index];
+    int var = pdb.get_pattern()[pattern_index];
+    return temp % tasks::g_root_task->get_variable_domain_size(var);
+}
+
+vector<int> unrank(const PatternDatabase& pdb, int rank) {
+    vector<int> values;
+    values.reserve(pdb.get_pattern().size());
+    for (size_t pattern_index = 0; pattern_index < pdb.get_pattern().size(); ++pattern_index) {
+        values.push_back(unrank(pdb, rank, pattern_index));
+    }
+    return values;
 }
 
 static void compute_min_distance(
@@ -65,6 +81,10 @@ static void compute_min_distance(
     }
 }
 
+int compute_price() {
+    // TODO
+}
+
 int compute_pdb_value_with_prices(
     const GlobalState &state,
     const PatternDatabase &pdb,
@@ -76,7 +96,13 @@ int compute_pdb_value_with_prices(
         min_h = pdb.get_value(state);
     } else {
         if (polynomial) {
-            // TODO
+            int min_h = numeric_limits<int>::max();
+            for (int index = 0; index < pdb.get_size(); ++index) {
+                vector<int> abs_state = unrank(pdb, index);
+                int price = compute_price();
+                int h = pdb.get_value(index);
+                min_h = min(min_h, h + price);
+            }
         } else {
             // used to call get_value(vector<int>) for all member states
             vector<int> member_state(g_variable_domain.size(), -1);

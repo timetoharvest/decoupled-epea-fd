@@ -383,6 +383,10 @@ int PatternDatabase::get_value(const GlobalState &state) const {
     return distances[hash_index(state)];
 }
 
+int PatternDatabase::get_value(int rank) const {
+    return distances[rank];
+}
+
 double PatternDatabase::compute_mean_finite_h() const {
     double sum = 0;
     int size = 0;
