@@ -1,8 +1,8 @@
 #include "decoupled_canonical_pdbs_exponential.h"
 
+#include "decoupled_pdb_utils.h"
 #include "pattern_database.h"
 #include "pattern_filter.h"
-#include "utils.h"
 
 #include "../globals.h"
 #include "../state.h"

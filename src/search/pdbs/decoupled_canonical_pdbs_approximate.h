@@ -8,23 +8,25 @@
 class ExplicitStateCPG;
 class GlobalState;
 
+namespace options {
+class OptionParser;
+}
+
 namespace pdbs {
 class DecoupledCanonicalPDBsApproximate : public CanonicalPDBs {
+    const bool polynomial_decoupled_pdb;
     std::vector<std::vector<LeafFactorID>> affected_leaves_by_pattern;
 public:
     DecoupledCanonicalPDBsApproximate(
         const std::shared_ptr<PDBCollection> &pdbs,
-        const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques);
+        const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
+        bool polynomial_decoupled_pdb);
     ~DecoupledCanonicalPDBsApproximate() = default;
 
     virtual int get_value(const GlobalState &state) const override;
 };
 
-extern int compute_pdb_value_with_prices(
-    const GlobalState &state,
-    const PatternDatabase &pdb,
-    const ExplicitStateCPG* prices,
-    const std::vector<LeafFactorID> &affected_leaves);
+extern void add_approximate_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

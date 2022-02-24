@@ -96,7 +96,7 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     if (g_factoring){
         switch (dec_lookup_type){
             case DecoupledPatternCollectionLookUp::APPROX:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques);
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques, opts.get<bool>("polynomial_decoupled_pdb"));
             case DecoupledPatternCollectionLookUp::EXP:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
             case DecoupledPatternCollectionLookUp::EXP_BROKEN:
@@ -130,7 +130,16 @@ int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state)
     }
 }
 
-void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser) {
+void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
+    parser.add_option<double>(
+        "max_time_dominance_pruning",
+        "The maximum time in seconds spent on dominance pruning. Using 0.0 "
+        "turns off dominance pruning. Dominance pruning excludes patterns "
+        "and additive subsets that will never contribute to the heuristic "
+        "value because there are dominating subsets in the collection.",
+        "infinity",
+        Bounds("0.0", "infinity"));
+
     vector<string> lookup_types;
     vector<string> lookup_descriptions;
     lookup_types.push_back("APPROX");
@@ -160,38 +169,6 @@ void add_decoupled_lookup_types_option_to_parser(options::OptionParser &parser) 
         lookup_descriptions);
 }
 
-void add_mip_options_to_parser(options::OptionParser &parser) {
-    vector<string> mip_type;
-    vector<string> mip_type_description;
-    mip_type.push_back("ip");
-    mip_type_description.push_back("both below variables are relaxed");
-    mip_type.push_back("leaf_lp");
-    mip_type_description.push_back("the variables for leaves are relaxed");
-    mip_type.push_back("abs_lp");
-    mip_type_description.push_back("the variables for abstract states are relaxed");
-    mip_type.push_back("lp");
-    mip_type_description.push_back("both above variables are relaxed");
-
-    parser.add_enum_option<MIPType>(
-        "mip_type",
-        mip_type,
-        "Option only relevant for dec_lookup_type=exp_ilp. Allow relaxing "
-        "some (or none) of the MIP variables.",
-        "ip",
-        mip_type_description);
-}
-
-void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
-    parser.add_option<double>(
-        "max_time_dominance_pruning",
-        "The maximum time in seconds spent on dominance pruning. Using 0.0 "
-        "turns off dominance pruning. Dominance pruning excludes patterns "
-        "and additive subsets that will never contribute to the heuristic "
-        "value because there are dominating subsets in the collection.",
-        "infinity",
-        Bounds("0.0", "infinity"));
-}
-
 static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     parser.document_synopsis(
         "Canonical PDB",
@@ -215,8 +192,8 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         "systematic(1)");
 
     add_canonical_pdbs_options_to_parser(parser);
-    add_decoupled_lookup_types_option_to_parser(parser);
     add_mip_options_to_parser(parser);
+    add_approximate_options_to_parser(parser);
 
     Heuristic::add_options_to_parser(parser);
 

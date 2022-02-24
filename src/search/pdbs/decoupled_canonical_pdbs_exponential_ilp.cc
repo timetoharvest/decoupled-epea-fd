@@ -1,12 +1,13 @@
 #include "decoupled_canonical_pdbs_exponential_ilp.h"
 
+#include "decoupled_pdb_utils.h"
 #include "pattern_database.h"
 #include "pattern_filter.h"
-#include "utils.h"
 
 #include "../lp/lp_solver.h"
 
 #include "../globals.h"
+#include "../option_parser.h"
 #include "../state.h"
 
 #include "../compliant_paths/cpg_storage.h"
@@ -285,5 +286,26 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             return numeric_limits<int>::max();
         }
     }
+}
+
+void add_mip_options_to_parser(options::OptionParser &parser) {
+    vector<string> mip_type;
+    vector<string> mip_type_description;
+    mip_type.push_back("ip");
+    mip_type_description.push_back("both below variables are relaxed");
+    mip_type.push_back("leaf_lp");
+    mip_type_description.push_back("the variables for leaves are relaxed");
+    mip_type.push_back("abs_lp");
+    mip_type_description.push_back("the variables for abstract states are relaxed");
+    mip_type.push_back("lp");
+    mip_type_description.push_back("both above variables are relaxed");
+
+    parser.add_enum_option<MIPType>(
+        "mip_type",
+        mip_type,
+        "Option only relevant for dec_lookup_type=exp_ilp. Allow relaxing "
+        "some (or none) of the MIP variables.",
+        "ip",
+        mip_type_description);
 }
 }

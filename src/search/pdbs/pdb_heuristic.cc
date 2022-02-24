@@ -1,6 +1,7 @@
 #include "pdb_heuristic.h"
 
 #include "decoupled_canonical_pdbs_approximate.h"
+#include "decoupled_pdb_utils.h"
 #include "pattern_database.h"
 #include "pattern_filter.h"
 #include "pattern_generator.h"
@@ -30,6 +31,7 @@ shared_ptr<PatternDatabase> get_pdb_from_options(const shared_ptr<AbstractTask> 
 
 PDBHeuristic::PDBHeuristic(const Options &opts)
     : Heuristic(opts),
+      polynomial_decoupled_pdb(opts.get<bool>("polynomial_decoupled_pdb")),
     // TODO: change back to task
       pdb(get_pdb_from_options(tasks::g_root_task, opts)) {
     if (g_factoring) {
@@ -45,7 +47,8 @@ int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
             ancestor_state,
             *pdb,
             dynamic_cast<const ExplicitStateCPG *>(CPGStorage::storage->get_cpg(ancestor_state)),
-            affected_leaves);
+            affected_leaves,
+            polynomial_decoupled_pdb);
     } else {
         h = pdb->get_value(ancestor_state);
     }
@@ -69,6 +72,7 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
         "pattern generation method",
         "greedy()");
     Heuristic::add_options_to_parser(parser);
+    add_approximate_options_to_parser(parser);
 
     Options opts = parser.parse();
     if (parser.dry_run())

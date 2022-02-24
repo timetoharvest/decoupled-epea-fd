@@ -14,6 +14,7 @@ class PatternDatabase;
 
 // Implements a heuristic for a single PDB.
 class PDBHeuristic : public Heuristic {
+    const bool polynomial_decoupled_pdb;
     std::shared_ptr<PatternDatabase> pdb;
     std::vector<LeafFactorID> affected_leaves;
 protected:

@@ -1,8 +1,8 @@
 #include "max_scp_heuristic_single_leaf.h"
 
+#include "decoupled_pdb_utils.h"
 #include "pattern_filter.h"
 #include "types.h"
-#include "utils.h"
 
 #include "../globals.h"
 #include "../option_parser.h"

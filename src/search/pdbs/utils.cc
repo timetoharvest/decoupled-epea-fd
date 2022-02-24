@@ -105,21 +105,6 @@ PatternCollectionInformation get_pattern_collection_info(
     return result;
 }
 
-void set_center_facts(const GlobalState &center_state, std::vector<int> &state) {
-    assert(state.size() == g_variable_domain.size());
-    for (int var : g_center){
-        state[var] = center_state[var];
-    }
-}
-
-void set_leaf_facts(LeafStateHash id, LeafFactorID factor, std::vector<int> &state) {
-    assert(state.size() == g_variable_domain.size());
-    LeafState lstate = g_state_registry->lookup_leaf_state(id, factor);
-    for (int var : g_leaves[factor]){
-        state[var] = lstate[var];
-    }
-}
-
 void dump_pattern_generation_statistics(
     const string &identifier,
     utils::Duration runtime,

@@ -17,6 +17,10 @@ namespace lp {
     class LPConstraint;
 }
 
+namespace options {
+class OptionParser;
+}
+
 namespace pdbs {
 class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
     MIPType mip_type;
@@ -52,6 +56,8 @@ public:
 
     virtual int get_value(const GlobalState &state) const override;
 };
+
+extern void add_mip_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

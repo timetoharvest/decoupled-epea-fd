@@ -501,6 +501,7 @@ fast_downward_plugin(
         pdbs/decoupled_canonical_pdbs_exponential_broken
         pdbs/decoupled_canonical_pdbs_exponential_ilp
         pdbs/decoupled_canonical_pdbs_single_leaf
+        pdbs/decoupled_pdb_utils
         pdbs/dominance_pruning
         pdbs/incremental_canonical_pdbs
         pdbs/match_tree
