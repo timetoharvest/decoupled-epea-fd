@@ -22,7 +22,7 @@ REVISIONS=[
     '14515ac7c622a1ea0e37069146eebb568a446472', # 2022-01-11
     '1d424e48c3ed22f69e30fd1e843a02e3c44535ed', # 2022-01-20
     'eaa07a7dcbee6c6f54252254cfd32aaf32b409fc', # 2022-02-16
-    '', # 2022-02-17
+    '6dcab07d143bdad32cb2c151c648c377207ed2f6', # 2022-02-17
 ]
 
 def remove_revision(run):
@@ -140,8 +140,7 @@ class Filter:
     def filter_interesting_tasks(self, run):
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
-exp.add_report(
-    AbsoluteReport(attributes=['coverage']))
+exp.add_report(AbsoluteReport(attributes=['coverage']))
 
 for name in DECOUPLINGS:
     algorithms=[
