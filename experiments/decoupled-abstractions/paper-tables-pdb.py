@@ -20,7 +20,7 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 REVISIONS=[
     'f07d81fd0b063119d86add881dc1ac8ab6b9f171', # 2022-01-...
     'bc40844ff952e620cc4f671d5e01553009029422', # 2022-01-...
-    '9f923137601971d95ec94f498f5bd7057c6f831e', # 2022-01-24
+    '2e933188bf920eeb60532a30db870676e20ad655', # 2022-01-24
 ]
 
 def remove_revision(run):
