@@ -42,7 +42,7 @@ vector<int> unrank(const PatternDatabase& pdb, int rank) {
     return values;
 }
 
-static void compute_min_distance(
+static void compute_min_distance_mem_states(
     const PatternDatabase &pdb,
     const ExplicitStateCPG *cpg,
     const vector<LeafFactorID> &affected_leaves,
@@ -69,7 +69,7 @@ static void compute_min_distance(
             int price = cpg->get_cost_of_state(id, leaf);
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
-                compute_min_distance(pdb, cpg, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
+                compute_min_distance_mem_states(pdb, cpg, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
             } else {
                 // end recursion
                 int h = pdb.get_value(member_state);
@@ -82,61 +82,34 @@ static void compute_min_distance(
     }
 }
 
-int compute_price(const PatternDatabase &pdb,
-                  const GlobalState &state,
-                  const ExplicitStateCPG* prices,
-                  const vector<int> &abs_state) {
-    vector<vector<pair<int, int>>> abs_leaf_facts(g_leaves.size());
-    for (int i = 0; i < static_cast<int>(pdb.get_pattern().size()); ++i){
-        int var = pdb.get_pattern()[i];
-        LeafFactorID factor = g_belongs_to_factor[var];
-        if (factor == LeafFactorID::CENTER){
-            if (state[var] != abs_state[i]){
-                // abs_state is not reached in this decoupled state
-                return numeric_limits<int>::max();
-            }
-        } else {
-            // store leaf state assignments for efficient lookup
-            abs_leaf_facts[factor].push_back(make_pair(var, abs_state[i]));
-        }
+static void compute_min_distance_abs_states(
+        const PatternDatabase &pdb,
+        const vector<vector<pair<int, int>>> &abs_leaf_state_hash_prices,
+        int partial_index,
+        int sum_prices,
+        int i,
+        int &min_d) {
+
+    if (min_d == 0){
+        return;
     }
-    int sum_prices = 0;
-    for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())) {
-        LeafStateHash id(0);
-        int num_states = prices->get_number_states(leaf);
-        int min_price = numeric_limits<int>::max();
-        while (num_states > 0){
-            if (prices->has_leaf_state(id, leaf)){
-                --num_states;
-                int price = prices->get_cost_of_state(id, leaf);
-                if (price < min_price){
-                    bool match = true;
-                    LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
-                    for (const auto &[var, val] : abs_leaf_facts[leaf]){
-                        if (lstate[var] != val){
-                            match = false;
-                            break;
-                        }
-                    }
-                    if (match){
-                        min_price = price;
-                        if (min_price == 0){
-                            // it cannot get lower than 0
-                            break;
-                        }
-                    }
-                }
-            }
-            ++id;
+
+    if (i == static_cast<int>(abs_leaf_state_hash_prices.size())){
+        int h = pdb.get_value(partial_index);
+        if (h != numeric_limits<int>::max()){
+            min_d = min(min_d, sum_prices + h);
         }
-        if (min_price == numeric_limits<int>::max()){
-            // abs_state is not reached in this decoupled state
-            return numeric_limits<int>::max();
-        } else {
-            sum_prices += min_price;
-        }
+        return;
     }
-    return sum_prices;
+
+    for (const auto &[partial_leaf_index, price] : abs_leaf_state_hash_prices[i]){
+        compute_min_distance_abs_states(pdb,
+                                        abs_leaf_state_hash_prices,
+                                        partial_index + partial_leaf_index,
+                                        sum_prices + price,
+                                        i + 1,
+                                        min_d);
+    }
 }
 
 int compute_pdb_value_with_prices(
@@ -150,21 +123,45 @@ int compute_pdb_value_with_prices(
         min_h = pdb.get_value(state);
     } else {
         if (polynomial) {
-            for (int index = 0; index < pdb.get_size(); ++index) {
-                int h = pdb.get_value(index);
-                if (h != numeric_limits<int>::max()) { // no need for the expensive computation if it's a deadend
-                    vector<int> abs_state = unrank(pdb, index);
-                    int price = compute_price(pdb, state, prices, abs_state);
-                    if (price != numeric_limits<int>::max()) { // check if abs_state is reached in decoupled state
-                        min_h = min(min_h, h + price);
+            const vector<int> &hash_multipliers = pdb.get_hash_multipliers();
+            vector<vector<pair<int, int>>> abs_leaf_state_hash_prices;
+            int center_index = 0;
+            for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())){
+                abs_leaf_state_hash_prices.emplace_back();
+                const vector<int> &pattern = pdb.get_pattern();
+                vector<int> affected_leaf_var_ids;
+                for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
+                    if (g_belongs_to_factor[pattern[i]] == LeafFactorID::CENTER){
+                        center_index += hash_multipliers[i] * state[pattern[i]];
+                    } else {
+                        for (int j = 0; j < static_cast<int>(g_leaves[leaf].size()); ++j) {
+                            if (pattern[i] == g_leaves[leaf][j]) {
+                                affected_leaf_var_ids.push_back(i);
+                            }
+                        }
+                    }
+                }
+                int num_reached_lstates = prices->get_number_states(leaf);
+                for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
+                    if (prices->has_leaf_state(id, leaf)) {
+                        LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
+                        int partial_index = 0;
+                        for (int i: affected_leaf_var_ids) {
+                            partial_index += hash_multipliers[i] * lstate[pattern[i]];
+                        }
+                        abs_leaf_state_hash_prices.back().push_back(make_pair(partial_index, prices->get_cost_of_state(id, leaf)));
+                        if (--num_reached_lstates == 0){
+                            break;
+                        }
                     }
                 }
             }
+            compute_min_distance_abs_states(pdb, abs_leaf_state_hash_prices, center_index, 0, 0, min_h);
         } else {
             // used to call get_value(vector<int>) for all member states
             vector<int> member_state(g_variable_domain.size(), -1);
             set_center_facts(state, member_state);
-            compute_min_distance(pdb, prices, affected_leaves, member_state, 0, 0, min_h);
+            compute_min_distance_mem_states(pdb, prices, affected_leaves, member_state, 0, 0, min_h);
         }
     }
     return min_h;
