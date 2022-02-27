@@ -126,27 +126,30 @@ int compute_pdb_value_with_prices(
             const vector<int> &hash_multipliers = pdb.get_hash_multipliers();
             vector<vector<pair<int, int>>> abs_leaf_state_hash_prices;
             int center_index = 0;
-            for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())){
-                abs_leaf_state_hash_prices.emplace_back();
-                const vector<int> &pattern = pdb.get_pattern();
-                vector<int> affected_leaf_var_ids;
-                for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
-                    if (g_belongs_to_factor[pattern[i]] == LeafFactorID::CENTER){
-                        center_index += hash_multipliers[i] * state[pattern[i]];
-                    } else {
-                        for (int j = 0; j < static_cast<int>(g_leaves[leaf].size()); ++j) {
-                            if (pattern[i] == g_leaves[leaf][j]) {
-                                affected_leaf_var_ids.push_back(i);
-                            }
+            const vector<int> &pattern = pdb.get_pattern();
+            vector<vector<int>> affected_leaf_var_ids(g_leaves.size());
+            for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
+                LeafFactorID factor = g_belongs_to_factor[pattern[i]];
+                if (factor == LeafFactorID::CENTER){
+                    center_index += hash_multipliers[i] * state[pattern[i]];
+                } else {
+                    // TODO no need to recompute this every time
+                    for (int j = 0; j < static_cast<int>(g_leaves[factor].size()); ++j) {
+                        if (pattern[i] == g_leaves[factor][j]) {
+                            affected_leaf_var_ids[factor].push_back(i);
+                            break;
                         }
                     }
                 }
+            }
+            for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())){
+                abs_leaf_state_hash_prices.emplace_back();
                 int num_reached_lstates = prices->get_number_states(leaf);
                 for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
                     if (prices->has_leaf_state(id, leaf)) {
                         LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
                         int partial_index = 0;
-                        for (int i: affected_leaf_var_ids) {
+                        for (int i: affected_leaf_var_ids[leaf]) {
                             partial_index += hash_multipliers[i] * lstate[pattern[i]];
                         }
                         abs_leaf_state_hash_prices.back().push_back(make_pair(partial_index, prices->get_cost_of_state(id, leaf)));
