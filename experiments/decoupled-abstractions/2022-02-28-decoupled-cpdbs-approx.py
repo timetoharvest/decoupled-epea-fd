@@ -19,7 +19,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "ce7d06bd41494b28a3f5ea1e2b3ee78f83b5c502"
+REVISION = "ef5fdfb3514989c44f66bc16aededaf2fa301b36"
 REVISIONS = [REVISION]
 TIME_LIMIT=2
 if common_setup.is_running_on_cluster():
