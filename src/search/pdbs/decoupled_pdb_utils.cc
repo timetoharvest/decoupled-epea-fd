@@ -133,13 +133,7 @@ int compute_pdb_value_with_prices(
                 if (factor == LeafFactorID::CENTER){
                     center_index += hash_multipliers[i] * state[pattern[i]];
                 } else {
-                    // TODO no need to recompute this every time
-                    for (int j = 0; j < static_cast<int>(g_leaves[factor].size()); ++j) {
-                        if (pattern[i] == g_leaves[factor][j]) {
-                            affected_leaf_var_ids[factor].push_back(i);
-                            break;
-                        }
-                    }
+                    affected_leaf_var_ids[factor].push_back(i);
                 }
             }
             for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())){
@@ -147,6 +141,10 @@ int compute_pdb_value_with_prices(
                 int num_reached_lstates = prices->get_number_states(leaf);
                 for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
                     if (prices->has_leaf_state(id, leaf)) {
+                        // TODO since many reached leaf states can lead to the same partial_index if the leaf
+                        // is not fully covered, we might want to cache the cheapest price for all partial_index'es
+                        // if |leaf| >> |leaf \cap patter| this could make quite a difference; also be because within
+                        // compute_min_distance_abs_states, we potentially handle the same state very often
                         LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
                         int partial_index = 0;
                         for (int i: affected_leaf_var_ids[leaf]) {
