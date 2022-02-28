@@ -18,7 +18,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "2e933188bf920eeb60532a30db870676e20ad655"
+REVISION = "ce7d06bd41494b28a3f5ea1e2b3ee78f83b5c502"
 REVISIONS = [REVISION]
 CONFIGS = []
 decoupling = {
