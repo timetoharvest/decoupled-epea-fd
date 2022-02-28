@@ -90,7 +90,7 @@ static void compute_min_distance_abs_states(
         int i,
         int &min_d) {
 
-    if (min_d == 0){
+    if (min_d == 0 || sum_prices >= min_d){
         return;
     }
 
