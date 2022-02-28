@@ -23,6 +23,7 @@ REVISIONS=[
     '1d424e48c3ed22f69e30fd1e843a02e3c44535ed', # 2022-01-20
     'eaa07a7dcbee6c6f54252254cfd32aaf32b409fc', # 2022-02-16
     '6dcab07d143bdad32cb2c151c648c377207ed2f6', # 2022-02-17
+    'ef5fdfb3514989c44f66bc16aededaf2fa301b36', # 2022-02-28
 ]
 
 def remove_revision(run):
@@ -72,6 +73,7 @@ exp.add_fetcher('data/2022-02-16-decoupled-cpdbs-expilp-eval',filter=[remove_rev
 exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-lp-eval',filter=[remove_revision],merge=True)
 exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-abslp-eval',filter=[remove_revision],merge=True)
 exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-leaflp-eval',filter=[remove_revision],merge=True)
+exp.add_fetcher('data/2022-02-28-decoupled-cpdbs-approx-eval',filter=[remove_revision],merge=True)
 
 DECOUPLINGS = [
     'fork',
@@ -169,6 +171,8 @@ for name in DECOUPLINGS:
         f'{name}-cpdbsexpilp_lp-hc2leaves',
         f'{name}-cpdbsexpilp_lp-hc3leaves',
         f'{name}-cpdbsexpilp_lp-hc',
+        f'{name}-cpdbsapprox-hc',
+        f'{name}-cpdbsapprox-hcdisjointleaf',
     ]
     f = Filter(name, algorithms)
     report_name=f'{exp.name}-absolute-baseline-exp-expilp-{name}'
