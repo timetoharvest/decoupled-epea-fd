@@ -32,8 +32,8 @@ decoupling = {
     'mmgeneral' : 'lp_factoring(factoring_type=general, strategy=mm)',
 }
 for name, dec in decoupling.items():
-    CONFIGS.append(IssueConfig(f'{name}-cpdbsapprox-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=approx,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
-    CONFIGS.append(IssueConfig(f'{name}-cpdbsapprox-hcdisjointleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=approx,patterns=hillclimbing(max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
+    CONFIGS.append(IssueConfig(f'{name}-cpdbsapproxpoly-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=approx,polynomial_decoupled_pdb=true,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
+    CONFIGS.append(IssueConfig(f'{name}-cpdbsapproxpoly-hcdisjointleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs(dec_lookup_type=approx,polynomial_decoupled_pdb=true,patterns=hillclimbing(max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
