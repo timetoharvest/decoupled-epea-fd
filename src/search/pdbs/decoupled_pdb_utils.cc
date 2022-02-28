@@ -112,11 +112,26 @@ static void compute_min_distance_abs_states(
     }
 }
 
+vector<int> compute_affected_pattern_var_indices(
+    const Pattern &pattern, LeafFactorID factor) {
+    vector<int> affected_pattern_var_indices;
+    for (int i = 0; i < static_cast<int>(pattern.size()); ++i) {
+        for (int leaf_var : g_leaves[factor]) {
+            if (pattern[i] == leaf_var) {
+                affected_pattern_var_indices.push_back(i);
+                break;
+            }
+        }
+    }
+    return affected_pattern_var_indices;
+}
+
 int compute_pdb_value_with_prices(
     const GlobalState &state,
     const PatternDatabase &pdb,
     const ExplicitStateCPG* prices,
     const vector<LeafFactorID> &affected_leaves,
+    const vector<vector<int>> &pattern_var_indices_by_affected_leaf_indices,
     bool polynomial) {
     int min_h = numeric_limits<int>::max();
     if (affected_leaves.empty()){
@@ -127,17 +142,15 @@ int compute_pdb_value_with_prices(
             vector<vector<pair<int, int>>> abs_leaf_state_hash_prices;
             int center_index = 0;
             const vector<int> &pattern = pdb.get_pattern();
-            vector<vector<int>> affected_leaf_var_ids(g_leaves.size());
             for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
                 LeafFactorID factor = g_belongs_to_factor[pattern[i]];
                 if (factor == LeafFactorID::CENTER){
                     center_index += hash_multipliers[i] * state[pattern[i]];
-                } else {
-                    affected_leaf_var_ids[factor].push_back(i);
                 }
             }
-            for (LeafFactorID leaf : get_leaf_factors_of_pattern(pdb.get_pattern())){
-                abs_leaf_state_hash_prices.emplace_back();
+            for (size_t aff_leaf_index = 0; aff_leaf_index < affected_leaves.size(); ++aff_leaf_index) {
+                LeafFactorID leaf = affected_leaves[aff_leaf_index];
+                vector<pair<int, int>> hash_prices_for_leaf;
                 int num_reached_lstates = prices->get_number_states(leaf);
                 for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
                     if (prices->has_leaf_state(id, leaf)) {
@@ -147,14 +160,25 @@ int compute_pdb_value_with_prices(
                         // compute_min_distance_abs_states, we potentially handle the same state very often
                         LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
                         int partial_index = 0;
-                        for (int i: affected_leaf_var_ids[leaf]) {
-                            partial_index += hash_multipliers[i] * lstate[pattern[i]];
+                        for (int pattern_var_index: pattern_var_indices_by_affected_leaf_indices[aff_leaf_index]) {
+                            partial_index += hash_multipliers[pattern_var_index] * lstate[pattern[pattern_var_index]];
                         }
-                        abs_leaf_state_hash_prices.back().push_back(make_pair(partial_index, prices->get_cost_of_state(id, leaf)));
+                        hash_prices_for_leaf.emplace_back(partial_index, prices->get_cost_of_state(id, leaf));
                         if (--num_reached_lstates == 0){
                             break;
                         }
                     }
+                }
+                assert(pattern_var_indices_by_affected_leaf_indices[aff_leaf_index].size() <= g_leaves[leaf].size());
+                if (pattern_var_indices_by_affected_leaf_indices[aff_leaf_index].size() != g_leaves[leaf].size()) {
+                    // Leaf not fully covered by pattern
+                    sort(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end());
+                    hash_prices_for_leaf.erase(
+                       unique(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end(), [](const auto &lhs, const auto &rhs) {
+                           // Treat elements of hash_prices_for_leaf equivalent if their first enty, the abstract state hash, is equivalent.
+                           return lhs.first == rhs.first;
+                       }),
+                       hash_prices_for_leaf.end());
                 }
             }
             compute_min_distance_abs_states(pdb, abs_leaf_state_hash_prices, center_index, 0, 0, min_h);
