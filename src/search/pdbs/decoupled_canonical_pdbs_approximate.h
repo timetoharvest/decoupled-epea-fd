@@ -16,6 +16,7 @@ namespace pdbs {
 class DecoupledCanonicalPDBsApproximate : public CanonicalPDBs {
     const bool polynomial_decoupled_pdb;
     std::vector<std::vector<LeafFactorID>> affected_leaves_by_pattern;
+    std::vector<std::vector<std::vector<int>>> affected_pattern_var_indices_by_leaf_by_pattern;
 public:
     DecoupledCanonicalPDBsApproximate(
         const std::shared_ptr<PDBCollection> &pdbs,
