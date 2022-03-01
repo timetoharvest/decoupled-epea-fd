@@ -19,7 +19,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
-REVISION = "ce7d06bd41494b28a3f5ea1e2b3ee78f83b5c502"
+REVISION = "6771467f81f8d1e6fb3ebc19114d833b9932950f"
 REVISIONS = [REVISION]
 CEGAR_MAX_TIME=2
 SYS_MAX_TIME=2
@@ -38,8 +38,8 @@ decoupling = {
     'mmgeneral' : 'lp_factoring(factoring_type=general, strategy=mm)',
 }
 for name, dec in decoupling.items():
-    CONFIGS.append(IssueConfig(f'{name}-scpapprox-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_approx(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all))'], build_options=['release64'], driver_options=['--build', 'release64']))
-    CONFIGS.append(IssueConfig(f'{name}-scpapprox-allleafdisjoint-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_approx(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all_leaf_disjoint))'], build_options=['release64'], driver_options=['--build', 'release64']))
+    CONFIGS.append(IssueConfig(f'{name}-scpapproxpoly-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_approx(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all))'], build_options=['release64'], driver_options=['--build', 'release64']))
+    CONFIGS.append(IssueConfig(f'{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_approx(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all_leaf_disjoint))'], build_options=['release64'], driver_options=['--build', 'release64']))
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
