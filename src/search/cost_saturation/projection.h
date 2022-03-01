@@ -66,6 +66,7 @@ struct RankedOperator {
 
 
 class ProjectionFunction : public AbstractionFunction {
+public:
     struct VariableAndMultiplier {
         int pattern_var;
         int hash_multiplier;
@@ -75,15 +76,21 @@ class ProjectionFunction : public AbstractionFunction {
               hash_multiplier(hash_multiplier) {
         }
     };
+private:
     std::vector<VariableAndMultiplier> variables_and_multipliers;
 
 public:
     ProjectionFunction(
         const pdbs::Pattern &pattern, const std::vector<int> &hash_multipliers);
+    virtual ~ProjectionFunction() = default;
 
     virtual int get_abstract_state_id(const GlobalState &concrete_state) const override;
     virtual int get_abstract_state_id(const State &concrete_state) const override;
     virtual int get_abstract_state_id(const std::vector<int> &concrete_state) const override;
+
+    const std::vector<VariableAndMultiplier> &get_variables_and_multipliers() const {
+        return variables_and_multipliers;
+    }
 };
 
 

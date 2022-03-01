@@ -48,9 +48,20 @@ static void log_info_about_stored_lookup_tables(
                  << num_stored_values / static_cast<double>(num_total_values) << endl;
 }
 
-static AbstractionFunctions extract_abstraction_functions_and_patterns_from_useful_abstractions(
+template <typename To, typename From, typename Deleter>
+std::unique_ptr<To, Deleter> dynamic_unique_cast(std::unique_ptr<From, Deleter>&& p) {
+    if (To* cast = dynamic_cast<To*>(p.get())) {
+        std::unique_ptr<To, Deleter> result(cast, std::move(p.get_deleter()));
+        p.release();
+        return result;
+    }
+    return std::unique_ptr<To, Deleter>(nullptr); // or throw std::bad_cast() if you prefer
+}
+
+static void extract_abstraction_functions_and_patterns_from_useful_abstractions(
     const CPHeuristics &cp_heuristics,
     Abstractions &abstractions,
+    vector<unique_ptr<ProjectionFunction>> &abstraction_functions,
     vector<Pattern> &patterns) {
     int num_abstractions = abstractions.size();
 
@@ -60,14 +71,15 @@ static AbstractionFunctions extract_abstraction_functions_and_patterns_from_usef
         cp_heuristic.mark_useful_abstractions(useful_abstractions);
     }
 
-    AbstractionFunctions abstraction_functions;
-    abstraction_functions.reserve(num_abstractions);
+    assert(abstraction_functions.empty());
     assert(patterns.empty());
+    abstraction_functions.reserve(num_abstractions);
     patterns.reserve(num_abstractions);
     for (int i = 0; i < num_abstractions; ++i) {
         if (useful_abstractions[i]) {
             abstraction_functions.push_back(
-                abstractions[i]->extract_abstraction_function());
+                unique_ptr<ProjectionFunction>(
+                dynamic_cast<ProjectionFunction *>(abstractions[i]->extract_abstraction_function().release())));
             Projection *projection = dynamic_cast<Projection *>(abstractions[i].get());
             patterns.emplace_back(projection->get_pattern());
         } else {
@@ -75,7 +87,6 @@ static AbstractionFunctions extract_abstraction_functions_and_patterns_from_usef
             patterns.emplace_back();
         }
     }
-    return abstraction_functions;
 }
 
 MaxSCPHeuristic::MaxSCPHeuristic(
@@ -88,8 +99,8 @@ MaxSCPHeuristic::MaxSCPHeuristic(
 
     // We only need abstraction functions during search and no transition systems.
     // We additionally extract the patterns.
-    abstraction_functions = extract_abstraction_functions_and_patterns_from_useful_abstractions(
-        cp_heuristics, abstractions, patterns);
+    extract_abstraction_functions_and_patterns_from_useful_abstractions(
+        cp_heuristics, abstractions, abstraction_functions, patterns);
 
     int num_abstractions = abstractions.size();
     int num_useless_abstractions = count(

@@ -14,8 +14,8 @@ class Options;
 }
 
 namespace cost_saturation {
-class AbstractionFunction;
 class CostPartitioningHeuristic;
+class ProjectionFunction;
 }
 
 namespace pdbs {
@@ -26,7 +26,7 @@ namespace pdbs {
 */
 class MaxSCPHeuristic : public Heuristic {
 protected:
-    std::vector<std::unique_ptr<cost_saturation::AbstractionFunction>> abstraction_functions;
+    std::vector<std::unique_ptr<cost_saturation::ProjectionFunction>> abstraction_functions;
     cost_saturation::CPHeuristics cp_heuristics;
 
     std::vector<Pattern> patterns;

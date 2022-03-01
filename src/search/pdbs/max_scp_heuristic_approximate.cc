@@ -31,23 +31,58 @@ MaxSCPHeuristicApproximate::MaxSCPHeuristicApproximate(
     const options::Options &opts,
     Abstractions &&abstractions,
     CPHeuristics &&cp_heuristics)
-    : MaxSCPHeuristic(opts, move(abstractions), move(cp_heuristics)) {
+    : MaxSCPHeuristic(opts, move(abstractions), move(cp_heuristics)),
+      polynomial_decoupled_pdb(opts.get<bool>("polynomial_decoupled_pdb")) {
     // TODO: assertion for approx that all patterns used in each CPHeuristic only affect one leaf
 
-    for (size_t abs = 0; abs < abstractions.size(); ++abs) {
-        if (abstractions[abs]) {
+    affected_leaves_by_abstraction.reserve(abstraction_functions.size());
+    affected_pattern_var_indices_by_leaf_by_abstraction.reserve(abstraction_functions.size());
+    for (size_t abs = 0; abs < abstraction_functions.size(); ++abs) {
+        if (abstraction_functions[abs]) {
             unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(patterns[abs]);
             affected_leaves_by_abstraction.emplace_back(aff_leaves.begin(), aff_leaves.end());
+            affected_pattern_var_indices_by_leaf_by_abstraction.push_back(compute_affected_pattern_var_indices_by_leaf(patterns[abs]));
         } else {
             affected_leaves_by_abstraction.emplace_back();
+            affected_pattern_var_indices_by_leaf_by_abstraction.emplace_back();
         }
     }
 }
 
-static void compute_min_distance(
+static void compute_min_distance_abs_states(
+    const vector<int> &distances,
+    const vector<vector<pair<int, int>>> &abs_leaf_state_hash_prices,
+    int partial_index,
+    int sum_prices,
+    int i,
+    int &min_d) {
+
+    if (min_d == 0 || sum_prices >= min_d){
+        return;
+    }
+
+    if (i == static_cast<int>(abs_leaf_state_hash_prices.size())){
+        int h = distances[partial_index];
+        if (h != numeric_limits<int>::max()){
+            min_d = min(min_d, sum_prices + h);
+        }
+        return;
+    }
+
+    for (const auto &[partial_leaf_index, price] : abs_leaf_state_hash_prices[i]){
+        compute_min_distance_abs_states(distances,
+                                        abs_leaf_state_hash_prices,
+                                        partial_index + partial_leaf_index,
+                                        sum_prices + price,
+                                        i + 1,
+                                        min_d);
+    }
+}
+
+static void compute_min_distance_mem_states(
     const ExplicitStateCPG *cpg,
     const vector<int> &distances,
-    const AbstractionFunction &abstraction_function,
+    const ProjectionFunction &abstraction_function,
     const vector<LeafFactorID> &affected_leaves,
     vector<int> &member_state,
     int i,
@@ -72,7 +107,11 @@ static void compute_min_distance(
             int price = cpg->get_cost_of_state(id, leaf);
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
-                compute_min_distance(cpg, distances, abstraction_function, affected_leaves, member_state, i + 1, sum_prices + price, min_d);
+                compute_min_distance_mem_states(cpg, distances, abstraction_function, affected_leaves, member_state,
+                                                i +
+                                                1,
+                                                sum_prices +
+                                                price, min_d);
             } else {
                 // end recursion
                 int h = distances[abstraction_function.get_abstract_state_id(member_state)];
@@ -91,7 +130,8 @@ int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
     const ExplicitStateCPG* prices) const {
     int min_h = numeric_limits<int>::max();
     int abs_id = lookup_table.abstraction_id;
-    if (affected_leaves_by_abstraction[abs_id].empty()) {
+    const vector<LeafFactorID> &affected_leaves = affected_leaves_by_abstraction[abs_id];
+    if (affected_leaves.empty()) {
         vector<int> abstract_state_ids = get_abstract_state_ids(
             abstraction_functions, state);
         assert(utils::in_bounds(abs_id, abstract_state_ids));
@@ -99,18 +139,71 @@ int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
         assert(utils::in_bounds(state_id, lookup_table.h_values));
         min_h = lookup_table.h_values[state_id];
     } else {
-        // used to call get_value(vector<int>) for all member states
-        vector<int> member_state(g_variable_domain.size(), -1);
-        set_center_facts(state, member_state);
-        compute_min_distance(
-            prices,
-            lookup_table.h_values,
-            *abstraction_functions[abs_id],
-            affected_leaves_by_abstraction[abs_id],
-            member_state,
-            0,
-            0,
-            min_h);
+        if (polynomial_decoupled_pdb) {
+            const vector<ProjectionFunction::VariableAndMultiplier> &variables_and_multipliers =
+                abstraction_functions[abs_id]->get_variables_and_multipliers();
+            vector<vector<pair<int, int>>> abs_leaf_state_hash_prices;
+            int center_index = 0;
+            const vector<int> &pattern = patterns[abs_id];
+            for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
+                LeafFactorID factor = g_belongs_to_factor[pattern[i]];
+                if (factor == LeafFactorID::CENTER){
+                    assert(pattern[i] == variables_and_multipliers[i].pattern_var);
+                    center_index += variables_and_multipliers[i].hash_multiplier * state[pattern[i]];
+                }
+            }
+            const vector<vector<int>> &affected_pattern_var_indices_by_leaf = affected_pattern_var_indices_by_leaf_by_abstraction[abs_id];
+            for (LeafFactorID leaf : affected_leaves) {
+                vector<pair<int, int>> hash_prices_for_leaf;
+                int num_reached_lstates = prices->get_number_states(leaf);
+                for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
+                    if (prices->has_leaf_state(id, leaf)) {
+                        LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
+                        int partial_index = 0;
+                        for (int pattern_var_index: affected_pattern_var_indices_by_leaf[leaf]) {
+                            assert(pattern[pattern_var_index] == variables_and_multipliers[pattern_var_index].pattern_var);
+                            partial_index += variables_and_multipliers[pattern_var_index].hash_multiplier * lstate[pattern[pattern_var_index]];
+                        }
+                        hash_prices_for_leaf.emplace_back(partial_index, prices->get_cost_of_state(id, leaf));
+                        if (--num_reached_lstates == 0){
+                            break;
+                        }
+                    }
+                }
+                assert(affected_pattern_var_indices_by_leaf[leaf].size() <= g_leaves[leaf].size());
+                if (affected_pattern_var_indices_by_leaf[leaf].size() != g_leaves[leaf].size()) {
+                    // Leaf not fully covered by pattern
+                    sort(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end());
+                    hash_prices_for_leaf.erase(
+                        unique(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end(), [](const auto &lhs, const auto &rhs) {
+                            // Treat elements of hash_prices_for_leaf equivalent if their first enty, the abstract state hash, is equivalent.
+                            return lhs.first == rhs.first;
+                        }),
+                        hash_prices_for_leaf.end());
+                }
+                abs_leaf_state_hash_prices.push_back(move(hash_prices_for_leaf));
+            }
+            compute_min_distance_abs_states(
+                lookup_table.h_values,
+                abs_leaf_state_hash_prices,
+                center_index,
+                0,
+                0,
+                min_h);
+        } else {
+            // used to call get_value(vector<int>) for all member states
+            vector<int> member_state(g_variable_domain.size(), -1);
+            set_center_facts(state, member_state);
+            compute_min_distance_mem_states(
+                prices,
+                lookup_table.h_values,
+                *abstraction_functions[abs_id],
+                affected_leaves_by_abstraction[abs_id],
+                member_state,
+                0,
+                0,
+                min_h);
+        }
     }
     return min_h;
 }
@@ -184,6 +277,11 @@ CostPartitioningHeuristic compute_saturated_cost_partitioning_leaf_disjoint(
 }
 
 static shared_ptr<Evaluator> _parse(OptionParser &parser) {
+    parser.add_option<bool>(
+        "polynomial_decoupled_pdb",
+        "if true, compute decoupled pdb in polynomial time by iterating "
+        "over abstact states; if false, ",
+        "false");
     prepare_parser_for_cost_partitioning_heuristic(parser);
     add_saturator_option(parser);
     add_order_options_to_parser(parser);

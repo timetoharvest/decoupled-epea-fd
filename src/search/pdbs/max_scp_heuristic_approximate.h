@@ -11,7 +11,9 @@ class ExplicitStateCPG;
 
 namespace pdbs {
 class MaxSCPHeuristicApproximate : public MaxSCPHeuristic {
+    const bool polynomial_decoupled_pdb;
     std::vector<std::vector<LeafFactorID>> affected_leaves_by_abstraction;
+    std::vector<std::vector<std::vector<int>>> affected_pattern_var_indices_by_leaf_by_abstraction;
 
     int compute_pdb_value_with_prices(
         const GlobalState &state,
