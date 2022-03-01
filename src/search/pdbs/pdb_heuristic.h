@@ -17,7 +17,7 @@ class PDBHeuristic : public Heuristic {
     const bool polynomial_decoupled_pdb;
     std::shared_ptr<PatternDatabase> pdb;
     std::vector<LeafFactorID> affected_leaves;
-    std::vector<std::vector<int>> affected_pattern_var_indices_by_affected_leaf_index;
+    std::vector<std::vector<int>> affected_pattern_var_indices_by_leaf;
 protected:
     virtual int compute_heuristic(const GlobalState &ancestor_state) override;
 public:

@@ -18,14 +18,14 @@ extern void set_leaf_facts(LeafStateHash id, LeafFactorID factor, std::vector<in
 
 extern std::vector<int> unrank(const PatternDatabase& pdb, int rank);
 
-extern std::vector<int> compute_affected_pattern_var_indices(
-    const Pattern &pattern, LeafFactorID factor);
+extern std::vector<std::vector<int>> compute_affected_pattern_var_indices_by_leaf(
+    const Pattern &pattern);
 extern int compute_pdb_value_with_prices(
     const GlobalState &state,
     const PatternDatabase &pdb,
     const ExplicitStateCPG* prices,
     const std::vector<LeafFactorID> &affected_leaves,
-    const std::vector<std::vector<int>> &pattern_var_indices_by_affected_leaf_indices,
+    const std::vector<std::vector<int>> &affected_pattern_var_indices_by_leaf,
     bool polynomial);
 }
 

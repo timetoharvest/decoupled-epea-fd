@@ -37,12 +37,7 @@ PDBHeuristic::PDBHeuristic(const Options &opts)
     if (g_factoring) {
         unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
         affected_leaves.assign(aff_leaves.begin(), aff_leaves.end());
-
-        affected_pattern_var_indices_by_affected_leaf_index.reserve(aff_leaves.size());
-        for (LeafFactorID factor : aff_leaves) {
-            affected_pattern_var_indices_by_affected_leaf_index.emplace_back(
-                compute_affected_pattern_var_indices(pdb->get_pattern(), factor));
-        }
+        affected_pattern_var_indices_by_leaf = compute_affected_pattern_var_indices_by_leaf(pdb->get_pattern());
     }
 }
 
@@ -54,7 +49,7 @@ int PDBHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
             *pdb,
             dynamic_cast<const ExplicitStateCPG *>(CPGStorage::storage->get_cpg(ancestor_state)),
             affected_leaves,
-            affected_pattern_var_indices_by_affected_leaf_index,
+            affected_pattern_var_indices_by_leaf,
             polynomial_decoupled_pdb);
     } else {
         h = pdb->get_value(ancestor_state);

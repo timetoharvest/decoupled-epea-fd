@@ -29,19 +29,11 @@ DecoupledCanonicalPDBsApproximate::DecoupledCanonicalPDBsApproximate(
     // This is ensured by the construction of patterns in
     // CanonicalPDBsHeuristic, though.
     affected_leaves_by_pattern.reserve(pdbs->size());
-    affected_pattern_var_indices_by_leaf_by_pattern.reserve(g_leaves.size());
+    affected_pattern_var_indices_by_leaf_by_pattern.reserve(pdbs->size());
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
         unordered_set<LeafFactorID> aff_leaves = get_leaf_factors_of_pattern(pdb->get_pattern());
         affected_leaves_by_pattern.emplace_back(aff_leaves.begin(), aff_leaves.end());
-
-        vector<vector<int>> affected_pattern_var_indices_by_affected_leaf_index;
-        affected_pattern_var_indices_by_affected_leaf_index.reserve(aff_leaves.size());
-        for (LeafFactorID factor : aff_leaves) {
-            affected_pattern_var_indices_by_affected_leaf_index.emplace_back(
-                compute_affected_pattern_var_indices(pdb->get_pattern(), factor));
-        }
-        affected_pattern_var_indices_by_leaf_by_pattern.push_back(
-            move(affected_pattern_var_indices_by_affected_leaf_index));
+        affected_pattern_var_indices_by_leaf_by_pattern.push_back(compute_affected_pattern_var_indices_by_leaf(pdb->get_pattern()));
     }
 }
 
