@@ -35,6 +35,7 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     utils::Timer timer;
     utils::g_log << "Initializing canonical PDB heuristic..." << endl;
     DecoupledPatternCollectionLookUp dec_lookup_type(opts.get<DecoupledPatternCollectionLookUp>("dec_lookup_type"));
+
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<PatternCollection> patterns =
@@ -98,7 +99,7 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
             case DecoupledPatternCollectionLookUp::APPROX:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques, opts.get<bool>("polynomial_decoupled_pdb"));
             case DecoupledPatternCollectionLookUp::EXP:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques);
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques, opts.get<ExplicitLeafSortingType>("sort_leaves_type"));
             case DecoupledPatternCollectionLookUp::EXP_BROKEN:
                 return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialBroken>(pdbs, pattern_cliques);
             case DecoupledPatternCollectionLookUp::SINGLE_LEAF:
@@ -194,6 +195,7 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     add_canonical_pdbs_options_to_parser(parser);
     add_mip_options_to_parser(parser);
     add_approximate_options_to_parser(parser);
+    add_exponential_options_to_parser(parser);
 
     Heuristic::add_options_to_parser(parser);
 
