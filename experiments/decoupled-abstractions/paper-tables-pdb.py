@@ -20,7 +20,6 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 REVISIONS=[
     'f07d81fd0b063119d86add881dc1ac8ab6b9f171', # 2022-01-...
     'bc40844ff952e620cc4f671d5e01553009029422', # 2022-01-...
-    'ef5fdfb3514989c44f66bc16aededaf2fa301b36', # 2022-01-24
     '6771467f81f8d1e6fb3ebc19114d833b9932950f', # 2022-01-28
 ]
 
@@ -53,7 +52,6 @@ exp.add_fetcher('data/2022-01-13-baseline-pdb-eval',filter=[remove_revision,excl
 exp.add_fetcher('data/2022-01-13-baseline-dec-pdb-eval',filter=[remove_revision,duplicate_num_affected_leaf_factors],merge=True)
 exp.add_fetcher('data/2022-01-13-pdb-eval',filter=[remove_revision,duplicate_num_affected_leaf_factors],merge=True)
 exp.add_fetcher('data/2022-01-13-pdb-greedy-eval',filter=[remove_revision,duplicate_num_affected_leaf_factors],merge=True)
-exp.add_fetcher('data/2022-02-24-decoupled-pdb-eval',filter=[remove_revision],merge=True)
 exp.add_fetcher('data/2022-02-28-decoupled-pdb-eval',filter=[remove_revision],merge=True)
 
 
