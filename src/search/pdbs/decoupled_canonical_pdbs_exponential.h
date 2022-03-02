@@ -16,13 +16,19 @@ namespace pdbs {
 class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     ExplicitLeafSortingType sort_leaves_type;
 
+    // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
+    // same, but individually for all patterns
+    std::vector<std::vector<LeafFactorID>> affected_leaves_by_pattern;
+
+    std::vector<PatternID> center_only_patterns;
+    std::vector<int> center_only_cliques;
 
     // these store, for each recursion depth the patterns/cliques of which
     // all leaves have been treated, so the final value for the pattern/clique
     // can be computed
     mutable std::vector<std::vector<PatternID>> patterns_by_rec_depth;
-    mutable std::vector<std::vector<PatternID>> cliques_by_rec_depth;
+    mutable std::vector<std::vector<int>> cliques_by_rec_depth;
 
     void apply_resorted_affected_leaves() const;
 
