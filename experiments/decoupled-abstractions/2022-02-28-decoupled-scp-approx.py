@@ -102,4 +102,50 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
 
+OLD_REV='14515ac7c622a1ea0e37069146eebb568a446472'
+algorithms = []
+for name in decoupling.keys():
+    algorithms.append(f'{OLD_REV}-{name}-scpapprox-all-cegar-sys2-hc')
+    algorithms.append(f'{OLD_REV}-{name}-scpapprox-allleafdisjoint-cegar-sys2-hc')
+exp.add_fetcher('data/2022-01-11-scp-approx-eval', filter_algorithm=algorithms,merge=True)
+
+class Filter:
+    def __init__(self, dec, algos):
+        self.decoupling = dec
+        self.algos = algos
+        self.excluded_tasks = set()
+
+    def collect_non_factorable_tasks(self, run):
+        # Only consider algorithms relevant to the table.
+        if run['algorithm'] not in self.algos:
+            return False
+        error = run.get('error')
+        if error is not None and error == 'search-abstained':
+            self.excluded_tasks.add(f"{run['domain']}:{run['problem']}")
+        return True
+
+    def filter_interesting_tasks(self, run):
+        return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
+
+for name in decoupling.keys():
+    algo_pairs=[
+        (f'{OLD_REV}-{name}-scpapprox-all-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-all-cegar-sys2-hc'),
+        (f'{OLD_REV}-{name}-scpapprox-allleafdisjoint-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc'),
+    ]
+    all_algos = [algo for algo_pair in algo_pairs for algo in algo_pair]
+    all_algos = list(set(all_algos))
+    f = Filter(name, all_algos)
+    report_name=f'{exp.name}-compare-old-{name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        ComparativeReport(
+            attributes=attributes,
+            algorithm_pairs=algo_pairs,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
 exp.run_steps()
