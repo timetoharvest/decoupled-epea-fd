@@ -129,8 +129,8 @@ class Filter:
 
 for name in decoupling.keys():
     algo_pairs=[
-        (f'{OLD_REV}-{name}-scpapprox-all-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-hc'),
-        (f'{OLD_REV}-{name}-scpapprox-allleafdisjoint-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-hcdisjointleaf'),
+        (f'{OLD_REV}-{name}-scpapprox-all-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-all-cegar-sys2-hc'),
+        (f'{OLD_REV}-{name}-scpapprox-allleafdisjoint-cegar-sys2-hc', f'{REVISION}-{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc'),
     ]
     all_algos = [algo for algo_pair in algo_pairs for algo in algo_pair]
     all_algos = list(set(all_algos))
