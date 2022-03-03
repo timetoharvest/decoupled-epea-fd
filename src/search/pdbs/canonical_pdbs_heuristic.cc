@@ -11,9 +11,11 @@
 #include "utils.h"
 
 #include "../globals.h"
-#include "../leaf_state_id.h"
 #include "../option_parser.h"
 #include "../plugin.h"
+
+#include "../utils/rng.h"
+#include "../utils/rng_options.h"
 
 #include "../tasks/root_task.h"
 
@@ -97,17 +99,32 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     if (g_factoring){
         switch (dec_lookup_type){
             case DecoupledPatternCollectionLookUp::APPROX:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(pdbs, pattern_cliques, opts.get<bool>("polynomial_decoupled_pdb"));
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsApproximate>(
+                        pdbs,
+                        pattern_cliques,
+                        opts.get<bool>("polynomial_decoupled_pdb"));
             case DecoupledPatternCollectionLookUp::EXP:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques, opts.get<ExplicitLeafSortingType>("sort_leaves_type"));
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(
+                        pdbs,
+                        pattern_cliques,
+                        opts.get<ExplicitLeafSortingType>("sort_leaves_type"),
+                        opts.get<bool>("early_termination"),
+                        utils::parse_rng_from_options(opts));
             case DecoupledPatternCollectionLookUp::EXP_BROKEN:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialBroken>(pdbs, pattern_cliques);
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialBroken>(
+                        pdbs,
+                        pattern_cliques);
             case DecoupledPatternCollectionLookUp::SINGLE_LEAF:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(pdbs, pattern_cliques);
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsSingleLeaf>(
+                        pdbs,
+                        pattern_cliques);
             case DecoupledPatternCollectionLookUp::EXP_ILP:
-                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialILP>(pdbs, pattern_cliques, opts.get<MIPType>("mip_type"));
+                return utils::make_unique_ptr<DecoupledCanonicalPDBsExponentialILP>(
+                        pdbs,
+                        pattern_cliques,
+                        opts.get<MIPType>("mip_type"));
             default: cerr << "Unknown dec_lookup_type, options are APPROX, EXP, EXP_BROKEN, EXP_ILP, or SINGLE_LEAF." << endl;
-            utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
+                utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
         }
     }
 

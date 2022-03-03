@@ -11,7 +11,7 @@ class State;
 namespace pdbs {
 enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP, EXP_BROKEN, EXP_ILP};
 enum class MIPType {IP, LeafLP, AbsLP, LP};
-enum class ExplicitLeafSortingType {NO, STATIC, DYNAMIC};
+enum class ExplicitLeafSortingType {LEAFID, STATIC, DYNAMIC, RANDOM};
 
 class CanonicalPDBs {
 protected:

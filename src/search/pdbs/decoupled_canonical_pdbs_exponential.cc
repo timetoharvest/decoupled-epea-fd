@@ -10,6 +10,9 @@
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/explicit_state_cpg.h"
 
+#include "../utils/rng.h"
+#include "../utils/rng_options.h"
+
 #include "../option_parser.h"
 
 #include <cassert>
@@ -18,10 +21,14 @@ using namespace std;
 
 namespace pdbs {
 DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
-    const shared_ptr<PDBCollection> &pdbs,
-    const shared_ptr<vector<PatternClique>> &pattern_cliques,
-    ExplicitLeafSortingType sort_leaves_type)
-    : CanonicalPDBs(pdbs, pattern_cliques), sort_leaves_type(sort_leaves_type) {
+        const shared_ptr<PDBCollection> &pdbs,
+        const shared_ptr<vector<PatternClique>> &pattern_cliques,
+        ExplicitLeafSortingType sort_leaves_type,
+        bool early_termination,
+        shared_ptr<utils::RandomNumberGenerator> rng)
+        : CanonicalPDBs(pdbs, pattern_cliques),
+          sort_leaves_type(sort_leaves_type),
+          early_termination(early_termination) {
 
     unordered_set<LeafFactorID> aff_leaves;
     affected_leaves_by_pattern.resize(pdbs->size());
@@ -53,15 +60,19 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         }
     }
 
-    // TODO add random and sorting according to leaf ID
-    // TODO add bool option for early termination
-
     if (sort_leaves_type == ExplicitLeafSortingType::STATIC) {
         // sort leaf factors by descending number of affecting patterns
         sort(affected_leaves.begin(), affected_leaves.end(),
              [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
                  return num_patterns_per_leaf[l1] > num_patterns_per_leaf[l2];
              });
+    } else if (sort_leaves_type == ExplicitLeafSortingType::LEAFID){
+        // sort by ascending LeafFactorID
+        sort(affected_leaves.begin(), affected_leaves.end());
+    } else if (sort_leaves_type == ExplicitLeafSortingType::RANDOM){
+        // first sort by LeafFactorID to have a deterministic start, then shuffle
+        sort(affected_leaves.begin(), affected_leaves.end());
+        rng->shuffle(affected_leaves);
     }
 
     apply_resorted_affected_leaves();
@@ -160,7 +171,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
         int min_clique_h,
         int &final_h) const {
 
-    if (sum_prices + min_clique_h >= final_h){
+    if (early_termination && sum_prices + min_clique_h >= final_h){
         // we cannot possibly improve the heuristic
         return;
     }
@@ -220,8 +231,8 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
     vector<string> sort_leaves_types;
     vector<string> sort_leaves_descriptions;
 
-    sort_leaves_types.push_back("NO");
-    sort_leaves_descriptions.push_back("Do not resort the leaves, keep arbitrary initial order.");
+    sort_leaves_types.push_back("LEAFID");
+    sort_leaves_descriptions.push_back("Sort the leaves according to their LeafFactorID.");
 
     sort_leaves_types.push_back("STATIC");
     sort_leaves_descriptions.push_back("Sort once before search, descending by number of patterns affecting a leaf.");
@@ -229,11 +240,21 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
     sort_leaves_types.push_back("DYNAMIC");
     sort_leaves_descriptions.push_back("Resort for every decoupled state, ascending by number of reached leaf states per leaf.");
 
+    sort_leaves_types.push_back("RANDOM");
+    sort_leaves_descriptions.push_back("Randomly sort affected_leaves once upon construction.");
+
     parser.add_enum_option<ExplicitLeafSortingType>(
             "sort_leaves_type",
             sort_leaves_types,
-            "TODO: Help",
-            "NO",
+            "How to resort leaf factors to obtain stronger pruning with the early_termination option.",
+            "LEAFID",
             sort_leaves_descriptions);
+
+    parser.add_option<bool>("early_termination",
+                            "Prune the recursion that enumerates member states if no better"
+                            "heuristic value can possibly be achieved.",
+                            "true");
+
+    utils::add_rng_options(parser);
 }
 }

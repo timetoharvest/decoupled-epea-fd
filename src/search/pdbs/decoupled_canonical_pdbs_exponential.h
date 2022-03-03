@@ -11,10 +11,14 @@ class State;
 namespace options {
     class OptionParser;
 }
+namespace utils {
+    class RandomNumberGenerator;
+}
 
 namespace pdbs {
 class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     ExplicitLeafSortingType sort_leaves_type;
+    bool early_termination;
 
     // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
@@ -43,7 +47,9 @@ public:
     DecoupledCanonicalPDBsExponential(
         const std::shared_ptr<PDBCollection> &pdbs,
         const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
-        ExplicitLeafSortingType sort_leaves_type);
+        ExplicitLeafSortingType sort_leaves_type,
+        bool early_termination,
+        std::shared_ptr<utils::RandomNumberGenerator> rng);
     ~DecoupledCanonicalPDBsExponential() = default;
 
     virtual int get_value(const GlobalState &state) const override;
