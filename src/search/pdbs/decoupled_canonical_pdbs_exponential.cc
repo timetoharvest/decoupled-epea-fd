@@ -10,65 +10,100 @@
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/explicit_state_cpg.h"
 
+#include "../utils/rng.h"
+#include "../utils/rng_options.h"
+
 #include "../option_parser.h"
 
-#include <algorithm>
 #include <cassert>
-#include <limits>
-#include <iostream>
 
 using namespace std;
 
 namespace pdbs {
 DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
-    const shared_ptr<PDBCollection> &pdbs,
-    const shared_ptr<vector<PatternClique>> &pattern_cliques,
-    ExplicitLeafSortingType sort_leaves_type)
-    : CanonicalPDBs(pdbs, pattern_cliques), sort_leaves_type(sort_leaves_type) {
+        const shared_ptr<PDBCollection> &pdbs,
+        const shared_ptr<vector<PatternClique>> &pattern_cliques,
+        ExplicitLeafSortingType sort_leaves_type,
+        bool early_termination,
+        shared_ptr<utils::RandomNumberGenerator> rng)
+        : CanonicalPDBs(pdbs, pattern_cliques),
+          sort_leaves_type(sort_leaves_type),
+          early_termination(early_termination) {
 
-    unordered_set <LeafFactorID> aff_leaves;
-    vector<int> patterns_per_leaf(g_leaves.size(), 0);
-    for (const shared_ptr <PatternDatabase> &pdb: *pdbs) {
-        unordered_set <LeafFactorID> tmp = get_leaf_factors_of_pattern(pdb->get_pattern());
-        aff_leaves.insert(tmp.begin(), tmp.end());
-        for (LeafFactorID leaf: tmp) {
-            patterns_per_leaf[leaf]++;
+    unordered_set<LeafFactorID> aff_leaves;
+    affected_leaves_by_pattern.resize(pdbs->size());
+    vector<int> num_patterns_per_leaf(g_leaves.size());
+    for (PatternID pid = 0; pid < static_cast<int>(pdbs->size()); ++pid) {
+        unordered_set<LeafFactorID> tmp = get_leaf_factors_of_pattern((*pdbs)[pid]->get_pattern());
+        affected_leaves_by_pattern[pid] = vector<LeafFactorID>(tmp.begin(), tmp.end());
+        if (affected_leaves_by_pattern[pid].empty()) {
+            center_only_patterns.push_back(pid);
+        } else {
+            for (LeafFactorID leaf : affected_leaves_by_pattern[pid]) {
+                num_patterns_per_leaf[leaf]++;
+                aff_leaves.insert(leaf);
+            }
         }
     }
     affected_leaves = vector<LeafFactorID>(aff_leaves.begin(), aff_leaves.end());
+
+    for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
+        bool is_center_clique = true;
+        for (PatternID pid : (*pattern_cliques)[cid]) {
+            if (!affected_leaves_by_pattern[pid].empty()){
+                is_center_clique = false;
+                break;
+            }
+        }
+        if (is_center_clique) {
+            center_only_cliques.push_back(cid);
+        }
+    }
 
     if (sort_leaves_type == ExplicitLeafSortingType::STATIC) {
         // sort leaf factors by descending number of affecting patterns
         sort(affected_leaves.begin(), affected_leaves.end(),
              [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
-                 return patterns_per_leaf[l1] > patterns_per_leaf[l2];
+                 return num_patterns_per_leaf[l1] > num_patterns_per_leaf[l2];
              });
+    } else if (sort_leaves_type == ExplicitLeafSortingType::LEAFID){
+        // sort by ascending LeafFactorID
+        sort(affected_leaves.begin(), affected_leaves.end());
+    } else if (sort_leaves_type == ExplicitLeafSortingType::RANDOM){
+        // first sort by LeafFactorID to have a deterministic start, then shuffle
+        sort(affected_leaves.begin(), affected_leaves.end());
+        rng->shuffle(affected_leaves);
     }
 
     apply_resorted_affected_leaves();
 }
 
 void DecoupledCanonicalPDBsExponential::apply_resorted_affected_leaves() const {
-    cliques_by_rec_depth = vector<vector<PatternID>>(g_leaves.size() + 1);
-    patterns_by_rec_depth = vector<vector<PatternID>>(g_leaves.size() + 1);
+    cliques_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
+    patterns_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
     vector<int> rec_depth_by_pattern(pdbs->size(), -1);
+    vector<int> leaf_indices(g_leaves.size());
+    for (int i = 0; i < static_cast<int>(affected_leaves.size()); ++i){
+        leaf_indices[affected_leaves[i]] = i;
+    }
+    for (PatternID pid = 0; pid < static_cast<int>(pdbs->size()); ++pid) {
+        int max_d = 0;
+        for (LeafFactorID leaf: affected_leaves_by_pattern[pid]){
+            max_d = max(max_d, leaf_indices[leaf]);
+            if (max_d == static_cast<int>(affected_leaves.size() - 1)){
+                break;
+            }
+        }
+        rec_depth_by_pattern[pid] = max_d;
+        patterns_by_rec_depth[max_d].push_back(pid);
+    }
     for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
         int max_c_d = 0;
         for (PatternID pid: (*pattern_cliques)[cid]) {
-            int max_d = 0;
-            if (rec_depth_by_pattern[pid] != -1) {
-                max_d = rec_depth_by_pattern[pid];
-            } else {
-                for (LeafFactorID leaf: get_leaf_factors_of_pattern((*pdbs)[pid]->get_pattern())){
-                    max_d = max(max_d,
-                                static_cast<int>(find(affected_leaves.begin(),
-                                                      affected_leaves.end(),
-                                                      leaf) - affected_leaves.begin()) + 1);
-                }
-                rec_depth_by_pattern[pid] = max_d;
-                patterns_by_rec_depth[max_d].push_back(pid);
+            max_c_d = max(max_c_d, rec_depth_by_pattern[pid]);
+            if (max_c_d == static_cast<int>(affected_leaves.size() - 1)){
+                break;
             }
-            max_c_d = max(max_c_d, max_d);
         }
         cliques_by_rec_depth[max_c_d].push_back(cid);
     }
@@ -88,7 +123,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
 
         vector<int> h_values(pdbs->size());
         // the heuristic value of these patterns is independent of the leaves
-        for (PatternID p_id : patterns_by_rec_depth[0]){
+        for (PatternID p_id : center_only_patterns){
             h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
             if (h_values[p_id] == numeric_limits<int>::max()){
                 // center state is detected as deadend
@@ -97,7 +132,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
         }
 
         int min_clique_h = 0;
-        for (int cid : cliques_by_rec_depth[0]){
+        for (int cid : center_only_cliques){
             int clique_h = 0;
             for (PatternID pdb_index : (*pattern_cliques)[cid]) {
                 clique_h += h_values[pdb_index];
@@ -109,7 +144,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
 
         if (sort_leaves_type == ExplicitLeafSortingType::DYNAMIC) {
             // sort leaf factors by ascending number of reached leaf states
-            if (!std::is_sorted(affected_leaves.begin(), affected_leaves.end(),
+            if (!is_sorted(affected_leaves.begin(), affected_leaves.end(),
                                 [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
                                     return prices->get_number_states(l1) < prices->get_number_states(l2);
                                 })){
@@ -136,7 +171,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
         int min_clique_h,
         int &final_h) const {
 
-    if (sum_prices + min_clique_h >= final_h){
+    if (early_termination && sum_prices + min_clique_h >= final_h){
         // we cannot possibly improve the heuristic
         return;
     }
@@ -154,7 +189,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
             set_leaf_facts(id, affected_leaves[i], member_state);
 
             bool is_dead_end_member_state = false;
-            for (PatternID p_id : patterns_by_rec_depth[i + 1]){
+            for (PatternID p_id : patterns_by_rec_depth[i]){
                 h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
                 if (h_values[p_id] == numeric_limits<int>::max()){
                     // partial member state is detected as deadend
@@ -166,7 +201,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                 continue;
             }
 
-            for (int cid : cliques_by_rec_depth[i + 1]){
+            for (int cid : cliques_by_rec_depth[i]){
                 int clique_h = 0;
                 for (PatternID pdb_index : (*pattern_cliques)[cid]) {
                     clique_h += h_values[pdb_index];
@@ -196,8 +231,8 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
     vector<string> sort_leaves_types;
     vector<string> sort_leaves_descriptions;
 
-    sort_leaves_types.push_back("NO");
-    sort_leaves_descriptions.push_back("Do not resort the leaves, keep arbitrary initial order.");
+    sort_leaves_types.push_back("LEAFID");
+    sort_leaves_descriptions.push_back("Sort the leaves according to their LeafFactorID.");
 
     sort_leaves_types.push_back("STATIC");
     sort_leaves_descriptions.push_back("Sort once before search, descending by number of patterns affecting a leaf.");
@@ -205,11 +240,21 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
     sort_leaves_types.push_back("DYNAMIC");
     sort_leaves_descriptions.push_back("Resort for every decoupled state, ascending by number of reached leaf states per leaf.");
 
+    sort_leaves_types.push_back("RANDOM");
+    sort_leaves_descriptions.push_back("Randomly sort affected_leaves once upon construction.");
+
     parser.add_enum_option<ExplicitLeafSortingType>(
             "sort_leaves_type",
             sort_leaves_types,
-            "TODO: Help",
-            "NO",
+            "How to resort leaf factors to obtain stronger pruning with the early_termination option.",
+            "LEAFID",
             sort_leaves_descriptions);
+
+    parser.add_option<bool>("early_termination",
+                            "Prune the recursion that enumerates member states if no better"
+                            "heuristic value can possibly be achieved.",
+                            "true");
+
+    utils::add_rng_options(parser);
 }
 }

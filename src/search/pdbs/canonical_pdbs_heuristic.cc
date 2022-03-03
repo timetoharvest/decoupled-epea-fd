@@ -4,8 +4,12 @@
 #include "pattern_generator.h"
 #include "utils.h"
 
+#include "../globals.h"
 #include "../option_parser.h"
 #include "../plugin.h"
+
+#include "../utils/rng.h"
+#include "../utils/rng_options.h"
 
 #include "../tasks/root_task.h"
 

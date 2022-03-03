@@ -10,6 +10,7 @@
 #include "../plugin.h"
 
 #include "../utils/logging.h"
+#include "../utils/rng_options.h"
 
 #include <iostream>
 #include <memory>
@@ -61,7 +62,12 @@ unique_ptr<CanonicalPDBs> CanonicalPDBsHeuristicExponential::get_canonical_pdbs_
     dump_pattern_collection_generation_statistics(
         "Canonical PDB heuristic", timer(), pattern_collection_info);
 
-    return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(pdbs, pattern_cliques, opts.get<ExplicitLeafSortingType>("sort_leaves_type"));
+    return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(
+        pdbs,
+        pattern_cliques,
+        opts.get<ExplicitLeafSortingType>("sort_leaves_type"),
+        opts.get<bool>("early_termination"),
+        utils::parse_rng_from_options(opts));
 }
 
 CanonicalPDBsHeuristicExponential::CanonicalPDBsHeuristicExponential(const Options &opts)
