@@ -16,14 +16,12 @@ namespace pdbs {
 // Implements the canonical heuristic function.
 class CanonicalPDBsHeuristic : public Heuristic {
     std::unique_ptr<CanonicalPDBs> canonical_pdbs;
-
-    virtual std::unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
-        const std::shared_ptr<AbstractTask> &task, const options::Options &opts);
 protected:
     virtual int compute_heuristic(const GlobalState &ancestor_state) override;
-
 public:
-    explicit CanonicalPDBsHeuristic(const options::Options &opts);
+    CanonicalPDBsHeuristic(
+        const options::Options &opts,
+        std::unique_ptr<CanonicalPDBs> &&canonical_pdbs);
     virtual ~CanonicalPDBsHeuristic() = default;
 };
 

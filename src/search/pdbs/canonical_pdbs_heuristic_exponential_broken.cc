@@ -9,6 +9,8 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
+#include "../tasks/root_task.h"
+
 #include "../utils/logging.h"
 
 #include <iostream>
@@ -16,7 +18,7 @@
 using namespace std;
 
 namespace pdbs {
-unique_ptr<CanonicalPDBs> CanonicalPDBsHeuristicExponentialBroken::get_canonical_pdbs_from_options(
+static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     const shared_ptr<AbstractTask> &task, const Options &opts) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
@@ -64,7 +66,9 @@ unique_ptr<CanonicalPDBs> CanonicalPDBsHeuristicExponentialBroken::get_canonical
 }
 
 CanonicalPDBsHeuristicExponentialBroken::CanonicalPDBsHeuristicExponentialBroken(const Options &opts)
-    : CanonicalPDBsHeuristic(opts) {
+    : CanonicalPDBsHeuristic(
+        opts,
+        get_canonical_pdbs_from_options(tasks::g_root_task, opts)) {
 }
 
 static shared_ptr<Heuristic> _parse(OptionParser &parser) {

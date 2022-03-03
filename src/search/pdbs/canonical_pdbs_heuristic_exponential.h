@@ -5,9 +5,6 @@
 
 namespace pdbs {
 class CanonicalPDBsHeuristicExponential : public CanonicalPDBsHeuristic {
-    virtual std::unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
-        const std::shared_ptr<AbstractTask> &task,
-        const options::Options &opts) override;
 public:
     explicit CanonicalPDBsHeuristicExponential(const options::Options &opts);
     virtual ~CanonicalPDBsHeuristicExponential() = default;

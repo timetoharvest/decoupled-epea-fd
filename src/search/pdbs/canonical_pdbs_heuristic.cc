@@ -8,9 +8,6 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
-#include "../utils/rng.h"
-#include "../utils/rng_options.h"
-
 #include "../tasks/root_task.h"
 
 #include "../utils/logging.h"
@@ -23,7 +20,7 @@
 using namespace std;
 
 namespace pdbs {
-unique_ptr<CanonicalPDBs> CanonicalPDBsHeuristic::get_canonical_pdbs_from_options(
+static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     const shared_ptr<AbstractTask> &task, const Options &opts) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
@@ -69,9 +66,9 @@ unique_ptr<CanonicalPDBs> CanonicalPDBsHeuristic::get_canonical_pdbs_from_option
     return utils::make_unique_ptr<CanonicalPDBs>(pdbs, pattern_cliques);
 }
 
-CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(const Options &opts)
-    : Heuristic(opts),
-      canonical_pdbs(get_canonical_pdbs_from_options(tasks::g_root_task, opts)) {
+CanonicalPDBsHeuristic::CanonicalPDBsHeuristic(
+    const Options &opts, unique_ptr<CanonicalPDBs> &&canonical_pdbs)
+    : Heuristic(opts), canonical_pdbs(move(canonical_pdbs)) {
 }
 
 int CanonicalPDBsHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
@@ -125,7 +122,8 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
 
-    return make_shared<CanonicalPDBsHeuristic>(opts);
+    return make_shared<CanonicalPDBsHeuristic>(
+        opts, get_canonical_pdbs_from_options(tasks::g_root_task, opts));
 }
 
 static Plugin<Evaluator> _plugin("cpdbs", _parse, "heuristics_pdb");
