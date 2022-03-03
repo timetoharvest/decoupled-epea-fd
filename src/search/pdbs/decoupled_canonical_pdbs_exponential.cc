@@ -87,7 +87,7 @@ void DecoupledCanonicalPDBsExponential::apply_resorted_affected_leaves() const {
         leaf_indices[affected_leaves[i]] = i;
     }
     for (PatternID pid = 0; pid < static_cast<int>(pdbs->size()); ++pid) {
-        int max_d = 0;
+        int max_d = -1;
         for (LeafFactorID leaf: affected_leaves_by_pattern[pid]){
             max_d = max(max_d, leaf_indices[leaf]);
             if (max_d == static_cast<int>(affected_leaves.size() - 1)){
@@ -95,17 +95,23 @@ void DecoupledCanonicalPDBsExponential::apply_resorted_affected_leaves() const {
             }
         }
         rec_depth_by_pattern[pid] = max_d;
-        patterns_by_rec_depth[max_d].push_back(pid);
+        if (max_d != -1) {
+            // not a center-only pattern
+            patterns_by_rec_depth[max_d].push_back(pid);
+        }
     }
     for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
-        int max_c_d = 0;
+        int max_c_d = -1;
         for (PatternID pid: (*pattern_cliques)[cid]) {
             max_c_d = max(max_c_d, rec_depth_by_pattern[pid]);
             if (max_c_d == static_cast<int>(affected_leaves.size() - 1)){
                 break;
             }
         }
-        cliques_by_rec_depth[max_c_d].push_back(cid);
+        if (max_c_d != -1) {
+            // not a center-only clique
+            cliques_by_rec_depth[max_c_d].push_back(cid);
+        }
     }
 }
 
@@ -196,10 +202,18 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     is_dead_end_member_state = true;
                     break;
                 }
+                if (early_termination && sum_prices + h_values[p_id] >= final_h){
+                    // we cannot possibly improve the heuristic
+                    min_clique_h_lstate = max(min_clique_h_lstate, h_values[p_id]);
+                    break;
+                }
             }
-            if (is_dead_end_member_state){
+            if (is_dead_end_member_state || (early_termination && sum_prices + min_clique_h_lstate >= final_h)){
+                // deadend or we cannot possibly improve the heuristic
                 continue;
             }
+
+            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
 
             for (int cid : cliques_by_rec_depth[i]){
                 int clique_h = 0;
@@ -207,9 +221,17 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     clique_h += h_values[pdb_index];
                 }
                 min_clique_h_lstate = max(min_clique_h_lstate, clique_h);
+                if (early_termination && sum_prices + price + min_clique_h_lstate >= final_h){
+                    // we cannot possibly improve the heuristic
+                    // it's important to check this here in cases where there are many cliques
+                    break;
+                }
+            }
+            if (early_termination && sum_prices + price + min_clique_h_lstate >= final_h){
+                // we cannot possibly improve the heuristic
+                continue;
             }
 
-            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
                 compute_min_distance_decoupled_exponential(cpg,
