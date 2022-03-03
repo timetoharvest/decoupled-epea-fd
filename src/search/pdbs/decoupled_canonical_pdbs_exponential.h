@@ -13,6 +13,8 @@ namespace options {
 }
 
 namespace pdbs {
+enum class ExplicitLeafSortingType {NO, STATIC, DYNAMIC};
+
 class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     ExplicitLeafSortingType sort_leaves_type;
 

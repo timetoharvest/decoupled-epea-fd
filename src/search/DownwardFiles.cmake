@@ -495,6 +495,11 @@ fast_downward_plugin(
     SOURCES
         pdbs/canonical_pdbs
         pdbs/canonical_pdbs_heuristic
+        pdbs/canonical_pdbs_heuristic_approximate
+        pdbs/canonical_pdbs_heuristic_exponential
+        pdbs/canonical_pdbs_heuristic_exponential_broken
+        pdbs/canonical_pdbs_heuristic_exponential_ilp
+        pdbs/canonical_pdbs_heuristic_single_leaf
         pdbs/cegar
         pdbs/decoupled_canonical_pdbs_approximate
         pdbs/decoupled_canonical_pdbs_exponential

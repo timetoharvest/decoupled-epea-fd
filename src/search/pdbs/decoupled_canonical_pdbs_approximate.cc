@@ -67,12 +67,4 @@ int DecoupledCanonicalPDBsApproximate::get_value(const GlobalState &state) const
     }
     return max_h;
 }
-
-void add_approximate_options_to_parser(options::OptionParser &parser) {
-    parser.add_option<bool>(
-        "polynomial_decoupled_pdb",
-        "if true, compute decoupled pdb in polynomial time by iterating "
-        "over abstact states; if false, ",
-        "false");
-}
 }

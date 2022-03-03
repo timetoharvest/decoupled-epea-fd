@@ -3,6 +3,8 @@
 #include "pattern_database.h"
 #include "pattern_filter.h"
 
+#include "../option_parser.h"
+
 #include "../compliant_paths/cpg_storage.h"
 #include "../compliant_paths/explicit_state_cpg.h"
 
@@ -188,5 +190,13 @@ int compute_pdb_value_with_prices(
         }
     }
     return min_h;
+}
+
+void add_approximate_options_to_parser(options::OptionParser &parser) {
+    parser.add_option<bool>(
+        "polynomial_decoupled_pdb",
+        "if true, compute decoupled pdb in polynomial time by iterating "
+        "over abstract states; if false, ",
+        "false");
 }
 }

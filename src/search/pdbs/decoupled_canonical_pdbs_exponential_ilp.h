@@ -22,6 +22,8 @@ class OptionParser;
 }
 
 namespace pdbs {
+enum class MIPType {IP, LeafLP, AbsLP, LP};
+
 class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
     MIPType mip_type;
 

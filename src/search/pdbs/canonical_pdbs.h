@@ -9,10 +9,6 @@ class GlobalState;
 class State;
 
 namespace pdbs {
-enum class DecoupledPatternCollectionLookUp {APPROX, SINGLE_LEAF, EXP, EXP_BROKEN, EXP_ILP};
-enum class MIPType {IP, LeafLP, AbsLP, LP};
-enum class ExplicitLeafSortingType {NO, STATIC, DYNAMIC};
-
 class CanonicalPDBs {
 protected:
     std::shared_ptr<PDBCollection> pdbs;

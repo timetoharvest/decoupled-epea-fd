@@ -26,8 +26,6 @@ public:
 
     virtual int get_value(const GlobalState &state) const override;
 };
-
-extern void add_approximate_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

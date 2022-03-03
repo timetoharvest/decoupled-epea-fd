@@ -5,8 +5,11 @@
 
 #include "canonical_pdbs.h"
 
+class AbstractTask;
+
 namespace options {
 class OptionParser;
+class Options;
 }
 
 namespace pdbs {
@@ -14,6 +17,8 @@ namespace pdbs {
 class CanonicalPDBsHeuristic : public Heuristic {
     std::unique_ptr<CanonicalPDBs> canonical_pdbs;
 
+    virtual std::unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
+        const std::shared_ptr<AbstractTask> &task, const options::Options &opts);
 protected:
     virtual int compute_heuristic(const GlobalState &ancestor_state) override;
 

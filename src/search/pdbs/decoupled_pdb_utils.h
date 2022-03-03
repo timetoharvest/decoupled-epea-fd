@@ -8,6 +8,10 @@
 class ExplicitStateCPG;
 class GlobalState;
 
+namespace options {
+class OptionParser;
+}
+
 namespace pdbs {
 /*
   These two functions set the value of variables from the respective factor
@@ -27,6 +31,8 @@ extern int compute_pdb_value_with_prices(
     const std::vector<LeafFactorID> &affected_leaves,
     const std::vector<std::vector<int>> &affected_pattern_var_indices_by_leaf,
     bool polynomial);
+
+extern void add_approximate_options_to_parser(options::OptionParser &parser);
 }
 
 #endif

@@ -1,6 +1,5 @@
 #include "pdb_heuristic.h"
 
-#include "decoupled_canonical_pdbs_approximate.h"
 #include "decoupled_pdb_utils.h"
 #include "pattern_database.h"
 #include "pattern_filter.h"
