@@ -51,7 +51,7 @@ public:
         const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
-        std::shared_ptr<utils::RandomNumberGenerator> rng);
+        const std::shared_ptr<utils::RandomNumberGenerator> &rng);
     ~DecoupledCanonicalPDBsExponential() = default;
 
     virtual int get_value(const GlobalState &state) const override;

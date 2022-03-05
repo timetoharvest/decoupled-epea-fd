@@ -25,7 +25,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         const shared_ptr<vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
-        shared_ptr<utils::RandomNumberGenerator> rng)
+        const shared_ptr<utils::RandomNumberGenerator> &rng)
         : CanonicalPDBs(pdbs, pattern_cliques),
           sort_leaves_type(sort_leaves_type),
           early_termination(early_termination) {
