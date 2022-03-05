@@ -27,9 +27,8 @@ namespace pdbs {
 class MaxSCPHeuristic : public Heuristic {
 protected:
     std::vector<std::unique_ptr<cost_saturation::ProjectionFunction>> abstraction_functions;
-    cost_saturation::CPHeuristics cp_heuristics;
-
     std::vector<Pattern> patterns;
+    cost_saturation::CPHeuristics cp_heuristics;
 
     // For statistics.
     mutable std::vector<int> num_best_order;
