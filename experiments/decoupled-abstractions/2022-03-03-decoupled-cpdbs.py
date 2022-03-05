@@ -32,16 +32,19 @@ decoupling = {
     'mmgeneral' : 'lp_factoring(factoring_type=general, strategy=mm)',
 }
 for name, dec in decoupling.items():
+    # exp
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp_no-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(early_termination=false,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp_leafid-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(early_termination=true,sort_leaves_type=leafid,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp_static-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(early_termination=true,sort_leaves_type=static,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsexp_dynamic-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(early_termination=true,sort_leaves_type=dynamic,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
+    # approx
     CONFIGS.append(IssueConfig(f'{name}-cpdbsapprox-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=false,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsapprox-hcdisjointleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=false,patterns=hillclimbing(max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsapproxpoly-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=true,patterns=hillclimbing(max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
     CONFIGS.append(IssueConfig(f'{name}-cpdbsapproxpoly-hcdisjointleaf', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=true,patterns=hillclimbing(max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
+    # singleleaf
     CONFIGS.append(IssueConfig(f'{name}-cpdbssingleleaf-hc1leaf', ['--decoupling', dec, '--search',  f'astar(cpdbs_single_leaf(patterns=hillclimbing(pattern_filter=n_leaves_patterns(1),max_time={TIME_LIMIT})))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
