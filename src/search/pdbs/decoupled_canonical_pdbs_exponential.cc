@@ -189,32 +189,31 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
         }
         if (cpg->has_leaf_state(id, affected_leaves[i])){
             --number_states;
-
-            int min_clique_h_lstate = min_clique_h;
-
             set_leaf_facts(id, affected_leaves[i], member_state);
 
-            bool is_dead_end_member_state = false;
+            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
+
+            bool prune = false;
             for (PatternID p_id : patterns_by_rec_depth[i]){
                 h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
                 if (h_values[p_id] == numeric_limits<int>::max()){
                     // partial member state is detected as deadend
-                    is_dead_end_member_state = true;
+                    prune = true;
                     break;
                 }
-                if (early_termination && sum_prices + h_values[p_id] >= final_h){
+                if (early_termination && sum_prices + price + h_values[p_id] >= final_h){
                     // we cannot possibly improve the heuristic
-                    min_clique_h_lstate = max(min_clique_h_lstate, h_values[p_id]);
+                    prune = true;
                     break;
                 }
             }
-            if (is_dead_end_member_state || (early_termination && sum_prices + min_clique_h_lstate >= final_h)){
+            if (prune){
                 // deadend or we cannot possibly improve the heuristic
                 continue;
             }
 
-            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
-
+            int min_clique_h_lstate = min_clique_h;
+            prune = false;
             for (int cid : cliques_by_rec_depth[i]){
                 int clique_h = 0;
                 for (PatternID pdb_index : (*pattern_cliques)[cid]) {
@@ -224,10 +223,11 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                 if (early_termination && sum_prices + price + min_clique_h_lstate >= final_h){
                     // we cannot possibly improve the heuristic
                     // it's important to check this here in cases where there are many cliques
+                    prune = true;
                     break;
                 }
             }
-            if (early_termination && sum_prices + price + min_clique_h_lstate >= final_h){
+            if (prune){
                 // we cannot possibly improve the heuristic
                 continue;
             }
