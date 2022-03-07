@@ -130,8 +130,9 @@ void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
 
             set_leaf_facts(id, affected_leaves[i], member_state);
 //            cout << "current member state: " << member_state << endl;
+            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
 
-            bool is_dead_end_member_state = false;
+            bool prune = false;
             vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
             vector<int> new_partial_h_by_cp_heur(partial_h_by_cp_heur);
             int max_over_partial_h = 0;
@@ -148,37 +149,34 @@ void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
                         assert(utils::in_bounds(state_id, lookup_table.h_values));
                         int h = lookup_table.h_values[state_id];
                         assert(h >= 0);
-                        if (h == INF) {
-                            sum_h = INF;
+                        if (h == INF || (early_termination && sum_prices + price + h >= final_h)) {
+                            // deadend we cannot possibly improve the heuristic
+                            prune = true;
                             break;
                         }
                         sum_h += h;
                         assert(sum_h >= 0);
 //                        cout << "berechne abs_id " << abs_id << " für cp h_id " << h_id << endl;
-                        if (early_termination && sum_prices + h >= final_h){
-                            // we cannot possibly improve the heuristic
-                            break;
-                        }
                     }
                 }
 //                cout << "new value " << sum_h << endl;
 
-                new_partial_h_by_cp_heur[h_id] = sum_h;
-                if (sum_h == INF) {
-                    is_dead_end_member_state = true;
+                if (prune) {
+                    // we cannot possibly improve the heuristic
                     break;
                 }
+
+                new_partial_h_by_cp_heur[h_id] = sum_h;
                 max_over_partial_h = max(max_over_partial_h, sum_h);
 
-                if (is_dead_end_member_state || (early_termination && sum_prices + max_over_partial_h >= final_h)){
-                    // TODO: why don't we add the price here already?
+                if (early_termination && sum_prices + price + max_over_partial_h >= final_h) {
                     // deadend or we cannot possibly improve the heuristic
-                    continue;
+                    prune = true;
+                    break;
                 }
             }
 
-            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
-            if (is_dead_end_member_state || (early_termination && sum_prices + price + max_over_partial_h >= final_h)){
+            if (prune){
                 // deadend or we cannot possibly improve the heuristic
 //                cout << "cannot improve" << endl;
                 continue;
