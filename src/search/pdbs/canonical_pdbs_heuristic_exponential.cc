@@ -69,6 +69,7 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
         pattern_cliques,
         opts.get<ExplicitLeafSortingType>("sort_leaves_type"),
         opts.get<bool>("early_termination"),
+        opts.get<bool>("incremental_computation"),
         utils::parse_rng_from_options(opts));
 }
 

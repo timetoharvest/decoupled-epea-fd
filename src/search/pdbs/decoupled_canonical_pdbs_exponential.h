@@ -21,11 +21,14 @@ enum class ExplicitLeafSortingType {LEAFID, STATIC, DYNAMIC, RANDOM};
 class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     ExplicitLeafSortingType sort_leaves_type;
     bool early_termination;
+    bool incremental_computation;
 
     // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
     // same, but individually for all patterns
     std::vector<std::vector<LeafFactorID>> affected_leaves_by_pattern;
+
+    std::vector<std::vector<int>> cliques_by_pattern;
 
     std::vector<PatternID> center_only_patterns;
     std::vector<int> center_only_cliques;
@@ -37,6 +40,13 @@ class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     mutable std::vector<std::vector<int>> cliques_by_rec_depth;
 
     void apply_resorted_affected_leaves() const;
+
+    bool compute_minimum_for_cliques(
+            const std::vector<int> &clique_ids,
+            int &min_clique_h,
+            const std::vector<int> &h_values,
+            int sum_prices,
+            int min_h) const;
 
     void compute_min_distance_decoupled_exponential(const ExplicitStateCPG *prices,
             std::vector<int> &member_state,
@@ -51,6 +61,7 @@ public:
         const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
+        bool incremental_computation,
         const std::shared_ptr<utils::RandomNumberGenerator> &rng);
     ~DecoupledCanonicalPDBsExponential() = default;
 

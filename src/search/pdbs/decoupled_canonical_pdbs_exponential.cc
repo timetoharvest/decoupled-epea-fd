@@ -25,10 +25,12 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         const shared_ptr<vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
+        bool incremental_computation,
         const shared_ptr<utils::RandomNumberGenerator> &rng)
         : CanonicalPDBs(pdbs, pattern_cliques),
           sort_leaves_type(sort_leaves_type),
-          early_termination(early_termination) {
+          early_termination(early_termination),
+          incremental_computation(incremental_computation) {
 
     unordered_set<LeafFactorID> aff_leaves;
     affected_leaves_by_pattern.resize(pdbs->size());
@@ -47,6 +49,9 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
     }
     affected_leaves = vector<LeafFactorID>(aff_leaves.begin(), aff_leaves.end());
 
+    if (incremental_computation) {
+        cliques_by_pattern.resize(pdbs->size());
+    }
     for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
         bool is_center_clique = true;
         for (PatternID pid : (*pattern_cliques)[cid]) {
@@ -57,6 +62,10 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         }
         if (is_center_clique) {
             center_only_cliques.push_back(cid);
+        } else if (incremental_computation) {
+            for (PatternID pid : (*pattern_cliques)[cid]) {
+                cliques_by_pattern[pid].push_back(cid);
+            }
         }
     }
 
@@ -168,6 +177,32 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
     }
 }
 
+bool DecoupledCanonicalPDBsExponential::compute_minimum_for_cliques(
+        const vector<int> &clique_ids,
+        int &min_clique_h,
+        const vector<int> &h_values,
+        int sum_prices,
+        int min_h) const {
+    vector<bool> handled_clique(pattern_cliques->size());
+    for (int cid : clique_ids){
+        if (handled_clique[cid]){
+            continue;
+        }
+        handled_clique[cid] = true;
+        int clique_h = 0;
+        for (PatternID pdb_index : (*pattern_cliques)[cid]) {
+            clique_h += h_values[pdb_index];
+        }
+        min_clique_h = max(min_clique_h, clique_h);
+        if (early_termination && sum_prices + min_clique_h >= min_h){
+            // we cannot possibly improve the heuristic
+            // it's important to check this here in cases where there are many cliques
+            return true;
+        }
+    }
+    return false;
+}
+
 void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponential(
         const ExplicitStateCPG *cpg,
         vector<int> &member_state,
@@ -175,9 +210,9 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
         int i,
         int sum_prices,
         int min_clique_h,
-        int &final_h) const {
+        int &min_h) const {
 
-    if (early_termination && sum_prices + min_clique_h >= final_h){
+    if (early_termination && sum_prices + min_clique_h >= min_h){
         // we cannot possibly improve the heuristic
         return;
     }
@@ -194,6 +229,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
             int price = cpg->get_cost_of_state(id, affected_leaves[i]);
 
             bool prune = false;
+            vector<int> changed_cliques;
             for (PatternID p_id : patterns_by_rec_depth[i]){
                 h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
                 if (h_values[p_id] == numeric_limits<int>::max()){
@@ -201,10 +237,15 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     prune = true;
                     break;
                 }
-                if (early_termination && sum_prices + price + h_values[p_id] >= final_h){
+                if (early_termination && sum_prices + price + h_values[p_id] >= min_h){
                     // we cannot possibly improve the heuristic
                     prune = true;
                     break;
+                }
+                if (incremental_computation) {
+                    changed_cliques.insert(changed_cliques.end(),
+                                           cliques_by_pattern[p_id].begin(),
+                                           cliques_by_pattern[p_id].end());
                 }
             }
             if (prune){
@@ -213,19 +254,19 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
             }
 
             int min_clique_h_lstate = min_clique_h;
-            prune = false;
-            for (int cid : cliques_by_rec_depth[i]){
-                int clique_h = 0;
-                for (PatternID pdb_index : (*pattern_cliques)[cid]) {
-                    clique_h += h_values[pdb_index];
-                }
-                min_clique_h_lstate = max(min_clique_h_lstate, clique_h);
-                if (early_termination && sum_prices + price + min_clique_h_lstate >= final_h){
-                    // we cannot possibly improve the heuristic
-                    // it's important to check this here in cases where there are many cliques
-                    prune = true;
-                    break;
-                }
+
+            if (incremental_computation) {
+                prune = compute_minimum_for_cliques(changed_cliques,
+                                                    min_clique_h_lstate,
+                                                    h_values,
+                                                    sum_prices + price,
+                                                    min_h);
+            } else {
+                prune = compute_minimum_for_cliques(cliques_by_rec_depth[i],
+                                                    min_clique_h_lstate,
+                                                    h_values,
+                                                    sum_prices + price,
+                                                    min_h);
             }
             if (prune){
                 // we cannot possibly improve the heuristic
@@ -240,12 +281,15 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                                                            i + 1,
                                                            sum_prices + price,
                                                            min_clique_h_lstate,
-                                                           final_h);
+                                                           min_h);
             } else {
                 // end recursion
-                final_h = min(final_h, sum_prices + price + min_clique_h_lstate);
+                min_h = min(min_h, sum_prices + price + min_clique_h_lstate);
             }
         }
+    }
+    for (PatternID p_id : patterns_by_rec_depth[i]) {
+        h_values[p_id] = 0;
     }
 }
 
@@ -276,6 +320,10 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
                             "Prune the recursion that enumerates member states if no better"
                             "heuristic value can possibly be achieved.",
                             "true");
+
+    parser.add_option<bool>("incremental_computation",
+                            "Compute clique values incrementally during recursion.",
+                            "false");
 
     utils::add_rng_options(parser);
 }
