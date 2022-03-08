@@ -35,8 +35,7 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
       for dominance pruning time.
     */
     shared_ptr<PDBCollection> pdbs = pattern_collection_info.get_pdbs();
-
-    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques();
+    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques(opts.get<bool>("disjoint_leaf_additivity"));
 
     double max_time_dominance_pruning = opts.get<double>("max_time_dominance_pruning");
     if (max_time_dominance_pruning > 0.0) {
