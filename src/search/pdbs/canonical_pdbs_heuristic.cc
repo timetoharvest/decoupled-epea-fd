@@ -37,7 +37,7 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     */
     shared_ptr<PDBCollection> pdbs = pattern_collection_info.get_pdbs();
     shared_ptr<vector<PatternClique>> pattern_cliques =
-        pattern_collection_info.get_pattern_cliques(opts.get<bool>("disjoint_leaf_additivity"));
+        pattern_collection_info.get_pattern_cliques();
 
     double max_time_dominance_pruning = opts.get<double>("max_time_dominance_pruning");
     if (max_time_dominance_pruning > 0.0) {
@@ -96,11 +96,6 @@ void add_canonical_pdbs_options_to_parser(options::OptionParser &parser) {
         "value because there are dominating subsets in the collection.",
         "infinity",
         Bounds("0.0", "infinity"));
-    parser.add_option<bool>(
-        "disjoint_leaf_additivity",
-        "compute cliques such that only leaf disjoint patterns can be in "
-        "one clique",
-        "false");
     Heuristic::add_options_to_parser(parser);
 }
 

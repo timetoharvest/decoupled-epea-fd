@@ -53,7 +53,7 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
         }
     }
 
-    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques(opts.get<bool>("disjoint_leaf_additivity"));
+    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques();
 
     double max_time_dominance_pruning = opts.get<double>("max_time_dominance_pruning");
     if (max_time_dominance_pruning > 0.0) {

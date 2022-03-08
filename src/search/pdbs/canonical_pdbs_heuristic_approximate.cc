@@ -26,11 +26,6 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
     utils::Timer timer;
     utils::g_log << "Initializing canonical PDB heuristic..." << endl;
-    bool disjoint_leaf_additivity = opts.get<bool>("disjoint_leaf_additivity");
-    if (!disjoint_leaf_additivity) {
-        cerr << "for approximate CPDBs, need set disjoint_leaf_additivity to true" << endl;
-        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
-    }
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<PatternCollection> patterns =
@@ -47,7 +42,7 @@ unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
 
     // adapt compatibility graph so that no two patterns can be in the same clique
     // if they affect the same leaf factor
-    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques(disjoint_leaf_additivity);
+    shared_ptr<vector<PatternClique>> pattern_cliques = pattern_collection_info.get_pattern_cliques(true);
 
     double max_time_dominance_pruning = opts.get<double>("max_time_dominance_pruning");
     if (max_time_dominance_pruning > 0.0) {
