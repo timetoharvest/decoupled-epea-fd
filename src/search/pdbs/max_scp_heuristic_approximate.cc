@@ -47,6 +47,23 @@ MaxSCPHeuristicApproximate::MaxSCPHeuristicApproximate(
             affected_pattern_var_indices_by_leaf_by_abstraction.emplace_back();
         }
     }
+
+#ifndef NDEBUG
+    for (const auto &cp_heuristic : cp_heuristics) {
+        unordered_set<LeafFactorID> affected_leaves_so_far;
+        for (const auto &lookup_table: cp_heuristic.lookup_tables) {
+            const vector<LeafFactorID> &abs_aff_leaves = affected_leaves_by_abstraction[lookup_table.abstraction_id];
+            bool projection_leaf_disjoint = true;
+            for (LeafFactorID leaf_id: abs_aff_leaves) {
+                if (affected_leaves_so_far.count(leaf_id)) {
+                    projection_leaf_disjoint = false;
+                    break;
+                }
+            }
+            assert(projection_leaf_disjoint);
+        }
+    }
+#endif
 }
 
 static void compute_min_distance_abs_states(
@@ -213,25 +230,13 @@ int MaxSCPHeuristicApproximate::compute_heuristic(const GlobalState &state) {
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     for (const auto &cp_heuristic : cp_heuristics) {
         int sum_h = 0;
-        unordered_set<LeafFactorID> affected_leaves_so_far;
         for (const auto &lookup_table : cp_heuristic.lookup_tables) {
-            const vector<LeafFactorID> &abs_aff_leaves = affected_leaves_by_abstraction[lookup_table.abstraction_id];
-            bool projection_leaf_disjoint = true;
-            for (LeafFactorID leaf_id : abs_aff_leaves) {
-                if (affected_leaves_so_far.count(leaf_id)) {
-                    projection_leaf_disjoint = false;
-                    break;
-                }
+            int h = compute_pdb_value_with_prices(state, lookup_table, prices);
+            if (h == INF) {
+                return DEAD_END;
             }
-            if (projection_leaf_disjoint) {
-                affected_leaves_so_far.insert(abs_aff_leaves.begin(), abs_aff_leaves.end());
-                int h = compute_pdb_value_with_prices(state, lookup_table, prices);
-                if (h == INF) {
-                    return DEAD_END;
-                }
-                sum_h += h;
-                assert(sum_h >= 0);
-            }
+            sum_h += h;
+            assert(sum_h >= 0);
         }
 
         if (sum_h > max_h) {
@@ -293,9 +298,10 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
 
     Saturator saturator_type = opts.get<Saturator>("saturator");
     if (saturator_type != Saturator::ALL_LEAF_DISJOINT) {
-        utils::g_log << "WARNING! with the approximate SCP heuristic, you "
-                        "should to use the saturator which ensures all patterns "
-                        "in a CP are leaf disjoint" << endl;
+        cerr << "Approximate SCP computation needs leaf-disjoint CP "
+                "heuristics; you have to use the ALL_LEAF_DISJOINT "
+                "saturator." << endl;
+        utils::exit_with(utils::ExitCode::SEARCH_INPUT_ERROR);
     }
 
     if (parser.dry_run())
