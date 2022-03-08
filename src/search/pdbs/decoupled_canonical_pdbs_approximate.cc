@@ -35,6 +35,23 @@ DecoupledCanonicalPDBsApproximate::DecoupledCanonicalPDBsApproximate(
         affected_leaves_by_pattern.emplace_back(aff_leaves.begin(), aff_leaves.end());
         affected_pattern_var_indices_by_leaf_by_pattern.push_back(compute_affected_pattern_var_indices_by_leaf(pdb->get_pattern()));
     }
+
+#ifndef NDEBUG
+    for (const auto &clique : *pattern_cliques) {
+        unordered_set<LeafFactorID> affected_leaves_so_far;
+        for (PatternID pattern_id : clique) {
+            const vector<LeafFactorID> &abs_aff_leaves = affected_leaves_by_pattern[pattern_id];
+            bool projection_leaf_disjoint = true;
+            for (LeafFactorID leaf_id: abs_aff_leaves) {
+                if (affected_leaves_so_far.count(leaf_id)) {
+                    projection_leaf_disjoint = false;
+                    break;
+                }
+            }
+            assert(projection_leaf_disjoint);
+        }
+    }
+#endif
 }
 
 int DecoupledCanonicalPDBsApproximate::get_value(const GlobalState &state) const {
