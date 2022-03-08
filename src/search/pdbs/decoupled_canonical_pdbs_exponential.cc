@@ -183,12 +183,17 @@ bool DecoupledCanonicalPDBsExponential::compute_minimum_for_cliques(
         const vector<int> &h_values,
         int sum_prices,
         int min_h) const {
-    vector<bool> handled_clique(pattern_cliques->size());
+    vector<bool> handled_clique;
+    if (incremental_computation){
+        handled_clique.resize(pattern_cliques->size());
+    }
     for (int cid : clique_ids){
-        if (handled_clique[cid]){
-            continue;
+        if (incremental_computation) {
+            if (handled_clique[cid]) {
+                continue;
+            }
+            handled_clique[cid] = true;
         }
-        handled_clique[cid] = true;
         int clique_h = 0;
         for (PatternID pdb_index : (*pattern_cliques)[cid]) {
             clique_h += h_values[pdb_index];
@@ -288,6 +293,9 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
             }
         }
     }
+    // set values of heuristics computed in this recursion to 0, since they
+    // will be accessed when computing clique values incrementally; need to
+    // avoid reading values from different member states
     for (PatternID p_id : patterns_by_rec_depth[i]) {
         h_values[p_id] = 0;
     }
@@ -323,7 +331,7 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
 
     parser.add_option<bool>("incremental_computation",
                             "Compute clique values incrementally during recursion.",
-                            "false");
+                            "true");
 
     utils::add_rng_options(parser);
 }
