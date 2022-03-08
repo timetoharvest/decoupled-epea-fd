@@ -17,11 +17,12 @@ namespace utils {
 
 namespace pdbs {
 enum class ExplicitLeafSortingType {LEAFID, STATIC, DYNAMIC, RANDOM};
+enum class IncrementalComputation {NONE, COPY, RECOMPUTE};
 
 class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
     ExplicitLeafSortingType sort_leaves_type;
     bool early_termination;
-    bool incremental_computation;
+    IncrementalComputation incremental_computation;
 
     // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
@@ -61,7 +62,7 @@ public:
         const std::shared_ptr<std::vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
-        bool incremental_computation,
+        IncrementalComputation incremental_computation,
         const std::shared_ptr<utils::RandomNumberGenerator> &rng);
     ~DecoupledCanonicalPDBsExponential() = default;
 

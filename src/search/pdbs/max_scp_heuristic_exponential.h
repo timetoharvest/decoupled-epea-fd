@@ -13,9 +13,11 @@ class RandomNumberGenerator;
 
 namespace pdbs {
 enum class ExplicitLeafSortingType;
+enum class IncrementalComputation;
 class MaxSCPHeuristicExponential : public MaxSCPHeuristic {
     ExplicitLeafSortingType sort_leaves_type;
     bool early_termination;
+    IncrementalComputation incremental_computation;
 
     // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
@@ -43,10 +45,7 @@ public:
     MaxSCPHeuristicExponential(
         const options::Options &opts,
         cost_saturation::Abstractions &&abstractions,
-        cost_saturation::CPHeuristics &&cp_heuristics,
-        ExplicitLeafSortingType sort_leaves_type,
-        bool early_termination,
-        const std::shared_ptr<utils::RandomNumberGenerator> &rng);
+        cost_saturation::CPHeuristics &&cp_heuristics);
     virtual ~MaxSCPHeuristicExponential() override = default;
 };
 }

@@ -25,7 +25,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         const shared_ptr<vector<PatternClique>> &pattern_cliques,
         ExplicitLeafSortingType sort_leaves_type,
         bool early_termination,
-        bool incremental_computation,
+        IncrementalComputation incremental_computation,
         const shared_ptr<utils::RandomNumberGenerator> &rng)
         : CanonicalPDBs(pdbs, pattern_cliques),
           sort_leaves_type(sort_leaves_type),
@@ -49,7 +49,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
     }
     affected_leaves = vector<LeafFactorID>(aff_leaves.begin(), aff_leaves.end());
 
-    if (incremental_computation) {
+    if (incremental_computation != IncrementalComputation::NONE) {
         cliques_by_pattern.resize(pdbs->size());
     }
     for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
@@ -62,7 +62,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         }
         if (is_center_clique) {
             center_only_cliques.push_back(cid);
-        } else if (incremental_computation) {
+        } else if (incremental_computation != IncrementalComputation::NONE) {
             for (PatternID pid : (*pattern_cliques)[cid]) {
                 cliques_by_pattern[pid].push_back(cid);
             }
@@ -184,11 +184,11 @@ bool DecoupledCanonicalPDBsExponential::compute_minimum_for_cliques(
         int sum_prices,
         int min_h) const {
     vector<bool> handled_clique;
-    if (incremental_computation){
+    if (incremental_computation != IncrementalComputation::NONE){
         handled_clique.resize(pattern_cliques->size());
     }
     for (int cid : clique_ids){
-        if (incremental_computation) {
+        if (incremental_computation != IncrementalComputation::NONE) {
             if (handled_clique[cid]) {
                 continue;
             }
@@ -247,7 +247,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     prune = true;
                     break;
                 }
-                if (incremental_computation) {
+                if (incremental_computation != IncrementalComputation::NONE) {
                     changed_cliques.insert(changed_cliques.end(),
                                            cliques_by_pattern[p_id].begin(),
                                            cliques_by_pattern[p_id].end());
@@ -260,7 +260,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
 
             int min_clique_h_lstate = min_clique_h;
 
-            if (incremental_computation) {
+            if (incremental_computation != IncrementalComputation::NONE) {
                 prune = compute_minimum_for_cliques(changed_cliques,
                                                     min_clique_h_lstate,
                                                     h_values,
@@ -329,9 +329,23 @@ void add_exponential_options_to_parser(options::OptionParser &parser) {
                             "heuristic value can possibly be achieved.",
                             "true");
 
-    parser.add_option<bool>("incremental_computation",
-                            "Compute clique values incrementally during recursion.",
-                            "true");
+    vector<string> incremental_computation;
+    vector<string> incremental_computation_desc;
+    incremental_computation.emplace_back("none");
+    incremental_computation_desc.emplace_back("no incremental computation");
+    incremental_computation.emplace_back("copy");
+    incremental_computation_desc.emplace_back(
+        "compute partial h-values for each clique/cp heuristic and copy them "
+        "for each recursive call");
+    incremental_computation.emplace_back("recompute");
+    incremental_computation_desc.emplace_back(
+        "recompute h-values for each clique/cp heuristic in each recursive call");
+    parser.add_enum_option<IncrementalComputation>(
+        "incremental_computation",
+        incremental_computation,
+        "Different ways of computing h-values of cliques/cp heuristics during recursion",
+        "recompute",
+        incremental_computation_desc);
 
     utils::add_rng_options(parser);
 }

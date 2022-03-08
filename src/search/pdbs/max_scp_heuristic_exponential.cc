@@ -33,13 +33,12 @@ namespace pdbs {
 MaxSCPHeuristicExponential::MaxSCPHeuristicExponential(
     const options::Options &opts,
     Abstractions &&abstractions,
-    CPHeuristics &&cp_heuristics,
-    ExplicitLeafSortingType sort_leaves_type,
-    bool early_termination,
-    const shared_ptr<utils::RandomNumberGenerator> &rng)
+    CPHeuristics &&cp_heuristics)
     : MaxSCPHeuristic(opts, move(abstractions), move(cp_heuristics)),
-      sort_leaves_type(sort_leaves_type),
-      early_termination(early_termination) {
+      sort_leaves_type(opts.get<ExplicitLeafSortingType>("sort_leaves_type")),
+      early_termination(opts.get<bool>("early_termination")),
+      incremental_computation(opts.get<IncrementalComputation>("incremental_computation")) {
+
     unordered_set<LeafFactorID> aff_leaves;
     affected_leaves_by_pattern.resize(patterns.size());
     vector<int> num_patterns_per_leaf(g_leaves.size());
@@ -69,6 +68,7 @@ MaxSCPHeuristicExponential::MaxSCPHeuristicExponential(
     } else if (sort_leaves_type == ExplicitLeafSortingType::RANDOM){
         // first sort by LeafFactorID to have a deterministic start, then shuffle
         sort(affected_leaves.begin(), affected_leaves.end());
+        shared_ptr<utils::RandomNumberGenerator> rng = utils::parse_rng_from_options(opts);
         rng->shuffle(affected_leaves);
     }
 
@@ -290,10 +290,7 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     return make_shared<MaxSCPHeuristicExponential>(
         opts,
         move(abstractions),
-        move(cp_heuristics),
-        opts.get<ExplicitLeafSortingType>("sort_leaves_type"),
-        opts.get<bool>("early_termination"),
-        utils::parse_rng_from_options(opts));
+        move(cp_heuristics));
 }
 
 static Plugin<Evaluator> _plugin("max_scp_exp", _parse);
