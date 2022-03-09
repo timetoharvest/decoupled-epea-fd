@@ -45,10 +45,15 @@ incremental_computation = {
     'rec' : 'recompute',
     'copy' : 'copy',
 }
+sort_leaves = {
+    'static': 'static',
+    'leafid': 'leafid',
+}
 for dec_name, dec in decoupling.items():
     for prune_name, prune in early_termination.items():
         for inc_name, inc in incremental_computation.items():
-            CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_{prune_name}_{inc_name}-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination={prune},incremental_computation={inc}))'], build_options=['release64'], driver_options=['--build', 'release64']))
+            for sort_name, sort in sort_leaves.items():
+                CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_{prune_name}_{inc_name}_{sort_name}-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination={prune},incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64']))
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
@@ -110,5 +115,39 @@ attributes = [
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
+
+class Filter:
+    def __init__(self, dec, algos):
+        self.decoupling = dec
+        self.algos = algos
+        self.excluded_tasks = set()
+
+    def collect_non_factorable_tasks(self, run):
+        # Only consider algorithms relevant to the table.
+        if run['algorithm'] not in self.algos:
+            return False
+        error = run.get('error')
+        if error is not None and error == 'search-abstained':
+            self.excluded_tasks.add(f"{run['domain']}:{run['problem']}")
+        return True
+
+    def filter_interesting_tasks(self, run):
+        return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
+
+for dec_name in decoupling.keys():
+    algos = [f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)]
+    f = Filter(dec_name, algos)
+    report_name=f'{exp.name}-abs-{dec_name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=attributes,
+            filter_algorithm=algos,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 exp.run_steps()
