@@ -54,6 +54,7 @@ class DecoupledCanonicalPDBsExponential : public CanonicalPDBs {
             std::vector<int> &h_values,
             int i,
             int sum_prices,
+            const std::vector<int> &partial_clique_h_values,
             int min_clique_h,
             int &final_h) const;
 public:

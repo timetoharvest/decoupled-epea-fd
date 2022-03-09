@@ -49,7 +49,8 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
     }
     affected_leaves = vector<LeafFactorID>(aff_leaves.begin(), aff_leaves.end());
 
-    if (incremental_computation != IncrementalComputation::NONE) {
+    if (incremental_computation == IncrementalComputation::RECOMPUTE ||
+        incremental_computation == IncrementalComputation::COPY) {
         cliques_by_pattern.resize(pdbs->size());
     }
     for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
@@ -62,7 +63,8 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         }
         if (is_center_clique) {
             center_only_cliques.push_back(cid);
-        } else if (incremental_computation != IncrementalComputation::NONE) {
+        } else if (incremental_computation == IncrementalComputation::RECOMPUTE ||
+            incremental_computation == IncrementalComputation::COPY) {
             for (PatternID pid : (*pattern_cliques)[cid]) {
                 cliques_by_pattern[pid].push_back(cid);
             }
@@ -88,7 +90,9 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
 }
 
 void DecoupledCanonicalPDBsExponential::apply_resorted_affected_leaves() const {
-    cliques_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
+    if (incremental_computation == IncrementalComputation::NONE) {
+        cliques_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
+    }
     patterns_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
     vector<int> rec_depth_by_pattern(pdbs->size(), -1);
     vector<int> leaf_indices(g_leaves.size());
@@ -109,17 +113,19 @@ void DecoupledCanonicalPDBsExponential::apply_resorted_affected_leaves() const {
             patterns_by_rec_depth[max_d].push_back(pid);
         }
     }
-    for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
-        int max_c_d = -1;
-        for (PatternID pid: (*pattern_cliques)[cid]) {
-            max_c_d = max(max_c_d, rec_depth_by_pattern[pid]);
-            if (max_c_d == static_cast<int>(affected_leaves.size() - 1)){
-                break;
+    if (incremental_computation == IncrementalComputation::NONE) {
+        for (int cid = 0; cid < static_cast<int>(pattern_cliques->size()); ++cid) {
+            int max_c_d = -1;
+            for (PatternID pid: (*pattern_cliques)[cid]) {
+                max_c_d = max(max_c_d, rec_depth_by_pattern[pid]);
+                if (max_c_d == static_cast<int>(affected_leaves.size() - 1)){
+                    break;
+                }
             }
-        }
-        if (max_c_d != -1) {
-            // not a center-only clique
-            cliques_by_rec_depth[max_c_d].push_back(cid);
+            if (max_c_d != -1) {
+                // not a center-only clique
+                cliques_by_rec_depth[max_c_d].push_back(cid);
+            }
         }
     }
 }
@@ -147,10 +153,17 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
         }
 
         int min_clique_h = 0;
+        vector<int> clique_h_values;
+        if (incremental_computation == IncrementalComputation::COPY) {
+            clique_h_values.resize(pattern_cliques->size());
+        }
         for (int cid : center_only_cliques){
             int clique_h = 0;
             for (PatternID pdb_index : (*pattern_cliques)[cid]) {
                 clique_h += h_values[pdb_index];
+            }
+            if (incremental_computation == IncrementalComputation::COPY) {
+                clique_h_values[cid] = clique_h;
             }
             min_clique_h = max(min_clique_h, clique_h);
         }
@@ -172,7 +185,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
         }
 
         int final_h = numeric_limits<int>::max();
-        compute_min_distance_decoupled_exponential(prices, member_state, h_values, 0, 0, min_clique_h, final_h);
+        compute_min_distance_decoupled_exponential(prices, member_state, h_values, 0, 0, clique_h_values, min_clique_h, final_h);
         return final_h;
     }
 }
@@ -184,11 +197,11 @@ bool DecoupledCanonicalPDBsExponential::compute_minimum_for_cliques(
         int sum_prices,
         int min_h) const {
     vector<bool> handled_clique;
-    if (incremental_computation != IncrementalComputation::NONE){
+    if (incremental_computation == IncrementalComputation::RECOMPUTE){
         handled_clique.resize(pattern_cliques->size());
     }
     for (int cid : clique_ids){
-        if (incremental_computation != IncrementalComputation::NONE) {
+        if (incremental_computation == IncrementalComputation::RECOMPUTE) {
             if (handled_clique[cid]) {
                 continue;
             }
@@ -214,6 +227,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
         vector<int> &h_values,
         int i,
         int sum_prices,
+        const vector<int> &partial_clique_h_values,
         int min_clique_h,
         int &min_h) const {
 
@@ -235,6 +249,10 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
 
             bool prune = false;
             vector<int> changed_cliques;
+            vector<int> new_partial_clique_h_values;
+            if (incremental_computation == IncrementalComputation::COPY) {
+                new_partial_clique_h_values = partial_clique_h_values;
+            }
             for (PatternID p_id : patterns_by_rec_depth[i]){
                 h_values[p_id] = (*pdbs)[p_id]->get_value(member_state);
                 if (h_values[p_id] == numeric_limits<int>::max()){
@@ -247,32 +265,46 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     prune = true;
                     break;
                 }
-                if (incremental_computation != IncrementalComputation::NONE) {
+                if (incremental_computation == IncrementalComputation::RECOMPUTE) {
                     changed_cliques.insert(changed_cliques.end(),
                                            cliques_by_pattern[p_id].begin(),
                                            cliques_by_pattern[p_id].end());
+                } else if (incremental_computation == IncrementalComputation::COPY) {
+                    for (int c_id : cliques_by_pattern[p_id]) {
+                        new_partial_clique_h_values[c_id] += h_values[p_id];
+                    }
                 }
             }
+
             if (prune){
                 // deadend or we cannot possibly improve the heuristic
                 continue;
             }
 
-            int min_clique_h_lstate = min_clique_h;
-
-            if (incremental_computation != IncrementalComputation::NONE) {
-                prune = compute_minimum_for_cliques(changed_cliques,
-                                                    min_clique_h_lstate,
-                                                    h_values,
-                                                    sum_prices + price,
-                                                    min_h);
+            int min_clique_h_lstate;
+            if (incremental_computation == IncrementalComputation::COPY) {
+                min_clique_h_lstate = *max_element(new_partial_clique_h_values.begin(), new_partial_clique_h_values.end());
+                if (early_termination && sum_prices + min_clique_h_lstate >= min_h){
+                    // we cannot possibly improve the heuristic
+                    prune = true;
+                }
             } else {
-                prune = compute_minimum_for_cliques(cliques_by_rec_depth[i],
-                                                    min_clique_h_lstate,
-                                                    h_values,
-                                                    sum_prices + price,
-                                                    min_h);
+                min_clique_h_lstate = min_clique_h;
+                if (incremental_computation == IncrementalComputation::NONE) {
+                    prune = compute_minimum_for_cliques(cliques_by_rec_depth[i],
+                                                        min_clique_h_lstate,
+                                                        h_values,
+                                                        sum_prices + price,
+                                                        min_h);
+                } else if (incremental_computation == IncrementalComputation::RECOMPUTE) {
+                    prune = compute_minimum_for_cliques(changed_cliques,
+                                                        min_clique_h_lstate,
+                                                        h_values,
+                                                        sum_prices + price,
+                                                        min_h);
+                }
             }
+
             if (prune){
                 // we cannot possibly improve the heuristic
                 continue;
@@ -285,6 +317,7 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                                                            h_values,
                                                            i + 1,
                                                            sum_prices + price,
+                                                           new_partial_clique_h_values,
                                                            min_clique_h_lstate,
                                                            min_h);
             } else {
