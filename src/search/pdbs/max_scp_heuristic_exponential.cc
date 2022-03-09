@@ -35,6 +35,7 @@ MaxSCPHeuristicExponential::MaxSCPHeuristicExponential(
     Abstractions &&abstractions,
     CPHeuristics &&cp_heuristics)
     : MaxSCPHeuristic(opts, move(abstractions), move(cp_heuristics)),
+      debug(false),
       sort_leaves_type(opts.get<ExplicitLeafSortingType>("sort_leaves_type")),
       early_termination(opts.get<bool>("early_termination")),
       incremental_computation(opts.get<IncrementalComputation>("incremental_computation")) {
@@ -72,12 +73,17 @@ MaxSCPHeuristicExponential::MaxSCPHeuristicExponential(
         rng->shuffle(affected_leaves);
     }
 
-    apply_resorted_affected_leaves();
+    if (incremental_computation == IncrementalComputation::COPY ||
+        incremental_computation == IncrementalComputation::RECOMPUTE) {
+        apply_resorted_affected_leaves();
+    }
 }
 
 void MaxSCPHeuristicExponential::apply_resorted_affected_leaves() const {
-    patterns_by_rec_depth = vector<vector<PatternID>>(g_leaves.size());
-    vector<int> rec_depth_by_pattern(patterns.size(), -1);
+    patterns_by_rec_depth = vector<unordered_set<PatternID>>(g_leaves.size());
+    if (incremental_computation == IncrementalComputation::RECOMPUTE) {
+        patterns_up_to_rec_depth = vector<unordered_set<PatternID>>(g_leaves.size());
+    }
     vector<int> leaf_indices(g_leaves.size());
     for (int i = 0; i < static_cast<int>(affected_leaves.size()); ++i){
         leaf_indices[affected_leaves[i]] = i;
@@ -90,34 +96,95 @@ void MaxSCPHeuristicExponential::apply_resorted_affected_leaves() const {
                 break;
             }
         }
-        rec_depth_by_pattern[pid] = max_d;
         if (max_d != -1) {
             // not a center-only pattern
-            patterns_by_rec_depth[max_d].push_back(pid);
+            patterns_by_rec_depth[max_d].insert(pid);
+        }
+    }
+    if (incremental_computation == IncrementalComputation::RECOMPUTE) {
+        patterns_up_to_rec_depth[0] = patterns_by_rec_depth[0];
+        for (size_t d = 1; d < g_leaves.size(); ++d) {
+            patterns_up_to_rec_depth[d] = patterns_up_to_rec_depth[d-1];
+            patterns_up_to_rec_depth[d].insert(patterns_by_rec_depth[d].begin(), patterns_by_rec_depth[d].end());
         }
     }
 }
 
-void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
+void MaxSCPHeuristicExponential::compute_min_distance_non_incremental(
+    const ExplicitStateCPG *cpg,
+    vector<int> &member_state,
+    int i,
+    int sum_prices,
+    int &min_h) const {
+
+    if (early_termination && sum_prices >= min_h){
+        // we cannot possibly improve the heuristic
+        return;
+    }
+
+    int number_states = cpg->get_number_states(affected_leaves[i]);
+    LeafStateHash id(0);
+    while (number_states > 0){
+        if (cpg->has_leaf_state(id, affected_leaves[i])){
+            --number_states;
+
+            set_leaf_facts(id, affected_leaves[i], member_state);
+
+            int price = cpg->get_cost_of_state(id, affected_leaves[i]);
+            if (i < static_cast<int>(affected_leaves.size()) - 1){
+                // recursion
+                compute_min_distance_non_incremental(cpg, member_state, i + 1, sum_prices + price, min_h);
+            } else {
+                // end recursion
+                int max_h = 0;
+                bool is_dead_end_member_state = false;
+                vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
+                for (const auto &cp_heuristic : cp_heuristics) {
+                    int sum_h = cp_heuristic.compute_heuristic(member_abs_state_ids);
+                    if (sum_h == INF) {
+                        is_dead_end_member_state = true;
+                        break;
+                    }
+                    max_h = max(max_h, sum_h);
+                    if (early_termination && sum_prices + price + max_h >= min_h){
+                        // we cannot possibly improve the heuristic
+                        break;
+                    }
+                }
+                if (!is_dead_end_member_state) {
+                    min_h = min(min_h, sum_prices + price + max_h);
+                }
+            }
+        }
+        ++id;
+    }
+}
+
+void MaxSCPHeuristicExponential::compute_min_distance_decoupled_incremental(
     const ExplicitStateCPG *cpg,
     vector<int> &member_state,
     int i,
     int sum_prices,
     const vector<int> &partial_h_by_cp_heur,
-    int &final_h) const {
+    int max_partial_h,
+    int &min_h) const {
+    if (incremental_computation == IncrementalComputation::COPY) {
+        assert(max_partial_h == *max_element(partial_h_by_cp_heur.begin(), partial_h_by_cp_heur.end()));
+    }
 
-//    cout << "recursion depth/leaf: " << i << endl;
-//    cout << "sum prices: " << sum_prices << endl;
-//    cout << "min_h: " << final_h << endl;
+    if (debug) {
+        cout << "recursion depth/leaf: " << i << endl;
+        cout << "sum prices: " << sum_prices << endl;
+        cout << "min_h: " << min_h << endl;
+    }
 
-    if (early_termination) {
-        int max_over_partial_h = *max_element(partial_h_by_cp_heur.begin(), partial_h_by_cp_heur.end());
-        if (sum_prices + max_over_partial_h >= final_h) {
-            // TODO: I don't think we need this since we check this *before* each recursive call
-            // we cannot possibly improve the heuristic
-//            cout << "skipping at start" << endl;
-            return;
+    if (early_termination && sum_prices + max_partial_h >= min_h) {
+        // TODO: I don't think we need this since we check this *before* each recursive call
+        // we cannot possibly improve the heuristic
+        if (debug) {
+            cout << "skipping at start" << endl;
         }
+        return;
     }
 
     int number_states = cpg->get_number_states(affected_leaves[i]);
@@ -129,27 +196,46 @@ void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
             --number_states;
 
             set_leaf_facts(id, affected_leaves[i], member_state);
-//            cout << "current member state: " << member_state << endl;
             int price = cpg->get_cost_of_state(id, affected_leaves[i]);
+            if (debug) {
+                cout << "current member state: " << member_state << endl;
+                cout << "price: " << price << endl;
+            }
 
             bool prune = false;
             vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
-            vector<int> new_partial_h_by_cp_heur(partial_h_by_cp_heur);
-            int max_over_partial_h = 0;
+            vector<int> new_partial_h_by_cp_heur;
+            int new_max_partial_h = max_partial_h;
+            if (incremental_computation == IncrementalComputation::COPY) {
+                new_partial_h_by_cp_heur = partial_h_by_cp_heur;
+            }
             for (size_t h_id = 0; h_id < cp_heuristics.size(); ++h_id) {
-//                cout << "h_id " << h_id << endl;
+                if (debug) {
+                    cout << "h_id " << h_id << endl;
+                }
                 const auto &cp_heuristic = cp_heuristics[h_id];
-                int sum_h = partial_h_by_cp_heur[h_id];
-//                cout << "already have a value of: " << sum_h << endl;
+                int sum_h;
+                if (incremental_computation == IncrementalComputation::COPY) {
+                    sum_h = partial_h_by_cp_heur[h_id];
+                    if (debug) {
+                        cout << "already have a value of: " << sum_h << endl;
+                    }
+                } else if (incremental_computation == IncrementalComputation::RECOMPUTE) {
+                    sum_h = 0;
+                } else {
+                    ABORT("unexpected incremental computation type");
+                }
+
                 for (const auto &lookup_table : cp_heuristic.lookup_tables) {
                     int abs_id = lookup_table.abstraction_id;
-                    if (find(patterns_by_rec_depth[i].begin(), patterns_by_rec_depth[i].end(), abs_id ) != patterns_by_rec_depth[i].end()) {
+                    if ((incremental_computation == IncrementalComputation::COPY && patterns_by_rec_depth[i].count(abs_id)) ||
+                        (incremental_computation == IncrementalComputation::RECOMPUTE && patterns_up_to_rec_depth[i].count(abs_id))) {
                         assert(utils::in_bounds(abs_id, member_abs_state_ids));
                         int state_id = member_abs_state_ids[abs_id];
                         assert(utils::in_bounds(state_id, lookup_table.h_values));
                         int h = lookup_table.h_values[state_id];
                         assert(h >= 0);
-                        if (h == INF || (early_termination && sum_prices + price + h >= final_h)) {
+                        if (h == INF || (early_termination && sum_prices + price + h >= min_h)) {
                             // deadend we cannot possibly improve the heuristic
                             prune = true;
                             break;
@@ -159,17 +245,21 @@ void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
 //                        cout << "berechne abs_id " << abs_id << " für cp h_id " << h_id << endl;
                     }
                 }
-//                cout << "new value " << sum_h << endl;
+                if (debug) {
+                    cout << "new value for cp heuristic: " << sum_h << endl;
+                }
 
                 if (prune) {
                     // we cannot possibly improve the heuristic
                     break;
                 }
 
-                new_partial_h_by_cp_heur[h_id] = sum_h;
-                max_over_partial_h = max(max_over_partial_h, sum_h);
+                if (incremental_computation == IncrementalComputation::COPY) {
+                    new_partial_h_by_cp_heur[h_id] = sum_h;
+                }
+                new_max_partial_h = max(new_max_partial_h, sum_h);
 
-                if (early_termination && sum_prices + price + max_over_partial_h >= final_h) {
+                if (early_termination && sum_prices + price + new_max_partial_h >= min_h) {
                     // deadend or we cannot possibly improve the heuristic
                     prune = true;
                     break;
@@ -178,23 +268,32 @@ void MaxSCPHeuristicExponential::compute_min_distance_decoupled_exponential(
 
             if (prune){
                 // deadend or we cannot possibly improve the heuristic
-//                cout << "cannot improve" << endl;
+                if (debug) {
+                    cout << "cannot improve" << endl;
+                }
                 continue;
             }
 
             if (i < static_cast<int>(affected_leaves.size()) - 1){
                 // recursion
-                compute_min_distance_decoupled_exponential(cpg,
-                                                           member_state,
-                                                           i + 1,
-                                                           sum_prices + price,
-                                                           new_partial_h_by_cp_heur,
-                                                           final_h);
+                compute_min_distance_decoupled_incremental(cpg,
+                                                        member_state,
+                                                        i +
+                                                        1,
+                                                        sum_prices +
+                                                        price,
+                                                        new_partial_h_by_cp_heur,
+                                                        new_max_partial_h,
+                                                        min_h);
             } else {
                 // end recursion
-//                cout << "final values: " << new_partial_h_by_cp_heur << endl;
-//                cout << "end recursion: " << sum_prices << "+" << price << "+" << max_over_partial_h << endl;
-                final_h = min(final_h, sum_prices + price + max_over_partial_h);
+                if (debug) {
+                    cout << "end recursion" << endl;
+                    cout << "final values: " << new_partial_h_by_cp_heur << endl;
+                    cout << "end recursion: " << sum_prices << "+" << price << "+" << new_max_partial_h << endl;
+                }
+
+                min_h = min(min_h, sum_prices + price + new_max_partial_h);
             }
         }
     }
@@ -211,48 +310,60 @@ int MaxSCPHeuristicExponential::compute_heuristic(const GlobalState &state) {
         // compute minimum heuristic value across all member states
         vector<int> member_state(g_variable_domain.size(), -1);
         set_center_facts(state, member_state);
-
-        vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
-        vector<int> partial_h_by_cp_heur(cp_heuristics.size(), 0);
-        for (size_t h_id = 0; h_id < cp_heuristics.size(); ++h_id) {
-            const auto &cp_heuristic = cp_heuristics[h_id];
-            for (const auto &lookup_table : cp_heuristic.lookup_tables) {
-                int abs_id = lookup_table.abstraction_id;
-                if (find(center_only_patterns.begin(), center_only_patterns.end(), abs_id ) != center_only_patterns.end()) {
-                    assert(utils::in_bounds(abs_id, member_abs_state_ids));
-                    int state_id = member_abs_state_ids[abs_id];
-                    assert(utils::in_bounds(state_id, lookup_table.h_values));
-                    int h = lookup_table.h_values[state_id];
-                    assert(h >= 0);
-                    if (h == INF) {
-                        // center state is detected as deadend
-                        return DEAD_END;
-                    }
-                    partial_h_by_cp_heur[h_id] += h;
-                    assert(partial_h_by_cp_heur[h_id] >= 0);
-                }
-            }
-        }
-
         const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
 
-        if (sort_leaves_type == ExplicitLeafSortingType::DYNAMIC) {
-            // sort leaf factors by ascending number of reached leaf states
-            if (!is_sorted(affected_leaves.begin(), affected_leaves.end(),
-                           [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
-                               return prices->get_number_states(l1) < prices->get_number_states(l2);
-                           })){
-                sort(affected_leaves.begin(), affected_leaves.end(),
-                     [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
-                         return prices->get_number_states(l1) < prices->get_number_states(l2);
-                     });
-                apply_resorted_affected_leaves();
-            }
-        }
-
         max_h = numeric_limits<int>::max();
-//        cout << "starting recursion" << endl;
-        compute_min_distance_decoupled_exponential(prices, member_state, 0, 0, partial_h_by_cp_heur, max_h);
+        if (incremental_computation == IncrementalComputation::NONE) {
+            compute_min_distance_non_incremental(prices, member_state, 0, 0, max_h);
+        } else {
+            vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
+            vector<int> partial_h_by_cp_heur;
+            int max_cp_h = 0;
+            if (incremental_computation == IncrementalComputation::COPY) {
+                partial_h_by_cp_heur.resize(cp_heuristics.size(), 0);
+            }
+            for (size_t h_id = 0; h_id < cp_heuristics.size(); ++h_id) {
+                const auto &cp_heuristic = cp_heuristics[h_id];
+                int sum_h = 0;
+                for (const auto &lookup_table : cp_heuristic.lookup_tables) {
+                    int abs_id = lookup_table.abstraction_id;
+                    if (find(center_only_patterns.begin(), center_only_patterns.end(), abs_id ) != center_only_patterns.end()) {
+                        assert(utils::in_bounds(abs_id, member_abs_state_ids));
+                        int state_id = member_abs_state_ids[abs_id];
+                        assert(utils::in_bounds(state_id, lookup_table.h_values));
+                        int h = lookup_table.h_values[state_id];
+                        assert(h >= 0);
+                        if (h == INF) {
+                            // center state is detected as deadend
+                            return DEAD_END;
+                        }
+                        sum_h += h;
+                        assert(sum_h >= 0);
+                    }
+                }
+                if (incremental_computation == IncrementalComputation::COPY) {
+                    partial_h_by_cp_heur[h_id] += sum_h;
+                }
+                max_cp_h = max(max_cp_h, sum_h);
+            }
+
+            if (sort_leaves_type == ExplicitLeafSortingType::DYNAMIC) {
+                // sort leaf factors by ascending number of reached leaf states
+                if (!is_sorted(affected_leaves.begin(), affected_leaves.end(),
+                               [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
+                                   return prices->get_number_states(l1) < prices->get_number_states(l2);
+                               })){
+                    sort(affected_leaves.begin(), affected_leaves.end(),
+                         [&](const LeafFactorID &l1, const LeafFactorID &l2) -> bool {
+                             return prices->get_number_states(l1) < prices->get_number_states(l2);
+                         });
+                    apply_resorted_affected_leaves();
+                }
+            }
+
+    //        cout << "starting recursion" << endl;
+            compute_min_distance_decoupled_incremental(prices, member_state, 0, 0, partial_h_by_cp_heur, max_cp_h, max_h);
+        }
     }
 //    cout << max_h << endl;
     assert(max_h >= 0);

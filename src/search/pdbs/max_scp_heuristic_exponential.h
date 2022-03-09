@@ -15,9 +15,10 @@ namespace pdbs {
 enum class ExplicitLeafSortingType;
 enum class IncrementalComputation;
 class MaxSCPHeuristicExponential : public MaxSCPHeuristic {
-    ExplicitLeafSortingType sort_leaves_type;
-    bool early_termination;
-    IncrementalComputation incremental_computation;
+    const bool debug;
+    const ExplicitLeafSortingType sort_leaves_type;
+    const bool early_termination;
+    const IncrementalComputation incremental_computation;
 
     // list of leaves affected by any of the pdbs; mutable because can be resorted within get_value()
     mutable std::vector<LeafFactorID> affected_leaves;
@@ -29,16 +30,25 @@ class MaxSCPHeuristicExponential : public MaxSCPHeuristic {
     // these store, for each recursion depth the patterns of which
     // all leaves have been treated, so the final value for the pattern
     // can be computed
-    mutable std::vector<std::vector<PatternID>> patterns_by_rec_depth;
+    mutable std::vector<std::unordered_set<PatternID>> patterns_by_rec_depth;
+    mutable std::vector<std::unordered_set<PatternID>> patterns_up_to_rec_depth;
 
     void apply_resorted_affected_leaves() const;
 
-    void compute_min_distance_decoupled_exponential(const ExplicitStateCPG *prices,
-                                                    std::vector<int> &member_state,
-                                                    int i,
-                                                    int sum_prices,
-                                                    const std::vector<int> &partial_h_by_cp_heur,
-                                                    int &final_h) const;
+    void compute_min_distance_non_incremental(
+        const ExplicitStateCPG *cpg,
+        std::vector<int> &member_state,
+        int i,
+        int sum_prices,
+        int &min_h) const;
+    void compute_min_distance_decoupled_incremental(
+        const ExplicitStateCPG *cpg,
+        std::vector<int> &member_state,
+        int i,
+        int sum_prices,
+        const std::vector<int> &partial_h_by_cp_heur,
+        int max_partial_h,
+        int &min_h) const;
 protected:
     virtual int compute_heuristic(const GlobalState &ancestor_state) override;
 public:
