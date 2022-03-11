@@ -49,7 +49,17 @@ for dec_name, dec in decoupling.items():
             for sort_name, sort in sort_leaves.items():
                 CONFIGS.append(IssueConfig(f'{dec_name}-cpdbsexp_{prune_name}_{inc_name}_{sort_name}-hc', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(patterns=hillclimbing(max_time={TIME_LIMIT}),early_termination={prune},incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
-SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
+SUITE = [
+    "agricola", "airport", "barman", "blocksworld", "childsnack",
+    "data-network", "depots", "driverlog", "elevators", "floortile",
+    "freecell", "ged", "grid", "gripper", "hiking", "logistics",
+    "miconic", "mprime", "nomystery", "openstacks",
+    "organic-synthesis-split", "parcprinter", "parking", "pathways",
+    "pegsol", "pipesworld-notankage", "pipesworld-tankage", "rovers",
+    "satellite", "scanalyzer", "snake", "sokoban", "storage", "termes",
+    "tetris", "thoughtful", "tidybot", "tpp", "transport", "visitall",
+    "woodworking", "zenotravel",
+]
 ENVIRONMENT = BaselSlurmEnvironment(
     email="silvan.sievers@unibas.ch",
     partition="infai_2",
