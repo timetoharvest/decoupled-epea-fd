@@ -64,7 +64,7 @@ DecoupledCanonicalPDBsExponential::DecoupledCanonicalPDBsExponential(
         if (is_center_clique) {
             center_only_cliques.push_back(cid);
         } else if (incremental_computation == IncrementalComputation::RECOMPUTE ||
-            incremental_computation == IncrementalComputation::COPY) {
+                   incremental_computation == IncrementalComputation::COPY) {
             for (PatternID pid : (*pattern_cliques)[cid]) {
                 cliques_by_pattern[pid].push_back(cid);
             }
@@ -144,6 +144,7 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
 
         vector<int> h_values(pdbs->size());
         vector<int> clique_h_values;
+        int min_clique_h = 0;
         if (incremental_computation == IncrementalComputation::COPY) {
             clique_h_values.resize(pattern_cliques->size());
         }
@@ -156,18 +157,23 @@ int DecoupledCanonicalPDBsExponential::get_value(const GlobalState &state) const
             }
             if (incremental_computation == IncrementalComputation::COPY) {
                 for (int c_id : cliques_by_pattern[p_id]) {
+                    // set partial clique values for cliques that include center-only patterns
                     clique_h_values[c_id] += h_values[p_id];
                 }
             }
+            min_clique_h = max(min_clique_h, h_values[p_id]);
         }
 
-        int min_clique_h = 0;
         for (int cid : center_only_cliques){
             int clique_h = 0;
             for (PatternID pdb_index : (*pattern_cliques)[cid]) {
                 clique_h += h_values[pdb_index];
             }
             min_clique_h = max(min_clique_h, clique_h);
+            if (incremental_computation == IncrementalComputation::COPY) {
+                // we need this here because center-only cliques are not included in cliques_by_pattern
+                clique_h_values[cid] = clique_h;
+            }
         }
 
         const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
@@ -277,7 +283,6 @@ void DecoupledCanonicalPDBsExponential::compute_min_distance_decoupled_exponenti
                     }
                 }
             }
-
             if (prune){
                 // deadend or we cannot possibly improve the heuristic
                 continue;
