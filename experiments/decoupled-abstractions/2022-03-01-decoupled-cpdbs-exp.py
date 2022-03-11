@@ -123,6 +123,21 @@ class Filter:
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
 for name in decoupling.keys():
+    f = Filter(name, all_algos)
+    report_name=f'{exp.name}-compare-old-{name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        ComparativeReport(
+            attributes=attributes,
+            algorithm_pairs=algo_pairs,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+
     algo_pairs=[
         (f'{OLD_REV}-{name}-cpdbsexp-hc', f'{REVISION}-{name}-cpdbsexp_no-hc'),
         (f'{OLD_REV}-{name}-cpdbsexp-hc', f'{REVISION}-{name}-cpdbsexp_static-hc'),
