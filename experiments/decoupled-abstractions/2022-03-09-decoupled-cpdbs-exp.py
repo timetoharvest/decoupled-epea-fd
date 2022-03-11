@@ -109,6 +109,9 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
 
+exp.add_fetcher('data/2022-03-10-decoupled-cpdbs-exp-eval')
+NEW_REV = "4a40490ed4036b7ea2862414c6ff3fcb274998ce"
+
 class Filter:
     def __init__(self, dec, algos):
         self.decoupling = dec
@@ -128,7 +131,9 @@ class Filter:
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
 for dec_name in decoupling.keys():
-    algos = [f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)]
+    algos = [f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name) and "copy" not in config.nick]
+    algos.extend([f"{NEW_REV}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name) and "copy" in config.nick])
+    algos = sorted(algos)
     f = Filter(dec_name, algos)
     report_name=f'{exp.name}-abs-{dec_name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.html'
