@@ -102,4 +102,47 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
 
+NEW_REV='74fa5229d5fe229839c4c647673d7c384d24a444'
+exp.add_fetcher('data/2022-03-09-decoupled-scp-exp-eval',merge=True)
+
+class Filter:
+    def __init__(self, dec, algos):
+        self.decoupling = dec
+        self.algos = algos
+        self.excluded_tasks = set()
+
+    def collect_non_factorable_tasks(self, run):
+        # Only consider algorithms relevant to the table.
+        if run['algorithm'] not in self.algos:
+            return False
+        error = run.get('error')
+        if error is not None and error == 'search-abstained':
+            self.excluded_tasks.add(f"{run['domain']}:{run['problem']}")
+        return True
+
+    def filter_interesting_tasks(self, run):
+        return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
+
+for name in decoupling.keys():
+    algo_pairs=[
+        (f'{REVISION}-{name}-scpexp_noprune-all-cegar-sys2-hc', f'{NEW_REV}-{name}-scpexp_noprune_copy_leafid-all-cegar-sys2-hc'),
+        (f'{REVISION}-{name}-scpexp_leafid-all-cegar-sys2-hc', f'{NEW_REV}-{name}-scpexp_prune_copy_leafid-all-cegar-sys2-hc'),
+        (f'{REVISION}-{name}-scpexp_static-all-cegar-sys2-hc', f'{NEW_REV}-{name}-scpexp_prune_copy_static-all-cegar-sys2-hc'),
+    ]
+    all_algos = [algo for algo_pair in algo_pairs for algo in algo_pair]
+    all_algos = list(set(all_algos))
+    f = Filter(name, all_algos)
+    report_name=f'{exp.name}-compare-new-{name}'
+    report_file=Path(exp.eval_dir) / f'{report_name}.html'
+    exp.add_report(
+        ComparativeReport(
+            attributes=attributes,
+            algorithm_pairs=algo_pairs,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
 exp.run_steps()
