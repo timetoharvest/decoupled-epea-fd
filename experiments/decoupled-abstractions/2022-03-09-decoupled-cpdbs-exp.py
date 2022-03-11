@@ -131,9 +131,15 @@ class Filter:
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
 for dec_name in decoupling.keys():
-    algos = [f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name) and "copy" not in config.nick]
-    algos.extend([f"{NEW_REV}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name) and "copy" in config.nick])
-    algos = sorted(algos)
+    algos = []
+    for prune_name in early_termination.keys():
+        for inc_name in incremental_computation.keys():
+            for sort_name in sort_leaves.keys():
+                if inc_name == 'copy':
+                    rev = NEW_REV
+                else:
+                    rev = REVISION
+                algos.append(f'{rev}-{dec_name}-cpdbsexp_{prune_name}_{inc_name}_{sort_name}-hc')
     f = Filter(dec_name, algos)
     report_name=f'{exp.name}-abs-{dec_name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.html'
