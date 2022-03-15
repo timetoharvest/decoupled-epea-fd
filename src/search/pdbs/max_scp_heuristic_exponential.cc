@@ -88,6 +88,7 @@ void MaxSCPHeuristicExponential::apply_resorted_affected_leaves() const {
     for (int i = 0; i < static_cast<int>(affected_leaves.size()); ++i){
         leaf_indices[affected_leaves[i]] = i;
     }
+    unordered_set<int> center_patterns;
     for (PatternID pid = 0; pid < static_cast<int>(patterns.size()); ++pid) {
         int max_d = -1;
         for (LeafFactorID leaf: affected_leaves_by_pattern[pid]){
@@ -99,10 +100,13 @@ void MaxSCPHeuristicExponential::apply_resorted_affected_leaves() const {
         if (max_d != -1) {
             // not a center-only pattern
             patterns_by_rec_depth[max_d].insert(pid);
+        } else {
+            center_patterns.insert(pid);
         }
     }
     if (incremental_computation == IncrementalComputation::RECOMPUTE) {
         patterns_up_to_rec_depth[0] = patterns_by_rec_depth[0];
+        patterns_up_to_rec_depth[0].insert(center_patterns.begin(), center_patterns.end());
         for (size_t d = 1; d < g_leaves.size(); ++d) {
             patterns_up_to_rec_depth[d] = patterns_up_to_rec_depth[d-1];
             patterns_up_to_rec_depth[d].insert(patterns_by_rec_depth[d].begin(), patterns_by_rec_depth[d].end());
