@@ -19,7 +19,7 @@ from common_setup import IssueConfig, IssueExperiment
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = Path.home() / 'repos/downward/new-benchmarks/benchmarks/2022-03-03-opt'
-REVISION = "92ae120520a80d1c1c94af19769e4892c9f3746a"
+REVISION = "c634daffdd65b58993a22bfa65218dece17751ca"
 REVISIONS = [REVISION]
 CEGAR_MAX_TIME=2
 SYS_MAX_TIME=2
