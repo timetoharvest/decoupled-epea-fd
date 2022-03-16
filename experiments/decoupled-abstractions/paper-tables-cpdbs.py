@@ -20,10 +20,8 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 REVISIONS=[
     'f07d81fd0b063119d86add881dc1ac8ab6b9f171', # 2022-01-11
     '14515ac7c622a1ea0e37069146eebb568a446472', # 2022-01-11
-    '1d424e48c3ed22f69e30fd1e843a02e3c44535ed', # 2022-01-20
-    'eaa07a7dcbee6c6f54252254cfd32aaf32b409fc', # 2022-02-16
-    '6dcab07d143bdad32cb2c151c648c377207ed2f6', # 2022-02-17
-    'ef5fdfb3514989c44f66bc16aededaf2fa301b36', # 2022-02-28
+    'd10c0997191962a5e4b15eb1da3e3ce4f749addf', # 2022-03-03
+    'b6571f1cb900d4348e914cea6eee7800baf5e92e', # 2022-03-11
 ]
 
 def remove_revision(run):
@@ -37,48 +35,90 @@ def remove_revision(run):
         run['algorithm'] = run['algorithm'].replace(f'{rev}-', '')
     return run
 
-def filter_lmcut_blind(run):
-    return 'blind' in run['algorithm'] or 'lmcut' in run['algorithm']
-
-def filter_explicit_cdpbsc(run):
-    return 'explicit-cpdbs-hc' in run['algorithm'] or 'explicit-cpdbs-hcsingleleaf' in run['algorithm']
-
-def filter_exphc(run):
-    return 'cpdbsexp-hc' in run['algorithm']
-
-def filter_exphcsingleleaf(run):
-    return 'cpdbsexp-hcsingleleaf' in run['algorithm']
-
-
-
 exp = FastDownwardExperiment()
-# blind, lmcut
-# exp.add_fetcher('data/2022-01-11-baseline-decoupled-eval',filter=[remove_revision])
 
-# blind, lmcut
-# exp.add_fetcher('data/2022-01-11-baseline-explicit-eval',filter=[remove_revision,filter_lmcut_blind],merge=True)
+exp.add_fetcher('data/2022-01-11-baseline-decoupled-eval',filter=[remove_revision],filter_algorithm=[
+    'fork-blind',
+    'ifork-blind',
+    'mmgeneral-blind',
+    'fork-lmcut',
+    'ifork-lmcut',
+    'mmgeneral-lmcut',
+])
 
-# explicit-cpdbs-hc, explicit-cpdbs-hcsingleleaf
-exp.add_fetcher('data/2022-01-11-baseline-explicit-cpdbs-eval',filter=[remove_revision,filter_explicit_cdpbsc],merge=True)
+exp.add_fetcher('data/2022-01-11-baseline-explicit-eval',filter=[remove_revision],filter_algorithm=[
+    'explicit-blind',
+    'explicit-lmcut',
+],merge=True)
 
-# cpdbsapprox, cpdbssingleleaf, cpdbsexp
-exp.add_fetcher('data/2022-01-11-cpdbs-eval',filter=[remove_revision,filter_exphc],merge=True)
+exp.add_fetcher('data/2022-01-11-baseline-explicit-cpdbs-eval',filter=[remove_revision],filter_algorithm=[
+    'fork-explicit-cpdbs-hc',
+    'ifork-explicit-cpdbs-hc',
+    'mmgeneral-explicit-cpdbs-hc',
+    'fork-explicit-cpdbs-hcleafdisjoint',
+    'ifork-explicit-cpdbs-hcleafdisjoint',
+    'mmgeneral-explicit-cpdbs-hcleafdisjoint',
+    'fork-explicit-cpdbs-hcsingleleaf',
+    'ifork-explicit-cpdbs-hcsingleleaf',
+    'mmgeneral-explicit-cpdbs-hcsingleleaf',
+    'explicit-cpdbs-hc',
+],merge=True)
 
-# cpdbsexp-hcsingleleaf
-exp.add_fetcher('data/2022-01-20-cpdbs-more-exp-eval',filter=[remove_revision,filter_exphcsingleleaf],merge=True)
+exp.add_fetcher('data/2022-03-03-decoupled-cpdbs-eval',filter=[remove_revision],filter_algorithm=[
+    'fork-cpdbsapprox-hcdisjointleaf',
+    'ifork-cpdbsapprox-hcdisjointleaf',
+    'mmgeneral-cpdbsapprox-hcdisjointleaf',
+    'fork-cpdbsapproxpoly-hcdisjointleaf',
+    'ifork-cpdbsapproxpoly-hcdisjointleaf',
+    'mmgeneral-cpdbsapproxpoly-hcdisjointleaf',
+    'fork-cpdbssingleleaf-hc1leaf',
+    'ifork-cpdbssingleleaf-hc1leaf',
+    'mmgeneral-cpdbssingleleaf-hc1leaf',
+],merge=True)
 
-exp.add_fetcher('data/2022-02-16-explicit-decoupled-cpdbs-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-16-decoupled-cpdbs-exp-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-16-decoupled-cpdbs-expilp-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-lp-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-abslp-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-17-decoupled-cpdbs-expilp-leaflp-eval',filter=[remove_revision],merge=True)
-exp.add_fetcher('data/2022-02-28-decoupled-cpdbs-approx-eval',filter=[remove_revision],merge=True)
+exp.add_fetcher('data/2022-03-11-decoupled-cpdbs-exp-eval',filter=[remove_revision],filter_algorithm=[
+    'fork-cpdbsexp_prune_noninc_static-hc',
+    'fork-cpdbsexp_prune_noninc_leafid-hc',
+    'fork-cpdbsexp_prune_rec_static-hc',
+    'fork-cpdbsexp_prune_rec_leafid-hc',
+    'fork-cpdbsexp_prune_copy_static-hc',
+    'fork-cpdbsexp_prune_copy_leafid-hc',
+    'fork-cpdbsexp_noprune_noninc_static-hc',
+    'fork-cpdbsexp_noprune_noninc_leafid-hc',
+    'fork-cpdbsexp_noprune_rec_static-hc',
+    'fork-cpdbsexp_noprune_rec_leafid-hc',
+    'fork-cpdbsexp_noprune_copy_static-hc',
+    'fork-cpdbsexp_noprune_copy_leafid-hc',
+    'ifork-cpdbsexp_prune_noninc_static-hc',
+    'ifork-cpdbsexp_prune_noninc_leafid-hc',
+    'ifork-cpdbsexp_prune_rec_static-hc',
+    'ifork-cpdbsexp_prune_rec_leafid-hc',
+    'ifork-cpdbsexp_prune_copy_static-hc',
+    'ifork-cpdbsexp_prune_copy_leafid-hc',
+    'ifork-cpdbsexp_noprune_noninc_static-hc',
+    'ifork-cpdbsexp_noprune_noninc_leafid-hc',
+    'ifork-cpdbsexp_noprune_rec_static-hc',
+    'ifork-cpdbsexp_noprune_rec_leafid-hc',
+    'ifork-cpdbsexp_noprune_copy_static-hc',
+    'ifork-cpdbsexp_noprune_copy_leafid-hc',
+    'mmgeneral-cpdbsexp_prune_noninc_static-hc',
+    'mmgeneral-cpdbsexp_prune_noninc_leafid-hc',
+    'mmgeneral-cpdbsexp_prune_rec_static-hc',
+    'mmgeneral-cpdbsexp_prune_rec_leafid-hc',
+    'mmgeneral-cpdbsexp_prune_copy_static-hc',
+    'mmgeneral-cpdbsexp_prune_copy_leafid-hc',
+    'mmgeneral-cpdbsexp_noprune_noninc_static-hc',
+    'mmgeneral-cpdbsexp_noprune_noninc_leafid-hc',
+    'mmgeneral-cpdbsexp_noprune_rec_static-hc',
+    'mmgeneral-cpdbsexp_noprune_rec_leafid-hc',
+    'mmgeneral-cpdbsexp_noprune_copy_static-hc',
+    'mmgeneral-cpdbsexp_noprune_copy_leafid-hc',
+],merge=True)
+
 
 DECOUPLINGS = [
     'fork',
     'ifork',
-    'mmstrict',
     'mmgeneral',
 ]
 
@@ -146,36 +186,30 @@ exp.add_report(AbsoluteReport(attributes=['coverage']))
 
 for name in DECOUPLINGS:
     algorithms=[
-        # f'{name}-explicit-cpdbs-hcleafdisjoint',
-        f'{name}-explicit-cpdbs-hcsingleleaf',
-        f'explicit-{name}-cpdbs-hc2leaves',
-        f'explicit-{name}-cpdbs-hc3leaves',
+        'explicit-blind',
+        'explicit-lmcut',
+        'explicit-cpdbs-hc',
         f'{name}-explicit-cpdbs-hc',
-        f'{name}-cpdbsexp-hcsingleleaf',
-        f'{name}-cpdbsexp-hc2leaves',
-        f'{name}-cpdbsexp-hc3leaves',
-        f'{name}-cpdbsexp-hc',
-        f'{name}-cpdbsexpilp-hc1leaf',
-        f'{name}-cpdbsexpilp-hc2leaves',
-        f'{name}-cpdbsexpilp-hc3leaves',
-        f'{name}-cpdbsexpilp-hc',
-        f'{name}-cpdbsexpilp_abslp-hc1leaf',
-        f'{name}-cpdbsexpilp_abslp-hc2leaves',
-        f'{name}-cpdbsexpilp_abslp-hc3leaves',
-        f'{name}-cpdbsexpilp_abslp-hc',
-        f'{name}-cpdbsexpilp_leaflp-hc1leaf',
-        f'{name}-cpdbsexpilp_leaflp-hc2leaves',
-        f'{name}-cpdbsexpilp_leaflp-hc3leaves',
-        f'{name}-cpdbsexpilp_leaflp-hc',
-        f'{name}-cpdbsexpilp_lp-hc1leaf',
-        f'{name}-cpdbsexpilp_lp-hc2leaves',
-        f'{name}-cpdbsexpilp_lp-hc3leaves',
-        f'{name}-cpdbsexpilp_lp-hc',
-        f'{name}-cpdbsapprox-hc',
+        f'{name}-explicit-cpdbs-hcleafdisjoint',
+        f'{name}-explicit-cpdbs-hcsingleleaf',
         f'{name}-cpdbsapprox-hcdisjointleaf',
+        f'{name}-cpdbsapproxpoly-hcdisjointleaf',
+        f'{name}-cpdbssingleleaf-hc1leaf',
+        f'{name}-cpdbsexp_noprune_noninc_static-hc',
+        f'{name}-cpdbsexp_noprune_noninc_leafid-hc',
+        f'{name}-cpdbsexp_noprune_rec_static-hc',
+        f'{name}-cpdbsexp_noprune_rec_leafid-hc',
+        f'{name}-cpdbsexp_noprune_copy_static-hc',
+        f'{name}-cpdbsexp_noprune_copy_leafid-hc',
+        f'{name}-cpdbsexp_prune_noninc_static-hc',
+        f'{name}-cpdbsexp_prune_noninc_leafid-hc',
+        f'{name}-cpdbsexp_prune_rec_static-hc',
+        f'{name}-cpdbsexp_prune_rec_leafid-hc',
+        f'{name}-cpdbsexp_prune_copy_static-hc',
+        f'{name}-cpdbsexp_prune_copy_leafid-hc',
     ]
     f = Filter(name, algorithms)
-    report_name=f'{exp.name}-absolute-baseline-exp-expilp-{name}'
+    report_name=f'{exp.name}-absolute-{name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.{HTML_OR_TEX}'
     exp.add_report(
         AbsoluteReport(
