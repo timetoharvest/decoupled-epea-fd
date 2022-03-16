@@ -46,9 +46,6 @@ for dec_name, dec in decoupling.items():
             for sort_name, sort in sort_leaves.items():
                 CONFIGS.append(IssueConfig(f'{dec_name}-cpdbsexp_prune_{inc_name}_{sort_name}-hc_{n}leaves', ['--decoupling', dec, '--search',  f'astar(cpdbs_exp(patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={TIME_LIMIT}),early_termination=true,incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
-        # approx
-        CONFIGS.append(IssueConfig(f'{dec_name}-cpdbsapproxpoly-hcdisjointleaf_{n}leaves', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=true,patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
-
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
     email="silvan.sievers@unibas.ch",

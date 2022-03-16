@@ -21,15 +21,9 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
 REVISION = "c634daffdd65b58993a22bfa65218dece17751ca"
 REVISIONS = [REVISION]
-CEGAR_MAX_TIME=2
-SYS_MAX_TIME=2
-HC_MAX_TIME=2
-ORDERS_MAX_TIME=2
+TIME_LIMIT=2
 if common_setup.is_running_on_cluster():
-    CEGAR_MAX_TIME=100
-    SYS_MAX_TIME=100
-    HC_MAX_TIME=500
-    ORDERS_MAX_TIME=200
+    TIME_LIMIT=900
 CONFIGS = []
 decoupling = {
     'fork' : 'fork()',
@@ -46,14 +40,8 @@ sort_leaves = {
 }
 for dec_name, dec in decoupling.items():
     for n in range(1, 4):
-        # exp
-        CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_noprune_noninc_leafid-all-cegar_{n}leaves-sys2_{n}leaves-hc_{n}leaves', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(pattern_filter=n_leaves_patterns({n}),total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_filter=n_leaves_patterns({n}),pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination=false,incremental_computation=none,sort_leaves_type=leafid))'], build_options=['release64'], driver_options=['--build', 'release64']))
-        for inc_name, inc in incremental_computation.items():
-            for sort_name, sort in sort_leaves.items():
-                CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_prune_{inc_name}_{sort_name}-all-cegar_{n}leaves-sys2_{n}leaves-hc_{n}leaves', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(pattern_filter=n_leaves_patterns({n}),total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_filter=n_leaves_patterns({n}),pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination=true,incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64']))
-
         # approx
-        CONFIGS.append(IssueConfig(f'{dec_name}-scpapproxpoly-allleafdisjoint-cegar_{n}leaves-sys2_{n}leaves-hc_{n}leaves', ['--decoupling', dec, '--search',  f'astar(max_scp_approx(polynomial_decoupled_pdb=true,abstractions=[projections(patterns=multiple_cegar(pattern_filter=n_leaves_patterns({n}),total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_filter=n_leaves_patterns({n}),pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all_leaf_disjoint))'], build_options=['release64'], driver_options=['--build', 'release64']))
+        CONFIGS.append(IssueConfig(f'{dec_name}-cpdbsapproxpoly-hcdisjointleaf_{n}leaves', ['--decoupling', dec, '--search',  f'astar(cpdbs_approx(polynomial_decoupled_pdb=true,patterns=hillclimbing(pattern_filter=n_leaves_patterns({n}),max_time={TIME_LIMIT},disjoint_leaf_additivity=true)))'], build_options=['release64'], driver_options=['--build', 'release64'])),
 
 SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
 ENVIRONMENT = BaselSlurmEnvironment(
@@ -108,7 +96,6 @@ attributes = [
 
     average_num_affected_leaf_factors,
     maximum_num_affected_leaf_factors,
-
     average_member_states,
 ]
 
