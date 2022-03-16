@@ -50,10 +50,10 @@ sort_leaves = {
     'leafid': 'leafid',
 }
 for dec_name, dec in decoupling.items():
-    for prune_name, prune in early_termination.items():
-        for inc_name, inc in incremental_computation.items():
-            for sort_name, sort in sort_leaves.items():
-                CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_{prune_name}_{inc_name}_{sort_name}-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination={prune},incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64']))
+    CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination=false,incremental_computation=none,sort_leaves_type=leafid))'], build_options=['release64'], driver_options=['--build', 'release64']))
+    for inc_name, inc in incremental_computation.items():
+        for sort_name, sort in sort_leaves.items():
+            CONFIGS.append(IssueConfig(f'{dec_name}-scpexp_prune_{inc_name}_{sort_name}-all-cegar-sys2-hc', ['--decoupling', dec, '--search',  f'astar(max_scp_exp(abstractions=[projections(patterns=multiple_cegar(total_max_time={CEGAR_MAX_TIME})),projections(patterns=systematic(pattern_max_size=2,max_time={SYS_MAX_TIME})),projections(patterns=hillclimbing(max_time={HC_MAX_TIME}))],max_time={ORDERS_MAX_TIME},saturator=all,early_termination=true,incremental_computation={inc},sort_leaves_type={sort}))'], build_options=['release64'], driver_options=['--build', 'release64']))
 
 SUITE = [
     "agricola", "airport", "barman", "blocksworld", "childsnack",
