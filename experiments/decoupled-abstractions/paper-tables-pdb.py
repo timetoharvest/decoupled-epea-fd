@@ -20,6 +20,7 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 REVISIONS=[
     'e99b8c6ced5b5d195f2210d3de9f21cfa4dd5784', # 2022-01-05
     '6771467f81f8d1e6fb3ebc19114d833b9932950f', # 2022-03-03
+    'c634daffdd65b58993a22bfa65218dece17751ca', # 2022-03-16
 ]
 
 def remove_revision(run):
@@ -64,6 +65,18 @@ exp.add_fetcher('data/2022-03-03-decoupled-pdb-eval',filter=[remove_revision],fi
     'fork-pdbpoly-greedy3leaves',
     'ifork-pdbpoly-greedy3leaves',
     'mmgeneral-pdbpoly-greedy3leaves',
+],merge=True)
+
+exp.add_fetcher('data/2022-03-16-explicit-decoupled-pdb-eval',filter=[remove_revision],filter_algorithm=[
+    'explicit-fork-pdb-greedy_1leaves',
+    'explicit-ifork-pdb-greedy_1leaves',
+    'explicit-mmgeneral-pdb-greedy_1leaves',
+    'explicit-fork-pdb-greedy_2leaves',
+    'explicit-ifork-pdb-greedy_2leaves',
+    'explicit-mmgeneral-pdb-greedy_2leaves',
+    'explicit-fork-pdb-greedy_3leaves',
+    'explicit-ifork-pdb-greedy_3leaves',
+    'explicit-mmgeneral-pdb-greedy_3leaves',
 ],merge=True)
 
 
@@ -129,13 +142,16 @@ exp.add_report(AbsoluteReport(attributes=['coverage']))
 
 for name in DECOUPLINGS:
     algorithms=[
-        'pdbgreedy',
+        f'explicit-{name}-pdb-greedy_1leaves',
         f'{name}-pdb-greedy1leaves',
         f'{name}-pdbpoly-greedy1leaves',
+        f'explicit-{name}-pdb-greedy_2leaves',
         f'{name}-pdb-greedy2leaves',
         f'{name}-pdbpoly-greedy2leaves',
+        f'explicit-{name}-pdb-greedy_3leaves',
         f'{name}-pdb-greedy3leaves',
         f'{name}-pdbpoly-greedy3leaves',
+        'pdbgreedy',
         f'{name}-pdb-greedy',
         f'{name}-pdbpoly-greedy',
     ]
