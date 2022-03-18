@@ -311,8 +311,8 @@ for name in DECOUPLINGS:
         f'{name}-scpexp_prune_copy_leafid-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
     ]
     f = Filter(name, algorithms)
-    report_name=f'{exp.name}-absolute-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.{HTML_OR_TEX}'
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
     exp.add_report(
         AbsoluteReport(
             attributes=TABLE_ATTRIBUTES,
@@ -324,5 +324,234 @@ for name in DECOUPLINGS:
         outfile=report_file,
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+HTML_OR_TEX='tex'
+for name in DECOUPLINGS:
+    algorithms=[
+        # 'explicit-blind',
+        # f'{name}-blind',
+        # 'explicit-lmcut',
+        # f'{name}-lmcut',
+        'explicit-scp-all-cegar-sys2-hc',
+        f'{name}-explicit-scp-all-cegar-sys2-hc',
+        f'{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc',
+        f'{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf',
+        # f'explicit-{name}-scp-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'explicit-{name}-scp-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+        # f'{name}-scpexp_noprune_noninc_leafid-all-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpexp_noprune_noninc_leafid-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpexp_noprune_noninc_leafid-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpexp_prune_noninc_static-all-cegar-sys2-hc',
+        # f'{name}-scpexp_prune_noninc_static-all-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpexp_prune_noninc_static-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpexp_prune_noninc_static-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpexp_prune_noninc_leafid-all-cegar-sys2-hc',
+        # f'{name}-scpexp_prune_noninc_leafid-all-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpexp_prune_noninc_leafid-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpexp_prune_noninc_leafid-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpexp_prune_copy_static-all-cegar-sys2-hc',
+        # f'{name}-scpexp_prune_copy_static-all-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpexp_prune_copy_static-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpexp_prune_copy_static-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpexp_prune_copy_leafid-all-cegar-sys2-hc',
+        # f'{name}-scpexp_prune_copy_leafid-all-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpexp_prune_copy_leafid-all-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpexp_prune_copy_leafid-all-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        # f'{name}-scpapprox-allleafdisjoint-cegar-sys2-hc',
+        f'{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc',
+        # f'{name}-scpapproxpoly-allleafdisjoint-cegar_1leaves-sys2_1leaves-hc_1leaves',
+        # f'{name}-scpapproxpoly-allleafdisjoint-cegar_2leaves-sys2_2leaves-hc_2leaves',
+        # f'{name}-scpapproxpoly-allleafdisjoint-cegar_3leaves-sys2_3leaves-hc_3leaves',
+        f'{name}-scpsingleleaf-all-cegarsingleleaf-sys2singleleaf-hc1leaves',
+    ]
+    f = Filter(name, algorithms)
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=['coverage'],
+            filter_algorithm=algorithms,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            format=HTML_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-explicit-scp-all-cegar-sys2-hc',
+                f'{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-explicit-scp-all-cegar-sys2-hc',
+                f'{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='tex'
+name = 'mmgeneral'
+report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='expansions',
+        filter_algorithm=[
+            f'{name}-explicit-scp-all-cegar-sys2-hc',
+            f'{name}-explicit-scp-allleafdisjoint-cegar-sys2-hc',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='expansions',
+        filter_algorithm=[
+            f'{name}-explicit-scp-all-cegar-sys2-hc',
+            f'{name}-explicit-scp-all-cegarsingleleaf-sys2singleleaf-hcsingleleaf',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+                f'{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+                f'{name}-scpsingleleaf-all-cegarsingleleaf-sys2singleleaf-hc1leaves',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='tex'
+name = 'mmgeneral'
+report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='expansions',
+        filter_algorithm=[
+            f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+            f'{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='expansions',
+        filter_algorithm=[
+            f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+            f'{name}-scpsingleleaf-all-cegarsingleleaf-sys2singleleaf-hc1leaves',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+
+PNG_OR_TEX='tex'
+name = 'mmgeneral'
+report_name=f'{exp.name}-plot-searchtime-decoupled-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='search_time',
+        filter_algorithm=[
+            f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+            f'{name}-scpapproxpoly-allleafdisjoint-cegar-sys2-hc',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
+report_name=f'{exp.name}-plot-searchtime-decoupled-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+report_file=Path(exp.eval_dir) / f'{report_name}'
+exp.add_report(
+    ScatterPlotReport(
+        attributes='search_time',
+        filter_algorithm=[
+            f'{name}-scpexp_noprune_noninc_leafid-all-cegar-sys2-hc',
+            f'{name}-scpsingleleaf-all-cegarsingleleaf-sys2singleleaf-hc1leaves',
+        ],
+        # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+        # get_category=lambda run1, run2: run1['domain'],
+        format=PNG_OR_TEX,
+    ),
+    name=report_name,
+    outfile=report_file,
+)
 
 exp.run_steps()

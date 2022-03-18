@@ -79,6 +79,12 @@ exp.add_fetcher('data/2022-03-16-explicit-decoupled-pdb-eval',filter=[remove_rev
     'explicit-mmgeneral-pdb-greedy_3leaves',
 ],merge=True)
 
+exp.add_fetcher('data/2022-03-17-explicit-decoupled-pdb-eval',filter=[remove_revision],filter_algorithm=[
+    f'explicit-fork-pdb-greedy',
+    f'explicit-ifork-pdb-greedy',
+    f'explicit-mmgeneral-pdb-greedy',
+],merge=True)
+
 
 DECOUPLINGS = [
     'fork',
@@ -152,12 +158,13 @@ for name in DECOUPLINGS:
         f'{name}-pdb-greedy3leaves',
         f'{name}-pdbpoly-greedy3leaves',
         'pdbgreedy',
+        f'explicit-{name}-pdb-greedy',
         f'{name}-pdb-greedy',
         f'{name}-pdbpoly-greedy',
     ]
     f = Filter(name, algorithms)
-    report_name=f'{exp.name}-absolute-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.{HTML_OR_TEX}'
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
     exp.add_report(
         AbsoluteReport(
             attributes=TABLE_ATTRIBUTES,
@@ -169,5 +176,55 @@ for name in DECOUPLINGS:
         outfile=report_file,
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+HTML_OR_TEX='tex'
+for name in DECOUPLINGS:
+    algorithms=[
+        # f'explicit-{name}-pdb-greedy_1leaves',
+        # f'{name}-pdb-greedy1leaves',
+        # f'{name}-pdbpoly-greedy1leaves',
+        # f'explicit-{name}-pdb-greedy_2leaves',
+        # f'{name}-pdb-greedy2leaves',
+        # f'{name}-pdbpoly-greedy2leaves',
+        # f'explicit-{name}-pdb-greedy_3leaves',
+        # f'{name}-pdb-greedy3leaves',
+        # f'{name}-pdbpoly-greedy3leaves',
+        'pdbgreedy',
+        f'explicit-{name}-pdb-greedy',
+        f'{name}-pdb-greedy',
+        f'{name}-pdbpoly-greedy',
+    ]
+    f = Filter(name, algorithms)
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=TABLE_ATTRIBUTES,
+            filter_algorithm=algorithms,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            format=HTML_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='tex'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-searchtime-pdb-vs-pdbply-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='search_time',
+            filter_algorithm=[
+                f'{name}-pdb-greedy',
+                f'{name}-pdbpoly-greedy',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
 
 exp.run_steps()

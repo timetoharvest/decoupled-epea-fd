@@ -112,7 +112,7 @@ exp.add_fetcher('data/2022-03-16-decoupled-cpdbs-approx-filter-eval',filter=[rem
     'fork-cpdbsapproxpoly-hcdisjointleaf_2leaves',
     'ifork-cpdbsapproxpoly-hcdisjointleaf_2leaves',
     'mmgeneral-cpdbsapproxpoly-hcdisjointleaf_2leaves',
-    'fork-cpdbsapproxpoly-hcdisjointleaf_31leaves',
+    'fork-cpdbsapproxpoly-hcdisjointleaf_3leaves',
     'ifork-cpdbsapproxpoly-hcdisjointleaf_3leaves',
     'mmgeneral-cpdbsapproxpoly-hcdisjointleaf_3leaves',
 ],merge=True)
@@ -289,8 +289,8 @@ for name in DECOUPLINGS:
         f'{name}-cpdbsexp_prune_copy_leafid-hc_3leaves',
     ]
     f = Filter(name, algorithms)
-    report_name=f'{exp.name}-absolute-{name}'
-    report_file=Path(exp.eval_dir) / f'{report_name}.{HTML_OR_TEX}'
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
     exp.add_report(
         AbsoluteReport(
             attributes=TABLE_ATTRIBUTES,
@@ -302,5 +302,129 @@ for name in DECOUPLINGS:
         outfile=report_file,
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+HTML_OR_TEX='tex'
+for name in DECOUPLINGS:
+    algorithms=[
+        # 'explicit-blind',
+        # f'{name}-blind',
+        # 'explicit-lmcut',
+        # f'{name}-lmcut',
+        'explicit-cpdbs-hc',
+        f'{name}-explicit-cpdbs-hc',
+        f'{name}-explicit-cpdbs-hcleafdisjoint',
+        f'{name}-explicit-cpdbs-hcsingleleaf',
+        # f'explicit-{name}-cpdbs-hc2leaves',
+        # f'explicit-{name}-cpdbs-hc3leaves',
+        f'{name}-cpdbsexp_noprune_noninc_leafid-hc',
+        # f'{name}-cpdbsexp_noprune_noninc_leafid-hc_1leaves',
+        # f'{name}-cpdbsexp_noprune_noninc_leafid-hc_2leaves',
+        # f'{name}-cpdbsexp_noprune_noninc_leafid-hc_3leaves',
+        f'{name}-cpdbsexp_prune_noninc_static-hc',
+        # f'{name}-cpdbsexp_prune_noninc_static-hc_1leaves',
+        # f'{name}-cpdbsexp_prune_noninc_static-hc_2leaves',
+        # f'{name}-cpdbsexp_prune_noninc_static-hc_3leaves',
+        f'{name}-cpdbsexp_prune_noninc_leafid-hc',
+        # f'{name}-cpdbsexp_prune_noninc_leafid-hc_1leaves',
+        # f'{name}-cpdbsexp_prune_noninc_leafid-hc_2leaves',
+        # f'{name}-cpdbsexp_prune_noninc_leafid-hc_3leaves',
+        f'{name}-cpdbsexp_prune_copy_static-hc',
+        # f'{name}-cpdbsexp_prune_copy_static-hc_1leaves',
+        # f'{name}-cpdbsexp_prune_copy_static-hc_2leaves',
+        # f'{name}-cpdbsexp_prune_copy_static-hc_3leaves',
+        f'{name}-cpdbsexp_prune_copy_leafid-hc',
+        # f'{name}-cpdbsexp_prune_copy_leafid-hc_1leaves',
+        # f'{name}-cpdbsexp_prune_copy_leafid-hc_2leaves',
+        # f'{name}-cpdbsexp_prune_copy_leafid-hc_3leaves',
+        # f'{name}-cpdbsapprox-hcdisjointleaf',
+        f'{name}-cpdbsapproxpoly-hcdisjointleaf',
+        # f'{name}-cpdbsapproxpoly-hcdisjointleaf_1leaves',
+        # f'{name}-cpdbsapproxpoly-hcdisjointleaf_2leaves',
+        # f'{name}-cpdbsapproxpoly-hcdisjointleaf_3leaves',
+        f'{name}-cpdbssingleleaf-hc1leaf',
+    ]
+    f = Filter(name, algorithms)
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=['coverage'],
+            filter_algorithm=algorithms,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            format=HTML_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-explicit-cpdbs-hc',
+                f'{name}-explicit-cpdbs-hcleafdisjoint',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-explicit-cpdbs-hc',
+                f'{name}-explicit-cpdbs-hcsingleleaf',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-cpdbsexp_noprune_noninc_leafid-hc',
+                f'{name}-cpdbsapproxpoly-hcdisjointleaf',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-cpdbsexp_noprune_noninc_leafid-hc',
+                f'{name}-cpdbssingleleaf-hc1leaf',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
 
 exp.run_steps()
