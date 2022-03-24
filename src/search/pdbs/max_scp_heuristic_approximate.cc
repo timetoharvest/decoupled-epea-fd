@@ -193,7 +193,7 @@ int MaxSCPHeuristicApproximate::compute_pdb_value_with_prices(
                     sort(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end());
                     hash_prices_for_leaf.erase(
                         unique(hash_prices_for_leaf.begin(), hash_prices_for_leaf.end(), [](const auto &lhs, const auto &rhs) {
-                            // Treat elements of hash_prices_for_leaf equivalent if their first enty, the abstract state hash, is equivalent.
+                            // Treat elements of hash_prices_for_leaf equivalent if their first entry, the abstract state hash, is equivalent.
                             return lhs.first == rhs.first;
                         }),
                         hash_prices_for_leaf.end());

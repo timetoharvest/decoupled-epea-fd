@@ -24,10 +24,6 @@ DecoupledCanonicalPDBsApproximate::DecoupledCanonicalPDBsApproximate(
     bool polynomial_decoupled_pdb)
     : CanonicalPDBs(pdbs, pattern_cliques),
       polynomial_decoupled_pdb(polynomial_decoupled_pdb) {
-    // TODO should we verify that no two patterns of the same
-    // clique affect the same leaf? Maybe in a #ifndef NDEBUG block?
-    // This is ensured by the construction of patterns in
-    // CanonicalPDBsHeuristic, though.
     affected_leaves_by_pattern.reserve(pdbs->size());
     affected_pattern_var_indices_by_leaf_by_pattern.reserve(pdbs->size());
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
