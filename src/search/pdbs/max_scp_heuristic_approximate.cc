@@ -276,6 +276,7 @@ CostPartitioningHeuristic compute_saturated_cost_partitioning_leaf_disjoint(
             vector<int> saturated_costs = projection->compute_saturated_costs(h_values);
             cp_heuristic.add_h_values(pos, move(h_values));
             reduce_costs(remaining_costs, saturated_costs);
+            affected_leaves_so_far.insert(projection_leaves.begin(), projection_leaves.end());
         }
     }
     return cp_heuristic;
@@ -285,7 +286,7 @@ static shared_ptr<Evaluator> _parse(OptionParser &parser) {
     parser.add_option<bool>(
         "polynomial_decoupled_pdb",
         "if true, compute decoupled pdb in polynomial time by iterating "
-        "over abstact states; if false, ",
+        "over abstract states; if false, ",
         "false");
     prepare_parser_for_cost_partitioning_heuristic(parser);
     add_saturator_option(parser);
