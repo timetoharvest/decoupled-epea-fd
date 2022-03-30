@@ -380,37 +380,7 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
 
-    // check if it is a proper general-star factoring
-    for (const Operator &op : g_operators){
-        bool is_center_op = false;
-        for (const Effect &eff : op.get_effects()){
-            if (g_belongs_to_factor[eff.var] == LeafFactorID::CENTER){
-                is_center_op = true;
-                break;
-            }
-        }
-        if (!is_center_op){
-            bool error = false;
-            LeafFactorID factor(g_belongs_to_factor[op.get_effects().begin()->var]);
-            for (const Effect &eff : op.get_effects()){
-                if (g_belongs_to_factor[eff.var] != factor){
-                    error = true;
-                    break;
-                }
-            }
-            for (const Condition &pre : op.get_preconditions()){
-                if (g_belongs_to_factor[pre.var] != factor && g_belongs_to_factor[pre.var] != LeafFactorID::CENTER){
-                    error = true;
-                    break;
-                }
-            }
-            if (error){
-                cout << "WARNING: not a general-star factoring" << endl;
-                break;
-            }
-        }
-    }
-
+    bool is_generalized_factoring = false;
     // determine factor of each operator
     for (Operator &op : g_operators){
 
@@ -448,14 +418,17 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         } else if (eff_factors.size() > 1){
             // effect on more than one factor
             is_center_op = true;
+            is_generalized_factoring = true;
         } else {
             pre_factors.erase(LeafFactorID::CENTER);
             if (pre_factors.size() > 1){
                 // precondition on more than one leaf
                 is_center_op = true;
+                is_generalized_factoring = true;
             } else if (!pre_factors.empty() && *pre_factors.begin() != *eff_factors.begin()){
                 // precondition on leaf A, but effect on leaf B
                 is_center_op = true;
+                is_generalized_factoring = true;
             }
         }
         if (!is_center_op){
@@ -464,6 +437,11 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         } else {
             op.set_affected_factor(LeafFactorID::CENTER);
         }
+    }
+
+    if (is_generalized_factoring){
+        cout << "Info: factoring is not a star factoring" << endl;
+        profile = GENERAL;
     }
 
     fork_leaf = vector<bool>(g_leaves.size(), true);
@@ -493,13 +471,16 @@ void Factoring::apply_factoring(const FactoredVars &factoring) {
         }
     }
     if (interaction_graph.is_fork()){
+        assert(!is_generalized_factoring);
         profile = FORK;
-        cout << "factoring type set to fork, no non-fork leaf factors" << endl;
+        cout << "Info: factoring type set to fork, no non-fork leaf factors" << endl;
     } else if (interaction_graph.is_ifork()){
+        assert(!is_generalized_factoring);
         profile = IFORK;
-        cout << "factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
+        cout << "Info: factoring type set to inverted-fork, no non-inverted-fork leaf factors" << endl;
     } else if (interaction_graph.is_strict_star()){
-        cout << "factoring is strict-star factoring, no inter-leaf dependencies" << endl;
+        assert(!is_generalized_factoring);
+        cout << "Info: factoring is strict-star factoring, no inter-leaf dependencies" << endl;
     }
 
     // setup g_goals_per_factor

@@ -21,6 +21,7 @@ enum FACTORING_PROFILE {
     FORK,
     IFORK,
     STAR,
+    GENERAL
 };
 
 enum DECOUPLED_SEARCH_TYPE {
