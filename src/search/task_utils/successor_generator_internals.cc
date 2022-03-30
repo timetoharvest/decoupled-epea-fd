@@ -208,6 +208,7 @@ void GeneratorSwitchHash::generate_applicable_ops(
 
 void GeneratorSwitchHash::generate_applicable_ops(
     const LeafState &state, vector<OperatorID> &applicable_ops) const {
+    assert(g_belongs_to_factor[switch_var_id] == state.get_id().get_factor());
     int val = state[switch_var_id];
     const auto &child = generator_for_value.find(val);
     if (child != generator_for_value.end()) {
@@ -255,6 +256,7 @@ void GeneratorSwitchSingle::generate_applicable_ops(
 
 void GeneratorSwitchSingle::generate_applicable_ops(
     const LeafState &state, vector<OperatorID> &applicable_ops) const {
+    assert(g_belongs_to_factor[switch_var_id] == state.get_id().get_factor());
     if (value == state[switch_var_id]) {
         generator_for_value->generate_applicable_ops(state, applicable_ops);
     }
