@@ -167,7 +167,7 @@ protected:
     void exit_if_timeout() const {
         if (abstain_type != ABSTAIN_TYPE::STANDARD_ON_FAILURE){
             std::cout << Factoring::TIME_OUT_MESSAGE << std::endl;
-            exit_with(utils::ExitCode::SEARCH_UNSOLVED_INCOMPLETE);
+            exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
         }
     }
 
