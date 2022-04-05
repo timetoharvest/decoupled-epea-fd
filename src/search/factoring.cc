@@ -121,7 +121,7 @@ Factoring::Factoring(const Options &opts) :
             cout << "maximum leaf factor size " << max_leaf_size << endl;
         }
     } else {
-        max_leaf_size = numeric_limits<size_t>::max();
+        max_leaf_size = numeric_limits<int>::max();
     }
     if (opts.contains("pruning")){
         CompliantPathGraph::set_pruning_options(opts.get<PruningOptions*>("pruning"));
