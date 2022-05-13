@@ -18,7 +18,7 @@ from downward.reports.scatter import ScatterPlotReport
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 REVISIONS=[
-    'e843f20ac7e877edb548acd4f0110ccbd0137525', # 2022-04-01
+    'e843f20ac7e877edb548acd4f0110ccbd0137525', # 2022-04-05
 ]
 
 def remove_revision(run):
@@ -34,12 +34,12 @@ def remove_revision(run):
 
 exp = FastDownwardExperiment()
 
-exp.add_fetcher('data/2022-04-01-explicit-baseline-blind-lmcut-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-explicit-baseline-blind-lmcut-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'explicit-blind',
     'explicit-lmcut',
 ])
 
-exp.add_fetcher('data/2022-04-01-decoupled-baseline-blind-lmcut-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-decoupled-baseline-blind-lmcut-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'fork-blind',
     'ifork-blind',
     'mmgeneral-blind',
@@ -48,7 +48,7 @@ exp.add_fetcher('data/2022-04-01-decoupled-baseline-blind-lmcut-ipc-eval',filter
     'mmgeneral-lmcut',
 ],merge=True)
 
-exp.add_fetcher('data/2022-04-01-explicit-baseline-cpdbs-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-explicit-baseline-cpdbs-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'explicit-cpdbs-hc',
     'explicit-fork-cpdbs-hc_1leaves',
     'explicit-fork-cpdbs-hc_2leaves',
@@ -76,7 +76,7 @@ exp.add_fetcher('data/2022-04-01-explicit-baseline-cpdbs-ipc-eval',filter=[remov
     'explicit-mmgeneral-cpdbs-hcleafdisjoint_infinityleaves',
 ],merge=True)
 
-exp.add_fetcher('data/2022-04-01-decoupled-cpdbs-exp-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-decoupled-cpdbs-exp-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'fork-cpdbsexp_prune_noninc_static-hc_1leaves',
     'fork-cpdbsexp_prune_noninc_leafid-hc_1leaves',
     'fork-cpdbsexp_prune_copy_static-hc_1leaves',
@@ -139,7 +139,7 @@ exp.add_fetcher('data/2022-04-01-decoupled-cpdbs-exp-ipc-eval',filter=[remove_re
     'mmgeneral-cpdbsexp_noprune_noninc_leafid-hc_infinityleaves',
 ],merge=True)
 
-exp.add_fetcher('data/2022-04-01-decoupled-cpdbs-approx-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-decoupled-cpdbs-approx-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'fork-cpdbsapprox-hcleafdisjoint_1leaves',
     'fork-cpdbsapproxpoly-hcleafdisjoint_1leaves',
     'ifork-cpdbsapprox-hcleafdisjoint_1leaves',
@@ -166,7 +166,7 @@ exp.add_fetcher('data/2022-04-01-decoupled-cpdbs-approx-ipc-eval',filter=[remove
     'mmgeneral-cpdbsapproxpoly-hcleafdisjoint_infinityleaves',
 ],merge=True)
 
-exp.add_fetcher('data/2022-04-01-decoupled-cpdbs-singleleaf-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-decoupled-cpdbs-singleleaf-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'fork-cpdbssingleleaf-hc_1leaves',
     'ifork-cpdbssingleleaf-hc_1leaves',
     'mmgeneral-cpdbssingleleaf-hc_1leaves',
@@ -266,7 +266,7 @@ for name in DECOUPLINGS:
         f'{name}-cpdbsapprox-hcleafdisjoint_infinityleaves',
         f'{name}-cpdbsapproxpoly-hcleafdisjoint_infinityleaves',
 
-        f'{name}-cpdbssingleleaf-hcleafdisjoint_1leaves',
+        f'{name}-cpdbssingleleaf-hc_1leaves',
 
         f'{name}-cpdbsexp_noprune_noninc_leafid-hc_1leaves',
         f'{name}-cpdbsexp_noprune_noninc_leafid-hc_2leaves',
@@ -303,5 +303,103 @@ for name in DECOUPLINGS:
         outfile=report_file,
     )
     exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
+
+HTML_OR_TEX='tex'
+for name in DECOUPLINGS:
+    algorithms=[
+        'explicit-cpdbs-hc',
+        f'explicit-{name}-cpdbs-hc_infinityleaves',
+        f'explicit-{name}-cpdbs-hcleafdisjoint_infinityleaves',
+        f'explicit-{name}-cpdbs-hc_1leaves',
+        f'{name}-cpdbsexp_noprune_noninc_leafid-hc_infinityleaves',
+        f'{name}-cpdbsexp_prune_noninc_leafid-hc_infinityleaves',
+        f'{name}-cpdbsexp_prune_copy_leafid-hc_infinityleaves',
+        f'{name}-cpdbsexp_prune_copy_static-hc_infinityleaves',
+        f'{name}-cpdbsapproxpoly-hcleafdisjoint_infinityleaves',
+        f'{name}-cpdbssingleleaf-hc_1leaves',
+    ]
+    f = Filter(name, algorithms)
+    report_name=f'{exp.name}-absolute-{name}.{HTML_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        AbsoluteReport(
+            attributes=['coverage'],
+            filter_algorithm=algorithms,
+            filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            format=HTML_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'explicit-{name}-cpdbs-hc_infinityleaves',
+                f'explicit-{name}-cpdbs-hcleafdisjoint_infinityleaves',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-explicit-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'explicit-{name}-cpdbs-hc_infinityleaves',
+                f'explicit-{name}-cpdbs-hc_1leaves',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+PNG_OR_TEX='png'
+for name in DECOUPLINGS:
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-leafdisjoint-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-cpdbsexp_noprune_noninc_leafid-hc_infinityleaves',
+                f'{name}-cpdbsapproxpoly-hcleafdisjoint_infinityleaves',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+    report_name=f'{exp.name}-plot-expansions-decoupled-exp-vs-singleleaf-{name}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='expansions',
+            filter_algorithm=[
+                f'{name}-cpdbsexp_noprune_noninc_leafid-hc_infinityleaves',
+                f'{name}-cpdbssingleleaf-hc_1leaves',
+            ],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
 
 exp.run_steps()

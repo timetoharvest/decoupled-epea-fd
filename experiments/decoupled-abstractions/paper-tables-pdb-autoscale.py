@@ -34,7 +34,7 @@ def remove_revision(run):
 
 exp = FastDownwardExperiment()
 
-exp.add_fetcher('data/2022-04-01-explicit-baseline-pdb-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-explicit-baseline-pdb-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'pdb-greedy',
     'explicit-fork-pdb-greedy_1leaves',
     'explicit-ifork-pdb-greedy_1leaves',
@@ -50,7 +50,7 @@ exp.add_fetcher('data/2022-04-01-explicit-baseline-pdb-ipc-eval',filter=[remove_
     'explicit-mmgeneral-pdb-greedy_infinityleaves',
 ])
 
-exp.add_fetcher('data/2022-04-01-decoupled-pdb-ipc-eval',filter=[remove_revision],filter_algorithm=[
+exp.add_fetcher('data/2022-04-05-decoupled-pdb-autoscale-eval',filter=[remove_revision],filter_algorithm=[
     'fork-pdb-greedy_1leaves',
     'ifork-pdb-greedy_1leaves',
     'mmgeneral-pdb-greedy_1leaves',
