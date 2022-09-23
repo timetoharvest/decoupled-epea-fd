@@ -515,6 +515,7 @@ fast_downward_plugin(
         pdbs/max_scp_heuristic_approximate
         pdbs/max_scp_heuristic_exponential
         pdbs/max_scp_heuristic_exponential_broken
+        pdbs/max_scp_heuristic_price_partitioning
         pdbs/max_scp_heuristic_single_leaf
         pdbs/pattern_cliques
         pdbs/pattern_collection_information
