@@ -106,33 +106,42 @@ static void generate_abs_leaf_state_constraints(
             return;
         }
         is_dead_end = false;
-        lp::LPConstraint constraint(-lp_infty, curr_h);
-        constraint.insert(heuristic_lp_var_id, 1.0);
-        for (int abs_lstate_lp_var : abs_lstate_lp_vars){
-            constraint.insert(abs_lstate_lp_var, -1.0);
-        }
-        lp_constrs.push_back(constraint);
 
-        if (debug){
-            cout << "c" << (lp_constrs.size() - 1)
-                 << ": heuristic value x" << heuristic_lp_var_id
-                 << " - abs leaf state prices sum x" << abs_lstate_lp_vars
-                 << " <= " << curr_h << endl;
-        }
-
-        // add constraint that sets the updated price for all leaf states (of all involved leaves) that are projected to the current abstract state
-        if (next_cp_h_id != -1) { // TODO check if this condition is indeed ok
-            // TODO think about this. is it ok to do this for all leaf states mapping to this abstract state,
-            // or can we rather do it only for the cheapest one, i.e. the one that leads to the price that is used.
+        if (next_cp_h_id != -1) {
+            // add constraint that sets the updated price for the cheapest leaf state (of all involved leaves) that
+            // are projected to the current abstract state
             lp::LPConstraint constraint(-lp_infty, curr_h);
             constraint.insert(heuristic_lp_var_id, 1.0);
-            for (int abs_lstate_lp_var : abs_lstate_lp_vars){
-                constraint.insert(abs_lstate_lp_var, -1.0);
-            }
+            vector<int> price_moved_lp_vars;
             for (LeafFactorID leaf : aff_leaves){
+                constraint.insert(abs_lstate_lp_vars[leaf], -1.0);
                 constraint.insert(lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][lstates_for_abs_states[leaf]], 1.0);
+                if (debug){
+                    price_moved_lp_vars.push_back(lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][lstates_for_abs_states[leaf]]);
+                }
             }
             lp_constrs.push_back(constraint);
+            if (debug){
+                cout << "c" << (lp_constrs.size() - 1)
+                     << ": heuristic value x" << heuristic_lp_var_id
+                     << " - abs leaf state prices sum x" << abs_lstate_lp_vars
+                     << " + price diff moved to next h x" << price_moved_lp_vars
+                     << " <= " << curr_h << endl;
+            }
+        } else {
+            // if there is no "next" heuristic, no need to forward prices
+            lp::LPConstraint constraint(-lp_infty, curr_h);
+            constraint.insert(heuristic_lp_var_id, 1.0);
+            for (LeafFactorID leaf : aff_leaves){
+                constraint.insert(abs_lstate_lp_vars[leaf], -1.0);
+            }
+            lp_constrs.push_back(constraint);
+            if (debug){
+                cout << "c" << (lp_constrs.size() - 1)
+                     << ": heuristic value x" << heuristic_lp_var_id
+                     << " - abs leaf state prices sum x" << abs_lstate_lp_vars
+                     << " <= " << curr_h << endl;
+            }
         }
 
         return;
@@ -233,6 +242,9 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
 
         vector<int> member_abs_state_ids = get_abstract_state_ids(abstraction_functions, member_state);
         for (int h_id = 0; h_id < static_cast<int>(cp_heuristics.size()); ++h_id) {
+            if (debug) {
+                cout << "next heuristic " << h_id << " #########################################" << endl;
+            }
             const auto &cp_heuristic = cp_heuristics[h_id];
             int sum_h = 0;
 
@@ -278,6 +290,10 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                                 lp::LPConstraint constraint(p, p);
                                 constraint.insert(lp_var_per_heuristic_per_leaf_state[cp_h_id][leaf][id], 1.0);
                                 constraints.push_back(constraint);
+                                if (debug){
+                                    cout << "c" << (constraints.size() - 1)
+                                         << ": price of leaf state (" << id << ", " << leaf << "), x" << lp_var_per_heuristic_per_leaf_state[cp_h_id][leaf][id] << " = " << p << endl;
+                                }
                             }
                             if (--num_reached_lstates == 0){
                                 break;
@@ -298,7 +314,8 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                                 constraints.push_back(constraint);
                                 if (debug) {
                                     cout << "c" << (constraints.size() - 1) << ": non affected leaf " << leaf
-                                         << " heuristic " << cp_h_id << endl;
+                                         << " heuristic " << cp_h_id << ": x" << lp_var_per_heuristic_per_leaf_state[cp_h_id][leaf][id]
+                                         << " = x" << lp_var_per_heuristic_per_leaf_state[last_non_center_id][leaf][id] << endl;
                                 }
                                 if (--num_reached_lstates == 0){
                                     break;
@@ -309,15 +326,9 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                 }
                 last_non_center_id = cp_h_id;
             }
-            if (debug) {
-                cout << "new heuristic" << endl;
-            }
             for (int cp_h_id = 0; cp_h_id < static_cast<int>(cp_heuristic.lookup_tables.size()); ++cp_h_id) {
                 const auto &lookup_table = cp_heuristic.lookup_tables[cp_h_id];
                 int abs_id = lookup_table.abstraction_id;
-                if (debug) {
-                    cout << "\tabs id " << abs_id << endl;
-                }
                 if (find(center_only_patterns.begin(), center_only_patterns.end(), abs_id ) != center_only_patterns.end()) {
                     // is center-only pattern
                     assert(utils::in_bounds(abs_id, member_abs_state_ids));
@@ -333,7 +344,7 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                     assert(sum_h >= 0);
                 } else {
                     if (debug) {
-                        cout << "handle heuristic h" << cp_h_id << " with pattern " << abs_id << endl;
+                        cout << "handle heuristic h" << cp_h_id << " with pattern " << abs_id << " " << patterns[abs_id] << ", affected leaves: " << affected_leaves_by_pattern[abs_id] << endl;
                     }
 
                     int h_lp_var_index = lp_variables.size();
@@ -355,14 +366,24 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                     //      b) one LP variable p^i_{s^L[P]} per layer i (abstraction) per reached abstract leaf state s^L[P]
                     //    c) one constraint setting equal variables from a) to variables from b) where s^L[P] \subseteq s^L
 
+                    int next_cp_h_id = -1;
+                    for (int i = cp_h_id + 1; i < static_cast<int>(cp_heuristic.lookup_tables.size()); ++i) {
+                        // find the next leaf heuristic to access lp var indices of that layer in recursion
+                        if (find(center_only_patterns.begin(),
+                                 center_only_patterns.end(),
+                                 cp_heuristic.lookup_tables[i].abstraction_id) == center_only_patterns.end()) {
+                            next_cp_h_id = i;
+                            break;
+                        }
+                    }
+
                     const vector<cost_saturation::ProjectionFunction::VariableAndMultiplier> &hash_multipliers =
                             abstraction_functions[abs_id]->get_variables_and_multipliers();
                     vector<vector<tuple<int, int, LeafStateHash>>> abs_leaf_state_hash_to_leaf_states(g_leaves.size());
                     int center_index = 0;
                     const vector<int> &pattern = patterns[abs_id];
                     for (int i = 0; i < static_cast<int>(pattern.size()); ++i){
-                        LeafFactorID factor = g_belongs_to_factor[pattern[i]];
-                        if (factor == LeafFactorID::CENTER){
+                        if (g_belongs_to_factor[pattern[i]] == LeafFactorID::CENTER){
                             center_index += hash_multipliers[i].hash_multiplier * state[pattern[i]];
                         }
                     }
@@ -388,34 +409,58 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                             }
                         }
                         if (affected_pattern_var_indices_by_abs_by_leaf[abs_id][leaf].size() != g_leaves[leaf].size()) {
-                            // Leaf not fully covered by pattern
+                            // Leaf not fully covered by pattern; keep only cheapest leaf state per abstract state
+                            vector<pair<LeafStateHash,LeafStateHash>> non_cheapest_lstates_for_lstate;
+
                             sort(cheapest_leaf_state_for_abs_leaf_state_hash.begin(), cheapest_leaf_state_for_abs_leaf_state_hash.end());
-                            cheapest_leaf_state_for_abs_leaf_state_hash.erase(
-                                    unique(cheapest_leaf_state_for_abs_leaf_state_hash.begin(),
-                                           cheapest_leaf_state_for_abs_leaf_state_hash.end(),
-                                           [](const auto &lhs, const auto &rhs) {
-                                               // Treat elements equivalent if their first entry, the abstract state hash, is equivalent.
-                                               return get<0>(lhs) == get<0>(rhs);
-                                           }),
-                                    cheapest_leaf_state_for_abs_leaf_state_hash.end());
+
+                            int p_hash = get<0>(cheapest_leaf_state_for_abs_leaf_state_hash[0]);
+                            LeafStateHash cheapest_lstate = get<2>(cheapest_leaf_state_for_abs_leaf_state_hash[0]);
+                            int uniq_idx = 1;
+                            for (int i = 1; i < static_cast<int>(cheapest_leaf_state_for_abs_leaf_state_hash.size()); ++i){
+                                if (p_hash == get<0>(cheapest_leaf_state_for_abs_leaf_state_hash[i])){
+                                    non_cheapest_lstates_for_lstate.push_back(make_pair(cheapest_lstate,
+                                                                                        get<2>(cheapest_leaf_state_for_abs_leaf_state_hash[i])));
+                                } else {
+                                    cheapest_leaf_state_for_abs_leaf_state_hash[uniq_idx] = cheapest_leaf_state_for_abs_leaf_state_hash[i];
+                                    uniq_idx += 1;
+                                    p_hash = get<0>(cheapest_leaf_state_for_abs_leaf_state_hash[i]);
+                                    cheapest_lstate = get<2>(cheapest_leaf_state_for_abs_leaf_state_hash[i]);
+                                }
+                            }
+                            cheapest_leaf_state_for_abs_leaf_state_hash.erase(cheapest_leaf_state_for_abs_leaf_state_hash.begin() + uniq_idx,
+                                                                              cheapest_leaf_state_for_abs_leaf_state_hash.end());
+
+
+                            if (next_cp_h_id != -1) {
+                                // for non-cheapest leaf states we add a constraint that in the next level their price
+                                // is equal to the new price of the now cheapest leaf state
+                                for (const auto &[cheapest_id, other_id]: non_cheapest_lstates_for_lstate) {
+                                    // TODO: double-check; still not sure if this is the right thing to do. it seems to lead to the correct estimates, though.
+                                    // still, why does it make sense to change (and possibly increase) the price of leaf states that are
+                                    // not really touched by the computation for this heuristic?
+                                    lp::LPConstraint constraint(0.0, 0.0);
+                                    constraint.insert(lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][cheapest_id], 1.0);
+                                    constraint.insert(lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][other_id], -1.0);
+                                    constraints.push_back(constraint);
+                                    if (debug) {
+                                        cout << "c" << (constraints.size() - 1) << ": non affected leaf state ("
+                                             << other_id << ", " << leaf
+                                             << ") heuristic " << cp_h_id << ": x"
+                                             << lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][cheapest_id]
+                                             << " = x"
+                                             << lp_var_per_heuristic_per_leaf_state[next_cp_h_id][leaf][other_id]
+                                             << endl;
+                                    }
+                                }
+                            }
                         }
                         abs_leaf_state_hash_to_leaf_states[leaf] = move(cheapest_leaf_state_for_abs_leaf_state_hash);
                     }
 
-                    int next_cp_h_id = -1;
-                    for (int i = cp_h_id + 1; i < static_cast<int>(cp_heuristic.lookup_tables.size()); ++i) {
-                        // find the next leaf heuristic to access lp var indices of that layer in recursion
-                        if (find(center_only_patterns.begin(),
-                                 center_only_patterns.end(),
-                                 cp_heuristic.lookup_tables[i].abstraction_id) == center_only_patterns.end()) {
-                            next_cp_h_id = i;
-                            break;
-                        }
-                    }
-
                     bool is_dead_end = true;
                     vector<LeafStateHash> lstates_for_abs_states(g_leaves.size(), LeafStateHash::MAX);
-                    vector<int> abs_lstate_lp_vars(g_leaves.size());
+                    vector<int> abs_lstate_lp_vars(g_leaves.size(), -1);
 
                     generate_abs_leaf_state_constraints(lp_variables,
                                                         constraints,
@@ -481,6 +526,11 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                 int lp_sol = static_cast<int>(ceil(solver.get_objective_value() - 0.01));
                 if (debug) {
                     cout << "objective value = " << lp_sol << endl;
+                    cout << "LP solution:" << endl;
+                    vector<double> sol = solver.extract_solution();
+                    for (int i = 0; i < static_cast<int>(lp_variables.size()); ++i){
+                        cout << "\tx" << i << " = " << sol[i] << endl;
+                    }
                 }
                 sum_h += lp_sol;
             } else {
