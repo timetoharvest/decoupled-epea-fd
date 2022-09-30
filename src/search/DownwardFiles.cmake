@@ -490,65 +490,6 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
-    NAME PDBS
-    HELP "Plugin containing the code for PDBs"
-    SOURCES
-        pdbs/canonical_pdbs
-        pdbs/canonical_pdbs_heuristic
-        pdbs/canonical_pdbs_heuristic_approximate
-        pdbs/canonical_pdbs_heuristic_exponential
-        pdbs/canonical_pdbs_heuristic_exponential_broken
-        pdbs/canonical_pdbs_heuristic_exponential_ilp
-        pdbs/canonical_pdbs_heuristic_single_leaf
-        pdbs/cegar
-        pdbs/decoupled_canonical_pdbs_approximate
-        pdbs/decoupled_canonical_pdbs_exponential
-        pdbs/decoupled_canonical_pdbs_exponential_broken
-        pdbs/decoupled_canonical_pdbs_exponential_ilp
-        pdbs/decoupled_canonical_pdbs_single_leaf
-        pdbs/decoupled_pdb_utils
-        pdbs/dominance_pruning
-        pdbs/incremental_canonical_pdbs
-        pdbs/match_tree
-        pdbs/max_cliques
-        pdbs/max_scp_heuristic
-        pdbs/max_scp_heuristic_approximate
-        pdbs/max_scp_heuristic_exponential
-        pdbs/max_scp_heuristic_exponential_broken
-        pdbs/max_scp_heuristic_price_partitioning
-        pdbs/max_scp_heuristic_single_leaf
-        pdbs/pattern_cliques
-        pdbs/pattern_collection_information
-        pdbs/pattern_collection_generator_combo
-        pdbs/pattern_collection_generator_disjoint_cegar
-        pdbs/pattern_collection_generator_genetic
-        pdbs/pattern_collection_generator_hillclimbing
-        pdbs/pattern_collection_generator_manual
-        pdbs/pattern_collection_generator_multiple_cegar
-        pdbs/pattern_collection_generator_multiple_random
-        pdbs/pattern_collection_generator_multiple
-        pdbs/pattern_collection_generator_systematic
-        pdbs/pattern_database
-        pdbs/pattern_filter
-        pdbs/pattern_filter_n_leaves_patterns
-        pdbs/pattern_generator_cegar
-        pdbs/pattern_generator_greedy
-        pdbs/pattern_generator_manual
-        pdbs/pattern_generator_random
-        pdbs/pattern_generator
-        pdbs/pattern_information
-        pdbs/pdb_heuristic
-        pdbs/plugin_group
-        pdbs/random_pattern
-        pdbs/types
-        pdbs/utils
-        pdbs/validation
-        pdbs/zero_one_pdbs
-        pdbs/zero_one_pdbs_heuristic
-    DEPENDS CAUSAL_GRAPH MAX_CLIQUES PRIORITY_QUEUES SAMPLING SUCCESSOR_GENERATOR TASK_PROPERTIES VARIABLE_ORDER_FINDER
-)
-
-fast_downward_plugin(
     NAME COST_SATURATION
     HELP "Saturated cost partitioning"
     SOURCES
@@ -617,6 +558,65 @@ fast_downward_plugin(
         merge_and_shrink/types
         merge_and_shrink/utils
     DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS TASK_PROPERTIES VARIABLE_ORDER_FINDER
+)
+
+fast_downward_plugin(
+    NAME PDBS
+    HELP "Plugin containing the code for PDBs"
+    SOURCES
+        pdbs/canonical_pdbs
+        pdbs/canonical_pdbs_heuristic
+        pdbs/canonical_pdbs_heuristic_approximate
+        pdbs/canonical_pdbs_heuristic_exponential
+        pdbs/canonical_pdbs_heuristic_exponential_broken
+        pdbs/canonical_pdbs_heuristic_exponential_ilp
+        pdbs/canonical_pdbs_heuristic_single_leaf
+        pdbs/cegar
+        pdbs/decoupled_canonical_pdbs_approximate
+        pdbs/decoupled_canonical_pdbs_exponential
+        pdbs/decoupled_canonical_pdbs_exponential_broken
+        pdbs/decoupled_canonical_pdbs_exponential_ilp
+        pdbs/decoupled_canonical_pdbs_single_leaf
+        pdbs/decoupled_pdb_utils
+        pdbs/dominance_pruning
+        pdbs/incremental_canonical_pdbs
+        pdbs/match_tree
+        pdbs/max_cliques
+        pdbs/max_scp_heuristic
+        pdbs/max_scp_heuristic_approximate
+        pdbs/max_scp_heuristic_exponential
+        pdbs/max_scp_heuristic_exponential_broken
+        pdbs/max_scp_heuristic_price_partitioning
+        pdbs/max_scp_heuristic_single_leaf
+        pdbs/pattern_cliques
+        pdbs/pattern_collection_information
+        pdbs/pattern_collection_generator_combo
+        pdbs/pattern_collection_generator_disjoint_cegar
+        pdbs/pattern_collection_generator_genetic
+        pdbs/pattern_collection_generator_hillclimbing
+        pdbs/pattern_collection_generator_manual
+        pdbs/pattern_collection_generator_multiple_cegar
+        pdbs/pattern_collection_generator_multiple_random
+        pdbs/pattern_collection_generator_multiple
+        pdbs/pattern_collection_generator_systematic
+        pdbs/pattern_database
+        pdbs/pattern_filter
+        pdbs/pattern_filter_n_leaves_patterns
+        pdbs/pattern_generator_cegar
+        pdbs/pattern_generator_greedy
+        pdbs/pattern_generator_manual
+        pdbs/pattern_generator_random
+        pdbs/pattern_generator
+        pdbs/pattern_information
+        pdbs/pdb_heuristic
+        pdbs/plugin_group
+        pdbs/random_pattern
+        pdbs/types
+        pdbs/utils
+        pdbs/validation
+        pdbs/zero_one_pdbs
+        pdbs/zero_one_pdbs_heuristic
+    DEPENDS CAUSAL_GRAPH MAX_CLIQUES PRIORITY_QUEUES SAMPLING SUCCESSOR_GENERATOR TASK_PROPERTIES VARIABLE_ORDER_FINDER
 )
 
 fast_downward_plugin(
