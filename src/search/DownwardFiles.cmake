@@ -619,26 +619,6 @@ fast_downward_plugin(
     DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS TASK_PROPERTIES VARIABLE_ORDER_FINDER
 )
 
-#fast_downward_plugin( TODO fix option parsing
-#    NAME LANDMARKS
-#    HELP "Plugin containing the code to reason with landmarks"
-#    SOURCES
-#        landmarks/exploration
-#        landmarks/h_m_landmarks
-#        landmarks/lama_ff_synergy
-#        landmarks/landmark_cost_assignment
-#        landmarks/landmark_count_heuristic
-#        landmarks/landmark_status_manager
-#        landmarks/landmark_graph_merged
-#        landmarks/landmark_graph
-#        landmarks/landmark_factory
-#        landmarks/landmark_factory_rpg_exhaust
-#        landmarks/landmark_factory_rpg_sasp
-#        landmarks/landmark_factory_zhu_givan
-#        landmarks/util
-#    DEPENDS PRIORITY_QUEUES SUCCESSOR_GENERATOR DOMAIN_TRANSITION_GRAPH LP_SOLVER
-#)
-
 fast_downward_plugin(
     NAME SCCS
     HELP "Algorithm to compute the strongly connected components (SCCs) of a "
