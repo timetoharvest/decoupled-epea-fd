@@ -575,25 +575,49 @@ fast_downward_plugin(
     DEPENDS LP_SOLVER PDBS PRIORITY_QUEUES SAMPLING TASK_PROPERTIES
 )
 
-#fast_downward_plugin( TODO fix option parsing
-#    NAME MAS_HEURISTIC
-#    HELP "The Merge-and-Shrink heuristic"
-#    SOURCES
-#        merge_and_shrink/label
-#        merge_and_shrink/labels
-#        merge_and_shrink/label_reducer
-#        merge_and_shrink/merge_and_shrink_heuristic
-#        merge_and_shrink/merge_dfp
-#        merge_and_shrink/merge_linear
-#        merge_and_shrink/merge_strategy
-#        merge_and_shrink/shrink_bisimulation
-#        merge_and_shrink/shrink_bucket_based
-#        merge_and_shrink/shrink_fh
-#        merge_and_shrink/shrink_random
-#        merge_and_shrink/shrink_strategy
-#        merge_and_shrink/transition_system
-#    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS VARIABLE_ORDER_FINDER
-#)
+fast_downward_plugin(
+    NAME MAS_HEURISTIC
+    HELP "The Merge-and-Shrink heuristic"
+    SOURCES
+        merge_and_shrink/distances
+        merge_and_shrink/factored_transition_system
+        merge_and_shrink/fts_factory
+        merge_and_shrink/label_equivalence_relation
+        merge_and_shrink/label_reduction
+        merge_and_shrink/labels
+        merge_and_shrink/merge_and_shrink_algorithm
+        merge_and_shrink/merge_and_shrink_heuristic
+        merge_and_shrink/merge_and_shrink_representation
+        merge_and_shrink/merge_scoring_function
+        merge_and_shrink/merge_scoring_function_dfp
+        merge_and_shrink/merge_scoring_function_goal_relevance
+        merge_and_shrink/merge_scoring_function_miasm
+        merge_and_shrink/merge_scoring_function_miasm_utils
+        merge_and_shrink/merge_scoring_function_single_random
+        merge_and_shrink/merge_scoring_function_total_order
+        merge_and_shrink/merge_selector
+        merge_and_shrink/merge_selector_score_based_filtering
+        merge_and_shrink/merge_strategy
+        merge_and_shrink/merge_strategy_factory
+        merge_and_shrink/merge_strategy_factory_precomputed
+        merge_and_shrink/merge_strategy_factory_sccs
+        merge_and_shrink/merge_strategy_factory_stateless
+        merge_and_shrink/merge_strategy_precomputed
+        merge_and_shrink/merge_strategy_sccs
+        merge_and_shrink/merge_strategy_stateless
+        merge_and_shrink/merge_tree
+        merge_and_shrink/merge_tree_factory
+        merge_and_shrink/merge_tree_factory_linear
+        merge_and_shrink/shrink_bisimulation
+        merge_and_shrink/shrink_bucket_based
+        merge_and_shrink/shrink_fh
+        merge_and_shrink/shrink_random
+        merge_and_shrink/shrink_strategy
+        merge_and_shrink/transition_system
+        merge_and_shrink/types
+        merge_and_shrink/utils
+    DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS TASK_PROPERTIES VARIABLE_ORDER_FINDER
+)
 
 #fast_downward_plugin( TODO fix option parsing
 #    NAME LANDMARKS
