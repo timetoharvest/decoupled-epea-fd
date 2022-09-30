@@ -19,15 +19,14 @@ using namespace std;
 
 namespace pdbs {
 PatternCollectionGeneratorMultiple::PatternCollectionGeneratorMultiple(
-    options::Options &opts, const string &name)
-    : name(name),
+    options::Options &opts)
+    : PatternCollectionGenerator(opts),
       max_pdb_size(opts.get<int>("max_pdb_size")),
       pattern_generation_max_time(opts.get<double>("pattern_generation_max_time")),
       total_max_time(opts.get<double>("total_max_time")),
       stagnation_limit(opts.get<double>("stagnation_limit")),
       blacklisting_start_time(total_max_time * opts.get<double>("blacklist_trigger_percentage")),
       enable_blacklist_on_stagnation(opts.get<bool>("enable_blacklist_on_stagnation")),
-      verbosity(opts.get<utils::Verbosity>("verbosity")),
       rng(utils::parse_rng_from_options(opts)),
       random_seed(opts.get<int>("random_seed")),
       remaining_collection_size(opts.get<int>("max_collection_size")),
@@ -46,9 +45,9 @@ void PatternCollectionGeneratorMultiple::check_blacklist_trigger_timer(
           stopping due to stagnation right after enabling blacklisting.
         */
         time_point_of_last_new_pattern = timer.get_elapsed_time();
-        if (verbosity >= utils::Verbosity::NORMAL) {
-            utils::g_log << "given percentage of total time limit "
-                         << "exhausted; enabling blacklisting." << endl;
+        if (log.is_at_least_normal()) {
+            log << "given percentage of total time limit "
+                << "exhausted; enabling blacklisting." << endl;
         }
     }
 }
@@ -67,14 +66,14 @@ unordered_set<int> PatternCollectionGeneratorMultiple::get_blacklisted_variables
         rng->shuffle(non_goal_variables);
         blacklisted_variables.insert(
             non_goal_variables.begin(), non_goal_variables.begin() + blacklist_size);
-        if (verbosity >= utils::Verbosity::DEBUG) {
-            utils::g_log << "blacklisting " << blacklist_size << " out of "
-                         << non_goal_variables.size()
-                         << " non-goal variables: ";
+        if (log.is_at_least_debug()) {
+            log << "blacklisting " << blacklist_size << " out of "
+                << non_goal_variables.size()
+                << " non-goal variables: ";
             for (int var : blacklisted_variables) {
-                utils::g_log << var << ", ";
+                log << var << ", ";
             }
-            utils::g_log << endl;
+            log << endl;
         }
     }
     return blacklisted_variables;
@@ -86,8 +85,8 @@ void PatternCollectionGeneratorMultiple::handle_generated_pattern(
     shared_ptr<PDBCollection> &generated_pdbs,
     const utils::CountdownTimer &timer) {
     const Pattern &pattern = pattern_info.get_pattern();
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "generated pattern " << pattern << endl;
+    if (log.is_at_least_debug()) {
+        log << "generated pattern " << pattern << endl;
     }
     if (generated_patterns.insert(move(pattern)).second) {
         /*
@@ -109,8 +108,8 @@ bool PatternCollectionGeneratorMultiple::collection_size_limit_reached() const {
           violates the limit, possibly even with only using a single goal
           variable.
         */
-        if (verbosity >= utils::Verbosity::NORMAL) {
-            utils::g_log << "collection size limit reached" << endl;
+        if (log.is_at_least_normal()) {
+            log << "collection size limit reached" << endl;
         }
         return true;
     }
@@ -120,8 +119,8 @@ bool PatternCollectionGeneratorMultiple::collection_size_limit_reached() const {
 bool PatternCollectionGeneratorMultiple::time_limit_reached(
     const utils::CountdownTimer &timer) const {
     if (timer.is_expired()) {
-        if (verbosity >= utils::Verbosity::NORMAL) {
-            utils::g_log << "time limit reached" << endl;
+        if (log.is_at_least_normal()) {
+            log << "time limit reached" << endl;
         }
         return true;
     }
@@ -134,23 +133,23 @@ bool PatternCollectionGeneratorMultiple::check_for_stagnation(
     if (timer.get_elapsed_time() - time_point_of_last_new_pattern > stagnation_limit) {
         if (enable_blacklist_on_stagnation) {
             if (blacklisting) {
-                if (verbosity >= utils::Verbosity::NORMAL) {
-                    utils::g_log << "stagnation limit reached "
-                                 << "despite blacklisting, terminating"
-                                 << endl;
+                if (log.is_at_least_normal()) {
+                    log << "stagnation limit reached "
+                        << "despite blacklisting, terminating"
+                        << endl;
                 }
                 return true;
             } else {
-                if (verbosity >= utils::Verbosity::NORMAL) {
-                    utils::g_log << "stagnation limit reached, "
-                                 << "enabling blacklisting" << endl;
+                if (log.is_at_least_normal()) {
+                    log << "stagnation limit reached, "
+                        << "enabling blacklisting" << endl;
                 }
                 blacklisting = true;
                 time_point_of_last_new_pattern = timer.get_elapsed_time();
             }
         } else {
-            if (verbosity >= utils::Verbosity::NORMAL) {
-                utils::g_log << "stagnation limit reached, terminating" << endl;
+            if (log.is_at_least_normal()) {
+                log << "stagnation limit reached, terminating" << endl;
             }
             return true;
         }
@@ -158,35 +157,21 @@ bool PatternCollectionGeneratorMultiple::check_for_stagnation(
     return false;
 }
 
-PatternCollectionInformation PatternCollectionGeneratorMultiple::generate(
+string PatternCollectionGeneratorMultiple::name() const {
+    return "multiple " + id() + " pattern collection generator";
+}
+
+PatternCollectionInformation PatternCollectionGeneratorMultiple::compute_patterns(
     const shared_ptr<AbstractTask> &task) {
-    if (verbosity >= utils::Verbosity::NORMAL) {
-        utils::g_log << "Generating patterns using the " << name
-                     << " algorithm." << endl;
-        utils::g_log << "max pdb size: " << max_pdb_size << endl;
-        utils::g_log << "max collection size: " << remaining_collection_size << endl;
-        utils::g_log << "max time: " << total_max_time << endl;
-        utils::g_log << "stagnation time limit: " << stagnation_limit << endl;
-        utils::g_log << "timer after which blacklisting is enabled: "
-                     << blacklisting_start_time << endl;
-        utils::g_log << "enable blacklisting after stagnation: "
-                     << enable_blacklist_on_stagnation << endl;
-        utils::g_log << "verbosity: ";
-        switch (verbosity) {
-        case utils::Verbosity::SILENT:
-            utils::g_log << "silent";
-            break;
-        case utils::Verbosity::NORMAL:
-            utils::g_log << "normal";
-            break;
-        case utils::Verbosity::VERBOSE:
-            utils::g_log << "verbose";
-            break;
-        case utils::Verbosity::DEBUG:
-            utils::g_log << "debug";
-            break;
-        }
-        utils::g_log << endl;
+    if (log.is_at_least_normal()) {
+        log << "max pdb size: " << max_pdb_size << endl;
+        log << "max collection size: " << remaining_collection_size << endl;
+        log << "max time: " << total_max_time << endl;
+        log << "stagnation time limit: " << stagnation_limit << endl;
+        log << "timer after which blacklisting is enabled: "
+            << blacklisting_start_time << endl;
+        log << "enable blacklisting after stagnation: "
+            << enable_blacklist_on_stagnation << endl;
     }
 
     TaskProxy task_proxy(*task);
@@ -198,13 +183,13 @@ PatternCollectionInformation PatternCollectionGeneratorMultiple::generate(
     // Store the non-goal variables for potential blacklisting.
     vector<int> non_goal_variables = get_non_goal_variables(task_proxy);
 
-    if (verbosity >= utils::Verbosity::DEBUG) {
-        utils::g_log << "goal variables: ";
+    if (log.is_at_least_debug()) {
+        log << "goal variables: ";
         for (FactPair goal : goals) {
-            utils::g_log << goal.var << ", ";
+            log << goal.var << ", ";
         }
-        utils::g_log << endl;
-        utils::g_log << "non-goal variables: " << non_goal_variables << endl;
+        log << endl;
+        log << "non-goal variables: " << non_goal_variables << endl;
     }
 
     initialize(task);
@@ -253,17 +238,13 @@ PatternCollectionInformation PatternCollectionGeneratorMultiple::generate(
     }
 
     PatternCollectionInformation result = get_pattern_collection_info(
-        task_proxy, generated_pdbs);
-    if (verbosity >= utils::Verbosity::NORMAL) {
-        utils::g_log << name << " number of iterations: "
-                     << num_iterations << endl;
-        utils::g_log << name << " average time per generator: "
-                     << timer.get_elapsed_time() / num_iterations
-                     << endl;
-        dump_pattern_collection_generation_statistics(
-            name,
-            timer.get_elapsed_time(),
-            result);
+        task_proxy, generated_pdbs, log);
+    if (log.is_at_least_normal()) {
+        log << name() << " number of iterations: "
+            << num_iterations << endl;
+        log << name() << " average time per generator: "
+            << timer.get_elapsed_time() / num_iterations
+            << endl;
     }
     return result;
 }
@@ -346,7 +327,7 @@ void add_multiple_options_to_parser(options::OptionParser &parser) {
         "hit.",
         "true");
     add_pattern_filter_option_to_parser(parser);
-    utils::add_verbosity_option_to_parser(parser);
+    add_generator_options_to_parser(parser);
     utils::add_rng_options(parser);
 }
 }

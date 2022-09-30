@@ -11,6 +11,7 @@
 #include <string>
 
 namespace utils {
+class LogProxy;
 class RandomNumberGenerator;
 }
 
@@ -41,7 +42,9 @@ extern std::vector<std::vector<int>> compute_cg_neighbors(
     bool bidirectional);
 
 extern PatternCollectionInformation get_pattern_collection_info(
-    const TaskProxy &task_proxy, const std::shared_ptr<PDBCollection> &pdbs);
+    const TaskProxy &task_proxy,
+    const std::shared_ptr<PDBCollection> &pdbs,
+    utils::LogProxy &log);
 
 /*
   Dump the given pattern, the number of variables contained, the size of the
@@ -51,7 +54,8 @@ extern PatternCollectionInformation get_pattern_collection_info(
 extern void dump_pattern_generation_statistics(
     const std::string &identifier,
     utils::Duration runtime,
-    const PatternInformation &pattern_info);
+    const PatternInformation &pattern_info,
+    utils::LogProxy &log);
 
 /*
   Compute and dump the number of patterns, the total size of the corresponding
@@ -61,7 +65,8 @@ extern void dump_pattern_generation_statistics(
 extern void dump_pattern_collection_generation_statistics(
     const std::string &identifier,
     utils::Duration runtime,
-    const PatternCollectionInformation &pci);
+    const PatternCollectionInformation &pci,
+    utils::LogProxy &log);
 
 extern std::string get_rovner_et_al_reference();
 }

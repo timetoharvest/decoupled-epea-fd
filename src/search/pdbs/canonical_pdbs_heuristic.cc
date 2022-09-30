@@ -21,11 +21,14 @@ using namespace std;
 
 namespace pdbs {
 static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
-    const shared_ptr<AbstractTask> &task, const Options &opts) {
+    const shared_ptr<AbstractTask> &task, const Options &opts, utils::LogProxy &log) {
     shared_ptr<PatternCollectionGenerator> pattern_generator =
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
+
     utils::Timer timer;
-    utils::g_log << "Initializing canonical PDB heuristic..." << endl;
+    if (log.is_at_least_normal()) {
+        log << "Initializing canonical PDB heuristic..." << endl;
+    }
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<PatternCollection> patterns =
@@ -56,12 +59,12 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
             *pdbs,
             *pattern_cliques,
             num_variables,
-            max_time_dominance_pruning);
+            max_time_dominance_pruning,
+            log);
     }
 
-    // Do not dump pattern collections for size reasons.
     dump_pattern_collection_generation_statistics(
-        "Canonical PDB heuristic", timer(), pattern_collection_info);
+        "Canonical PDB heuristic", timer(), pattern_collection_info, log);
 
     return utils::make_unique_ptr<CanonicalPDBs>(pdbs, pattern_cliques);
 }
@@ -122,8 +125,10 @@ static shared_ptr<Heuristic> _parse(OptionParser &parser) {
     if (parser.dry_run())
         return nullptr;
 
+    utils::LogProxy log = utils::get_log_from_options(opts);
+
     return make_shared<CanonicalPDBsHeuristic>(
-        opts, get_canonical_pdbs_from_options(tasks::g_root_task, opts));
+        opts, get_canonical_pdbs_from_options(tasks::g_root_task, opts, log));
 }
 
 static Plugin<Evaluator> _plugin("cpdbs", _parse, "heuristics_pdb");

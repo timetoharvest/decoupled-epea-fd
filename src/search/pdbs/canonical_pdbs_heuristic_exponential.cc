@@ -25,7 +25,8 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
     shared_ptr<PatternCollectionGenerator> pattern_generator =
         opts.get<shared_ptr<PatternCollectionGenerator>>("patterns");
     utils::Timer timer;
-    utils::g_log << "Initializing canonical PDB heuristic..." << endl;
+    utils::LogProxy log = utils::get_log_from_options(opts);
+    log << "Initializing canonical PDB heuristic..." << endl;
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<PatternCollection> patterns =
@@ -57,12 +58,13 @@ static unique_ptr<CanonicalPDBs> get_canonical_pdbs_from_options(
             *pdbs,
             *pattern_cliques,
             num_variables,
-            max_time_dominance_pruning);
+            max_time_dominance_pruning,
+            log);
     }
 
     // Do not dump pattern collections for size reasons.
     dump_pattern_collection_generation_statistics(
-        "Canonical PDB heuristic", timer(), pattern_collection_info);
+        "Canonical PDB heuristic", timer(), pattern_collection_info, log);
 
     return utils::make_unique_ptr<DecoupledCanonicalPDBsExponential>(
         pdbs,

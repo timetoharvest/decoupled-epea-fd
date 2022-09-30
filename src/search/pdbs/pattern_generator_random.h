@@ -3,13 +3,8 @@
 
 #include "pattern_generator.h"
 
-namespace options {
-class Options;
-}
-
 namespace utils {
 class RandomNumberGenerator;
-enum class Verbosity;
 }
 
 namespace pdbs {
@@ -20,13 +15,13 @@ class PatternGeneratorRandom : public PatternGenerator {
     const double max_time;
     const bool bidirectional;
     std::shared_ptr<PatternFilter> pattern_filter;
-    const utils::Verbosity verbosity;
     std::shared_ptr<utils::RandomNumberGenerator> rng;
+
+    virtual std::string name() const override;
+    virtual PatternInformation compute_pattern(
+        const std::shared_ptr<AbstractTask> &task) override;
 public:
     explicit PatternGeneratorRandom(options::Options &opts);
-
-    virtual PatternInformation generate(
-        const std::shared_ptr<AbstractTask> &task) override;
 };
 }
 

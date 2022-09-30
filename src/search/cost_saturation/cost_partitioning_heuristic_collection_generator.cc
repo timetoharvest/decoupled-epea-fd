@@ -30,7 +30,7 @@ static vector<vector<int>> sample_states_and_return_abstract_state_ids(
     double max_sampling_time) {
     assert(num_samples >= 1);
     utils::CountdownTimer sampling_timer(max_sampling_time);
-    utils::Log() << "Start sampling" << endl;
+    utils::g_log << "Start sampling" << endl;
     vector<vector<int>> abstract_state_ids_by_sample;
     abstract_state_ids_by_sample.push_back(
         get_abstract_state_ids(abstractions, task_proxy.get_initial_state()));
@@ -39,8 +39,8 @@ static vector<vector<int>> sample_states_and_return_abstract_state_ids(
         abstract_state_ids_by_sample.push_back(
             get_abstract_state_ids(abstractions, sampler.sample_state(init_h, is_dead_end)));
     }
-    utils::Log() << "Samples: " << abstract_state_ids_by_sample.size() << endl;
-    utils::Log() << "Sampling time: " << sampling_timer.get_elapsed_time() << endl;
+    utils::g_log << "Samples: " << abstract_state_ids_by_sample.size() << endl;
+    utils::g_log << "Sampling time: " << sampling_timer.get_elapsed_time() << endl;
     return abstract_state_ids_by_sample;
 }
 
@@ -70,7 +70,6 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
     const Abstractions &abstractions,
     const vector<int> &costs,
     const CPFunction &cp_function) const {
-    utils::Log log;
     utils::CountdownTimer timer(max_time);
 
     State initial_state = task_proxy.get_initial_state();
@@ -87,7 +86,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
     int init_h = cp_for_init.compute_heuristic(abstract_state_ids_for_init);
 
     if (init_h == INF) {
-        log << "Initial state is unsolvable." << endl;
+        utils::g_log << "Initial state is unsolvable." << endl;
         return {
                    cp_for_init
         };
@@ -108,7 +107,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
                 task_proxy, abstractions, sampler, num_samples, init_h, is_dead_end, max_sampling_time));
     }
 
-    log << "Start computing cost partitionings" << endl;
+    utils::g_log << "Start computing cost partitionings" << endl;
     vector<CostPartitioningHeuristic> cp_heuristics;
     int evaluated_orders = 0;
     int size_kb = 0;
@@ -144,7 +143,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
                 cp_function, opt_timer, abstractions, costs, abstract_state_ids, order,
                 cp_heuristic, incumbent_h_value, is_first_order);
             if (is_first_order) {
-                log << "Time for optimizing order: " << opt_timer.get_elapsed_time()
+                utils::g_log << "Time for optimizing order: " << opt_timer.get_elapsed_time()
                     << endl;
             }
         }
@@ -155,7 +154,7 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
             size_kb += cp_heuristic.estimate_size_in_kb();
             cp_heuristics.push_back(move(cp_heuristic));
             if (diversifier) {
-                log << "Average finite h-value for " << num_samples
+                utils::g_log << "Average finite h-value for " << num_samples
                     << " samples after " << timer.get_elapsed_time()
                     << " of diversification: "
                     << diversifier->compute_avg_finite_sample_h_value()
@@ -166,11 +165,11 @@ CostPartitioningHeuristicCollectionGenerator::generate_cost_partitionings(
         ++evaluated_orders;
     }
 
-    log << "Evaluated orders: " << evaluated_orders << endl;
-    log << "Cost partitionings: " << cp_heuristics.size() << endl;
-    log << "Time for computing cost partitionings: " << timer.get_elapsed_time()
+    utils::g_log << "Evaluated orders: " << evaluated_orders << endl;
+    utils::g_log << "Cost partitionings: " << cp_heuristics.size() << endl;
+    utils::g_log << "Time for computing cost partitionings: " << timer.get_elapsed_time()
         << endl;
-    log << "Estimated heuristic size: " << size_kb << " KiB" << endl;
+    utils::g_log << "Estimated heuristic size: " << size_kb << " KiB" << endl;
     return cp_heuristics;
 }
 }

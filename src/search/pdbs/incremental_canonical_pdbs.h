@@ -51,7 +51,8 @@ public:
     */
     bool is_dead_end(const State &state) const;
 
-    PatternCollectionInformation get_pattern_collection_information() const;
+    PatternCollectionInformation get_pattern_collection_information(
+        utils::LogProxy &log) const;
 
     std::shared_ptr<PDBCollection> get_pattern_databases() const {
         return pattern_databases;

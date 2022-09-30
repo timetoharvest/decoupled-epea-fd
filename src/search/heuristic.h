@@ -4,6 +4,8 @@
 #include "evaluator.h"
 #include "operator_cost.h"
 
+#include "utils/logging.h"
+
 #include <map>
 #include <set>
 #include <string>
@@ -30,6 +32,7 @@ protected:
     enum HEURISTIC_TYPE {STD, STAR, CENTER};
     OperatorCost cost_type;
     HEURISTIC_TYPE heuristic_type;
+    mutable utils::LogProxy log;
     enum {DEAD_END = -1};
     virtual void initialize() {}
     virtual int compute_heuristic(const GlobalState &state) = 0;

@@ -19,18 +19,16 @@ using namespace std;
 
 namespace pdbs {
 PatternGeneratorGreedy::PatternGeneratorGreedy(const Options &opts)
-    : PatternGeneratorGreedy(
-        opts.get<int>("max_states"),
-        get_pattern_filter_from_options(opts)) {
+    : PatternGenerator(opts),
+      max_states(opts.get<int>("max_states")),
+      pattern_filter(get_pattern_filter_from_options(opts)) {
 }
 
-PatternGeneratorGreedy::PatternGeneratorGreedy(int max_states, const shared_ptr<PatternFilter> &pattern_filter)
-    : max_states(max_states), pattern_filter(pattern_filter) {
+string PatternGeneratorGreedy::name() const {
+    return "greedy pattern generator";
 }
 
-PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTask> &task) {
-    utils::Timer timer;
-    utils::g_log << "Generating a pattern using the greedy generator..." << endl;
+PatternInformation PatternGeneratorGreedy::compute_pattern(const shared_ptr<AbstractTask> &task) {
     TaskProxy task_proxy(*task);
     Pattern pattern;
     variable_order_finder::VariableOrderFinder order(
@@ -56,9 +54,7 @@ PatternInformation PatternGeneratorGreedy::generate(const shared_ptr<AbstractTas
         size *= next_var_size;
     }
 
-    PatternInformation pattern_info(task_proxy, move(pattern));
-    dump_pattern_generation_statistics(
-        "Greedy generator", timer(), pattern_info);
+    PatternInformation pattern_info(task_proxy, move(pattern), log);
 
     if (pattern_filter) {
         if (!pattern_filter->is_pattern_ok(pattern_info.get_pattern())) {
@@ -77,6 +73,7 @@ static shared_ptr<PatternGenerator> _parse(OptionParser &parser) {
         "maximal number of abstract states in the pattern database.",
         "1000000",
         Bounds("1", "infinity"));
+    add_generator_options_to_parser(parser);
     add_pattern_filter_option_to_parser(parser);
 
     Options opts = parser.parse();

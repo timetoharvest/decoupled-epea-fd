@@ -32,7 +32,7 @@ int compute_pdb_size(const TaskProxy &task_proxy, const Pattern &pattern) {
                                            numeric_limits<int>::max())) {
             size *= domain_size;
         } else {
-            cerr << "Given pattern is too large! (Overflow occured): " << endl;
+            cerr << "Given pattern is too large! (Overflow occurred): " << endl;
             cerr << pattern << endl;
             utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
         }
@@ -94,13 +94,15 @@ vector<vector<int>> compute_cg_neighbors(
 }
 
 PatternCollectionInformation get_pattern_collection_info(
-    const TaskProxy &task_proxy, const shared_ptr<PDBCollection> &pdbs) {
+    const TaskProxy &task_proxy,
+    const shared_ptr<PDBCollection> &pdbs,
+    utils::LogProxy &log) {
     shared_ptr<PatternCollection> patterns = make_shared<PatternCollection>();
     patterns->reserve(pdbs->size());
     for (const shared_ptr<PatternDatabase> &pdb : *pdbs) {
         patterns->push_back(pdb->get_pattern());
     }
-    PatternCollectionInformation result(task_proxy, patterns);
+    PatternCollectionInformation result(task_proxy, patterns, log);
     result.set_pdbs(pdbs);
     return result;
 }
@@ -108,16 +110,19 @@ PatternCollectionInformation get_pattern_collection_info(
 void dump_pattern_generation_statistics(
     const string &identifier,
     utils::Duration runtime,
-    const PatternInformation &pattern_info) {
+    const PatternInformation &pattern_info,
+    utils::LogProxy &log) {
     const Pattern &pattern = pattern_info.get_pattern();
-    utils::g_log << identifier << " pattern: " << pattern << endl;
-    utils::g_log << identifier << " number of variables: " << pattern.size() << endl;
-    utils::g_log << identifier << " PDB size: "
-                 << compute_pdb_size(pattern_info.get_task_proxy(), pattern) << endl;
-    utils::g_log << identifier << " computation time: " << runtime << endl;
+    if (log.is_at_least_normal()) {
+        log << identifier << " pattern: " << pattern << endl;
+        log << identifier << " number of variables: " << pattern.size() << endl;
+        log << identifier << " PDB size: "
+            << compute_pdb_size(pattern_info.get_task_proxy(), pattern) << endl;
+        log << identifier << " computation time: " << runtime << endl;
+    }
     if (g_factoring) {
         int num_affected_factors = get_leaf_factors_of_pattern(pattern).size();
-        utils::g_log << identifier << " number of affected leaf factors: "
+        log << identifier << " number of affected leaf factors: "
                      << num_affected_factors << endl;
     }
 }
@@ -125,14 +130,17 @@ void dump_pattern_generation_statistics(
 void dump_pattern_collection_generation_statistics(
     const string &identifier,
     utils::Duration runtime,
-    const PatternCollectionInformation &pci) {
+    const PatternCollectionInformation &pci,
+    utils::LogProxy &log) {
     const PatternCollection &pattern_collection = *pci.get_patterns();
-    utils::g_log << identifier << " number of patterns: " << pattern_collection.size()
-                 << endl;
-    utils::g_log << identifier << " total PDB size: ";
-    utils::g_log << compute_total_pdb_size(
-        pci.get_task_proxy(), pattern_collection) << endl;
-    utils::g_log << identifier << " computation time: " << runtime << endl;
+    if (log.is_at_least_normal()) {
+        log << identifier << " number of patterns: " << pattern_collection.size()
+            << endl;
+        log << identifier << " total PDB size: "
+            << compute_total_pdb_size(
+            pci.get_task_proxy(), pattern_collection) << endl;
+        log << identifier << " computation time: " << runtime << endl;
+    }
     if (g_factoring) {
         int summed_num_affected_factors = 0;
         int max_num_affected_factors = -1;
@@ -141,9 +149,9 @@ void dump_pattern_collection_generation_statistics(
             summed_num_affected_factors += num_affected_factors;
             max_num_affected_factors = max(max_num_affected_factors, num_affected_factors);
         }
-        utils::g_log << identifier << " average number of affected leaf factors: "
+        log << identifier << " average number of affected leaf factors: "
                      << summed_num_affected_factors/static_cast<double>(pattern_collection.size()) << endl;
-        utils::g_log << identifier << " maximum number of affected leaf factors: "
+        log << identifier << " maximum number of affected leaf factors: "
                      << max_num_affected_factors << endl;
     }
 }

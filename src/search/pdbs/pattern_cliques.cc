@@ -11,9 +11,7 @@
 using namespace std;
 
 namespace pdbs {
-/* Returns true iff the two patterns are additive i.e. there is no operator
-   which affects variables in pattern one as well as in pattern two. */
-static bool are_patterns_additive(
+bool are_patterns_additive(
     const Pattern &pattern1,
     const Pattern &pattern2,
     const VariableAdditivity &are_additive,

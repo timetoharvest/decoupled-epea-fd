@@ -14,7 +14,8 @@ using namespace std;
 
 Heuristic::Heuristic(const Options &opts)
     : cost_type(opts.get<OperatorCost>("cost_type")),
-      heuristic_type(opts.get<HEURISTIC_TYPE>("search_type")) {
+      heuristic_type(opts.get<HEURISTIC_TYPE>("search_type")),
+      log(utils::get_log_from_options(opts)) {
     heuristic = NOT_INITIALIZED;
 
     if (g_factoring){
@@ -150,6 +151,7 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
         search_types,
         "",
         "STD");
+    utils::add_log_options_to_parser(parser);
 }
 
 //this solution to get default values seems not optimal:

@@ -28,12 +28,11 @@ ProjectionGenerator::ProjectionGenerator(const options::Options &opts)
 Abstractions ProjectionGenerator::generate_abstractions(
     const shared_ptr<AbstractTask> &task) {
     utils::Timer patterns_timer;
-    utils::Log log;
     TaskProxy task_proxy(*task);
 
     task_properties::verify_no_axioms(task_proxy);
 
-    log << "Compute patterns" << endl;
+    utils::g_log << "Compute patterns" << endl;
     PatternCollectionInformation pattern_collection_info =
         pattern_generator->generate(task);
     shared_ptr<pdbs::PatternCollection> patterns =
@@ -44,9 +43,9 @@ Abstractions ProjectionGenerator::generate_abstractions(
         max_pattern_size = max(max_pattern_size, static_cast<int>(pattern.size()));
     }
 
-    log << "Number of patterns: " << patterns->size() << endl;
-    log << "Maximum pattern size: " << max_pattern_size << endl;
-    log << "Time for computing patterns: " << patterns_timer << endl;
+    utils::g_log << "Number of patterns: " << patterns->size() << endl;
+    utils::g_log << "Maximum pattern size: " << max_pattern_size << endl;
+    utils::g_log << "Time for computing patterns: " << patterns_timer << endl;
 
     if (dominance_pruning) {
         shared_ptr<PDBCollection> pdbs = pattern_collection_info.get_pdbs();
@@ -55,10 +54,10 @@ Abstractions ProjectionGenerator::generate_abstractions(
         prune_dominated_cliques(
             *patterns,
             *pdbs, *pattern_cliques, task_proxy.get_variables().size(),
-            numeric_limits<double>::infinity());
+            numeric_limits<double>::infinity(), utils::g_log);
     }
 
-    log << "Build projections" << endl;
+    utils::g_log << "Build projections" << endl;
     utils::Timer pdbs_timer;
     shared_ptr<TaskInfo> task_info = make_shared<TaskInfo>(task_proxy);
     Abstractions abstractions;
@@ -67,7 +66,7 @@ Abstractions ProjectionGenerator::generate_abstractions(
             task_proxy, task_info, pattern, combine_labels);
 
         if (debug) {
-            log << "Pattern " << abstractions.size() + 1 << ": "
+            utils::g_log << "Pattern " << abstractions.size() + 1 << ": "
                 << pattern << endl;
             projection->dump();
         }
@@ -79,9 +78,9 @@ Abstractions ProjectionGenerator::generate_abstractions(
         collection_size += abstraction->get_num_states();
     }
 
-    log << "Time for building projections: " << pdbs_timer << endl;
-    log << "Number of projections: " << abstractions.size() << endl;
-    log << "Number of states in projections: " << collection_size << endl;
+    utils::g_log << "Time for building projections: " << pdbs_timer << endl;
+    utils::g_log << "Number of projections: " << abstractions.size() << endl;
+    utils::g_log << "Number of states in projections: " << collection_size << endl;
     return abstractions;
 }
 
