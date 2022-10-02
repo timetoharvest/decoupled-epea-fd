@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 
+class ExplicitStateCPG;
 class GlobalState;
 
 namespace utils {
@@ -33,6 +34,10 @@ public:
       if the abstract state is PRUNED_STATE or if the (distance) value is INF.
     */
     virtual int get_value(const GlobalState &state) const = 0;
+    virtual int get_decoupled_value(
+        const GlobalState &state,
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const = 0;
     /* Return true iff the represented function is total, i.e., does not map
        to PRUNED_STATE. */
     virtual bool is_total() const = 0;
@@ -52,6 +57,10 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
+    virtual int get_decoupled_value(
+        const GlobalState &state,
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
 };
@@ -71,6 +80,10 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
+    virtual int get_decoupled_value(
+        const GlobalState &state,
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
 };

@@ -63,6 +63,14 @@ int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state) const 
     return lookup_table[value];
 }
 
+int MergeAndShrinkRepresentationLeaf::get_decoupled_value(
+    const GlobalState &state,
+    const ExplicitStateCPG *prices,
+    const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const {
+    // TODO: implement this
+    return -1;
+}
+
 bool MergeAndShrinkRepresentationLeaf::is_total() const {
     for (int entry : lookup_table) {
         if (entry == PRUNED_STATE) {
@@ -134,6 +142,14 @@ int MergeAndShrinkRepresentationMerge::get_value(
     if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
         return PRUNED_STATE;
     return lookup_table[state1][state2];
+}
+
+int MergeAndShrinkRepresentationMerge::get_decoupled_value(
+    const GlobalState &state,
+    const ExplicitStateCPG *prices,
+    const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const {
+    // TODO: implement this
+    return -1;
 }
 
 bool MergeAndShrinkRepresentationMerge::is_total() const {
