@@ -145,8 +145,6 @@ exp.add_fetcher('data/2022-04-01-decoupled-scp-exp-ipc-eval',filter_algorithm=ex
 for dec_name in decoupling.keys():
     dec_pp_algos = [f"{REVISION}-{nick}" for nick in pp_algo_nicks if nick.startswith(dec_name)]
     dec_exp_algos = [f"{OLD_REVISION}-{nick}" for nick in exp_algo_nicks if nick.startswith(dec_name)]
-    print(dec_pp_algos)
-    print(dec_exp_algos)
     assert len(dec_pp_algos) == len(dec_exp_algos)
     f = Filter(dec_name, dec_pp_algos+dec_exp_algos)
     report_name=f'{exp.name}-comp-vs-exp-{dec_name}'
