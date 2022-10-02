@@ -19,6 +19,9 @@ class OptionParser;
 class Options;
 }
 
+// STandarD search; decoupled search with STAR/CENTER heuristic
+enum class HEURISTIC_TYPE {STD, STAR, CENTER};
+
 class Heuristic : public Evaluator {
     enum {NOT_INITIALIZED = -2};
     int heuristic;
@@ -28,8 +31,6 @@ class Heuristic : public Evaluator {
 
     std::vector<OperatorID> preferred_operators;
 protected:
-    // STandarD search; decoupled search with STAR/CENTER heuristic
-    enum HEURISTIC_TYPE {STD, STAR, CENTER};
     OperatorCost cost_type;
     HEURISTIC_TYPE heuristic_type;
     mutable utils::LogProxy log;
@@ -45,6 +46,10 @@ protected:
 public:
     Heuristic(const options::Options &options);
     virtual ~Heuristic();
+
+    void set_heuristic_type(HEURISTIC_TYPE heuristic_type) {
+        this->heuristic_type = heuristic_type;
+    }
 
     virtual void evaluate(const GlobalState &state) override;
     virtual bool is_dead_end() const override;

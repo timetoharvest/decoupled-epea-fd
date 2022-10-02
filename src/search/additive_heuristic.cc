@@ -61,6 +61,16 @@ void AdditiveHeuristic::setup_exploration_queue_state(const GlobalState &state) 
     }
 }
 
+void AdditiveHeuristic::setup_exploration_queue_state(const vector<int> &state) {
+    for (int var = 0; var < (int) g_variable_domain.size(); ++var) {
+        if (heuristic_type == HEURISTIC_TYPE::STD ||
+                g_belongs_to_factor[var] == LeafFactorID::CENTER){
+            PropID init_prop = get_prop_id(var, state[var]);
+            enqueue_if_necessary(init_prop, 0, NO_OP);
+        }
+    }
+}
+
 void AdditiveHeuristic::setup_exploration_queue_decoupled_leaf_states(const GlobalState &state) {
     const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
 
@@ -135,7 +145,53 @@ void AdditiveHeuristic::mark_preferred_operators(
     }
 }
 
+void AdditiveHeuristic::mark_preferred_operators(
+    const vector<int> &state, PropID goal_id) {
+    assert(heuristic_type == HEURISTIC_TYPE::STD);
+    Proposition *goal = get_proposition(goal_id);
+    if (!goal->marked) { // Only consider each subgoal once.
+        goal->marked = true;
+        OpID op_id = goal->reached_by;
+        if (op_id != NO_OP) { // We have not yet chained back to a start node.
+            UnaryOperator *unary_op = get_operator(op_id);
+            bool is_preferred = true;
+            for (PropID precond : get_preconditions(op_id)) {
+                mark_preferred_operators(state, precond);
+                if (get_proposition(precond)->reached_by != NO_OP) {
+                    is_preferred = false;
+                }
+            }
+            int operator_no = unary_op->operator_no;
+            if (is_preferred && operator_no != -1) {
+                // This is not an axiom.
+                const Operator &op = g_operators[operator_no];
+                if (heuristic_type == HEURISTIC_TYPE::STD ||
+                        op.get_affected_factor() == LeafFactorID::CENTER){
+                    // don't mark leaf ops as preferred
+                    set_preferred(op.get_id());
+                }
+            }
+        }
+    }
+}
+
 int AdditiveHeuristic::compute_add_and_ff(const GlobalState &state) {
+    setup_exploration_queue_state(state);
+    relaxed_exploration();
+
+    int total_cost = 0;
+    for (PropID goal_id : goal_propositions) {
+        const Proposition *goal = get_proposition(goal_id);
+        int goal_cost = goal->cost;
+        if (goal_cost == -1)
+            return DEAD_END;
+        increase_cost(total_cost, goal_cost);
+    }
+    return total_cost;
+}
+
+int AdditiveHeuristic::compute_add_and_ff(const vector<int> &state) {
+    assert(heuristic_type == HEURISTIC_TYPE::STD);
     setup_exploration_queue_state(state);
     relaxed_exploration();
 
@@ -163,6 +219,17 @@ int AdditiveHeuristic::compute_heuristic(const GlobalState &state) {
             mark_preferred_operators(state, goal_id);
     }
     return h;
+}
+
+void AdditiveHeuristic::compute_heuristic_for_cegar(const vector<int> &state) {
+    assert(heuristic_type == HEURISTIC_TYPE::STD);
+    assert(cost_type == OperatorCost::NORMAL);
+    setup_exploration_queue();
+    int h = compute_add_and_ff(state);
+    if (h != DEAD_END) {
+        for (PropID goal_id : goal_propositions)
+            mark_preferred_operators(state, goal_id);
+    }
 }
 
 static shared_ptr<Heuristic> _parse(OptionParser &parser) {

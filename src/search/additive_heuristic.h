@@ -33,10 +33,12 @@ class AdditiveHeuristic : public relaxation_heuristic::RelaxationHeuristic {
     bool did_write_overflow_warning;
 
     void setup_exploration_queue_state(const GlobalState &state);
+    void setup_exploration_queue_state(const std::vector<int> &state);
     void setup_exploration_queue_decoupled_leaf_states(const GlobalState &state);
 
     void relaxed_exploration();
     void mark_preferred_operators(const GlobalState &state, PropID goal_id);
+    void mark_preferred_operators(const std::vector<int> &state, PropID goal_id);
 
     void increase_cost(int &cost, int amount) {
         assert(cost >= 0);
@@ -67,8 +69,21 @@ protected:
 
     // Common part of h^add and h^ff computation.
     int compute_add_and_ff(const GlobalState &state);
+    int compute_add_and_ff(const std::vector<int> &state);
 public:
     explicit AdditiveHeuristic(const options::Options &opts);
+
+    /*
+      TODO: The two methods below are temporarily needed for the CEGAR
+      heuristic. In the long run it might be better to split the
+      computation from the heuristic class. Then the CEGAR code could
+      use the computation object instead of the heuristic.
+    */
+    void compute_heuristic_for_cegar(const std::vector<int> &state);
+
+    int get_cost_for_cegar(int var, int value) const {
+        return get_proposition(var, value).cost;
+    }
 };
 }
 

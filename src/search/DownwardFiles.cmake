@@ -490,6 +490,29 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME CEGAR
+    HELP "Plugin containing the code for CEGAR heuristics"
+    SOURCES
+        cegar/abstraction
+        cegar/abstract_search
+        cegar/abstract_state
+        cegar/additive_cartesian_heuristic
+        cegar/cartesian_heuristic_function
+        cegar/cartesian_set
+        cegar/cegar
+        cegar/cost_saturation
+        cegar/refinement_hierarchy
+        cegar/split_selector
+        cegar/subtask_generators
+        cegar/transition
+        cegar/transition_system
+        cegar/types
+        cegar/utils
+        cegar/utils_landmarks
+    DEPENDS ADDITIVE_HEURISTIC DYNAMIC_BITSET EXTRA_TASKS LANDMARKS PRIORITY_QUEUES TASK_PROPERTIES
+)
+
+fast_downward_plugin(
     NAME COST_SATURATION
     HELP "Saturated cost partitioning"
     SOURCES
@@ -558,6 +581,25 @@ fast_downward_plugin(
         merge_and_shrink/types
         merge_and_shrink/utils
     DEPENDS PRIORITY_QUEUES EQUIVALENCE_RELATION SCCS TASK_PROPERTIES VARIABLE_ORDER_FINDER
+)
+
+fast_downward_plugin(
+    NAME LANDMARKS
+    HELP "Plugin containing the code to reason with landmarks"
+    SOURCES
+        landmarks/exploration
+        landmarks/landmark
+        landmarks/landmark_factory
+        landmarks/landmark_factory_h_m
+        landmarks/landmark_factory_reasonable_orders_hps
+        landmarks/landmark_factory_merged
+        landmarks/landmark_factory_relaxation
+        landmarks/landmark_factory_rpg_exhaust
+        landmarks/landmark_factory_rpg_sasp
+        landmarks/landmark_factory_zhu_givan
+        landmarks/landmark_graph
+        landmarks/util
+    DEPENDS LP_SOLVER PRIORITY_QUEUES SUCCESSOR_GENERATOR TASK_PROPERTIES
 )
 
 fast_downward_plugin(

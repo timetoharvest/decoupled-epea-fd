@@ -41,7 +41,7 @@ void LandmarkCutHeuristicSymbolic::initialize() {
 #endif
 
     assert(g_factoring);
-    assert(heuristic_type == STAR);
+    assert(heuristic_type == HEURISTIC_TYPE::STAR);
 
     cout << "Initializing symbolic landmark cut heuristic for star decoupled search..." << endl;
 

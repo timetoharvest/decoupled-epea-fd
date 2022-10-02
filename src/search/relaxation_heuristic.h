@@ -85,6 +85,11 @@ protected:
 
     PropID get_prop_id(int var, int value) const;
 
+    // TODO: only for cegar method of additive heuristic.
+    const Proposition &get_proposition(int var, int value) const {
+        return propositions[get_prop_id(var, value)];
+    }
+
     Proposition *get_proposition(PropID prop_id) {
         return &propositions[prop_id];
     }
