@@ -1,5 +1,5 @@
-#ifndef FACTORING_RANKING_H
-#define FACTORING_RANKING_H
+#ifndef FACTORINGS_FACTORING_RANKING_H
+#define FACTORINGS_FACTORING_RANKING_H
 
 #include "../factoring.h"
 #include "../utils/variable_int.h"
