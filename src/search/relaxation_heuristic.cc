@@ -38,26 +38,53 @@ UnaryOperator::UnaryOperator(
 // construction and destruction
 RelaxationHeuristic::RelaxationHeuristic(const Options &opts)
     : Heuristic(opts) {
+
+    bool need_artificial_leaf_goals = false;
+    int num_leaf_goal_facts = 0;
+    if (heuristic_type != HEURISTIC_TYPE::STD){
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            if (g_goals_per_factor[factor].empty()){
+                if (heuristic_type == HEURISTIC_TYPE::STAR){
+                    need_artificial_leaf_goals = true;
+                    num_leaf_goal_facts++;
+                }
+            } else {
+                num_leaf_goal_facts += g_goals_per_factor[factor].size();
+            }
+        }
+    }
+
     // Build propositions and proposition offsets.
-    proposition_offsets.reserve(g_variable_domain.size());
+    proposition_offsets.reserve(g_variable_domain.size() + (need_artificial_leaf_goals ? 1 : 0));
     int num_facts = 0;
     for (int domain : g_variable_domain){
         proposition_offsets.push_back(num_facts);
         num_facts += domain;
     }
-    propositions.resize(num_facts);
+    propositions.resize(num_facts + (need_artificial_leaf_goals ? g_leaves.size() : 0));
+
+    if (need_artificial_leaf_goals){
+        proposition_offsets.push_back(num_facts);
+    }
 
     // Build goal propositions.
-    goal_propositions.reserve(g_goal.size());
+    goal_propositions.reserve(g_goal.size() + num_leaf_goal_facts);
     for (const auto &goal : g_goal) {
         PropID prop_id = get_prop_id(goal.first, goal.second);
         propositions[prop_id].is_goal = true;
         goal_propositions.push_back(prop_id);
     }
     if (heuristic_type != HEURISTIC_TYPE::STD){
-        for (size_t i = 0; i < g_leaves.size(); ++i){
-            for (size_t j = 0; j < g_goals_per_factor[i].size(); ++j){
-                PropID prop_id = get_prop_id(g_goals_per_factor[i][j].first, g_goals_per_factor[i][j].second);
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            for (size_t j = 0; j < g_goals_per_factor[factor].size(); ++j){
+                PropID prop_id = get_prop_id(g_goals_per_factor[factor][j].first, g_goals_per_factor[factor][j].second);
+                propositions[prop_id].is_goal = true;
+                goal_propositions.push_back(prop_id);
+            }
+            if (heuristic_type == HEURISTIC_TYPE::STAR &&
+                    g_goals_per_factor[factor].empty()){
+                // add artificial goal facts for leaves without goals, so at least one leaf state needs to be bought
+                PropID prop_id = get_prop_id(g_variable_domain.size(), factor);
                 propositions[prop_id].is_goal = true;
                 goal_propositions.push_back(prop_id);
             }

@@ -22,7 +22,9 @@ using namespace std;
 LandmarkCutHeuristic::LandmarkCutHeuristic(const Options &opts)
 : Heuristic(opts),
   artificial_precondition(-1, -1),
-  artificial_goal(-1, -1) {
+  artificial_goal(-1, -1),
+  num_art_center_pre_pre(0),
+  num_art_center_goal_eff(0) {
     num_propositions = 2; // artificial goal and artificial precondition
 }
 
@@ -63,8 +65,9 @@ void LandmarkCutHeuristic::initialize() {
     // Build artificial goal proposition and operator.
     vector<RelaxedProposition *> goal_op_pre, goal_op_eff;
     if (g_factoring){
-        // this is to keep the goal variable order
+        artificial_leaf_goals.resize(g_leaves.size(), RelaxedProposition(-1, -1));
 
+        // this is to keep the goal variable order
         vector<pair<int, int> > goal(g_variable_domain.size(), pair<int, int>(-1, -1));
         for (size_t i = 0; i < g_goal.size(); ++i) {
             goal[g_goal[i].first] = g_goal[i];
@@ -80,6 +83,12 @@ void LandmarkCutHeuristic::initialize() {
                 int val = goal[i].second;
                 RelaxedProposition *goal_prop = &propositions[var][val];
                 goal_op_pre.push_back(goal_prop);
+            }
+        }
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            // make sure that at least one leaf state per leaf factor needs to be "bought"
+            if (g_goals_per_factor[factor].empty()){
+                goal_op_pre.push_back(&artificial_leaf_goals[factor]);
             }
         }
     } else {
@@ -122,11 +131,13 @@ void LandmarkCutHeuristic::initialize() {
             relaxed_leaf_operators[factor].reserve(g_state_registry->size(factor));
             for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id){
                 const LeafState &l_state = g_state_registry->lookup_leaf_state(id, factor);
-
                 vector<RelaxedProposition*> effects;
                 for (size_t v = 0; v < g_leaves[factor].size(); ++v){
                     int var = g_leaves[factor][v];
                     effects.push_back(&propositions[var][l_state[var]]);
+                }
+                if (g_goals_per_factor[factor].empty()){
+                    effects.push_back(&artificial_leaf_goals[factor]);
                 }
                 relaxed_leaf_operators[factor].push_back(RelaxedOperator(precondition, effects, 0, 0));
             }
@@ -171,6 +182,12 @@ void LandmarkCutHeuristic::setup_exploration_queue() {
         for (size_t value = 0; value < propositions[var].size(); ++value) {
             RelaxedProposition &prop = propositions[var][value];
             prop.status = UNREACHED;
+        }
+    }
+
+    if (g_factoring){
+        for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+            artificial_leaf_goals[factor].status = UNREACHED;
         }
     }
 
@@ -386,6 +403,9 @@ void LandmarkCutHeuristic::dereference_ops() {
             propositions[i][j].effect_of.resize(number_center_effs[i][j]);
         }
     }
+    for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
+        artificial_leaf_goals[factor].effect_of.clear();
+    }
     artificial_goal.effect_of.resize(num_art_center_goal_eff);;
     artificial_precondition.precondition_of.resize(num_art_center_pre_pre);
 }
@@ -422,6 +442,9 @@ int LandmarkCutHeuristic::compute_heuristic(const State &state) {
                             for (size_t v = 0; v < g_leaves[factor].size(); ++v){
                                 int var = g_leaves[factor][v];
                                 effects.push_back(&propositions[var][f[var]]);
+                            }
+                            if (g_goals_per_factor[factor].empty()){
+                                effects.push_back(&artificial_leaf_goals[factor]);
                             }
                             relaxed_leaf_operators[factor].push_back(RelaxedOperator(precondition, effects, 0, cost));
                         }
