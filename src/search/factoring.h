@@ -155,7 +155,7 @@ protected:
     
     FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
     
-    FactoredVars get_connected_components(const std::vector<int> &variables) const;
+    FactoredVars get_connected_components(const std::set<int> &variables) const;
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     

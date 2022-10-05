@@ -1000,7 +1000,7 @@ Factoring::FactoredVars IncidentArcsFactoring::get_factoring() {  //////////////
 
             leaf_vars.erase(variables[arcs][cand]);
 
-            FactoredVars factoring = get_connected_components(vector<int>(leaf_vars.begin(), leaf_vars.end()));
+            FactoredVars factoring = get_connected_components(leaf_vars);
 
             for (int i = factoring.size() - 1; i >= 0; --i){
                 uint64_t size = 1;
@@ -1581,6 +1581,8 @@ Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const 
     size_t bound = variables.empty() ? g_variable_domain.size() : variables.size();
     for (size_t i = 0; i < bound; i++){
         if (variables.empty() || variables.size() == g_variable_domain.size()){
+            // TODO the next line assumes that variables is sorted properly,
+            // otherwise we need "variables[i]" instead of "i"
             vars[i] = causal_graph::get_causal_graph().get_successors(i);
         } else {
             for (int succ : causal_graph::get_causal_graph().get_successors(variables[i])){
@@ -1594,14 +1596,15 @@ Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const 
     vector<vector<int> > found_sccs = sccs::compute_maximal_sccs(vars);
     FactoredVars real_sccs;
 
-    for (size_t i = 0; i < found_sccs.size(); i++){
-        if (found_sccs[i].size() != 1 || variables.empty() || variables.size() == g_variable_name.size()){
-            real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
-        } else if (find(variables.begin(), variables.end(), found_sccs[i][0]) != variables.end()){
+    for (const auto &scc : found_sccs){
+        if (scc.size() != 1 || variables.empty() || variables.size() == g_variable_name.size()){
+            // TODO this does not seem to work properly when variables is non-empty *and* does not contain all variables
+            real_sccs.push_back(set<int>(scc.begin(), scc.end()));
+        } else if (find(variables.begin(), variables.end(), scc[0]) != variables.end()){
             // TODO check this
             // this can happen if not all variables are in *variables*
             // the SCC class needs the input vector to be aligned very specifically
-            real_sccs.push_back(set<int>(found_sccs[i].begin(), found_sccs[i].end()));
+            real_sccs.push_back(set<int>(scc.begin(), scc.end()));
         }
     }
 
@@ -1612,7 +1615,7 @@ Factoring::FactoredVars Factoring::get_sccs(const vector<int> &variables) const 
     return real_sccs;
 }
 
-Factoring::FactoredVars Factoring::get_connected_components(const vector<int> &variables) const {
+Factoring::FactoredVars Factoring::get_connected_components(const set<int> &variables) const {
     // TODO rewrite this function, it's super inefficient!
     FactoredVars components;
 
@@ -1784,9 +1787,9 @@ Factoring::FactoredVars OpenstacksFactoring::get_factoring() {
     vector<int> leaf_vars;
 
     for (size_t var = 0; var < g_variable_domain.size(); var++){
-	if (g_fact_names[var][0].find("stacks-avail") == string::npos){
-	    leaf_vars.push_back(var);
-	}
+        if (g_fact_names[var][0].find("stacks-avail") == string::npos){
+            leaf_vars.push_back(var);
+        }
     }
 
     FactoredVars sccs = get_sccs(leaf_vars);
