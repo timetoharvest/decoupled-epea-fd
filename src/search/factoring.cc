@@ -786,6 +786,21 @@ bool Factoring::is_two_leaf_factoring_possible() const {
     return false;
 }
 
+inline void check_factoring(const vector<set<int>> &factoring) {
+    // check that leaves are pairwise disjoint
+    // TODO add more sanity checks?
+    vector<bool> is_leaf_var(g_variable_domain.size(), false);
+    for (const auto &leaf : factoring){
+        for (int var : leaf){
+            if (is_leaf_var[var]){
+                cerr << "ERROR: invalid factoring, variable " << g_fact_names[var][0] << " appears in multiple leaves." << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            }
+            is_leaf_var[var] = true;
+        }
+    }
+}
+
 void Factoring::do_factoring_or_abstain() {
     verify_no_axioms_no_conditional_effects();
 
@@ -800,6 +815,7 @@ void Factoring::do_factoring_or_abstain() {
     if (is_factoring_possible() && (min_number_leaves < 2 || is_two_leaf_factoring_possible())){
         // simple sanity check to filter out tasks where no mobile factoring exists
         best_factoring = get_factoring();
+        check_factoring(best_factoring);
     }
 
     assert(best_factoring.size() < (size_t) LeafFactorID::CENTER - 1);
