@@ -1,7 +1,6 @@
 #ifndef FACTORINGS_SCHEMA_IA_FACTORING_H
 #define FACTORINGS_SCHEMA_IA_FACTORING_H
 
-
 #include "../factoring.h"
 
 namespace schema_ia_factoring {
@@ -18,10 +17,14 @@ class SchemaIAFactoring : public Factoring {
         void incr_num_action() {
             num_actions++;
         }
-
     };
 
     FactoredVars get_factoring() override;
+
+    std::vector<std::set<int>> get_leaves(const std::vector<bool> &center,
+                                          const std::vector<std::vector<bool> > &schema_cg,
+                                          const std::vector<std::vector<bool> > &intersect,
+                                          const std::vector<EffectSchema> &eff_schemas) const;
 
     std::vector<EffectSchema> get_effect_schemas() const;
 
