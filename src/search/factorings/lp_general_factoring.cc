@@ -48,7 +48,7 @@ LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         merge_overlapping(opts.get<bool>("merge_overlapping")),
         merge_dependent(opts.get<bool>("merge_dependent")) {
-    profile = STAR;
+    profile = GENERAL;
     cout << "using LP factoring strategy" << endl;
 
     if (max_merge_steps > 0 && !merge_dependent && !merge_overlapping){

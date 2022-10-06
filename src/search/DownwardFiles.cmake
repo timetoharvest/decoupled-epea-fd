@@ -299,14 +299,13 @@ fast_downward_plugin(
     SOURCES
         factorings/lp_factoring
         factorings/lp_general_factoring
-        factorings/lp_no_center_factoring
         factorings/lp_star_factoring
     DEPENDS DECOUPLED_SEARCH LP_SOLVER
 )
 
 fast_downward_plugin(
     NAME SCHEMA_IA_FACTORING
-    HELP "Class relevant to use factoring strategies without center factor"
+    HELP "Similar to incarcs factoring, but working on effect schemas"
     SOURCES
         factorings/schema_ia_factoring
     DEPENDS DECOUPLED_SEARCH

@@ -20,8 +20,8 @@ class LPStarFactoring : public lp_factoring::LPFactoring {
     };
 
     enum FACTORING_TYPE {
-        GENERAL,
-        STRICT,
+        GENERAL, // TODO rename this to GENERAL_STAR to avoid confusion
+        STRICT, // TODO rename this to STRICT_STAR to avoid confusion?
         F,
         IF,
     };
