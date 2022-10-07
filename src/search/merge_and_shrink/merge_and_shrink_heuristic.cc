@@ -11,9 +11,6 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 
-#include "../compliant_paths/cpg_storage.h"
-#include "../compliant_paths/explicit_state_cpg.h"
-
 #include "../tasks/root_task.h"
 #include "../task_utils/task_properties.h"
 
@@ -37,6 +34,10 @@ MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
     extract_factors(fts);
     log << "Done initializing merge-and-shrink heuristic." << endl << endl;
+    for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
+        vector<bool> contained_vars(g_variable_domain.size(), false);
+        mas_representation->set_leaf_id(contained_vars);
+    }
 }
 
 void MergeAndShrinkHeuristic::extract_factor(
@@ -119,51 +120,20 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 }
 
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
-    int heuristic;
-    if (g_factoring) {
-        // Compute all reached leaf facts for all leaves.
-        const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(ancestor_state));
-        int num_leaves = g_leaves.size();
-        vector<vector<pair<int, int>>> reached_facts_by_leaf;
-        reached_facts_by_leaf.reserve(num_leaves);
-        for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
-            vector<pair<int, int>> reached_leaf_facts;
-            int num_reached_lstates = prices->get_number_states(leaf);
-            for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id) {
-                if (prices->has_leaf_state(id, leaf)) {
-                    LeafState lstate = g_state_registry->lookup_leaf_state(id, leaf);
-                    for (int leaf_var : g_leaves[leaf]) {
-                        reached_leaf_facts.emplace_back(leaf_var, lstate[leaf_var]);
-                    }
-                    if (--num_reached_lstates == 0) {
-                        break;
-                    }
-                }
-            }
-            utils::sort_unique(reached_leaf_facts);
-            reached_facts_by_leaf.push_back(move(reached_leaf_facts));
+    int heuristic = 0;
+    for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
+        int cost;
+        if (g_factoring) {
+            cost = mas_representation->compute_decoupled_value(
+                ancestor_state);
+        } else {
+            cost = mas_representation->get_value(ancestor_state);
         }
-        // TODO: implement this
-        heuristic = 0;
-        for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
-            int cost = mas_representation->get_decoupled_value(
-                ancestor_state, prices, reached_facts_by_leaf);
-            if (cost == PRUNED_STATE || cost == INF) {
-                // If state is unreachable or irrelevant, we encountered a dead end.
-                return DEAD_END;
-            }
-            heuristic = max(heuristic, cost);
+        if (cost == PRUNED_STATE || cost == INF) {
+            // If state is unreachable or irrelevant, we encountered a dead end.
+            return DEAD_END;
         }
-    } else {
-        heuristic = 0;
-        for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
-            int cost = mas_representation->get_value(ancestor_state);
-            if (cost == PRUNED_STATE || cost == INF) {
-                // If state is unreachable or irrelevant, we encountered a dead end.
-                return DEAD_END;
-            }
-            heuristic = max(heuristic, cost);
-        }
+        heuristic = max(heuristic, cost);
     }
     return heuristic;
 }
