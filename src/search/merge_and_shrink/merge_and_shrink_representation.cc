@@ -182,10 +182,12 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_de
     unordered_map<int, vector<vector<int>>> index_to_reached_leaf_values_by_var;
     for (int value : reached_values_by_var[var_id]) {
         int index = lookup_table[value];
-        if (index_to_reached_leaf_values_by_var[index].empty()) {
-            index_to_reached_leaf_values_by_var[index].resize(g_variable_domain.size());
+        if (index != PRUNED_STATE) {
+            if (index_to_reached_leaf_values_by_var[index].empty()) {
+                index_to_reached_leaf_values_by_var[index].resize(g_variable_domain.size());
+            }
+            index_to_reached_leaf_values_by_var[index][var_id].push_back(value);
         }
-        index_to_reached_leaf_values_by_var[index][var_id].push_back(value);
     }
     return index_to_reached_leaf_values_by_var;
 }
@@ -300,12 +302,14 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_d
             int left_index = left.first;
             int right_index = right.first;
             int merge_index = lookup_table[left_index][right_index];
-            auto &merge_values_by_var = index_to_reached_leaf_values_by_var_merge[merge_index];
-            merge_values_by_var.resize(g_variable_domain.size());
-            // TODO: if leaf_id != LeafFactorID::CENTER: do not add facts of handled leaf vars.
-            for (size_t var_id = 0; var_id < g_variable_domain.size(); ++var_id) {
-                merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), left.second[var_id].begin(), left.second[var_id].end());
-                merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), right.second[var_id].begin(), right.second[var_id].end());
+            if (merge_index != PRUNED_STATE) {
+                auto &merge_values_by_var = index_to_reached_leaf_values_by_var_merge[merge_index];
+                merge_values_by_var.resize(g_variable_domain.size());
+                // TODO: if leaf_id != LeafFactorID::CENTER: do not add facts of handled leaf vars.
+                for (size_t var_id = 0; var_id < g_variable_domain.size(); ++var_id) {
+                    merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), left.second[var_id].begin(), left.second[var_id].end());
+                    merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), right.second[var_id].begin(), right.second[var_id].end());
+                }
             }
         }
     }
