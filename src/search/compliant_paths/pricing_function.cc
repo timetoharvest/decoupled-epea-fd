@@ -455,7 +455,9 @@ void Prices::apply_center_op_to_leaves(const Prices &old_cpg, const Operator &op
 }
 
 bool Prices::has_leaf_state(LeafStateHash id, LeafFactorID factor) const {
-    if (leaf_state_id_map[factor][id] == -1){
+    // We need the first part because M&S generates leaf states which are
+    // not reachable (in the precompute_leaf_states variant).
+    if (id >= leaf_state_id_map[factor].size() || leaf_state_id_map[factor][id] == -1){
         return false;
     }
     size_t leaf_id = leaf_state_id_map[factor][id];

@@ -128,6 +128,96 @@ int MergeAndShrinkRepresentation::compute_decoupled_value(const GlobalState &sta
     return min_h_and_price;
 }
 
+int MergeAndShrinkRepresentation::compute_decoupled_value_precomputed(
+    const GlobalState &state) const {
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    vector<int> center_hvals = get_values_precomputed(state);
+    // we filtered all pruned states and states with h-val of infinity.
+    int min_h_and_price = INF;
+    for (int h_val : center_hvals) {
+        if (h_val == PRUNED_STATE || h_val == INF) {
+            continue;
+        }
+        int sum_prices = 0;
+        for (LeafFactorID leaf(0); leaf < leaf_state_ids_by_leaf_id_by_hval[h_val].size(); ++leaf) {
+            const auto &leaf_state_ids = leaf_state_ids_by_leaf_id_by_hval[h_val][leaf];
+            int min_price = INF;
+            for (LeafStateHash leaf_state_id : leaf_state_ids) {
+                if (prices->has_leaf_state(leaf_state_id, leaf)) {
+                    int price = prices->get_cost_of_state(leaf_state_id, leaf);
+                    min_price = min(min_price, price);
+                }
+            }
+
+            if (min_price == INF) {
+                sum_prices = INF;
+                break;
+            } else {
+                sum_prices += min_price;
+            }
+        }
+        if (sum_prices != INF) {
+            min_h_and_price = min(min_h_and_price, h_val + sum_prices);
+        }
+    }
+    return min_h_and_price;
+}
+
+static void compute_leaf_states(
+    LeafFactorID leaf_id,
+    int pos,
+    vector<int> &leaf_state,
+    const vector<vector<int>> &values_by_var,
+    vector<vector<LeafStateHash>> &leaf_state_ids_by_leaf_id) {
+    const vector<int> &leaf_vars = g_leaves[leaf_id];
+    int var = leaf_vars[pos];
+    for (int value : values_by_var[var]) {
+        leaf_state[pos] = value;
+        if (pos < static_cast<int>(leaf_vars.size()) - 1) {
+            compute_leaf_states(
+                leaf_id,
+                pos + 1,
+                leaf_state,
+                values_by_var,
+                leaf_state_ids_by_leaf_id);
+        } else {
+            LeafStateHash leaf_state_id = g_state_registry->get_leaf_state_hash(leaf_state, leaf_id);
+            leaf_state_ids_by_leaf_id[leaf_id].push_back(leaf_state_id);
+        }
+    }
+}
+
+void MergeAndShrinkRepresentation::store_leaf_state_ids_by_leaf_id_by_hval() {
+    int num_leaves = g_leaves.size();
+    vector<vector<vector<int>>> values_by_var_by_hval = get_leaf_state_ids();
+    int num_h_values = values_by_var_by_hval.size();
+    leaf_state_ids_by_leaf_id_by_hval.resize(num_h_values, vector<vector<LeafStateHash>>(num_leaves));
+    for (int h = 0; h < num_h_values; ++h) {
+        vector<vector<int>> &values_by_var = values_by_var_by_hval[h];
+        if (h == INF || h == PRUNED_STATE) {
+            continue;
+        }
+        for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
+            const vector<int> &leaf_vars = g_leaves[leaf];
+            // Use all values for a leaf var if it is not covered by the M&S tree.
+            for (int leaf_var : leaf_vars) {
+                if (values_by_var[leaf_var].empty()) {
+                    for (int value = 0; value < static_cast<int>(g_variable_domain.size()); ++value) {
+                        values_by_var[leaf_var].push_back(value);
+                    }
+                }
+            }
+            vector<int> leaf_state(leaf_vars.size());
+            compute_leaf_states(
+                leaf,
+                0,
+                leaf_state,
+                values_by_var,
+                leaf_state_ids_by_leaf_id_by_hval[h]);
+        }
+    }
+}
+
 int MergeAndShrinkRepresentation::get_domain_size() const {
     return domain_size;
 }
@@ -176,6 +266,17 @@ int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state) const 
     return lookup_table[value];
 }
 
+vector<int> MergeAndShrinkRepresentationLeaf::get_values_precomputed(
+    const GlobalState &state) const {
+    if (g_belongs_to_factor[var_id] == LeafFactorID::CENTER) {
+        int value = state[var_id];
+        return {lookup_table[value]};
+    }
+    vector<int> all_values(lookup_table);
+    utils::sort_unique(all_values);
+    return all_values;
+}
+
 unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value(
     const ExplicitStateCPG *prices,
     const vector<vector<int>> &reached_values_by_var) const {
@@ -190,6 +291,17 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_de
         }
     }
     return index_to_reached_leaf_values_by_var;
+}
+
+vector<vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_leaf_state_ids() const {
+    vector<vector<vector<int>>> values_by_var_by_index(domain_size, vector<vector<int>>(g_variable_domain.size()));
+    for (size_t value = 0; value < lookup_table.size(); ++value) {
+        int entry = lookup_table[value];
+        if (entry != PRUNED_STATE) {
+            values_by_var_by_index[entry][var_id].push_back(value);
+        }
+    }
+    return values_by_var_by_index;
 }
 
 bool MergeAndShrinkRepresentationLeaf::is_total() const {
@@ -287,6 +399,32 @@ int MergeAndShrinkRepresentationMerge::get_value(
     return lookup_table[state1][state2];
 }
 
+vector<int> MergeAndShrinkRepresentationMerge::get_values_precomputed(
+    const GlobalState &state) const {
+    vector<int> values_left = left_child->get_values_precomputed(state);
+    vector<int> values_right = right_child->get_values_precomputed(state);
+    vector<int> values_merge;
+    values_merge.reserve(lookup_table.size());
+    for (int val_left : values_left) {
+        if (val_left == PRUNED_STATE) {
+            continue;
+        }
+        for (int val_right : values_right) {
+            if (val_right == PRUNED_STATE) {
+                continue;
+            }
+            int merge_index = lookup_table[val_left][val_right];
+            if (merge_index != PRUNED_STATE) {
+                values_merge.push_back(merge_index);
+            }
+        }
+    }
+    if (values_merge.empty()) {
+        return {PRUNED_STATE};
+    }
+    return values_merge;
+}
+
 unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_decoupled_value(
     const ExplicitStateCPG *prices,
     const vector<vector<int>> &reached_values_by_var) const {
@@ -314,6 +452,31 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_d
         }
     }
     return index_to_reached_leaf_values_by_var_merge;
+}
+
+vector<vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_leaf_state_ids() const {
+    vector<vector<vector<int>>> values_by_var_by_index_left = left_child->get_leaf_state_ids();
+    vector<vector<vector<int>>> values_by_var_by_index_right = right_child->get_leaf_state_ids();
+    vector<vector<vector<int>>> leaf_state_ids_by_var_by_index_merge(domain_size, vector<vector<int>>(g_variable_domain.size()));
+    for (size_t left_index = 0; left_index < values_by_var_by_index_left.size(); ++left_index) {
+        for (size_t right_index = 0; right_index < values_by_var_by_index_right.size(); ++right_index) {
+            int merge_index = lookup_table[left_index][right_index];
+            if (merge_index != PRUNED_STATE && merge_index != INF) {
+                auto &merge_values_by_var = leaf_state_ids_by_var_by_index_merge[merge_index];
+                for (size_t var_id = 0; var_id < g_variable_domain.size(); ++var_id) {
+                    merge_values_by_var[var_id].insert(
+                        merge_values_by_var[var_id].end(),
+                        values_by_var_by_index_left[left_index][var_id].begin(),
+                        values_by_var_by_index_left[left_index][var_id].end());
+                    merge_values_by_var[var_id].insert(
+                        merge_values_by_var[var_id].end(),
+                        values_by_var_by_index_right[right_index][var_id].begin(),
+                        values_by_var_by_index_right[right_index][var_id].end());
+                }
+            }
+        }
+    }
+    return leaf_state_ids_by_var_by_index_merge;
 }
 
 bool MergeAndShrinkRepresentationMerge::is_total() const {

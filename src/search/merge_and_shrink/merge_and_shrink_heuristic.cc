@@ -26,7 +26,8 @@ using utils::ExitCode;
 
 namespace merge_and_shrink {
 MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
-    : Heuristic(opts) {
+    : Heuristic(opts),
+      precompute_leaf_states(opts.get<bool>("precompute_leaf_states")) {
     log << "Initializing merge-and-shrink heuristic..." << endl;
     MergeAndShrinkAlgorithm algorithm(opts);
     // TODO: switch back to task of heuristic
@@ -34,10 +35,6 @@ MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
     extract_factors(fts);
     log << "Done initializing merge-and-shrink heuristic." << endl << endl;
-    for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
-        vector<bool> contained_vars(g_variable_domain.size(), false);
-        mas_representation->set_leaf_id(contained_vars);
-    }
 }
 
 void MergeAndShrinkHeuristic::extract_factor(
@@ -120,12 +117,28 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 }
 
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
+    static bool precomputed = false;
+    if (!precomputed) {
+        if (g_factoring) {
+            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
+                //        vector<bool> contained_vars(g_variable_domain.size(), false);
+                //        mas_representation->set_leaf_id(contained_vars);
+                if (precompute_leaf_states) {
+                    mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
+                }
+            }
+        }
+        precomputed = true;
+    }
     int heuristic = 0;
     for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
         int cost;
         if (g_factoring) {
-            cost = mas_representation->compute_decoupled_value(
-                ancestor_state);
+            if (precompute_leaf_states) {
+                cost = mas_representation->compute_decoupled_value_precomputed(ancestor_state);
+            } else {
+                cost = mas_representation->compute_decoupled_value(ancestor_state);
+            }
         } else {
             cost = mas_representation->get_value(ancestor_state);
         }
@@ -227,6 +240,9 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "score_based_filtering(scoring_functions=[goal_relevance,dfp,"
         "total_order])),label_reduction=exact(before_shrinking=true,"
         "before_merging=false),max_states=50k,threshold_before_merge=1)\n}}}\n");
+    parser.add_option<bool>(
+        "precompute_leaf_states",
+        "if true, compute for each h-value the set of leaf states");
 
     Heuristic::add_options_to_parser(parser);
     add_merge_and_shrink_algorithm_options_to_parser(parser);
