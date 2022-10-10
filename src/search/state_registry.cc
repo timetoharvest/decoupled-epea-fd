@@ -30,7 +30,7 @@ StateRegistry::StateRegistry()
     if (g_factoring){
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             leaf_state_data_pool[factor] = new segmented_vector::SegmentedArrayVector<PackedStateBin>
-                                        (g_leaf_factor_packers[factor]->get_num_bins());
+                                        (g_leaf_state_packers[factor]->get_num_bins());
         }
     }
 }

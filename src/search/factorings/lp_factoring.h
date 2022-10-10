@@ -27,7 +27,7 @@ protected:
 
     mutable utils::Timer timer;
 
-    LPFactoring(const Options &opts);
+    LPFactoring(const options::Options &opts);
 
     FactoredVars get_factoring() override = 0;
 

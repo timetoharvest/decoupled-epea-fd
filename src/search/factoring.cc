@@ -1,6 +1,7 @@
 #include "factoring.h"
 
 #include "algorithms/sccs.h"
+#include "factorings/factoring_ranking.h"
 #include "compliant_paths/compliant_path_graph.h"
 #include "compliant_paths/cudd_cpg.h"
 #include "compliant_paths/explicit_state_cpg.h"

@@ -3,6 +3,11 @@
 
 #include "../factoring.h"
 
+namespace options {
+class Options;
+class OptionParser;
+}
+
 namespace schema_ia_factoring {
 class SchemaIAFactoring : public Factoring {
 
@@ -33,9 +38,9 @@ class SchemaIAFactoring : public Factoring {
 
 public:
 
-    SchemaIAFactoring(const Options &opts);
+    SchemaIAFactoring(const options::Options &opts);
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 
 };
 }

@@ -9,6 +9,7 @@
 #include "../globals.h"
 #include "../operator.h"
 #include "../utils/timer.h"
+#include "../utils/hash.h"
 
 #include <algorithm>
 #include <iostream>
@@ -40,10 +41,10 @@ void LPGeneralFactoring::PotentialLeaf::add_leaf_only_schema(size_t action_schem
 }
 
 LPGeneralFactoring::LPGeneralFactoring(const Options &opts) : LPFactoring(opts),
-        strategy(STRATEGY(opts.get_enum("strategy"))),
+        strategy(opts.get<STRATEGY>("strategy")),
         min_mobility(opts.get<int>("min_mobility")),
-        min_flexibility(opts.get<float>("min_flexibility")),
-        min_fact_flexibility(opts.get<float>("min_fact_flexibility")),
+        min_flexibility(opts.get<double>("min_flexibility")),
+        min_fact_flexibility(opts.get<double>("min_fact_flexibility")),
         add_cg_sccs_(opts.get<bool>("add_cg_sccs")),
         max_merge_steps(opts.get<int>("max_merge_steps")),
         merge_overlapping(opts.get<bool>("merge_overlapping")),
@@ -182,7 +183,7 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         filter_potential_leaves();
     }
 
-    if (potential_leaves.size() < min_number_leaves){
+    if (static_cast<int>(potential_leaves.size()) < min_number_leaves){
         cout << "Only " << potential_leaves.size() <<
                 " potential leaves left, but minimum number of leaves is " <<
                 min_number_leaves << "." << endl;
@@ -672,7 +673,7 @@ vector<LPGeneralFactoring::PotentialLeaf> LPGeneralFactoring::compute_potential_
         utils::HashMap<std::vector<int>, size_t> leaf_lookup;
         for (size_t as = 0; as < action_schemas.size(); ++as) {
             const ActionSchema &action_schema = action_schemas[as];
-            uint64_t size = 1;
+            int64_t size = 1;
             for (int var : action_schema.eff_vars){
                 size *= g_variable_domain[var];
                 if (max_leaf_size != 0 && size > max_leaf_size){
@@ -751,7 +752,7 @@ void LPGeneralFactoring::add_cg_sccs() {
 
     size_t added = 0;
     for (const auto &scc : sccs) {
-        uint64_t size = 1;
+        int64_t size = 1;
         for (int var : scc){
             size *= g_variable_domain[var];
             if (max_leaf_size != 0 && size > max_leaf_size){
@@ -956,13 +957,12 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
     strategies.push_back("mm_approx");
     strategies.push_back("mfa");
     strategies.push_back("mm");
-    parser.add_enum_option(
+    parser.add_enum_option<STRATEGY>(
             "strategy",
             strategies,
             "TODO",
             "mml",
-            vector<string>(),
-            OptionFlags(false));
+            vector<string>());
 
     parser.add_option<int>(
             "min_mobility",
@@ -970,13 +970,13 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
             "1"
     );
 
-    parser.add_option<float>(
+    parser.add_option<double>(
             "min_flexibility",
             "TODO",
             "0"
     );
 
-    parser.add_option<float>(
+    parser.add_option<double>(
             "min_fact_flexibility",
             "TODO",
             "0"
@@ -1007,7 +1007,7 @@ void LPGeneralFactoring::add_options_to_parser(OptionParser &parser) {
     );
 }
 
-static Factoring *_parse_lp(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_lp(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
     LPFactoring::add_options_to_parser(parser);
@@ -1016,12 +1016,11 @@ static Factoring *_parse_lp(OptionParser &parser) {
 
     Options opts = parser.parse();
 
-    LPGeneralFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new LPGeneralFactoring(opts);
+        return make_shared<LPGeneralFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 static Plugin<Factoring> _plugin_lp("lp_general", _parse_lp);

@@ -76,9 +76,9 @@ class LPStarFactoring : public lp_factoring::LPFactoring {
 
 public:
 
-    LPStarFactoring(const Options &opts);
+    LPStarFactoring(const options::Options &opts);
 
-    static void add_options_to_parser(OptionParser &parser);
+    static void add_options_to_parser(options::OptionParser &parser);
 
 };
 }

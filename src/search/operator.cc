@@ -119,7 +119,7 @@ bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
     return true;
 }
 
-bool Operator::is_center_applicable(const State &state) const {
+bool Operator::is_center_applicable(const GlobalState &state) const {
     for (const Condition &cond : get_preconditions(LeafFactorID::CENTER)){
         if (!cond.is_applicable(state)){
             return false;

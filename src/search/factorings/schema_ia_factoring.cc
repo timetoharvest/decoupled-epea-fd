@@ -64,7 +64,7 @@ vector<set<int>> SchemaIAFactoring::get_leaves(const vector<bool> &center,
             for (int del_id : del_components){
                 components.erase(components.begin() + del_id);
             }
-            uint64_t leaf_size = 1;
+            int64_t leaf_size = 1;
             for (int c_as : c){
                 component_map[c_as] = components.size();
                 for (int var : eff_schemas[c_as].vars){
@@ -177,7 +177,7 @@ vector<SchemaIAFactoring::EffectSchema> SchemaIAFactoring::get_effect_schemas() 
     utils::HashMap<std::vector<int>, size_t> scheme_loockup;
     for (const Operator &op : g_operators) {
         vector<int> vars;
-        uint64_t leaf_size = 1;
+        int64_t leaf_size = 1;
         for (const Effect &eff : op.get_effects()) {
             vars.push_back(eff.var);
             leaf_size *= g_variable_domain[eff.var];
@@ -288,21 +288,19 @@ vector<SchemaIAFactoring::EffectSchema> SchemaIAFactoring::get_effect_schemas() 
 //    }
 //}
 
-static Factoring *_parse_schema_ia_factoring(OptionParser &parser) {
+static shared_ptr<Factoring> _parse_schema_ia_factoring(OptionParser &parser) {
     // TODO docu
     Factoring::add_options_to_parser(parser);
 
     Options opts = parser.parse();
 
-    SchemaIAFactoring *factoring = 0;
     if (!parser.dry_run()) {
-        factoring = new SchemaIAFactoring(opts);
+        return make_shared<SchemaIAFactoring>(opts);
     }
 
-    return factoring;
+    return 0;
 }
 
 static Plugin<Factoring> _plugin_lp("schema_ia", _parse_schema_ia_factoring);
-
 }
 
