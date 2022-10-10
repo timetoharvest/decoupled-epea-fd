@@ -23,6 +23,7 @@ CPLEXSolver::~CPLEXSolver() {
 
 CPLEXSolver::CPLEXSolver(int time_limit)
     : is_solved(false),
+      has_time_limit(false),
       ilo_variables(IloNumVarArray(env, 0)),
       ilo_objective(IloObjective(env)),
       ilo_constraints(IloRangeArray(env, 0)),
@@ -31,9 +32,8 @@ CPLEXSolver::CPLEXSolver(int time_limit)
     cplex.setParam(IloCplex::Param::Threads, 1);
     cplex.setParam(IloCplex::Param::MIP::Tolerances::Integrality, 0.0);
     if (time_limit > 0){
+        has_time_limit = true;
         cplex.setParam(IloCplex::Param::TimeLimit, time_limit);
-        cplex.setParam(IloCplex::Param::MIP::Limits::Populate, cplex.getParam(IloCplex::Param::MIP::Pool::Capacity));
-        cplex.setParam(IloCplex::Param::MIP::Pool::Replace, CPX_SOLNPOOL_OBJ);
     }
 }
 
@@ -124,12 +124,6 @@ void CPLEXSolver::solve() {
     is_solved = true;
 }
 
-void CPLEXSolver::populate() {
-    cplex.extract(model);
-    cplex.populate();
-    is_solved = true;
-}
-
 bool CPLEXSolver::has_optimal_solution() const {
     assert(is_solved);
     return cplex.getStatus() == IloAlgorithm::Optimal;
@@ -145,12 +139,12 @@ bool CPLEXSolver::has_solution() const {
 }
 
 double CPLEXSolver::get_objective_value() const {
-    assert(has_optimal_solution());
+    assert(has_solution());
     return cplex.getObjValue();
 }
 
 vector<double> CPLEXSolver::extract_solution() const {
-    assert(has_optimal_solution());
+    assert(has_solution() && (has_time_limit || has_optimal_solution()));
     cout << "CPLEX status: " << cplex.getStatus() << endl;
     vector<double> solution;
     for (int var = 0; var < get_num_variables(); ++var) {
@@ -158,26 +152,6 @@ vector<double> CPLEXSolver::extract_solution() const {
             solution.push_back(cplex.getValue(ilo_variables[var]));
         } else {
             solution.push_back(IloRound(cplex.getValue(ilo_variables[var])));
-        }
-    }
-    return solution;
-}
-
-vector<double> CPLEXSolver::extract_best_solution() const {
-    assert(has_solution());
-    cout << "CPLEX status: " << cplex.getStatus() << endl;
-    int best = 0;
-    for (int i = 0; i < cplex.getSolnPoolNsolns(); ++i){
-        if (cplex.getObjValue(i) > cplex.getObjValue(best)){
-            best = i;
-        }
-    }
-    vector<double> solution;
-    for (int var = 0; var < get_num_variables(); var++) {
-        if (ilo_variables[var].getType() == ILOFLOAT){
-            solution.push_back(cplex.getValue(ilo_variables[var], best));
-        } else {
-            solution.push_back(IloRound(cplex.getValue(ilo_variables[var], best)));
         }
     }
     return solution;

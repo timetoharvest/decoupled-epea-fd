@@ -1,6 +1,5 @@
 #include "factoring_ranking.h"
 
-#include "../factoring.h"
 #include "../operator.h"
 #include "../option_parser.h"
 #include "../plugin.h"
@@ -8,52 +7,12 @@
 using namespace std;
 
 
-FactoringRanking::FactoringRanking(const Options &opts) :
-    maximize(opts.get<bool>("maximize")) {
-}
-
 VarInt FactoringRanking::get_rank(const vector<set<int> > &factoring) {
     return rank(factoring);
 }
 
-string FactoringRanking::print_feature() const {
-    switch (feature) {
-        case LEAVES:
-            return "L";
-            break;
-        case DOM_SIZE:
-            return "D";
-            break;
-        case AFF_ACTIONS:
-            return "A";
-            break;
-        case VARS:
-            return "V";
-            break;
-        case MOBILITY:
-            return "M";
-            break;
-        default: case NO_FACTORING_FEATURE:
-            return "";
-    }
-}
-
-void FactoringRanking::print_all_rankings(const vector<set<int> > &factoring) {
-    MobilityRanking *mobility = new MobilityRanking();
-    cout << "ranking_mobility: ";
-    mobility->get_rank(factoring).dump_number();
-    LeavesRanking *leaves = new LeavesRanking();
-    cout << "ranking_leaves: ";
-    leaves->get_rank(factoring).dump_number();
-    DomSizeRanking *dom_size = new DomSizeRanking();
-    cout << "ranking_dom_size: ";
-    dom_size->get_rank(factoring).dump_number();
-    VariablesRanking *vars = new VariablesRanking();
-    cout << "ranking_variables: ";
-    vars->get_rank(factoring).dump_number();
-    AffActionsRanking *aff_actions = new AffActionsRanking();
-    cout << "ranking_aff_actions: ";
-    aff_actions->get_rank(factoring).dump_number();
+string MobilityRanking::print_feature() const {
+    return "M";
 }
 
 VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
@@ -73,7 +32,7 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
     for (size_t f = 0; f < factoring.size(); ++f) {
         for (int v: factoring[f]){
 
-            for (int op : Factoring::get_var_to_affecting_op()[v]) {
+            for (int op : get_var_to_affecting_op()[v]) {
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
@@ -110,6 +69,10 @@ VarInt MobilityRanking::rank(const vector<set<int> > &factoring) {
     return mobility;
 }
 
+string LeavesRanking::print_feature() const {
+    return "L";
+}
+
 VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
     if (factoring.size() == 0){
         return 0;
@@ -127,7 +90,7 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
 
     for (size_t f = 0; f < factoring.size(); ++f) {
         for (int v : factoring[f]){
-            for (int op : Factoring::get_var_to_affecting_op()[v]) {
+            for (int op : get_var_to_affecting_op()[v]) {
                 if (!operator_seen[op]) {
                     // if an operator has been handled by another leaf factor, it has to be a center action
                     operator_seen[op] = true;
@@ -183,6 +146,10 @@ VarInt LeavesRanking::rank(const vector<set<int>> &factoring) {
     return VarInt(factoring.size() - num_frozen);
 }
 
+string DomSizeRanking::print_feature() const {
+    return "D";
+}
+
 VarInt DomSizeRanking::rank(const vector<set<int>> & factoring) {
     if (factoring.size() == 0){
         return 0;
@@ -213,6 +180,10 @@ VarInt DomSizeRanking::rank(const vector<set<int>> & factoring) {
     }
 }
 
+string VariablesRanking::print_feature() const {
+    return "V";
+}
+
 VarInt VariablesRanking::rank(const vector<set<int>> & factoring) {
     if (factoring.size() == 0){
         return 0;
@@ -235,6 +206,10 @@ VarInt VariablesRanking::rank(const vector<set<int>> & factoring) {
     }
 }
 
+string AffActionsRanking::print_feature() const {
+    return "A";
+}
+
 VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     if (factoring.size() == 0 || g_operators.size() == 0){
         return 0;
@@ -253,7 +228,7 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
     for (size_t f = 0; f < factoring.size(); ++f) {
         for (int v: factoring[f]){
 
-            for (int op : Factoring::get_var_to_affecting_op()[v]) {
+            for (int op : get_var_to_affecting_op()[v]) {
                 if (!operator_seen[op]) {
                     operator_seen[op] = true;
 
@@ -312,75 +287,43 @@ VarInt AffActionsRanking::rank(const vector<set<int>> &factoring) {
 }
 
 
-void FactoringRanking::add_options_to_parser(OptionParser &parser) {
-    parser.add_option<bool>(
-            "maximize",
-            "TODO",
-            "true");
-}
-
 static PluginTypePlugin<FactoringRanking> _type_plugin(
     "FactoringRanking",
     "TODO",
     "factoring_ranking");
 
 static shared_ptr<FactoringRanking> _parse_mobility(OptionParser &parser) {
-
-    FactoringRanking::add_options_to_parser(parser);
-    Options opts = parser.parse();
-
     if (!parser.dry_run()) {
-        return make_shared<MobilityRanking>(opts);
+        return make_shared<MobilityRanking>();
     }
-
     return 0;
 }
 
 static shared_ptr<FactoringRanking> _parse_leaves(OptionParser &parser) {
-
-    FactoringRanking::add_options_to_parser(parser);
-    Options opts = parser.parse();
-
     if (!parser.dry_run()) {
-        return make_shared<LeavesRanking>(opts);
+        return make_shared<LeavesRanking>();
     }
-
     return 0;
 }
 
 static shared_ptr<FactoringRanking> _parse_dom_size(OptionParser &parser) {
-
-    FactoringRanking::add_options_to_parser(parser);
-    Options opts = parser.parse();
-
     if (!parser.dry_run()) {
-        return make_shared<DomSizeRanking>(opts);
+        return make_shared<DomSizeRanking>();
     }
-
     return 0;
 }
 
 static shared_ptr<FactoringRanking> _parse_vars(OptionParser &parser) {
-
-    FactoringRanking::add_options_to_parser(parser);
-    Options opts = parser.parse();
-
     if (!parser.dry_run()) {
-        return make_shared<VariablesRanking>(opts);
+        return make_shared<VariablesRanking>();
     }
-
     return 0;
 }
 
 static shared_ptr<FactoringRanking> _parse_aff_actions(OptionParser &parser) {
-
-    FactoringRanking::add_options_to_parser(parser);
-    Options opts = parser.parse();
-
     if (!parser.dry_run()) {
-        return make_shared<AffActionsRanking>(opts);
+        return make_shared<AffActionsRanking>();
     }
-
     return 0;
 }
 

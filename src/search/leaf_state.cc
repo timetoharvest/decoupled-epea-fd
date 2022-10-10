@@ -17,7 +17,7 @@ LeafState::LeafState(const PackedStateBin *buffer_, LeafStateID id_)
 
 int LeafState::operator[](size_t index) const {
     assert((size_t) g_new_index[index] < g_leaves[id.get_factor()].size());
-    return g_leaf_factor_packers[id.get_factor()]->get(buffer, g_new_index[index]);
+    return g_leaf_state_packers[id.get_factor()]->get(buffer, g_new_index[index]);
 }
 
 void LeafState::dump_pddl() const {

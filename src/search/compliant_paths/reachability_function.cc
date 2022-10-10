@@ -316,10 +316,8 @@ DOMINANCE Reachable::check_dominance(const GlobalState &other, int, DOMINANCE ne
                 new_is_larger = true;
                 sizes_equal = false;
             } else if (other_cpg->reachable[factor] != reachable[factor]){
-                new_is_smaller = true;
-                new_is_larger = true;
-                sizes_equal = false;
-                break;
+                // no dominance in either direction
+                return DOMINANCE::NONE;
             }
         }
        if (get_number_states(factor) < g_state_registry->size(factor) || !ExplicitStateCPG::precompute_leaf_state_space(factor)){
@@ -356,29 +354,26 @@ DOMINANCE Reachable::check_dominance(const GlobalState &other, int, DOMINANCE ne
         if (!need_to_check[factor]){
             continue;
         }
+        assert(reachable[factor].size() != other_cpg->reachable[factor].size());
         if (reachable[factor].size() > other_cpg->reachable[factor].size()){
-            assert(dominates);
-            size_t index = 0;
-            while ((index = other_cpg->reachable[factor].find_next(index)) != boost::dynamic_bitset<>::npos){
+            assert(!dominated); // implied by reachable[factor].size() > other_cpg->reachable[factor].size()
+            boost::dynamic_bitset<>::size_type index = other_cpg->reachable[factor].find_first();
+            while (index != boost::dynamic_bitset<>::npos){
                 if (!reachable[factor][index]){
-                    dominates = false;
-                    break;
+                    // not dominates and not dominated
+                    return DOMINANCE::NONE;
                 }
-            }
-            if (!dominates){
-                break;
+                index = other_cpg->reachable[factor].find_next(index);
             }
         } else if (reachable[factor].size() < other_cpg->reachable[factor].size()){
-            assert(dominated);
-            size_t index = 0;
-            while ((index = reachable[factor].find_next(index)) != boost::dynamic_bitset<>::npos){
+            assert(!dominates); // implied by reachable[factor].size() < other_cpg->reachable[factor].size()
+            boost::dynamic_bitset<>::size_type index = reachable[factor].find_first();
+            while (index != boost::dynamic_bitset<>::npos){
                 if (!other_cpg->reachable[factor][index]){
-                    dominated = false;
-                    break;
+                    // not dominated and not dominates
+                    return DOMINANCE::NONE;
                 }
-            }
-            if (!dominated){
-                break;
+                index = reachable[factor].find_next(index);
             }
         }
     }
@@ -525,6 +520,7 @@ size_t Reachable::get_number_states(LeafFactorID factor) const {
 
 int Reachable::get_goal_cost(LeafFactorID factor) const {
     if (goal_reached[factor]){
+        // TODO this should probably be min(min_leaf_goal_cost[factor], min_leaf_action_cost[factor])
         return min_leaf_action_cost[factor]; // TODO: this assumes that the initial state is not a goal state
     } else {
         return INF;

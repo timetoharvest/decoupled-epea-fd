@@ -107,12 +107,11 @@ bool Operator::is_applicable(const GlobalState &state) const {
 }
 
 bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
-    OpsLeafProps<Condition> preconditions = get_preconditions(factor);
-    if (preconditions.empty()){
+    if (!has_precondition_on(factor)){
         return true;
     }
     LeafState state = g_state_registry->lookup_leaf_state(id, factor);
-    for (const Condition &cond : preconditions){
+    for (const Condition &cond : get_preconditions(factor)){
         if (!cond.is_applicable(state)){
             return false;
         }
@@ -120,9 +119,8 @@ bool Operator::is_applicable(LeafStateHash id, LeafFactorID factor) const {
     return true;
 }
 
-bool Operator::is_center_applicable(const GlobalState &state) const {
-    OpsLeafProps<Condition> center_preconds = get_preconditions(LeafFactorID::CENTER);
-    for (const Condition &cond : center_preconds){
+bool Operator::is_center_applicable(const State &state) const {
+    for (const Condition &cond : get_preconditions(LeafFactorID::CENTER)){
         if (!cond.is_applicable(state)){
             return false;
         }
@@ -135,11 +133,25 @@ void Operator::dump() const {
     for (size_t i = 0; i < preconditions.size(); ++i) {
         cout << " [";
         preconditions[i].dump();
+        if (g_factoring){
+            if (g_belongs_to_factor[preconditions[i].var] == LeafFactorID::CENTER){
+                cout << " center";
+            } else {
+                cout << " leaf " << g_belongs_to_factor[preconditions[i].var];
+            }
+        }
         cout << "]";
     }
     for (size_t i = 0; i < effects.size(); ++i) {
         cout << " [";
         effects[i].dump();
+        if (g_factoring){
+            if (g_belongs_to_factor[effects[i].var] == LeafFactorID::CENTER){
+                cout << " center";
+            } else {
+                cout << " leaf " << g_belongs_to_factor[effects[i].var];
+            }
+        }
         cout << "]";
     }
     cout << endl;

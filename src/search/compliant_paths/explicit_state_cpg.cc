@@ -370,6 +370,18 @@ void ExplicitStateCPG::build_leaf_state_space(Prices &prices,
             cout << "no non-trivial leaf-only SCC in state space of leaf " << factor << endl;
         }
     }
+
+#ifdef DEBUG_PRECOMPUTE_GOAL_COST
+    int num_leaf_trans = 0;
+    int num_center_trans = 0;
+    for (LeafStateHash id(0); id < g_state_registry->size(factor); ++id) {
+        num_leaf_trans += leaf_state_successors[factor][id].size();
+        num_center_trans += center_successors[factor][id].size();
+    }
+    cout << "number leaf states of leaf " << factor << ": " << g_state_registry->size(factor) << endl;
+    cout << "number center transitions: " << num_center_trans << endl;
+    cout << "number leaf transitions: " << num_leaf_trans << endl;
+#endif
 }
 
 void ExplicitStateCPG::build_leaf_state_spaces() {

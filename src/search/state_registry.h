@@ -128,7 +128,7 @@ class StateRegistry {
             for (int i = 0; i < state_size; ++i) {
                 hash_state.feed(data[i]);
             }
-            return hash_state.get_hash64();
+            return hash_state.get_hash32();
         }
     };
 
@@ -159,7 +159,7 @@ class StateRegistry {
                 // g_leaves is set, but we run explicit-state search
                 state_sizes.resize(g_leaves.size());
                 for (size_t i = 0; i < g_leaves.size(); ++i){
-                    state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+                    state_sizes[i] = g_leaf_state_packers[i]->get_num_bins();
                 }
             }
         }
@@ -169,7 +169,7 @@ class StateRegistry {
             for (int i = 0; i < state_sizes[id.factor]; ++i) {
                 hash_state.feed(data[i]);
             }
-            return hash_state.get_hash64();
+            return hash_state.get_hash32();
         }
     };
 
@@ -183,7 +183,7 @@ class StateRegistry {
                 // g_leaves is set, but we run explicit-state search
                 state_sizes.resize(g_leaves.size());
                 for (size_t i = 0; i < g_leaves.size(); ++i){
-                    state_sizes[i] = g_leaf_factor_packers[i]->get_num_bins();
+                    state_sizes[i] = g_leaf_state_packers[i]->get_num_bins();
                 }
             }
         }

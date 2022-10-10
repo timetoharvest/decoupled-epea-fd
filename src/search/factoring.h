@@ -21,6 +21,7 @@ enum FACTORING_PROFILE {
     FORK,
     IFORK,
     STAR,
+    GENERAL
 };
 
 enum DECOUPLED_SEARCH_TYPE {
@@ -42,14 +43,15 @@ struct InteractionGraph {
     // to handle the center factor, increase indexes by 1
     
 private:
+    bool fork, ifork, strict_star;
     std::vector<std::vector<LeafFactorID> > successors;
     std::vector<std::vector<LeafFactorID> > predecessors;
     
     void add_dependency(LeafFactorID from, LeafFactorID to);
     
-    InteractionGraph(){};
+    InteractionGraph(): fork(false), ifork(false), strict_star(false){};
 public:
-    InteractionGraph(size_t num_factors) {
+    InteractionGraph(size_t num_factors): fork(true), ifork(true), strict_star(true) {
         successors.resize(num_factors+1);
         predecessors.resize(num_factors+1);
     }
@@ -69,6 +71,12 @@ public:
         }
         return predecessors[factor+1];
     }
+
+    bool is_fork() const {return fork;}
+
+    bool is_ifork() const {return ifork;}
+
+    bool is_strict_star() const {return strict_star;}
 };
 
 namespace options {
@@ -77,6 +85,7 @@ class Options;
 }
 
 class Factoring {
+    friend class FactoringRanking; // to access var_to_affecting_op
     
     enum class ABSTAIN_TYPE {
         ABSTAIN_ON_FAILURE, // default, if no factoring is found, the planner stops
@@ -110,7 +119,6 @@ class Factoring {
 protected:
     
     struct ActionSchema {
-
         int num_actions; // number of actions with the action schema
         std::vector<int> pre_vars; // sorted
         std::vector<int> eff_vars; // sorted
@@ -122,18 +130,19 @@ protected:
         void incr_num_action() {
             num_actions++;
         }
-
     };
 
     using FactoredVars = std::vector<std::set<int> >;
 
-    static std::vector<std::set<int> > var_to_affecting_op;
+    static std::vector<std::set<size_t> > var_to_affecting_op;
 
     static std::vector<ActionSchema> action_schemas;
 
     static void init_var_to_ops_map();
 
     static void init_action_schemas();
+
+    const static std::string TIME_OUT_MESSAGE;
 
 
     int max_leaf_size;
@@ -149,10 +158,22 @@ protected:
     
     FactoredVars get_sccs(const std::vector<int> &variables = std::vector<int>()) const;
     
-    FactoredVars get_connected_components(const std::vector<int> &variables) const;
+    FactoredVars get_connected_components(const std::set<int> &variables) const;
     
     std::vector<bool> get_frozen_leaves(const FactoredVars &components) const;
     
+    static const std::vector<std::set<size_t>>& get_var_to_affecting_op() {
+        init_var_to_ops_map();
+        return var_to_affecting_op;
+    }
+
+    void exit_if_timeout() const {
+        if (abstain_type != ABSTAIN_TYPE::STANDARD_ON_FAILURE){
+            std::cout << Factoring::TIME_OUT_MESSAGE << std::endl;
+            exit_with(utils::ExitCode::DECOUPLED_SEARCH_ABSTAINED);
+        }
+    }
+
 
     Factoring(const options::Options &opts);
     
@@ -188,11 +209,6 @@ public:
                 (g_leaves.empty() && abstain_type == ABSTAIN_TYPE::STANDARD_ON_FAILURE);
     }
 
-    
-    static const FactoredVars& get_var_to_affecting_op() {
-        init_var_to_ops_map();
-        return var_to_affecting_op;
-    }
 
     static void add_options_to_parser(options::OptionParser &parser);
     
