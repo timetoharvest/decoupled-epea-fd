@@ -1,7 +1,10 @@
 #ifndef MERGE_AND_SHRINK_MERGE_AND_SHRINK_REPRESENTATION_H
 #define MERGE_AND_SHRINK_MERGE_AND_SHRINK_REPRESENTATION_H
 
+#include "../leaf_state_id.h"
+
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 class ExplicitStateCPG;
@@ -16,10 +19,17 @@ class Distances;
 class MergeAndShrinkRepresentation {
 protected:
     int domain_size;
-
+    LeafFactorID leaf_id;
+    std::vector<std::vector<std::vector<LeafStateHash>>> leaf_state_ids_by_leaf_id_by_hval;
 public:
     explicit MergeAndShrinkRepresentation(int domain_size);
     virtual ~MergeAndShrinkRepresentation() = 0;
+
+    virtual void set_leaf_id(std::vector<bool> &contained_vars) = 0;
+
+    int compute_decoupled_value(const GlobalState &state) const;
+    int compute_decoupled_value_precomputed(const GlobalState &state) const;
+    void store_leaf_state_ids_by_leaf_id_by_hval();
 
     int get_domain_size() const;
 
@@ -34,10 +44,11 @@ public:
       if the abstract state is PRUNED_STATE or if the (distance) value is INF.
     */
     virtual int get_value(const GlobalState &state) const = 0;
-    virtual int get_decoupled_value(
-        const GlobalState &state,
+    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const = 0;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
         const ExplicitStateCPG *prices,
-        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const = 0;
+        const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
+    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const = 0;
     /* Return true iff the represented function is total, i.e., does not map
        to PRUNED_STATE. */
     virtual bool is_total() const = 0;
@@ -53,14 +64,17 @@ public:
     MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
     virtual ~MergeAndShrinkRepresentationLeaf() = default;
 
+    virtual void set_leaf_id(std::vector<bool> &contained_vars) override;
+
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
-    virtual int get_decoupled_value(
-        const GlobalState &state,
+    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const override;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
         const ExplicitStateCPG *prices,
-        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const override;
+        const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
 };
@@ -76,14 +90,17 @@ public:
         std::unique_ptr<MergeAndShrinkRepresentation> right_child);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 
+    virtual void set_leaf_id(std::vector<bool> &contained_vars) override;
+
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
-    virtual int get_decoupled_value(
-        const GlobalState &state,
+    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const override;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
         const ExplicitStateCPG *prices,
-        const std::vector<std::vector<std::pair<int, int>>> &reached_facts_by_leaf) const override;
+        const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
 };

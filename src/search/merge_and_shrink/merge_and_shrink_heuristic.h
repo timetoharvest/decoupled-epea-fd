@@ -10,6 +10,8 @@ class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
 
 class MergeAndShrinkHeuristic : public Heuristic {
+    const bool precompute_leaf_states;
+
     // The final merge-and-shrink representations, storing goal distances.
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
 
