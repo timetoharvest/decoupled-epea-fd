@@ -2,6 +2,7 @@
 
 #include "factoring.h"
 #include "operator.h"
+#include "utils/logging.h"
 #include "utils/memory.h"
 
 #include <iostream>
@@ -602,9 +603,10 @@ public:
 
     void dump() const override {
         cout << "GeneralFactorInfo" << endl;
-        for (vector<Condition>::const_iterator it : pre_by_factor){
-            cout << (int)(it - *pre_by_factor.cbegin()) << endl;
-        }
+        cout << "# center pre: " << get_preconditions(LeafFactorID::CENTER).size() << endl;
+        cout << "# center effects: " << get_effects(LeafFactorID::CENTER).size() << endl;
+        cout << "precondition factors " << get_leaf_pre_factors() << endl;
+        cout << "effect factors " << get_leaf_effect_factors() << endl;
     }
 };
 
@@ -743,11 +745,14 @@ unique_ptr<FactorInfo> FactorInfo::create(const Operator *op, LeafFactorID affec
                     break;
                 }
             }
-            return utils::make_unique_ptr<LeafOpCenterLeafPreFactorInfo>(affected_factor,
-                                                            preconditions.cbegin(), start_leaf_pre, preconditions.cend(),
-                                                            effects);
+            return utils::make_unique_ptr<LeafOpCenterLeafPreFactorInfo>(
+                    affected_factor,
+                    preconditions.cbegin(),
+                    start_leaf_pre,
+                    preconditions.cend(),
+                    effects);
         } else {
-            // not preconditioned by or affects center factor
+            // not preconditioned by factor
             return utils::make_unique_ptr<SingleFactorInfo>(affected_factor, preconditions, effects);
         }
     }

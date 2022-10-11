@@ -14,15 +14,13 @@ MaxIndependentSetFactoring::MaxIndependentSetFactoring(const Options &opts)
         arg_minimize_frozen(opts.get<bool>("minimize_frozen")),
         arg_merge_leaves_level(opts.get<int>("merge_leaves_level")),
         arg_find_all_mis(opts.get<bool>("find_all_mis")),
-        arg_number_mis(opts.get<int>("number_mis")),
-        arg_print_all_rankings(opts.get<bool>("print_all_rankings")) {
+        arg_number_mis(opts.get<int>("number_mis")) {
     profile = STAR;
     cout << "using maximum independet set factoring profile - find all MIS: " << arg_find_all_mis
             << " minimize_center " << arg_minimize_center
             << " minimize frozen " << arg_minimize_frozen
             << " merge leaves level: " << arg_merge_leaves_level
             << " number MIS to consider: " << arg_number_mis
-            << " all rankings: " << arg_print_all_rankings
             << " ranking_features: ";
     if (!opts.contains("rankings")) {
         cout << "None" << endl;
@@ -92,14 +90,8 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
         for (FactoringRanking *ranking : arg_rankings) {
             VarInt vi(ranking->get_rank(m));
             rankings.push_back(vi);
-            if (ranking->maximizes()) {
-                if (rankings[n] > max_rank[n]) {
-                    update = true;
-                }
-            } else {
-                if (rankings[n] < max_rank[n]) {
-                    update = true;
-                }
+            if (rankings[n] > max_rank[n]) {
+                update = true;
             }
             ++n;
         }
@@ -130,12 +122,6 @@ Factoring::FactoredVars MaxIndependentSetFactoring::get_factoring() {
             cout << "   ";
             arg_rankings[i]->get_rank(final_factoring).dump_number();
         }
-    }
-    if (arg_print_all_rankings) {
-        cout << "All Rankings: " << endl;
-
-        FactoringRanking::print_all_rankings(final_factoring);
-        cout << endl;
     }
 
     // push frozen leaves back in center
@@ -329,25 +315,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                 vector<VarInt> rankings;
                 for (size_t n = 0; n < arg_rankings.size(); ++n) {
                     rankings.push_back(VarInt(arg_rankings[n]->get_rank(mis)));
-                    if (arg_rankings[n]->maximizes()) {
-                        if (rankings[n] >= local_best_ranking[n]) {
-                            if (rankings[n] > local_best_ranking[n]) {
-                                update = true;
-                            } else {
-                                continue;
-                            }
+                    if (rankings[n] >= local_best_ranking[n]) {
+                        if (rankings[n] > local_best_ranking[n]) {
+                            update = true;
+                        } else {
+                            continue;
                         }
-                        break;
-                    } else {
-                        if (rankings[n] <= local_best_ranking[n]) {
-                            if (rankings[n] < local_best_ranking[n]) {
-                                update = true;
-                            } else {
-                                continue;
-                            }
-                        }
-                        break;
                     }
+                    break;
                 }
                 if (update) {
                     if (rankings.size() < arg_rankings.size()) {
@@ -376,25 +351,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
             // check if global best factoring has to be updated
             bool update_global = false;
             for (size_t n = 0; n < arg_rankings.size(); ++n) {
-                if (arg_rankings[n]->maximizes()) {
-                    if (local_best_ranking[n] >= best_ranking[n]) {
-                        if (local_best_ranking[n] > best_ranking[n]) {
-                            update_global = true;
-                        } else {
-                            continue;
-                        }
+                if (local_best_ranking[n] >= best_ranking[n]) {
+                    if (local_best_ranking[n] > best_ranking[n]) {
+                        update_global = true;
+                    } else {
+                        continue;
                     }
-                    break;
-                } else {
-                    if (local_best_ranking[n] <= best_ranking[n]) {
-                        if (local_best_ranking[n] < best_ranking[n]) {
-                            update_global = true;
-                        } else {
-                            continue;
-                        }
-                    }
-                    break;
                 }
+                break;
             }
             if (update_global) {
                 assert(best_ranking.size() == arg_rankings.size());
@@ -474,25 +438,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                             vector<VarInt> rankings;
                             for (size_t n = 0; n < arg_rankings.size(); ++n) {
                                 rankings.push_back(VarInt(arg_rankings[n]->get_rank(new_mis)));
-                                if (arg_rankings[n]->maximizes()) {
-                                    if (rankings[n] >= local_best_ranking[n]) {
-                                        if (rankings[n] > local_best_ranking[n]) {
-                                            update = true;
-                                        } else {
-                                            continue;
-                                        }
+                                if (rankings[n] >= local_best_ranking[n]) {
+                                    if (rankings[n] > local_best_ranking[n]) {
+                                        update = true;
+                                    } else {
+                                        continue;
                                     }
-                                    break;
-                                } else {
-                                    if (rankings[n] <= local_best_ranking[n]) {
-                                        if (rankings[n] < local_best_ranking[n]) {
-                                            update = true;
-                                        } else {
-                                            continue;
-                                        }
-                                    }
-                                    break;
                                 }
+                                break;
                             }
                             if (update) {
                                 if (rankings.size() < arg_rankings.size()) {
@@ -536,25 +489,14 @@ void MaxIndependentSetFactoring::optimize_feature(FactoredVars &mis, const NGrap
                         // check if global best factoring has to be updated
                         bool update_global = false;
                         for (size_t n = 0; n < arg_rankings.size(); ++n) {
-                            if (arg_rankings[n]->maximizes()) {
-                                if (local_best_ranking[n] >= best_ranking[n]) {
-                                    if (local_best_ranking[n] > best_ranking[n]) {
-                                        update_global = true;
-                                    } else {
-                                        continue;
-                                    }
+                            if (local_best_ranking[n] >= best_ranking[n]) {
+                                if (local_best_ranking[n] > best_ranking[n]) {
+                                    update_global = true;
+                                } else {
+                                    continue;
                                 }
-                                break;
-                            } else {
-                                if (local_best_ranking[n] <= best_ranking[n]) {
-                                    if (local_best_ranking[n] < best_ranking[n]) {
-                                        update_global = true;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                                break;
                             }
+                            break;
                         }
                         if (update_global) {
                             assert(best_ranking.size() == arg_rankings.size());
@@ -663,11 +605,6 @@ void MaxIndependentSetFactoring::add_options_to_parser(OptionParser &parser) {
             "number_mis",
             "TODO",
             "1");
-
-    parser.add_option<bool>(
-            "print_all_rankings",
-            "TODO",
-            "false");
 
     parser.add_list_option<shared_ptr<FactoringRanking>>(
             "rankings",

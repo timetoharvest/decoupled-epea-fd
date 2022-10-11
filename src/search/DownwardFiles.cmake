@@ -336,7 +336,17 @@ fast_downward_plugin(
     HELP "Class relevant to use factoring strategies using an LP solver"
     SOURCES
         factorings/lp_factoring
+        factorings/lp_general_factoring
+        factorings/lp_star_factoring
     DEPENDS DECOUPLED_SEARCH LP_SOLVER
+)
+
+fast_downward_plugin(
+    NAME SCHEMA_IA_FACTORING
+    HELP "Similar to incarcs factoring, but working on effect schemas"
+    SOURCES
+        factorings/schema_ia_factoring
+    DEPENDS DECOUPLED_SEARCH
 )
 
 fast_downward_plugin(

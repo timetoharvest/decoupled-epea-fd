@@ -318,7 +318,7 @@ void read_everything(istream &in) {
             switch (g_factoring->get_search_type()){
             case ASDA:
             case SDA: MAX_DUPLICATE_COUNTER = 50000; break;
-            case SAT: MAX_DUPLICATE_COUNTER = 60000; break;
+            case SAT: MAX_DUPLICATE_COUNTER = 100000; break;
             case UNSAT: MAX_DUPLICATE_COUNTER = 50000; break;
 
             default: cerr << "Unknown decoupled search type." << endl;
@@ -331,13 +331,13 @@ void read_everything(istream &in) {
         cout << "packing state variables..." << flush;
         g_state_packer = new int_packer::IntPacker(center_domains);
         cout << "Variables: " << g_center.size() << endl;
-        g_leaf_factor_packers = vector<int_packer::IntPacker*>(g_leaves.size(), 0);
-        for (size_t i = 0; i < g_leaf_factor_packers.size(); i++){
-            g_leaf_factor_packers[i] = new int_packer::IntPacker(leaf_domains[i]);
+        g_leaf_state_packers = vector<int_packer::IntPacker*>(g_leaves.size(), 0);
+        for (size_t i = 0; i < g_leaf_state_packers.size(); i++){
+            g_leaf_state_packers[i] = new int_packer::IntPacker(leaf_domains[i]);
         }
     } else {
         g_state_packer = new int_packer::IntPacker(g_variable_domain);
-        g_leaf_factor_packers.push_back(new int_packer::IntPacker(vector<int>(1, 2)));
+        g_leaf_state_packers.push_back(new int_packer::IntPacker(vector<int>(1, 2)));
         cout << "Variables: " << g_variable_domain.size() << endl;
     }
 
@@ -347,7 +347,7 @@ void read_everything(istream &in) {
     if (g_factoring){
         for (LeafFactorID factor(0); factor < g_leaves.size(); ++factor){
             cout << "Bytes per state of leaf factor " << factor << ": "
-                    << g_leaf_factor_packers[factor]->get_num_bins() * sizeof(int_packer::IntPacker::Bin) << endl;
+                    << g_leaf_state_packers[factor]->get_num_bins() * sizeof(int_packer::IntPacker::Bin) << endl;
         }
     }
 
@@ -480,7 +480,7 @@ vector<vector<string> > g_fact_names;
 vector<int> g_axiom_layers;
 vector<int> g_default_axiom_values;
 int_packer::IntPacker *g_state_packer;
-vector<int_packer::IntPacker*> g_leaf_factor_packers;
+vector<int_packer::IntPacker*> g_leaf_state_packers;
 
 vector<int> g_initial_state_data;
 
