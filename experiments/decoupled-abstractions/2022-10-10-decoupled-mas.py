@@ -98,9 +98,16 @@ class Filter:
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
 exp.add_fetcher('data/2022-10-10-explicit-baseline-mas-eval', merge=True)
+OLD_REV='e843f20ac7e877edb548acd4f0110ccbd0137525'
+exp.add_fetcher('data/2022-04-01-decoupled-baseline-blind-lmcut-ipc-eval', filter_algorithm=[
+    f"{OLD_REV}-{name}-blind" for name in decoupling.keys()
+],merge=True)
+exp.add_fetcher('data/2022-04-01-decoupled-scp-exp-ipc-eval',filter_algorithm=[
+    f"{OLD_REV}-{name}-scpexp_noprune_noninc_leafid-all-cegarsys2hc_infinityleaves" for name in decoupling.keys()
+],merge=True)
 
 for dec_name in decoupling.keys():
-    algos = [f"{REVISION}-explicit-b50k-sccdfp", f"{REVISION}-explicit-b50k-sbmiasm"]
+    algos = [f"{REVISION}-explicit-b50k-sccdfp", f"{REVISION}-explicit-b50k-sbmiasm", f"{OLD_REV}-{dec_name}-blind", f"{OLD_REV}-{dec_name}-scpexp_noprune_noninc_leafid-all-cegarsys2hc_infinityleaves"]
     algos.extend([f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)])
     f = Filter(dec_name, algos)
     report_name=f'{exp.name}-abs-{dec_name}'
