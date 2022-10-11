@@ -76,6 +76,39 @@ LPVariable::LPVariable(double lower_bound, double upper_bound,
       is_integer(is_integer) {
 }
 
+void dump_lp(LPObjectiveSense sense,
+             const vector<LPVariable> &vars,
+             const vector<LPConstraint> &constrs) {
+    if (sense == LPObjectiveSense::MAXIMIZE){
+        cout << "Linear Program: maximize objective value" << endl;
+    } else {
+        cout << "Linear Program: minimize objective value" << endl;
+    }
+    cout << vars.size() << " variables" << endl;
+    cout << constrs.size() << " constraints" << endl;
+
+    if (vars.size() > 100 || constrs.size() > 100){
+        cout << "WARNING: not printing LP as it is too big" << endl;
+        return;
+    }
+
+    cout << "variables: " << endl;
+    int i = 0;
+    for (auto &var : vars){
+        cout << "x" << i++ << ": range " << var.lower_bound << " .. " << var.upper_bound << "; objective value " << var.objective_coefficient << (var.is_integer ? ", is integer variable" : "") << endl;
+    }
+
+    cout << endl;
+
+    for (auto &constr : constrs){
+        cout << constr.get_lower_bound() << " < ";
+        for (size_t i = 0; i < constr.get_variables().size(); ++i){
+            cout << constr.get_coefficients()[i] << " * x" << constr.get_variables()[i] << (i < constr.get_variables().size() - 1 ? " + " : "");
+        }
+        cout << " < " << constr.get_upper_bound() << endl;
+    }
+}
+
 
 LPSolver::~LPSolver() {
 }
