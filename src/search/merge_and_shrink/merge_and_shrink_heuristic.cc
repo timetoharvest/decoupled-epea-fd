@@ -118,15 +118,11 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     static bool precomputed = false;
-    if (!precomputed) {
-        if (g_factoring) {
-            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
-                //        vector<bool> contained_vars(g_variable_domain.size(), false);
-                //        mas_representation->set_leaf_id(contained_vars);
-                if (precompute_leaf_states) {
-                    mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
-                }
-            }
+    if (!precomputed && precompute_leaf_states && g_factoring) {
+        for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
+            //        vector<bool> contained_vars(g_variable_domain.size(), false);
+            //        mas_representation->set_leaf_id(contained_vars);
+            mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
         }
         precomputed = true;
     }
