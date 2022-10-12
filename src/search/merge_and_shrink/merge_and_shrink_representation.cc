@@ -195,6 +195,7 @@ void MergeAndShrinkRepresentation::store_leaf_state_ids_by_leaf_id_by_hval() {
     for (int h = 0; h < num_h_values; ++h) {
         vector<vector<int>> &values_by_var = values_by_var_by_hval[h];
         if (h == INF || h == PRUNED_STATE) {
+            // TODO this can never happen!
             continue;
         }
         for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
@@ -202,7 +203,7 @@ void MergeAndShrinkRepresentation::store_leaf_state_ids_by_leaf_id_by_hval() {
             // Use all values for a leaf var if it is not covered by the M&S tree.
             for (int leaf_var : leaf_vars) {
                 if (values_by_var[leaf_var].empty()) {
-                    for (int value = 0; value < static_cast<int>(g_variable_domain.size()); ++value) {
+                    for (int value = 0; value < g_variable_domain[leaf_var]; ++value) {
                         values_by_var[leaf_var].push_back(value);
                     }
                 }
