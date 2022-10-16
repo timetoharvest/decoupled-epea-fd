@@ -27,7 +27,7 @@ using utils::ExitCode;
 namespace merge_and_shrink {
 MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
     : Heuristic(opts),
-      precompute_leaf_states(opts.get<bool>("precompute_leaf_states")) {
+      decoupled_lookup(opts.get<DECOUPLED_LOOKUP>("decoupled_lookup")) {
     log << "Initializing merge-and-shrink heuristic..." << endl;
     MergeAndShrinkAlgorithm algorithm(opts);
     // TODO: switch back to task of heuristic
@@ -118,7 +118,7 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     static bool precomputed = false;
-    if (!precomputed && precompute_leaf_states && g_factoring) {
+    if (!precomputed && decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC && g_factoring) {
         for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
             //        vector<bool> contained_vars(g_variable_domain.size(), false);
             //        mas_representation->set_leaf_id(contained_vars);
@@ -130,10 +130,16 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
     for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
         int cost;
         if (g_factoring) {
-            if (precompute_leaf_states) {
+            if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC) {
                 cost = mas_representation->compute_decoupled_value_precomputed(ancestor_state);
-            } else {
+            } else if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX) {
                 cost = mas_representation->compute_decoupled_value(ancestor_state);
+            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
+                // TODO
+                cost = -1;
+            } else {
+                cerr << "unknown decoupled lookup" << endl;
+                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             }
         } else {
             cost = mas_representation->get_value(ancestor_state);
@@ -236,9 +242,25 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "score_based_filtering(scoring_functions=[goal_relevance,dfp,"
         "total_order])),label_reduction=exact(before_shrinking=true,"
         "before_merging=false),max_states=50k,threshold_before_merge=1)\n}}}\n");
-    parser.add_option<bool>(
-        "precompute_leaf_states",
-        "if true, compute for each h-value the set of leaf states");
+    vector<string> decoupled_lookup_names;
+    decoupled_lookup_names.emplace_back("exact");
+    decoupled_lookup_names.emplace_back("approx");
+    decoupled_lookup_names.emplace_back("approx_prec");
+    vector<string> decoupled_lookup_docs;
+    decoupled_lookup_docs.emplace_back(
+        "track full product of partial leaf states until leaf is fully "
+        "covered by M&S representation");
+    decoupled_lookup_docs.emplace_back(
+        "approximate exact set of reached leaf states by taking the union at "
+        "merge nodes");
+    decoupled_lookup_docs.emplace_back(
+        "as approximate, but with precomputing reached states");
+    parser.add_enum_option<DECOUPLED_LOOKUP>(
+        "decoupled_lookup",
+        decoupled_lookup_names,
+        "choose how to do the decoupled lookup",
+        "approx",
+        decoupled_lookup_docs);
 
     Heuristic::add_options_to_parser(parser);
     add_merge_and_shrink_algorithm_options_to_parser(parser);

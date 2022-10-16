@@ -9,8 +9,13 @@ namespace merge_and_shrink {
 class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
 
+enum class DECOUPLED_LOOKUP {
+    EXACT,
+    APPROX,
+    APPROX_PREC
+};
 class MergeAndShrinkHeuristic : public Heuristic {
-    const bool precompute_leaf_states;
+    DECOUPLED_LOOKUP decoupled_lookup;
 
     // The final merge-and-shrink representations, storing goal distances.
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;
