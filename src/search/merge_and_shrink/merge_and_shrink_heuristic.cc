@@ -131,12 +131,11 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         int cost;
         if (g_factoring) {
             if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC) {
-                cost = mas_representation->compute_decoupled_value_precomputed(ancestor_state);
+                cost = mas_representation->compute_decoupled_value_approx_precomputed(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX) {
-                cost = mas_representation->compute_decoupled_value(ancestor_state);
+                cost = mas_representation->compute_decoupled_value_approx(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-                // TODO
-                cost = -1;
+                cost = mas_representation->compute_decoupled_value_exact(ancestor_state);
             } else {
                 cerr << "unknown decoupled lookup" << endl;
                 utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);

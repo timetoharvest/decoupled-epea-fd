@@ -27,8 +27,9 @@ public:
 
     virtual void set_leaf_id(std::vector<bool> &contained_vars) = 0;
 
-    int compute_decoupled_value(const GlobalState &state) const;
-    int compute_decoupled_value_precomputed(const GlobalState &state) const;
+    int compute_decoupled_value_exact(const GlobalState &state) const;
+    int compute_decoupled_value_approx(const GlobalState &state) const;
+    int compute_decoupled_value_approx_precomputed(const GlobalState &state) const;
     void store_leaf_state_ids_by_leaf_id_by_hval();
 
     int get_domain_size() const;
@@ -44,8 +45,11 @@ public:
       if the abstract state is PRUNED_STATE or if the (distance) value is INF.
     */
     virtual int get_value(const GlobalState &state) const = 0;
-    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const = 0;
-    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
+    virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const = 0;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
+    virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const = 0;
@@ -70,8 +74,11 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
-    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const override;
-    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
+    virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
@@ -96,8 +103,11 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
-    virtual std::vector<int> get_values_precomputed(const GlobalState &state) const override;
-    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value(
+    virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
+    virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
+        const ExplicitStateCPG *prices,
+        const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
