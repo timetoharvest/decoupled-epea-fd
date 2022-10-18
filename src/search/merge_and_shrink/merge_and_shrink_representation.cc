@@ -56,95 +56,6 @@ static vector<vector<int>> compute_reached_values_by_var(const GlobalState &stat
     return reached_values_by_var;
 }
 
-// TODO: copy of compute_min_leaf_price below except for using
-// reached_leaf_values_by_var_index which is now indexed by pos rather than var.
-static int compute_min_leaf_price_exact(
-    const ExplicitStateCPG *prices,
-    LeafFactorID leaf_id,
-    int pos,
-    const vector<vector<int>> &reached_leaf_values_by_var_index,
-    vector<int> &leaf_state) {
-    const vector<int> &leaf_vars = g_leaves[leaf_id];
-    const vector<int> &reached_leaf_values = reached_leaf_values_by_var_index[pos];
-    int min_price = INF;
-    for (int value : reached_leaf_values) {
-        leaf_state[pos] = value;
-        int price;
-        if (pos < static_cast<int>(leaf_vars.size()) - 1) {
-            price = compute_min_leaf_price_exact(
-                prices,
-                leaf_id,
-                pos + 1,
-                reached_leaf_values_by_var_index,
-                leaf_state);
-        } else {
-            LeafStateHash leaf_state_id = g_state_registry->get_leaf_state_hash(leaf_state, leaf_id);
-            if (prices->has_leaf_state(leaf_state_id, leaf_id)) {
-                price = prices->get_cost_of_state(leaf_state_id, leaf_id);
-            } else {
-                price = INF;
-            }
-        }
-        min_price = min(min_price, price);
-    }
-    return min_price;
-}
-
-int MergeAndShrinkRepresentation::compute_decoupled_value_exact(const GlobalState &state) const {
-    assert(g_factoring);
-    vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
-    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> hval_to_price_and_reached_leaf_facts =
-        get_decoupled_value_exact(prices, reached_values_by_var);
-
-    int num_leaves = g_leaves.size();
-    int min_h_and_price = INF;
-    for (auto &entry : hval_to_price_and_reached_leaf_facts) {
-        int h = entry.first;
-        if (h == INF || h == PRUNED_STATE) {
-            continue;
-        }
-        // TODO: when computing prices on the way, use them here.
-        assert(entry.second.first == -1);
-        int sum_prices = 0;
-        for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
-            const vector<int> &leaf_vars = g_leaves[leaf];
-            for (const vector<pair<int, int>> &reached_facts : entry.second.second) {
-                vector<vector<int>> reached_leaf_values_by_leaf_var_index(leaf_vars.size());
-                for (size_t i = 0; i < leaf_vars.size(); ++i) {
-                    int leaf_var  = leaf_vars[i];
-                    for (const pair<int, int> &fact : reached_facts)  {
-                        if (fact.first == leaf_var) {
-                            reached_leaf_values_by_leaf_var_index[i].push_back(fact.second);
-                        }
-                    }
-                    // Use reached values for a leaf var if it is not covered by the M&S tree.
-                    if (reached_leaf_values_by_leaf_var_index[i].empty()) {
-                        reached_leaf_values_by_leaf_var_index[i] = reached_values_by_var[leaf_var];
-                    }
-                }
-                vector<int> leaf_state(leaf_vars.size());
-                int price = compute_min_leaf_price_exact(
-                    prices,
-                    leaf,
-                    0,
-                    reached_leaf_values_by_leaf_var_index,
-                    leaf_state);
-                if (price == INF) {
-                    sum_prices = INF;
-                    break;
-                }
-                sum_prices += price;
-            }
-
-        }
-        if (sum_prices != INF) {
-            min_h_and_price = min(min_h_and_price, h + sum_prices);
-        }
-    }
-    return min_h_and_price;
-}
-
 static int compute_min_leaf_price(
     const ExplicitStateCPG *prices,
     LeafFactorID leaf_id,
@@ -176,6 +87,72 @@ static int compute_min_leaf_price(
         min_price = min(min_price, price);
     }
     return min_price;
+}
+
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact(const GlobalState &state) const {
+    assert(g_factoring);
+    vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
+//    cout << "reached values by var:" << endl;
+//    for (const auto &values : reached_values_by_var) {
+//        cout << values << endl;
+//    }
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> hval_to_price_and_reached_leaf_facts =
+        get_decoupled_value_exact(prices, reached_values_by_var);
+
+//    cout << "original initial state: " << g_initial_state_data << endl;
+
+    int num_leaves = g_leaves.size();
+    int min_h_and_price = INF;
+    for (auto &entry : hval_to_price_and_reached_leaf_facts) {
+        int h = entry.first;
+//        cout << "h value: " << h << endl;
+        if (h == INF || h == PRUNED_STATE) {
+            continue;
+        }
+        // TODO: when computing prices on the way, use them here.
+        assert(entry.second.first == INF);
+        for (const vector<pair<int, int>> &reached_facts : entry.second.second) {
+//            cout << "one partial state mapped: ";
+//            for (const auto &bla : reached_facts) {
+//                cout << "(" << bla.first << ", " << bla.second << "); ";
+//            }
+//            cout << endl;
+            vector<vector<int>> reached_leaf_values_by_var(g_variable_domain.size());
+            for (const pair<int, int> &fact : reached_facts)  {
+                reached_leaf_values_by_var[fact.first].push_back(fact.second);
+            }
+            int sum_prices = 0;
+            for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
+                const vector<int> &leaf_vars = g_leaves[leaf];
+                // Use reached values for a leaf var if it is not covered by the M&S tree.
+                for (int leaf_var: leaf_vars) {
+                    if (reached_leaf_values_by_var[leaf_var].empty()) {
+                        reached_leaf_values_by_var[leaf_var] = reached_values_by_var[leaf_var];
+                    }
+                }
+
+                vector<int> leaf_state(leaf_vars.size());
+                int price = compute_min_leaf_price(
+                    prices,
+                    leaf,
+                    0,
+                    reached_leaf_values_by_var,
+                    leaf_state);
+//                cout << "leaf id " << leaf << " has price " << price << endl;
+                if (price == INF) {
+                    sum_prices = INF;
+                    break;
+                }
+                sum_prices += price;
+            }
+//            cout << "price: " << sum_prices << endl;
+            if (sum_prices != INF) {
+                min_h_and_price = min(min_h_and_price, h + sum_prices);
+            }
+        }
+    }
+    return min_h_and_price;
 }
 
 int MergeAndShrinkRepresentation::compute_decoupled_value_approx(const GlobalState &state) const {
@@ -396,7 +373,8 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
         int index = lookup_table[value];
         if (index != PRUNED_STATE) {
             if (!index_to_price_and_reached_leaf_facts.count(index)) {
-                index_to_price_and_reached_leaf_facts[index] = make_pair<int, vector<vector<pair<int, int>>>>(-1, {});
+                index_to_price_and_reached_leaf_facts[index] =
+                    make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
             }
             index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
         }
@@ -568,8 +546,10 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_d
 unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact(
     const ExplicitStateCPG *prices,
     const vector<vector<int>> &reached_values_by_var) const {
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left = left_child->get_decoupled_value_exact(prices, reached_values_by_var);
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right = right_child->get_decoupled_value_exact(prices, reached_values_by_var);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left =
+        left_child->get_decoupled_value_exact(prices, reached_values_by_var);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right =
+        right_child->get_decoupled_value_exact(prices, reached_values_by_var);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_merge;
     for (const auto &left : index_to_price_and_reached_facts_left) {
         for (const auto &right : index_to_price_and_reached_facts_right) {
@@ -577,9 +557,16 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
             int right_index = right.first;
             int merge_index = lookup_table[left_index][right_index];
             if (merge_index != PRUNED_STATE) {
-                int min_price = min(left.second.first, right.second.first);
-                index_to_price_and_reached_facts_merge[merge_index].first = min_price;
-                index_to_price_and_reached_facts_merge[merge_index].second = vector<vector<pair<int, int>>>();
+                int min_price = INF;
+                if (left.second.first != INF && right.second.first != INF) {
+                    min_price = left.second.first + right.second.first;
+                }
+                if (!index_to_price_and_reached_facts_merge.count(merge_index)) {
+                    index_to_price_and_reached_facts_merge[merge_index] =
+                        make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
+                }
+                index_to_price_and_reached_facts_merge[merge_index].first =
+                    min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);
                 vector<vector<pair<int, int>>> &merge_reached_facts = index_to_price_and_reached_facts_merge[merge_index].second;
                 for (const vector<pair<int, int>> &reached_facts_left : left.second.second) {
                     for (const vector<pair<int, int>> &reached_facts_right : right.second.second) {
