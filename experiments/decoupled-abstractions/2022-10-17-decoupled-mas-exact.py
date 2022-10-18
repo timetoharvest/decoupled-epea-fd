@@ -69,11 +69,15 @@ exp.add_step('build', exp.build)
 exp.add_step('start', exp.start_runs)
 exp.add_fetcher(name='fetch')
 
+# general search attributes
+reopened_until_last_jump = Attribute('reopened_until_last_jump', absolute=False, min_wins=True, function=arithmetic_mean)
+
 # decoupled attributes
 average_member_states = Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean)
 
 attributes = [
     average_member_states,
+    reopened_until_last_jump,
 ]
 
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
