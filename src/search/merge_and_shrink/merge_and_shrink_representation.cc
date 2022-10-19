@@ -389,14 +389,14 @@ void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
     bool leaf_covered = false;
     LeafFactorID leaf_id = g_belongs_to_factor[var_id];
     if (leaf_id != LeafFactorID::CENTER) {
+        covered_vars[var_id] = true;
         leaf_covered = is_leaf_covered(
             g_leaves[leaf_id], contained_vars, covered_vars);
         if (leaf_covered) {
+//            cout << "covered leaf id at leaf node: " << leaf_id << ", leaf vars: " << g_leaves[leaf_id] << endl;
             covered_leaf_ids.push_back(leaf_id);
+            covered_vars[var_id] = false;
         }
-    }
-    if (!leaf_covered) {
-        covered_vars[var_id] = true;
     }
 }
 
@@ -563,6 +563,7 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
         bool leaf_covered = is_leaf_covered(leaf, contained_vars, covered_vars);
         if (leaf_covered) {
             covered_leaf_ids.push_back(g_belongs_to_factor[leaf[0]]);
+//            cout << "covered leaf id at merge node: " << covered_leaf_ids.back() << ", leaf vars: " << leaf << endl;
             // Reset all leaf variables so that we only once record a leaf as covered.
             for (int var : leaf) {
                 covered_vars[var] = false;
