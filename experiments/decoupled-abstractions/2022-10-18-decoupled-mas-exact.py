@@ -28,7 +28,7 @@ CONFIGS = []
 decoupling = {
     'fork' : 'fork()',
     'ifork' : 'ifork()',
-    'mmgeneral' : 'lp_general(factoring_time_limit=30, memory_limit=4000, add_cg_sccs=true, strategy=mm_approx, min_flexibility=0.8)',
+    'lpmm' : 'lp_general(factoring_time_limit=30, memory_limit=4000, add_cg_sccs=true, strategy=mm_approx, min_flexibility=0.8)',
 }
 
 for dec_name, dec in decoupling.items():
@@ -113,20 +113,19 @@ class Filter:
     def filter_interesting_tasks(self, run):
         return f"{run['domain']}:{run['problem']}" not in self.excluded_tasks
 
-BASELINE_REV = "3e4019961fde2c2e20516af14669100f50ba69dc"
-exp.add_fetcher('data/2022-10-10-explicit-baseline-mas-eval', merge=True)
-exp.add_fetcher('data/2022-10-10-decoupled-mas-eval', merge=True)
-OLD_REV='e843f20ac7e877edb548acd4f0110ccbd0137525'
-exp.add_fetcher('data/2022-04-01-decoupled-baseline-blind-lmcut-ipc-eval', filter_algorithm=[
-    f"{OLD_REV}-{name}-blind" for name in decoupling.keys()
+BASELINE_REV = "da21e08a7f035ec8f3ef2f29f898a5fd7b647947"
+exp.add_fetcher('data/2022-10-18-explicit-baseline-blind-eval', filter_algorithm=[
+    f"{BASELINE_REV}-explicit-blind"
 ],merge=True)
-exp.add_fetcher('data/2022-04-01-decoupled-scp-exp-ipc-eval',filter_algorithm=[
-    f"{OLD_REV}-{name}-scpexp_noprune_noninc_leafid-all-cegarsys2hc_infinityleaves" for name in decoupling.keys()
+exp.add_fetcher('data/2022-10-18-explicit-baseline-mas-eval', filter_algorithm=[
+    f"{BASELINE_REV}-explicit-b50k-{mas_name}" for mas_name in ['sccdfp', 'sbmiasm']
+],merge=True)
+exp.add_fetcher('data/2022-10-18-decoupled-scppdbs-exp-eval',filter_algorithm=[
+    f"{BASELINE_REV}-{name}-scpexp_prune_copy_leafid-all-cegarsys2hc_infinityleaves" for name in decoupling.keys()
 ],merge=True)
 
 for dec_name in decoupling.keys():
-    algos = [f"{BASELINE_REV}-explicit-b50k-sccdfp", f"{BASELINE_REV}-explicit-b50k-sbmiasm", f"{OLD_REV}-{dec_name}-blind", f"{OLD_REV}-{dec_name}-scpexp_noprune_noninc_leafid-all-cegarsys2hc_infinityleaves"]
-    algos.extend([f"{BASELINE_REV}-{dec_name}-b50k-sccdfp-noprecompute", f"{BASELINE_REV}-{dec_name}-b50k-sbmiasm-noprecompute"])
+    algos = [f"{BASELINE_REV}-explicit-b50k-sccdfp", f"{BASELINE_REV}-explicit-b50k-sbmiasm", f"{BASELINE_REV}-explicit-blind", f"{BASELINE_REV}-{dec_name}-scpexp_prune_copy_leafid-all-cegarsys2hc_infinityleaves"]
     algos.extend([f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)])
     f = Filter(dec_name, algos)
     report_name=f'{exp.name}-abs-{dec_name}'
