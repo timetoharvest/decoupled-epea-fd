@@ -228,7 +228,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const GlobalState &base_stat
 
                     DOMINANCE res = check_dominance(s, old_g - new_g, needed);
 
-                    if (res == DOMINANCE::EQUAL){// || res == DOMINANCE::DOMINATES){
+                    if (res == DOMINANCE::EQUAL || res == DOMINANCE::DOMINATES){
                         // state will replace old state in search
                         // need to set h dirty so the search evaluates the heuristic on the
                         // new state, which can result in lower h value
