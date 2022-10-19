@@ -702,9 +702,9 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
     const vector<vector<int>> &reached_values_by_var) const {
     assert(covered_leaf_ids.size() <= 1);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left =
-        left_child->get_decoupled_value_exact(prices, reached_values_by_var);
+        left_child->get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right =
-        right_child->get_decoupled_value_exact(prices, reached_values_by_var);
+        right_child->get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_merge;
     for (const auto &left : index_to_price_and_reached_facts_left) {
         for (const auto &right : index_to_price_and_reached_facts_right) {
