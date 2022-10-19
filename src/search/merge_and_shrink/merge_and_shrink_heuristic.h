@@ -12,6 +12,7 @@ class MergeAndShrinkRepresentation;
 enum class DECOUPLED_LOOKUP {
     EXACT,
     EXACT_INC,
+    EXACT_COMPLIANT_MERGING,
     APPROX,
     APPROX_PREC
 };

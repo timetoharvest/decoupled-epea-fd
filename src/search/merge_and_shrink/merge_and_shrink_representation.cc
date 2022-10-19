@@ -127,8 +127,8 @@ static int compute_price_for_leaves(
     }
     return sum_prices;
 }
-
-//static int compute_min_h_and_price(
+//
+//static void compute_min_price(
 //    const ExplicitStateCPG *prices,
 //    const vector<vector<int>> &reached_values_by_var,
 //    const vector<LeafFactorID> &covered_leaf_ids,
@@ -138,21 +138,18 @@ static int compute_price_for_leaves(
 //        assert(entry.second.first == INF);
 //        int min_price = INF;
 //        for (const vector<pair<int, int>> &reached_facts : entry.second.second) {
-////            cout << "one partial state mapped: ";
-////            for (const auto &bla : reached_facts) {
-////                cout << "(" << bla.first << ", " << bla.second << "); ";
-////            }
-////            cout << endl;
 //            int sum_prices = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, reached_facts);
-////            cout << "price: " << sum_prices << endl;
 //            if (sum_prices != INF) {
 //                min_price = min(min_price, sum_prices);
 //            }
 //        }
+//        entry.second.first = min_price;
+//        vector<vector<pair<int, int>>>().swap(entry.second.second);
 //    }
 //}
 
-int MergeAndShrinkRepresentation::compute_decoupled_value_exact(const GlobalState &state) const {
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
+    const GlobalState &state) const {
     assert(g_factoring);
     vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
 //    cout << "reached values by var:" << endl;
@@ -185,6 +182,30 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact(const GlobalStat
             if (sum_prices != INF) {
                 min_h_and_price = min(min_h_and_price, h + sum_prices);
             }
+        }
+    }
+    return min_h_and_price;
+}
+
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_merging(
+    const GlobalState &state) const {
+    assert(g_factoring);
+    vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> hval_to_price_and_reached_leaf_facts =
+        get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
+
+    int min_h_and_price = INF;
+    for (auto &entry : hval_to_price_and_reached_leaf_facts) {
+        int h = entry.first;
+//        cout << "h value: " << h << endl;
+        if (h == INF || h == PRUNED_STATE) {
+            continue;
+        }
+        int price = entry.second.first;
+        assert(entry.second.second.empty());
+        if (price != INF) {
+            min_h_and_price = min(min_h_and_price, h + price);
         }
     }
     return min_h_and_price;
@@ -427,7 +448,9 @@ unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_de
             if (index_to_reached_leaf_values_by_var[index].empty()) {
                 index_to_reached_leaf_values_by_var[index].resize(g_variable_domain.size());
             }
-            index_to_reached_leaf_values_by_var[index][var_id].push_back(value);
+            if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
+                index_to_reached_leaf_values_by_var[index][var_id].push_back(value);
+            }
         }
     }
     return index_to_reached_leaf_values_by_var;
@@ -444,14 +467,36 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                 index_to_price_and_reached_leaf_facts[index] =
                     make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
             }
-            index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
+            if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
+                index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
+            }
         }
     }
-//    if (!covered_leaf_ids.empty()) {
-//        assert(covered_leaf_ids.size() == 1);
-//        compute_min_h_and_price(
-//            prices, reached_values_by_var, covered_leaf_ids, index_to_price_and_reached_leaf_facts);
-//    }
+    return index_to_price_and_reached_leaf_facts;
+}
+
+unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_compliant_merging(
+    const ExplicitStateCPG *prices,
+    const vector<vector<int>> &reached_values_by_var) const {
+    assert(covered_leaf_ids.size() <= 1);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_leaf_facts;
+    for (int value : reached_values_by_var[var_id]) {
+        int index = lookup_table[value];
+        if (index != PRUNED_STATE) {
+            if (!index_to_price_and_reached_leaf_facts.count(index)) {
+                index_to_price_and_reached_leaf_facts[index] =
+                    make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
+            }
+            if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
+                if (covered_leaf_ids.empty()) {
+                    index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
+                } else {
+                    int min_price = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, vector<pair<int, int>>(1, {var_id, value}));
+                    index_to_price_and_reached_leaf_facts[index].first = min_price;
+                }
+            }
+        }
+    }
     return index_to_price_and_reached_leaf_facts;
 }
 
@@ -625,14 +670,16 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
             int right_index = right.first;
             int merge_index = lookup_table[left_index][right_index];
             if (merge_index != PRUNED_STATE) {
-                int min_price = INF;
-                if (left.second.first != INF && right.second.first != INF) {
-                    min_price = left.second.first + right.second.first;
-                }
                 if (!index_to_price_and_reached_facts_merge.count(merge_index)) {
                     index_to_price_and_reached_facts_merge[merge_index] =
                         make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
                 }
+
+                int min_price = INF;
+                if (left.second.first != INF && right.second.first != INF) {
+                    min_price = left.second.first + right.second.first;
+                }
+
                 index_to_price_and_reached_facts_merge[merge_index].first =
                     min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);
                 vector<vector<pair<int, int>>> &merge_reached_facts = index_to_price_and_reached_facts_merge[merge_index].second;
@@ -643,6 +690,56 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                         merge_reached_facts.push_back(move(temp));
                     }
                 }
+            }
+        }
+    }
+    return index_to_price_and_reached_facts_merge;
+}
+
+unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_compliant_merging(
+    const ExplicitStateCPG *prices,
+    const vector<vector<int>> &reached_values_by_var) const {
+    assert(covered_leaf_ids.size() <= 1);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left =
+        left_child->get_decoupled_value_exact(prices, reached_values_by_var);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right =
+        right_child->get_decoupled_value_exact(prices, reached_values_by_var);
+    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_merge;
+    for (const auto &left : index_to_price_and_reached_facts_left) {
+        for (const auto &right : index_to_price_and_reached_facts_right) {
+            int left_index = left.first;
+            int right_index = right.first;
+            int merge_index = lookup_table[left_index][right_index];
+            if (merge_index != PRUNED_STATE) {
+                if (!index_to_price_and_reached_facts_merge.count(merge_index)) {
+                    index_to_price_and_reached_facts_merge[merge_index] =
+                        make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
+                }
+
+                int min_price = INF;
+                if (left.second.first != INF && right.second.first != INF) {
+                    assert(covered_leaf_ids.empty());
+                    min_price = left.second.first + right.second.first;
+                } else {
+                    for (const vector<pair<int, int>> &reached_facts_left : left.second.second) {
+                        for (const vector<pair<int, int>> &reached_facts_right: right.second.second) {
+                            vector<pair<int, int>> reached_facts(reached_facts_left);
+                            reached_facts.insert(reached_facts.end(), reached_facts_right.begin(), reached_facts_right.end());
+
+                            if (covered_leaf_ids.empty()) {
+                                index_to_price_and_reached_facts_merge[merge_index].second.push_back(move(reached_facts));
+                            } else {
+                                int sum_prices = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, reached_facts);
+                                if (sum_prices != INF) {
+                                    min_price = min(min_price, sum_prices);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                index_to_price_and_reached_facts_merge[merge_index].first =
+                    min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);
             }
         }
     }
