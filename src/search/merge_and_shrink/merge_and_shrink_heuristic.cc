@@ -118,11 +118,22 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     static bool precomputed = false;
-    if (!precomputed && decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC && g_factoring) {
-        for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
-            //        vector<bool> contained_vars(g_variable_domain.size(), false);
-            //        mas_representation->set_leaf_id(contained_vars);
-            mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
+    if (!precomputed && g_factoring) {
+        if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC) {
+            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
+                mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
+            }
+        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_INC) {
+            // TODO: if EXACT (non-inc), write all "covered" leaves into root node (only).
+            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
+                // Compute variables contained in M&S representation.
+                vector<bool> contained_vars(g_variable_domain.size(), false);
+                mas_representation->get_contained_vars(contained_vars);
+                // flip bits so that contained_vars now contains all variables
+                // not contained in M&S representation.
+                vector<bool> vars_up_to_node(g_variable_domain.size(), false);
+                mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node);
+            }
         }
         precomputed = true;
     }
@@ -243,9 +254,12 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "before_merging=false),max_states=50k,threshold_before_merge=1)\n}}}\n");
     vector<string> decoupled_lookup_names;
     decoupled_lookup_names.emplace_back("exact");
+    decoupled_lookup_names.emplace_back("exact_inc");
     decoupled_lookup_names.emplace_back("approx");
     decoupled_lookup_names.emplace_back("approx_prec");
     vector<string> decoupled_lookup_docs;
+    decoupled_lookup_docs.emplace_back(
+        "track full product of partial leaf states up until the root node");
     decoupled_lookup_docs.emplace_back(
         "track full product of partial leaf states until leaf is fully "
         "covered by M&S representation");

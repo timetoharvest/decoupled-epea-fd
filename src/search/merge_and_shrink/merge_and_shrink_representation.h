@@ -19,13 +19,17 @@ class Distances;
 class MergeAndShrinkRepresentation {
 protected:
     int domain_size;
-    LeafFactorID leaf_id;
+    std::vector<LeafFactorID> covered_leaf_ids;
     std::vector<std::vector<std::vector<LeafStateHash>>> leaf_state_ids_by_leaf_id_by_hval;
 public:
     explicit MergeAndShrinkRepresentation(int domain_size);
     virtual ~MergeAndShrinkRepresentation() = 0;
 
-    virtual void set_leaf_id(std::vector<bool> &contained_vars) = 0;
+    virtual void get_contained_vars(
+        std::vector<bool> &contained_vars) const = 0;
+    virtual void set_covered_leaf_ids(
+        const std::vector<bool> &contained_vars,
+        std::vector<bool> &covered_vars) = 0;
 
     int compute_decoupled_value_exact(const GlobalState &state) const;
     int compute_decoupled_value_approx(const GlobalState &state) const;
@@ -68,7 +72,10 @@ public:
     MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
     virtual ~MergeAndShrinkRepresentationLeaf() = default;
 
-    virtual void set_leaf_id(std::vector<bool> &contained_vars) override;
+    virtual void get_contained_vars(
+        std::vector<bool> &contained_vars) const override;
+    virtual void set_covered_leaf_ids(
+        const std::vector<bool> &contained_vars, std::vector<bool> &covered_vars) override;
 
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -97,7 +104,11 @@ public:
         std::unique_ptr<MergeAndShrinkRepresentation> right_child);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 
-    virtual void set_leaf_id(std::vector<bool> &contained_vars) override;
+    virtual void get_contained_vars(
+        std::vector<bool> &contained_vars) const override;
+    virtual void set_covered_leaf_ids(
+        const std::vector<bool> &contained_vars,
+        std::vector<bool> &covered_vars) override;
 
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(
