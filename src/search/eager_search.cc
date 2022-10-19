@@ -27,6 +27,7 @@ EagerSearch::EagerSearch(
     : SearchEngine(opts),
       reopen_closed_nodes(opts.get<bool>("reopen_closed")),
       do_pathmax(opts.get<bool>("pathmax")),
+      check_consistency(opts.get<bool>("check_consistency")),
       use_multi_path_dependence(opts.get<bool>("mpd")),
       open_list(opts.get<shared_ptr<OpenList<StateID>>>("open")) {
     if (opts.contains("f_eval")) {
@@ -227,6 +228,11 @@ SearchStatus EagerSearch::step() {
 
             //TODO:CR - add an ID to each state, and then we can use a vector to save per-state information
             int succ_h = heuristics[0]->get_heuristic();
+            if (check_consistency && (node.get_h() - get_adjusted_cost(op) - g_inc_g_by) > succ_h) {
+                // transition violates bellman equation
+                cout << "WARNING: heuristic is inconsistent" << endl;
+                check_consistency = false;
+            }
             if (do_pathmax) {
                 if ((node.get_h() - get_adjusted_cost(op)) > succ_h) {
                     //cout << "Pathmax correction: " << succ_h << " -> " << node.get_h() - get_adjusted_cost(*op) << endl;
@@ -280,6 +286,11 @@ SearchStatus EagerSearch::step() {
                         int new_h = heuristics[0]->get_heuristic();
                         if (new_h < succ_node.get_h()){
                             succ_node.decrease_h(new_h);
+                        }
+                        if (check_consistency && (node.get_h() - get_adjusted_cost(op) - g_inc_g_by) > new_h) {
+                            // transition violates bellman equation
+                            cout << "WARNING: heuristic is inconsistent" << endl;
+                            check_consistency = false;
                         }
                     } else {
                         // TODO: this appears fishy to me. Why is here only heuristic[0]
@@ -506,6 +517,9 @@ static shared_ptr<SearchEngine> _parse_astar(OptionParser &parser) {
             "use pathmax correction", "false");
     parser.add_option<bool>("mpd",
             "use multi-path dependence (LM-A*)", "false");
+    parser.add_option<bool>("check_consistency",
+                            "check for every transition if the heuristic is consistent",
+                            "false");
     parser.add_option<shared_ptr<PruningMethod>>("pruning",
             "pruning method",
             OptionParser::NONE);
