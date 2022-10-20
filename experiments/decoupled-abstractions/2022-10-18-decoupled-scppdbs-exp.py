@@ -97,9 +97,6 @@ pattern_collection_num_patterns = Attribute('pattern_collection_num_patterns', a
 average_num_affected_leaf_factors = Attribute('average_num_affected_leaf_factors', absolute=False, min_wins=True, function=arithmetic_mean)
 maximum_num_affected_leaf_factors = Attribute('maximum_num_affected_leaf_factors', absolute=False, min_wins=True, function=arithmetic_mean)
 
-# decoupled attributes
-average_member_states = Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean)
-
 attributes = [
     pattern_collection_computation_time,
     pattern_collection_num_patterns,
@@ -107,7 +104,11 @@ attributes = [
     average_num_affected_leaf_factors,
     maximum_num_affected_leaf_factors,
 
-    average_member_states,
+    # decoupled attributes
+    Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean),
+
+    # general search attributes
+    Attribute('reopened_until_last_jump', absolute=False, min_wins=True, function=arithmetic_mean),
 ]
 
 attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
