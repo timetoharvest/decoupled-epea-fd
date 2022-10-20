@@ -36,6 +36,7 @@ public:
     int compute_decoupled_value_approx(const GlobalState &state) const;
     int compute_decoupled_value_approx_precomputed(const GlobalState &state) const;
     void store_leaf_state_ids_by_leaf_id_by_hval();
+    void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
     int get_domain_size() const;
 

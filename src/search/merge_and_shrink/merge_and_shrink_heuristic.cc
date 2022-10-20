@@ -125,7 +125,6 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_INC ||
             decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
-            // TODO: if EXACT (non-inc), write all "covered" leaves into root node (only).
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
@@ -134,6 +133,12 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 // not contained in M&S representation.
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
                 mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node);
+            }
+        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT){
+            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
+                vector<bool> contained_vars(g_variable_domain.size(), false);
+                mas_representation->get_contained_vars(contained_vars);
+                mas_representation->store_all_affected_leaf_ids_in_root(contained_vars);
             }
         }
         precomputed = true;

@@ -347,6 +347,18 @@ void MergeAndShrinkRepresentation::store_leaf_state_ids_by_leaf_id_by_hval() {
     }
 }
 
+void MergeAndShrinkRepresentation::store_all_affected_leaf_ids_in_root(const vector<bool> &contained_vars) {
+    assert(covered_leaf_ids.empty());
+    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
+        for (int var : g_leaves[leaf_id]){
+            if (contained_vars[var]){
+                covered_leaf_ids.push_back(leaf_id);
+                break;
+            }
+        }
+    }
+}
+
 int MergeAndShrinkRepresentation::get_domain_size() const {
     return domain_size;
 }
