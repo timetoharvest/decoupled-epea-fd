@@ -470,6 +470,11 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
             }
             if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
                 index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
+            } else {
+                // TODO dealing with prices is only needed if we do the computation incrementally
+                //index_to_price_and_reached_leaf_facts[index].first = 0;
+                // we need this "dummy" value here because the cross-product in merge nodes is empty otherwise
+                index_to_price_and_reached_leaf_facts[index].second = vector<vector<pair<int, int>>>(1, vector<pair<int, int>>());
             }
         }
     }
@@ -681,13 +686,14 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                         make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
                 }
 
-                int min_price = INF;
+                // TODO dealing with prices is only needed if we do the computation incrementally
+                /*int min_price = INF;
                 if (left.second.first != INF && right.second.first != INF) {
                     min_price = left.second.first + right.second.first;
                 }
 
                 index_to_price_and_reached_facts_merge[merge_index].first =
-                    min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);
+                    min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);*/
                 vector<vector<pair<int, int>>> &merge_reached_facts = index_to_price_and_reached_facts_merge[merge_index].second;
                 for (const vector<pair<int, int>> &reached_facts_left : left.second.second) {
                     for (const vector<pair<int, int>> &reached_facts_right : right.second.second) {
