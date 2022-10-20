@@ -232,6 +232,7 @@ pair<int, bool> CompliantPathGraph::check_dominance(const GlobalState &base_stat
                         // state will replace old state in search
                         // need to set h dirty so the search evaluates the heuristic on the
                         // new state, which can result in lower h value
+                        // TODO setting h dirty is probably just needed when the new state dominates the old one
                         search_space->get_node(s).set_h_dirty();
                         return {dup, true};
                     } else if (pruning->include_g_in_dominance() && res == DOMINANCE::DOMINATED){
