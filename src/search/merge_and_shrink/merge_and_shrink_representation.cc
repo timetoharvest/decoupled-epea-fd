@@ -203,6 +203,7 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_mergin
             continue;
         }
         int price = entry.second.first;
+//        cout << "price:   " << price << endl;
         assert(entry.second.second.empty());
         if (price != INF) {
             min_h_and_price = min(min_h_and_price, h + price);
@@ -494,6 +495,10 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                     int min_price = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, vector<pair<int, int>>(1, {var_id, value}));
                     index_to_price_and_reached_leaf_facts[index].first = min_price;
                 }
+            } else {
+                // we need to add this "dummy" value, since we assume in the merge node
+                // that there is a non-empty fact list if the value is INF 
+                index_to_price_and_reached_leaf_facts[index].first = 0;
             }
         }
     }
