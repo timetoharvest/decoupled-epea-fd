@@ -12,8 +12,13 @@
 # Note that the standard FIND_PACKAGE features are supported
 # (QUIET, REQUIRED, etc.).
 #
-# Important: need to configure CUDD as follows:
-# ./configure --enable-obj --build=x86-pc-linux-gnu "CFLAGS=-m32 -Wall -Wextra -g -O3" "CXXFLAGS=-m32 -Wall -Wextra -g -O3" "LDFLAGS=-m32"
+# CUDD can be installed for example from here:
+# https://github.com/ivmai/cudd
+# 
+# Important: for a 32bit build, CUDD needs to be configured as follows:
+# ./configure --enable-shared --enable-obj --build=x86-pc-linux-gnu "CFLAGS=-m32 -Wall -Wextra -g -O3" "CXXFLAGS=-m32 -Wall -Wextra -g -O3" "LDFLAGS=-m32"
+#
+# Also, don't forget to run make install.
 
 foreach(BUILDMODE "RELEASE" "DEBUG")
     set(_CMAKE_FIND_ROOT_PATH_${BUILDMODE} ${CMAKE_FIND_ROOT_PATH})
@@ -21,7 +26,7 @@ foreach(BUILDMODE "RELEASE" "DEBUG")
     find_path(CUDD_INCLUDE_DIRS
         NAMES cuddObj.hh
         HINTS ${_CMAKE_FIND_ROOT_PATH_${BUILDMODE}}
-        PATH_SUFFIXES cudd/cplusplus include cudd
+        PATH_SUFFIXES cudd/cplusplus include cudd cplusplus
     )
 
     find_library(CUDD_LIBRARY_${BUILDMODE}

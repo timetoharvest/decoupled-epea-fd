@@ -135,5 +135,6 @@ if(PLUGIN_SYMBOLIC_SEARCH_ENABLED AND USE_CUDD)
         add_definitions("-D USE_CUDD")
         include_directories(${CUDD_INCLUDE_DIRS})
         target_link_libraries(downward ${CUDD_LIBRARIES})
+        set(CMAKE_CXX_FLAGS_DEBUG "-O3") # need to exclude the -D_GLIBCXX_DEBUG flag for CUDD
     endif()
 endif()
