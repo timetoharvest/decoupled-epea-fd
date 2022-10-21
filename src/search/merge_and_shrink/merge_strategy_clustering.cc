@@ -1,4 +1,4 @@
-#include "merge_strategy_sccs.h"
+#include "merge_strategy_clustering.h"
 
 #include "factored_transition_system.h"
 #include "merge_selector.h"
@@ -13,7 +13,7 @@
 using namespace std;
 
 namespace merge_and_shrink {
-MergeStrategySCCs::MergeStrategySCCs(
+MergeStrategyClustering::MergeStrategyClustering(
     const FactoredTransitionSystem &fts,
     const TaskProxy &task_proxy,
     const shared_ptr<MergeTreeFactory> &merge_tree_factory,
@@ -29,11 +29,11 @@ MergeStrategySCCs::MergeStrategySCCs(
       current_merge_tree(nullptr) {
 }
 
-MergeStrategySCCs::~MergeStrategySCCs() {
+MergeStrategyClustering::~MergeStrategyClustering() {
 }
 
-pair<int, int> MergeStrategySCCs::get_next() {
-    // We did not already start merging an SCC/all finished SCCs, so we
+pair<int, int> MergeStrategyClustering::get_next() {
+    // We did not already start merging an SCC/all finished Clustering, so we
     // do not have a current set of indices we want to finish merging.
     if (current_ts_indices.empty()) {
         // Get the next indices we need to merge

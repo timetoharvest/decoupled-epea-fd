@@ -259,7 +259,7 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "label reduction setting (max_states has been altered to be between "
         "10k and 200k in the literature):\n"
         "{{{\nmerge_and_shrink(shrink_strategy=shrink_bisimulation(greedy=false),"
-        "merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector="
+        "merge_strategy=merge_sccs(order_of_clusters=topological,merge_selector="
         "score_based_filtering(scoring_functions=[goal_relevance,dfp,"
         "total_order])),label_reduction=exact(before_shrinking=true,"
         "before_merging=false),max_states=50k,threshold_before_merge=1)\n}}}\n");

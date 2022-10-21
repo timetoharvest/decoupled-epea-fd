@@ -406,11 +406,12 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
 
 void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
     // Merge strategy option.
+    // TODO: the new clustering merge strategy is called differently.
     parser.add_option<shared_ptr<MergeStrategyFactory>>(
         "merge_strategy",
         "See detailed documentation for merge strategies. "
         "We currently recommend SCC-DFP, which can be achieved using "
-        "{{{merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector="
+        "{{{merge_strategy=merge_sccs(order_of_clusters=topological,merge_selector="
         "score_based_filtering(scoring_functions=[goal_relevance,dfp,total_order"
         "]))}}}");
 

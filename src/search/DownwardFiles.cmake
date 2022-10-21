@@ -553,6 +553,9 @@ fast_downward_plugin(
     NAME MAS_HEURISTIC
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
+        merge_and_shrink/clustering
+        merge_and_shrink/clustering_cg_sccs
+        merge_and_shrink/clustering_lp_factoring
         merge_and_shrink/distances
         merge_and_shrink/factored_transition_system
         merge_and_shrink/fts_factory
@@ -572,12 +575,12 @@ fast_downward_plugin(
         merge_and_shrink/merge_selector
         merge_and_shrink/merge_selector_score_based_filtering
         merge_and_shrink/merge_strategy
+        merge_and_shrink/merge_strategy_clustering
         merge_and_shrink/merge_strategy_factory
+        merge_and_shrink/merge_strategy_factory_clustering
         merge_and_shrink/merge_strategy_factory_precomputed
-        merge_and_shrink/merge_strategy_factory_sccs
         merge_and_shrink/merge_strategy_factory_stateless
         merge_and_shrink/merge_strategy_precomputed
-        merge_and_shrink/merge_strategy_sccs
         merge_and_shrink/merge_strategy_stateless
         merge_and_shrink/merge_tree
         merge_and_shrink/merge_tree_factory
