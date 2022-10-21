@@ -555,6 +555,7 @@ fast_downward_plugin(
     SOURCES
         merge_and_shrink/clustering
         merge_and_shrink/clustering_cg_sccs
+        merge_and_shrink/clustering_compliant_factoring
         merge_and_shrink/clustering_lp_factoring
         merge_and_shrink/distances
         merge_and_shrink/factored_transition_system
