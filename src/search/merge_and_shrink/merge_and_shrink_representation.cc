@@ -740,11 +740,20 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                         make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
                 }
 
+                int left_price = left.second.first;
+                int right_price = right.second.first;
                 int min_price = INF;
-                if (left.second.first != INF && right.second.first != INF) {
+                if (left_price != INF && right_price != INF) {
                     assert(covered_leaf_ids.empty());
                     min_price = left.second.first + right.second.first;
                 } else {
+                    if (left_price == INF && right_price != INF) {
+                        assert(right.second.second.empty());
+                        min_price = right_price;
+                    } else if (left_price != INF && right_price == INF) {
+                        assert(left.second.second.empty());
+                        min_price = left_price;
+                    }
                     for (const vector<pair<int, int>> &reached_facts_left : left.second.second) {
                         for (const vector<pair<int, int>> &reached_facts_right: right.second.second) {
                             vector<pair<int, int>> reached_facts(reached_facts_left);
