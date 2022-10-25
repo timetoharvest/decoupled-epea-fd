@@ -177,8 +177,9 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
 //                cout << "(" << bla.first << ", " << bla.second << "); ";
 //            }
 //            cout << endl;
+            // TODO we can use a finite min_price as upper bound for pruning in this function
             int sum_prices = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, reached_facts);
-//            cout << "price: " << sum_prices << endl;
+//            cout << "price:   " << sum_prices << endl;
             if (sum_prices != INF) {
                 min_h_and_price = min(min_h_and_price, h + sum_prices);
             }
@@ -399,13 +400,13 @@ static bool is_leaf_covered(
 
 void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
     const vector<bool> &contained_vars, vector<bool> &covered_vars) {
-    bool leaf_covered = false;
     LeafFactorID leaf_id = g_belongs_to_factor[var_id];
     if (leaf_id != LeafFactorID::CENTER) {
         covered_vars[var_id] = true;
-        leaf_covered = is_leaf_covered(
+        bool leaf_covered = is_leaf_covered(
             g_leaves[leaf_id], contained_vars, covered_vars);
         if (leaf_covered) {
+            assert(g_leaves[leaf_id].size() == 1);
 //            cout << "covered leaf id at leaf node: " << leaf_id << ", leaf vars: " << g_leaves[leaf_id] << endl;
             covered_leaf_ids.push_back(leaf_id);
             covered_vars[var_id] = false;
@@ -509,8 +510,14 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                 if (covered_leaf_ids.empty()) {
                     index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
                 } else {
-                    int min_price = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, vector<pair<int, int>>(1, {var_id, value}));
-                    index_to_price_and_reached_leaf_facts[index].first = min_price;
+                    assert(g_leaves[g_belongs_to_factor[var_id]].size() == 1);
+                    int min_price = compute_price_for_leaves(prices,
+                                                             reached_values_by_var,
+                                                             covered_leaf_ids,
+                                                             vector<pair<int, int>>(1, {var_id, value}));
+                    // we need to minimize here since another leaf state could have been mapped to the same index before
+                    index_to_price_and_reached_leaf_facts[index].first = min(index_to_price_and_reached_leaf_facts[index].first,
+                                                                             min_price);
                 }
             } else {
                 // we need to add this "dummy" value, since we assume in the merge node
@@ -579,8 +586,13 @@ void MergeAndShrinkRepresentationMerge::get_contained_vars(
 
 void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
     const vector<bool> &contained_vars, vector<bool> &covered_vars) {
-    left_child->set_covered_leaf_ids(contained_vars, covered_vars);
-    right_child->set_covered_leaf_ids(contained_vars, covered_vars);
+    vector<bool> covered_vars_left(g_variable_domain.size(), false);
+    vector<bool> covered_vars_right(g_variable_domain.size(), false);
+    left_child->set_covered_leaf_ids(contained_vars, covered_vars_left);
+    right_child->set_covered_leaf_ids(contained_vars, covered_vars_right);
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
+    }
     for (const auto &leaf : g_leaves) {
         bool leaf_covered = is_leaf_covered(leaf, contained_vars, covered_vars);
         if (leaf_covered) {
@@ -742,27 +754,36 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
 
                 int left_price = left.second.first;
                 int right_price = right.second.first;
+
+                const auto &left_facts = left.second.second;
+                const auto &right_facts = right.second.second;
+
+                if ((left_facts.empty() && left_price == INF) ||
+                    (right_facts.empty() && right_price == INF)){
+                    // for this merge_index, there is no reached leaf state on left and/or right
+                    continue;
+                }
+
                 int min_price = INF;
+
                 if (left_price != INF && right_price != INF) {
-                    assert(covered_leaf_ids.empty());
-                    min_price = left.second.first + right.second.first;
+                    assert(left_facts.empty() && right_facts.empty()); // due to if check above
+                    min_price = min(min_price, left_price + right_price);
                 } else {
-                    if (left_price == INF && right_price != INF) {
-                        assert(right.second.second.empty());
-                        min_price = right_price;
-                    } else if (left_price != INF && right_price == INF) {
-                        assert(left.second.second.empty());
-                        min_price = left_price;
-                    }
-                    for (const vector<pair<int, int>> &reached_facts_left : left.second.second) {
-                        for (const vector<pair<int, int>> &reached_facts_right: right.second.second) {
+                    assert(left_price == INF && right_price == INF);
+                    assert(!left_facts.empty() && !right_facts.empty());
+                    for (const vector<pair<int, int>> &reached_facts_left: left_facts) {
+                        for (const vector<pair<int, int>> &reached_facts_right: right_facts) {
                             vector<pair<int, int>> reached_facts(reached_facts_left);
-                            reached_facts.insert(reached_facts.end(), reached_facts_right.begin(), reached_facts_right.end());
+                            reached_facts.insert(reached_facts.end(), reached_facts_right.begin(),
+                                                 reached_facts_right.end());
 
                             if (covered_leaf_ids.empty()) {
-                                index_to_price_and_reached_facts_merge[merge_index].second.push_back(move(reached_facts));
+                                index_to_price_and_reached_facts_merge[merge_index].second.push_back(
+                                        move(reached_facts));
                             } else {
-                                int sum_prices = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, reached_facts);
+                                int sum_prices = compute_price_for_leaves(prices, reached_values_by_var,
+                                                                          covered_leaf_ids, reached_facts);
                                 if (sum_prices != INF) {
                                     min_price = min(min_price, sum_prices);
                                 }
