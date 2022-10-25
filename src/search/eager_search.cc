@@ -272,6 +272,7 @@ SearchStatus EagerSearch::step() {
                         search_progress.inc_reopened();
                     }
 
+                    int tmp_inc_g = g_inc_g_by; // this is set to 0 by succ_node.reopen()
                     succ_node.reopen(node, op_id);
 
                     if (succ_node.is_h_dirty()){
@@ -287,7 +288,7 @@ SearchStatus EagerSearch::step() {
                         if (new_h < succ_node.get_h()){
                             succ_node.decrease_h(new_h);
                         }
-                        if (check_consistency && (node.get_h() - get_adjusted_cost(op) - g_inc_g_by) > new_h) {
+                        if (check_consistency && (node.get_h() - get_adjusted_cost(op) - tmp_inc_g) > new_h) {
                             // transition violates bellman equation
                             cout << "WARNING: heuristic is inconsistent" << endl;
                             check_consistency = false;
