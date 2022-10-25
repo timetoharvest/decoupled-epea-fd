@@ -758,17 +758,15 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
                 const auto &left_facts = left.second.second;
                 const auto &right_facts = right.second.second;
 
+                int min_price = INF;
+
                 if ((left_facts.empty() && left_price == INF) ||
                     (right_facts.empty() && right_price == INF)){
                     // for this merge_index, there is no reached leaf state on left and/or right
-                    continue;
-                }
-
-                int min_price = INF;
-
-                if (left_price != INF && right_price != INF) {
+                    // do nothing => min_price remains INF
+                } else if (left_price != INF && right_price != INF) {
                     assert(left_facts.empty() && right_facts.empty()); // due to if check above
-                    min_price = min(min_price, left_price + right_price);
+                    min_price = left_price + right_price;
                 } else {
                     assert(left_price == INF && right_price == INF);
                     assert(!left_facts.empty() && !right_facts.empty());
