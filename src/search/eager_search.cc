@@ -131,6 +131,7 @@ SearchStatus EagerSearch::step() {
     if (g_factoring &&
         g_factoring->get_search_type() == SDA &&
         node.get_g() + node.get_h() >= bound){
+        // TODO can this ever happen given the behaviour of fetch_next_node()?
         cout << "f-value of to be expanded node (" << node.get_g() + node.get_h()
              << ") is greater/equal to cost of best found plan => goal reached [t=" << utils::g_timer << "]" << endl;
         return SOLVED;
@@ -350,9 +351,11 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
        search algorithm and adds the extra processing in the desired
        places. I think this would lead to much cleaner code. */
 
+    bool ds_optimality_guaranteed = false;
     while (true) {
-        if (open_list->empty()) {
+        if (open_list->empty() || ds_optimality_guaranteed) {
             if (!found_solution()){
+                assert(!ds_optimality_guaranteed);
                 cout << "Completely explored state space -- no solution! [t=" << utils::g_timer << "]" << endl;
             } else {
                 // in optimal decoupled search, we cannot stop on the first solution found,
@@ -384,6 +387,10 @@ pair<SearchNode, bool> EagerSearch::fetch_next_node() {
             // g-value might include some goal cost
             int goal_cost = max(0, CompliantPathGraph::get_min_leaf_goal_cost() - node.get_leaf_part_g());
             if (node.get_g() + max(goal_cost, node.get_h()) >= bound) {
+                if (node.get_h() >= goal_cost){
+                    // A* f-value >= current best solution cost => found solution is optimal
+                    ds_optimality_guaranteed = true;
+                }
                 continue;
             }
             if (g_factoring->get_search_type() == ASDA && pruning_heuristic != 0){
