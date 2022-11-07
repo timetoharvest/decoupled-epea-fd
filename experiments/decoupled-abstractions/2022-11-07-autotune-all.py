@@ -18,7 +18,7 @@ from common_setup import IssueConfig, IssueExperiment
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
-BENCHMARKS_DIR = os.environ["DOWNWARD_BENCHMARKS"]
+BENCHMARKS_DIR = os.environ["AUTOSCALE_BENCHMARKS_OPT"]
 REVISION = "fd640d3059ccc79b5e93553d46cc0b0c5ed50e00"
 REVISIONS = [REVISION]
 TIME_LIMIT=900
@@ -39,7 +39,7 @@ merge_strategies = {
     'sccsbmiasm': 'merge_clustering(clustering_factory=clustering_cg_sccs(),order_of_clusters=given,merge_selector=score_based_filtering(scoring_functions=[sf_miasm(shrink_strategy=shrink_bisimulation(greedy=false),max_states=50000,threshold_before_merge=1),total_order(atomic_ts_order=reverse_level,product_ts_order=new_to_old,atomic_before_product=false,random_seed=2016)]))',
 
 
-    'compliantdfp' : 'merge_clustering(clustering_factory=clustering_compliant_factoring(),order_of_clusters=given,merge_selector=score_based_filtering(scoring_functions=[goal_relevance,dfp,total_order(atomic_ts_order=reverse_level,product_ts_order=new_to_old,atomic_before_product=false,random_seed=2016)]))'
+    'compliantdfp' : 'merge_clustering(clustering_factory=clustering_compliant_factoring(),order_of_clusters=given,merge_selector=score_based_filtering(scoring_functions=[goal_relevance,dfp,total_order(atomic_ts_order=reverse_level,product_ts_order=new_to_old,atomic_before_product=false,random_seed=2016)]))',
 
     'compliantsbmiasm': 'merge_clustering(clustering_factory=clustering_compliant_factoring(),order_of_clusters=given,merge_selector=score_based_filtering(scoring_functions=[sf_miasm(shrink_strategy=shrink_bisimulation(greedy=false),max_states=50000,threshold_before_merge=1),total_order(atomic_ts_order=reverse_level,product_ts_order=new_to_old,atomic_before_product=false,random_seed=2016)]))',
 }
@@ -54,7 +54,10 @@ for strat_name, merge_strategy in merge_strategies.items():
             expl_dec = dec.replace(")", ", abstain_type=COMPUTE_FACTORING_RUN_STANDARD)")
             CONFIGS.append(IssueConfig(f'b50k-{strat_name}-explicit-{dec_name}', ['--decoupling', expl_dec, '--search',  f'astar(merge_and_shrink(shrink_strategy=shrink_bisimulation(greedy=false),merge_strategy={merge_strategy},label_reduction=exact(before_shrinking=true,before_merging=false),max_states=50000,threshold_before_merge=1,main_loop_max_time={TIME_LIMIT}),check_consistency=true)'], build_options=['release64'], driver_options=['--build', 'release64']))
 
-SUITE = common_setup.DEFAULT_OPTIMAL_SUITE
+SUITE = sorted(["agricola", "blocksworld", "depots", "floortile", "grid", "logistics", "nomystery", "parcprinter", "pegsol", "rovers", "snake", "termes", "tidybot", "visitall",
+         "airport", "childsnack", "driverlog", "freecell", "gripper", "miconic", "openstacks", "parking", "pipesworld-notankage", "satellite", "sokoban", "tetris", "tpp", "woodworking",
+         "barman", "data-network", "elevators", "ged", "hiking", "mprime", "organic-synthesis-split", "pathways", "pipesworld-tankage", "scanalyzer", "storage", "thoughtful", "transport", "zenotravel"])
+
 ENVIRONMENT = TetralithEnvironment(
     email="daniel.gnad@liu.se",
 #    time_limit_per_task="24:00:00",
@@ -69,7 +72,6 @@ exp = IssueExperiment(
 )
 
 exp.add_suite(BENCHMARKS_DIR, SUITE)
-exp.add_suite(BENCHMARKS_DIR, ["logistics00:probLOGISTICS-6-0.pddl"])
 
 exp.add_parser(exp.EXITCODE_PARSER)
 exp.add_parser(exp.TRANSLATOR_PARSER)
