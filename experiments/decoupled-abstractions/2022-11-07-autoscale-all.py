@@ -111,7 +111,7 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
 
-exp.add_fetcher("data/2022-10-28-blind-lmcut-baselines-eval")
+exp.add_fetcher("data/2022-11-08-blind-lmcut-baselines-autoscale-eval")
 
 class Filter:
     def __init__(self, dec, algos):
