@@ -35,6 +35,7 @@ public:
     int compute_decoupled_value_exact_compliant_merging(const GlobalState &state) const;
     int compute_decoupled_value_approx(const GlobalState &state) const;
     int compute_decoupled_value_approx_precomputed(const GlobalState &state) const;
+    int compute_decoupled_value_explicit(const GlobalState &state) const;
     void store_leaf_state_ids_by_leaf_id_by_hval();
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
@@ -51,6 +52,7 @@ public:
       if the abstract state is PRUNED_STATE or if the (distance) value is INF.
     */
     virtual int get_value(const GlobalState &state) const = 0;
+    virtual int get_value(const std::vector<int> &state) const = 0;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const = 0;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,
@@ -86,6 +88,7 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
+    virtual int get_value(const std::vector<int> &state) const override;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,
@@ -122,6 +125,7 @@ public:
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
+    virtual int get_value(const std::vector<int> &state) const override;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,

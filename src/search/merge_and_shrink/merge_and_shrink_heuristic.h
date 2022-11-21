@@ -14,7 +14,8 @@ enum class DECOUPLED_LOOKUP {
     EXACT_INC,
     EXACT_COMPLIANT_MERGING,
     APPROX,
-    APPROX_PREC
+    APPROX_PREC,
+    EXPLICIT
 };
 class MergeAndShrinkHeuristic : public Heuristic {
     DECOUPLED_LOOKUP decoupled_lookup;

@@ -292,6 +292,63 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_approx_precomputed(
     return min_h_and_price;
 }
 
+void compute_decoupled_value_explicit_member_states(
+        const ExplicitStateCPG *prices,
+        const MergeAndShrinkRepresentation *ms_repr,
+        const vector<LeafFactorID> &covered_leaves,
+        vector<int> &member_state,
+        int &min_h,
+        int sum_prices,
+        int index) {
+
+    if (sum_prices >= min_h){
+        // cannot possibly improve heuristic
+        return;
+    }
+
+    if (index == static_cast<int>(covered_leaves.size())){
+        int h = ms_repr->get_value(member_state);
+        if (h != PRUNED_STATE) {
+            min_h = min(min_h, sum_prices + h);
+        }
+        return;
+    }
+
+    LeafFactorID leaf = covered_leaves[index];
+    int num_reached_l_states = prices->get_number_states(leaf);
+    for (LeafStateHash l_id(0); l_id < g_state_registry->size(leaf); ++l_id){
+        if (prices->has_leaf_state(l_id, leaf)){
+            LeafState l_state = g_state_registry->lookup_leaf_state(l_id, leaf);
+            for (int var : g_leaves[leaf]){
+                member_state[var] = l_state[var];
+            }
+            int price = prices->get_cost_of_state(l_id, leaf);
+            compute_decoupled_value_explicit_member_states(prices,
+                                                           ms_repr,
+                                                           covered_leaves,
+                                                           member_state,
+                                                           min_h,
+                                                           sum_prices + price,
+                                                           index + 1);
+            if (--num_reached_l_states == 0){
+                break;
+            }
+        }
+    }
+}
+
+int MergeAndShrinkRepresentation::compute_decoupled_value_explicit(
+            const GlobalState &state) const {
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    vector<int> member_state(g_variable_domain.size(), -1);
+    for (int var : g_center){
+        member_state[var] = state[var];
+    }
+    int min_h = INF;
+    compute_decoupled_value_explicit_member_states(prices, this, covered_leaf_ids, member_state, min_h, 0, 0);
+    return min_h;
+}
+
 static void compute_leaf_states(
     LeafFactorID leaf_id,
     int pos,
@@ -437,6 +494,11 @@ void MergeAndShrinkRepresentationLeaf::apply_abstraction_to_lookup_table(
 }
 
 int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state) const {
+    int value = state[var_id];
+    return lookup_table[value];
+}
+
+int MergeAndShrinkRepresentationLeaf::get_value(const vector<int> &state) const {
     int value = state[var_id];
     return lookup_table[value];
 }
@@ -634,6 +696,15 @@ void MergeAndShrinkRepresentationMerge::apply_abstraction_to_lookup_table(
 
 int MergeAndShrinkRepresentationMerge::get_value(
     const GlobalState &state) const {
+    int state1 = left_child->get_value(state);
+    int state2 = right_child->get_value(state);
+    if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
+        return PRUNED_STATE;
+    return lookup_table[state1][state2];
+}
+
+int MergeAndShrinkRepresentationMerge::get_value(
+        const vector<int> &state) const {
     int state1 = left_child->get_value(state);
     int state2 = right_child->get_value(state);
     if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
