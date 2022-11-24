@@ -226,9 +226,8 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_mergin
             continue;
         }
 //        cout << "price:   " << price << endl;
-        if (price != INF) {
-            min_h_and_price = min(min_h_and_price, h + price);
-        }
+        assert(price != INF);
+        min_h_and_price = min(min_h_and_price, h + price);
     }
     return min_h_and_price;
 }
