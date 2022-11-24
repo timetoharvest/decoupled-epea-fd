@@ -124,7 +124,8 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_INC ||
-            decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
+                   decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING ||
+                   decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING_OPTIMIZED) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
@@ -158,6 +159,8 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
                 cost = mas_representation->compute_decoupled_value_exact_compliant_merging(ancestor_state);
+            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING_OPTIMIZED) {
+                cost = mas_representation->compute_decoupled_value_exact_compliant_merging_optimized(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT) {
                 cost = mas_representation->compute_decoupled_value_explicit(ancestor_state);
             } else {
@@ -269,6 +272,7 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
     decoupled_lookup_names.emplace_back("exact");
     decoupled_lookup_names.emplace_back("exact_inc");
     decoupled_lookup_names.emplace_back("exact_compliant_merging");
+    decoupled_lookup_names.emplace_back("exact_compliant_merging_optimized");
     decoupled_lookup_names.emplace_back("approx");
     decoupled_lookup_names.emplace_back("approx_prec");
     decoupled_lookup_names.emplace_back("explicit");
@@ -282,6 +286,10 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "track full product of partial leaf states until leaf is fully "
         "covered by M&S representation - only for merge strategies compliant "
         "with factoring");
+    decoupled_lookup_docs.emplace_back(
+            "track full product of partial leaf states until leaf is fully "
+            "covered by M&S representation - only for merge strategies compliant "
+            "with factoring; optimized implementation");
     decoupled_lookup_docs.emplace_back(
         "approximate exact set of reached leaf states by taking the union at "
         "merge nodes");

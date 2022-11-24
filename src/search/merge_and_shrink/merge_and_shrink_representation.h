@@ -9,6 +9,7 @@
 
 class ExplicitStateCPG;
 class GlobalState;
+class LeafState;
 
 namespace utils {
 class LogProxy;
@@ -33,6 +34,7 @@ public:
 
     int compute_decoupled_value_exact(const GlobalState &state) const;
     int compute_decoupled_value_exact_compliant_merging(const GlobalState &state) const;
+    int compute_decoupled_value_exact_compliant_merging_optimized(const GlobalState &state) const;
     int compute_decoupled_value_approx(const GlobalState &state) const;
     int compute_decoupled_value_approx_precomputed(const GlobalState &state) const;
     int compute_decoupled_value_explicit(const GlobalState &state) const;
@@ -53,6 +55,7 @@ public:
     */
     virtual int get_value(const GlobalState &state) const = 0;
     virtual int get_value(const std::vector<int> &state) const = 0;
+    virtual int get_value(const GlobalState &state, const LeafState &l_state) const = 0;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const = 0;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,
@@ -63,6 +66,9 @@ public:
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_compliant_merging(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact_compliant_merging_optimized(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const = 0;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const = 0;
     /* Return true iff the represented function is total, i.e., does not map
        to PRUNED_STATE. */
@@ -89,16 +95,20 @@ public:
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
     virtual int get_value(const std::vector<int> &state) const override;
+    virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
+    virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_compliant_merging(
+    virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_compliant_merging(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact_compliant_merging_optimized(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const override;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
@@ -126,16 +136,20 @@ public:
         const std::vector<int> &abstraction_mapping) override;
     virtual int get_value(const GlobalState &state) const override;
     virtual int get_value(const std::vector<int> &state) const override;
+    virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
     virtual std::vector<int> get_decoupled_values_approx_precomputed(const GlobalState &state) const override;
     virtual std::unordered_map<int, std::vector<std::vector<int>>> get_decoupled_value_approx(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
+    virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_compliant_merging(
+    virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_compliant_merging(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact_compliant_merging_optimized(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const override;
     virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
     virtual bool is_total() const override;
     virtual void dump(utils::LogProxy &log) const override;
