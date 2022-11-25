@@ -21,6 +21,7 @@ SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["AUTOSCALE_BENCHMARKS_OPT"]
 REVISION = "b6f8d1c46d1988b6c40edc8ea502f9282b1a26c3"
 BASE_REVISION = "fd640d3059ccc79b5e93553d46cc0b0c5ed50e00"
+EXPLICIT_REVISION = "d0cb3d34b654c9b4569f353c4cb1385669c16f00"
 REVISIONS = [REVISION]
 TIME_LIMIT=900
 
@@ -108,6 +109,7 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 exp.add_absolute_report_step(attributes=attributes)
 
 exp.add_fetcher("data/2022-11-07-autoscale-all-eval")
+exp.add_fetcher("data/2022-11-21-explicit-ms-lookup-eval")
 
 class Filter:
     def __init__(self, dec, algos):
@@ -141,7 +143,7 @@ for dec_name in decoupling.keys():
         # f'{REVISION}-{dec_name}-lmcut',
     ]
     algos.extend([f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)])
-    algos.extend([f"{BASE_REVISION}-{config.nick.replace('-expli', '-exact')}" for config in CONFIGS if config.nick.startswith(dec_name)])
+    algos.extend([f"{EXPLICIT_REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)])
     algos.extend([f"{BASE_REVISION}-{config.nick.replace('-expli', '-exactcompliant')}" for config in CONFIGS if config.nick.startswith(dec_name)])
     algos = sorted(algos)
     f = Filter(dec_name, algos)
