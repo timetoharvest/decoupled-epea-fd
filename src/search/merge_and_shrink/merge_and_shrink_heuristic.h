@@ -10,12 +10,10 @@ class FactoredTransitionSystem;
 class MergeAndShrinkRepresentation;
 
 enum class DECOUPLED_LOOKUP {
-    EXACT,
-    EXACT_INC,
+    EXACT_ICAPS23, // TODO remove this eventually
+    // EXACT, // TODO introduce and implement this
+    // EXACT_NOCACHE, // TODO might be a way to enable/disable caching entirely
     EXACT_COMPLIANT_MERGING,
-    EXACT_COMPLIANT_MERGING_OPTIMIZED,
-    APPROX,
-    APPROX_PREC,
     EXPLICIT
 };
 class MergeAndShrinkHeuristic : public Heuristic {

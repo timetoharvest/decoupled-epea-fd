@@ -119,13 +119,11 @@ void MergeAndShrinkHeuristic::extract_factors(FactoredTransitionSystem &fts) {
 int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state) {
     static bool precomputed = false;
     if (!precomputed && g_factoring) {
-        if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC) {
-            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
-                mas_representation->store_leaf_state_ids_by_leaf_id_by_hval();
-            }
-        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_INC ||
-                   decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING ||
-                   decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING_OPTIMIZED) {
+        // TODO fix this!
+        // this might need to be done in the first call to compute_heuristic due to dependencies to data structures
+        // otherwise not being initialized. It should definitely go into a separate function, though, and not use
+        // this static flag.
+        if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
@@ -135,7 +133,7 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
                 mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node);
             }
-        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT || decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT){
+        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23 || decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT){
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 vector<bool> contained_vars(g_variable_domain.size(), false);
                 mas_representation->get_contained_vars(contained_vars);
@@ -148,19 +146,10 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
     for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
         int cost;
         if (g_factoring) {
-            if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX_PREC) {
-                cost = mas_representation->compute_decoupled_value_approx_precomputed(ancestor_state);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::APPROX) {
-                cost = mas_representation->compute_decoupled_value_approx(ancestor_state);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-                cost = mas_representation->compute_decoupled_value_exact(ancestor_state);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_INC) {
-                cerr << "not implemented" << endl;
-                utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+            if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23) {
+                cost = mas_representation->compute_decoupled_value_exact_icaps23(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
                 cost = mas_representation->compute_decoupled_value_exact_compliant_merging(ancestor_state);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING_OPTIMIZED) {
-                cost = mas_representation->compute_decoupled_value_exact_compliant_merging_optimized(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT) {
                 cost = mas_representation->compute_decoupled_value_explicit(ancestor_state);
             } else {
@@ -269,39 +258,23 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
         "total_order])),label_reduction=exact(before_shrinking=true,"
         "before_merging=false),max_states=50k,threshold_before_merge=1)\n}}}\n");
     vector<string> decoupled_lookup_names;
-    decoupled_lookup_names.emplace_back("exact");
-    decoupled_lookup_names.emplace_back("exact_inc");
+    decoupled_lookup_names.emplace_back("exact_icaps23");
     decoupled_lookup_names.emplace_back("exact_compliant_merging");
-    decoupled_lookup_names.emplace_back("exact_compliant_merging_optimized");
-    decoupled_lookup_names.emplace_back("approx");
-    decoupled_lookup_names.emplace_back("approx_prec");
     decoupled_lookup_names.emplace_back("explicit");
     vector<string> decoupled_lookup_docs;
     decoupled_lookup_docs.emplace_back(
         "track full product of partial leaf states up until the root node");
     decoupled_lookup_docs.emplace_back(
-        "track full product of partial leaf states until leaf is fully "
-        "covered by M&S representation");
-    decoupled_lookup_docs.emplace_back(
-        "track full product of partial leaf states until leaf is fully "
-        "covered by M&S representation - only for merge strategies compliant "
-        "with factoring");
-    decoupled_lookup_docs.emplace_back(
             "track full product of partial leaf states until leaf is fully "
             "covered by M&S representation - only for merge strategies compliant "
             "with factoring; optimized implementation");
-    decoupled_lookup_docs.emplace_back(
-        "approximate exact set of reached leaf states by taking the union at "
-        "merge nodes");
-    decoupled_lookup_docs.emplace_back(
-        "as approximate, but with precomputing reached states");
     decoupled_lookup_docs.emplace_back(
             "simply calls the standard M&S lookup for every member state");
     parser.add_enum_option<DECOUPLED_LOOKUP>(
         "decoupled_lookup",
         decoupled_lookup_names,
         "choose how to do the decoupled lookup",
-        "approx",
+        "exact_icaps23",
         decoupled_lookup_docs);
 
     Heuristic::add_options_to_parser(parser);

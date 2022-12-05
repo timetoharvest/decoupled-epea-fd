@@ -58,11 +58,11 @@ static vector<vector<int>> compute_reached_values_by_var(const GlobalState &stat
 }
 
 static int compute_min_leaf_price(
-    const ExplicitStateCPG *prices,
-    LeafFactorID leaf_id,
-    int pos,
-    const vector<vector<int>> &reached_leaf_values_by_var,
-    vector<int> &leaf_state) {
+        const ExplicitStateCPG *prices,
+        LeafFactorID leaf_id,
+        int pos,
+        const vector<vector<int>> &reached_leaf_values_by_var,
+        vector<int> &leaf_state) {
     const vector<int> &leaf_vars = g_leaves[leaf_id];
     int var = leaf_vars[pos];
     const vector<int> &reached_leaf_values = reached_leaf_values_by_var[var];
@@ -72,11 +72,11 @@ static int compute_min_leaf_price(
         int price;
         if (pos < static_cast<int>(leaf_vars.size()) - 1) {
             price = compute_min_leaf_price(
-                prices,
-                leaf_id,
-                pos + 1,
-                reached_leaf_values_by_var,
-                leaf_state);
+                    prices,
+                    leaf_id,
+                    pos + 1,
+                    reached_leaf_values_by_var,
+                    leaf_state);
         } else {
             LeafStateHash leaf_state_id = g_state_registry->get_leaf_state_hash(leaf_state, leaf_id);
             if (prices->has_leaf_state(leaf_state_id, leaf_id)) {
@@ -91,10 +91,10 @@ static int compute_min_leaf_price(
 }
 
 static int compute_price_for_leaves(
-    const ExplicitStateCPG *prices,
-    const vector<vector<int>> &reached_values_by_var,
-    const vector<LeafFactorID> &covered_leaf_ids,
-    const vector<pair<int, int>> &reached_facts) {
+        const ExplicitStateCPG *prices,
+        const vector<vector<int>> &reached_values_by_var,
+        const vector<LeafFactorID> &covered_leaf_ids,
+        const vector<pair<int, int>> &reached_facts) {
 
     // TODO: can we avoid converting this list of pairs to list of values by var?
     vector<vector<int>> reached_leaf_values_by_var(g_variable_domain.size());
@@ -114,11 +114,11 @@ static int compute_price_for_leaves(
 
         vector<int> leaf_state(leaf_vars.size());
         int price = compute_min_leaf_price(
-            prices,
-            leaf_id,
-            0,
-            reached_leaf_values_by_var,
-            leaf_state);
+                prices,
+                leaf_id,
+                0,
+                reached_leaf_values_by_var,
+                leaf_state);
 //                cout << "leaf id " << leaf << " has price " << price << endl;
         if (price == INF) {
             return INF;
@@ -127,29 +127,9 @@ static int compute_price_for_leaves(
     }
     return sum_prices;
 }
-//
-//static void compute_min_price(
-//    const ExplicitStateCPG *prices,
-//    const vector<vector<int>> &reached_values_by_var,
-//    const vector<LeafFactorID> &covered_leaf_ids,
-//    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> &hval_to_price_and_reached_leaf_facts) {
-//    for (auto &entry : hval_to_price_and_reached_leaf_facts) {
-//        assert(entry.first != INF && entry.first != PRUNED_STATE);
-//        assert(entry.second.first == INF);
-//        int min_price = INF;
-//        for (const vector<pair<int, int>> &reached_facts : entry.second.second) {
-//            int sum_prices = compute_price_for_leaves(prices, reached_values_by_var, covered_leaf_ids, reached_facts);
-//            if (sum_prices != INF) {
-//                min_price = min(min_price, sum_prices);
-//            }
-//        }
-//        entry.second.first = min_price;
-//        vector<vector<pair<int, int>>>().swap(entry.second.second);
-//    }
-//}
 
-int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
-    const GlobalState &state) const {
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact_icaps23(
+        const GlobalState &state) const {
     assert(g_factoring);
     vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
 //    cout << "reached values by var:" << endl;
@@ -158,7 +138,7 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
 //    }
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> hval_to_price_and_reached_leaf_facts =
-        get_decoupled_value_exact(prices, reached_values_by_var);
+            get_decoupled_value_exact_icaps23(prices, reached_values_by_var);
 
 //    cout << "original initial state: " << g_initial_state_data << endl;
 
@@ -189,35 +169,10 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
 }
 
 int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_merging(
-    const GlobalState &state) const {
-    assert(g_factoring);
-    vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
-    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> hval_to_price_and_reached_leaf_facts =
-        get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
-
-    int min_h_and_price = INF;
-    for (auto &entry : hval_to_price_and_reached_leaf_facts) {
-        int h = entry.first;
-//        cout << "h value: " << h << endl;
-        if (h == INF || h == PRUNED_STATE) {
-            continue;
-        }
-        int price = entry.second.first;
-//        cout << "price:   " << price << endl;
-        assert(entry.second.second.empty());
-        if (price != INF) {
-            min_h_and_price = min(min_h_and_price, h + price);
-        }
-    }
-    return min_h_and_price;
-}
-
-int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_merging_optimized(
         const GlobalState &state) const {
     assert(g_factoring);
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    vector<pair<int, int>> hval_to_min_price = get_decoupled_value_exact_compliant_merging_optimized(state, prices);
+    vector<pair<int, int>> hval_to_min_price = get_decoupled_value_exact_compliant_merging(state, prices);
 
     int min_h_and_price = INF;
     for (const auto &[h, price] : hval_to_min_price) {
@@ -228,85 +183,6 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_mergin
 //        cout << "price:   " << price << endl;
         assert(price != INF);
         min_h_and_price = min(min_h_and_price, h + price);
-    }
-    return min_h_and_price;
-}
-
-int MergeAndShrinkRepresentation::compute_decoupled_value_approx(const GlobalState &state) const {
-    assert(g_factoring);
-    vector<vector<int>> reached_values_by_var = compute_reached_values_by_var(state);
-    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    unordered_map<int, vector<vector<int>>> hval_to_reached_leaf_values_by_var =
-        get_decoupled_value_approx(prices, reached_values_by_var);
-
-    int num_leaves = g_leaves.size();
-    int min_h_and_price = INF;
-    for (auto &entry : hval_to_reached_leaf_values_by_var) {
-        int h = entry.first;
-        if (h == INF || h == PRUNED_STATE) {
-            continue;
-        }
-        int sum_prices = 0;
-        for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
-            const vector<int> &leaf_vars = g_leaves[leaf];
-            auto &reached_leaf_values_by_var = entry.second;
-            // Use reached values for a leaf var if it is not covered by the M&S tree.
-            for (int leaf_var : leaf_vars) {
-                if (reached_leaf_values_by_var[leaf_var].empty()) {
-                    reached_leaf_values_by_var[leaf_var] = reached_values_by_var[leaf_var];
-                }
-            }
-            vector<int> leaf_state(leaf_vars.size());
-            int price = compute_min_leaf_price(
-                prices,
-                leaf,
-                0,
-                entry.second,
-                leaf_state);
-            if (price == INF) {
-                sum_prices = INF;
-                break;
-            }
-            sum_prices += price;
-        }
-        if (sum_prices != INF) {
-            min_h_and_price = min(min_h_and_price, h + sum_prices);
-        }
-    }
-    return min_h_and_price;
-}
-
-int MergeAndShrinkRepresentation::compute_decoupled_value_approx_precomputed(
-    const GlobalState &state) const {
-    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    vector<int> center_hvals = get_decoupled_values_approx_precomputed(state);
-    // we filtered all pruned states and states with h-val of infinity.
-    int min_h_and_price = INF;
-    for (int h_val : center_hvals) {
-        if (h_val == PRUNED_STATE || h_val == INF) {
-            continue;
-        }
-        int sum_prices = 0;
-        for (LeafFactorID leaf(0); leaf < leaf_state_ids_by_leaf_id_by_hval[h_val].size(); ++leaf) {
-            const auto &leaf_state_ids = leaf_state_ids_by_leaf_id_by_hval[h_val][leaf];
-            int min_price = INF;
-            for (LeafStateHash leaf_state_id : leaf_state_ids) {
-                if (prices->has_leaf_state(leaf_state_id, leaf)) {
-                    int price = prices->get_cost_of_state(leaf_state_id, leaf);
-                    min_price = min(min_price, price);
-                }
-            }
-
-            if (min_price == INF) {
-                sum_prices = INF;
-                break;
-            } else {
-                sum_prices += min_price;
-            }
-        }
-        if (sum_prices != INF) {
-            min_h_and_price = min(min_h_and_price, h_val + sum_prices);
-        }
     }
     return min_h_and_price;
 }
@@ -392,38 +268,6 @@ static void compute_leaf_states(
     }
 }
 
-void MergeAndShrinkRepresentation::store_leaf_state_ids_by_leaf_id_by_hval() {
-    int num_leaves = g_leaves.size();
-    vector<vector<vector<int>>> values_by_var_by_hval = get_leaf_state_ids();
-    int num_h_values = values_by_var_by_hval.size();
-    leaf_state_ids_by_leaf_id_by_hval.resize(num_h_values, vector<vector<LeafStateHash>>(num_leaves));
-    for (int h = 0; h < num_h_values; ++h) {
-        vector<vector<int>> &values_by_var = values_by_var_by_hval[h];
-        if (h == INF || h == PRUNED_STATE) {
-            // TODO this can never happen!
-            continue;
-        }
-        for (LeafFactorID leaf(0); leaf < num_leaves; ++leaf) {
-            const vector<int> &leaf_vars = g_leaves[leaf];
-            // Use all values for a leaf var if it is not covered by the M&S tree.
-            for (int leaf_var : leaf_vars) {
-                if (values_by_var[leaf_var].empty()) {
-                    for (int value = 0; value < g_variable_domain[leaf_var]; ++value) {
-                        values_by_var[leaf_var].push_back(value);
-                    }
-                }
-            }
-            vector<int> leaf_state(leaf_vars.size());
-            compute_leaf_states(
-                leaf,
-                0,
-                leaf_state,
-                values_by_var,
-                leaf_state_ids_by_leaf_id_by_hval[h]);
-        }
-    }
-}
-
 void MergeAndShrinkRepresentation::store_all_affected_leaf_ids_in_root(const vector<bool> &contained_vars) {
     assert(covered_leaf_ids.empty());
     for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
@@ -455,12 +299,11 @@ void MergeAndShrinkRepresentationLeaf::get_contained_vars(
 }
 
 static bool is_leaf_covered(
-    const vector<int> &leaf,
-    const vector<bool> &contained_vars,
-    const vector<bool> &covered_vars) {
+        const vector<int> &leaf_factor,
+        const vector<bool> &contained_vars,
+        const vector<bool> &covered_vars) {
     bool leaf_overlaps_with_representation = false;
-    bool leaf_covered = true;
-    for (int var : leaf) {
+    for (int var : leaf_factor) {
         // Only consider leaves that share variables with this representation.
         if (!leaf_overlaps_with_representation && contained_vars[var]) {
             leaf_overlaps_with_representation = true;
@@ -471,7 +314,7 @@ static bool is_leaf_covered(
             return false;
         }
     }
-    return leaf_overlaps_with_representation && leaf_covered;
+    return leaf_overlaps_with_representation;
 }
 
 void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
@@ -533,36 +376,7 @@ int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state,
     return lookup_table[value];
 }
 
-vector<int> MergeAndShrinkRepresentationLeaf::get_decoupled_values_approx_precomputed(
-    const GlobalState &state) const {
-    if (g_belongs_to_factor[var_id] == LeafFactorID::CENTER) {
-        int value = state[var_id];
-        return {lookup_table[value]};
-    }
-    vector<int> all_values(lookup_table);
-    utils::sort_unique(all_values);
-    return all_values;
-}
-
-unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_approx(
-    const ExplicitStateCPG *,
-    const vector<vector<int>> &reached_values_by_var) const {
-    unordered_map<int, vector<vector<int>>> index_to_reached_leaf_values_by_var;
-    for (int value : reached_values_by_var[var_id]) {
-        int index = lookup_table[value];
-        if (index != PRUNED_STATE) {
-            if (index_to_reached_leaf_values_by_var[index].empty()) {
-                index_to_reached_leaf_values_by_var[index].resize(g_variable_domain.size());
-            }
-            if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
-                index_to_reached_leaf_values_by_var[index][var_id].push_back(value);
-            }
-        }
-    }
-    return index_to_reached_leaf_values_by_var;
-}
-
-unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact(
+unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_icaps23(
     const ExplicitStateCPG *,
     const vector<vector<int>> &reached_values_by_var) const {
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_leaf_facts;
@@ -586,42 +400,7 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
     return index_to_price_and_reached_leaf_facts;
 }
 
-unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_compliant_merging(
-    const ExplicitStateCPG *prices,
-    const vector<vector<int>> &reached_values_by_var) const {
-    assert(covered_leaf_ids.size() <= 1);
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_leaf_facts;
-    for (int value : reached_values_by_var[var_id]) {
-        int index = lookup_table[value];
-        if (index != PRUNED_STATE) {
-            if (!index_to_price_and_reached_leaf_facts.count(index)) {
-                index_to_price_and_reached_leaf_facts[index] =
-                    make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
-            }
-            if (g_belongs_to_factor[var_id] != LeafFactorID::CENTER) {
-                if (covered_leaf_ids.empty()) {
-                    index_to_price_and_reached_leaf_facts[index].second.push_back(vector<pair<int, int>>(1, {var_id, value}));
-                } else {
-                    assert(g_leaves[g_belongs_to_factor[var_id]].size() == 1);
-                    int min_price = compute_price_for_leaves(prices,
-                                                             reached_values_by_var,
-                                                             covered_leaf_ids,
-                                                             vector<pair<int, int>>(1, {var_id, value}));
-                    // we need to minimize here since another leaf state could have been mapped to the same index before
-                    index_to_price_and_reached_leaf_facts[index].first = min(index_to_price_and_reached_leaf_facts[index].first,
-                                                                             min_price);
-                }
-            } else {
-                // we need to add this "dummy" value, since we assume in the merge node
-                // that there is a non-empty fact list if the value is INF 
-                index_to_price_and_reached_leaf_facts[index].first = 0;
-            }
-        }
-    }
-    return index_to_price_and_reached_leaf_facts;
-}
-
-vector<pair<int, int>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_compliant_merging_optimized(
+vector<pair<int, int>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_compliant_merging(
         const GlobalState &state,
         const ExplicitStateCPG *prices) const {
     assert(covered_leaf_ids.size() <= 1);
@@ -720,7 +499,7 @@ void MergeAndShrinkRepresentationMerge::get_contained_vars(
 }
 
 void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
-    const vector<bool> &contained_vars, vector<bool> &covered_vars) {
+        const vector<bool> &contained_vars, vector<bool> &covered_vars) {
     vector<bool> covered_vars_left(g_variable_domain.size(), false);
     vector<bool> covered_vars_right(g_variable_domain.size(), false);
     left_child->set_covered_leaf_ids(contained_vars, covered_vars_left);
@@ -795,63 +574,13 @@ int MergeAndShrinkRepresentationMerge::get_value(
     return lookup_table[state1][state2];
 }
 
-vector<int> MergeAndShrinkRepresentationMerge::get_decoupled_values_approx_precomputed(
-    const GlobalState &state) const {
-    vector<int> values_left = left_child->get_decoupled_values_approx_precomputed(state);
-    vector<int> values_right = right_child->get_decoupled_values_approx_precomputed(state);
-    vector<int> values_merge;
-    values_merge.reserve(lookup_table.size());
-    for (int val_left : values_left) {
-        if (val_left == PRUNED_STATE) {
-            continue;
-        }
-        for (int val_right : values_right) {
-            if (val_right == PRUNED_STATE) {
-                continue;
-            }
-            int merge_index = lookup_table[val_left][val_right];
-            if (merge_index != PRUNED_STATE) {
-                values_merge.push_back(merge_index);
-            }
-        }
-    }
-    if (values_merge.empty()) {
-        return {PRUNED_STATE};
-    }
-    return values_merge;
-}
-
-unordered_map<int, vector<vector<int>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_approx(
-    const ExplicitStateCPG *prices,
-    const vector<vector<int>> &reached_values_by_var) const {
-    unordered_map<int, vector<vector<int>>> index_to_reached_leaf_values_by_var_left = left_child->get_decoupled_value_approx(prices, reached_values_by_var);
-    unordered_map<int, vector<vector<int>>> index_to_reached_leaf_values_by_var_right = right_child->get_decoupled_value_approx(prices, reached_values_by_var);
-    unordered_map<int, vector<vector<int>>> index_to_reached_leaf_values_by_var_merge;
-    for (auto left : index_to_reached_leaf_values_by_var_left) {
-        for (auto right : index_to_reached_leaf_values_by_var_right) {
-            int left_index = left.first;
-            int right_index = right.first;
-            int merge_index = lookup_table[left_index][right_index];
-            if (merge_index != PRUNED_STATE) {
-                auto &merge_values_by_var = index_to_reached_leaf_values_by_var_merge[merge_index];
-                merge_values_by_var.resize(g_variable_domain.size());
-                for (size_t var_id = 0; var_id < g_variable_domain.size(); ++var_id) {
-                    merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), left.second[var_id].begin(), left.second[var_id].end());
-                    merge_values_by_var[var_id].insert(merge_values_by_var[var_id].end(), right.second[var_id].begin(), right.second[var_id].end());
-                }
-            }
-        }
-    }
-    return index_to_reached_leaf_values_by_var_merge;
-}
-
-unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact(
+unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_icaps23(
     const ExplicitStateCPG *prices,
     const vector<vector<int>> &reached_values_by_var) const {
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left =
-        left_child->get_decoupled_value_exact(prices, reached_values_by_var);
+        left_child->get_decoupled_value_exact_icaps23(prices, reached_values_by_var);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right =
-        right_child->get_decoupled_value_exact(prices, reached_values_by_var);
+        right_child->get_decoupled_value_exact_icaps23(prices, reached_values_by_var);
     unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_merge;
     for (const auto &left : index_to_price_and_reached_facts_left) {
         for (const auto &right : index_to_price_and_reached_facts_right) {
@@ -886,73 +615,7 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
     return index_to_price_and_reached_facts_merge;
 }
 
-unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_compliant_merging(
-    const ExplicitStateCPG *prices,
-    const vector<vector<int>> &reached_values_by_var) const {
-    assert(covered_leaf_ids.size() <= 1);
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_left =
-        left_child->get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_right =
-        right_child->get_decoupled_value_exact_compliant_merging(prices, reached_values_by_var);
-    unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> index_to_price_and_reached_facts_merge;
-    for (const auto &left : index_to_price_and_reached_facts_left) {
-        for (const auto &right : index_to_price_and_reached_facts_right) {
-            int left_index = left.first;
-            int right_index = right.first;
-            int merge_index = lookup_table[left_index][right_index];
-            if (merge_index != PRUNED_STATE) {
-                if (!index_to_price_and_reached_facts_merge.count(merge_index)) {
-                    index_to_price_and_reached_facts_merge[merge_index] =
-                        make_pair<int, vector<vector<pair<int, int>>>>(numeric_limits<int>::max(), {});
-                }
-
-                int left_price = left.second.first;
-                int right_price = right.second.first;
-
-                const auto &left_facts = left.second.second;
-                const auto &right_facts = right.second.second;
-
-                int min_price = INF;
-
-                if ((left_facts.empty() && left_price == INF) ||
-                    (right_facts.empty() && right_price == INF)){
-                    // for this merge_index, there is no reached leaf state on left and/or right
-                    // do nothing => min_price remains INF
-                } else if (left_price != INF && right_price != INF) {
-                    assert(left_facts.empty() && right_facts.empty()); // due to if check above
-                    min_price = left_price + right_price;
-                } else {
-                    assert(left_price == INF && right_price == INF);
-                    assert(!left_facts.empty() && !right_facts.empty());
-                    for (const vector<pair<int, int>> &reached_facts_left: left_facts) {
-                        for (const vector<pair<int, int>> &reached_facts_right: right_facts) {
-                            vector<pair<int, int>> reached_facts(reached_facts_left);
-                            reached_facts.insert(reached_facts.end(), reached_facts_right.begin(),
-                                                 reached_facts_right.end());
-
-                            if (covered_leaf_ids.empty()) {
-                                index_to_price_and_reached_facts_merge[merge_index].second.push_back(
-                                        move(reached_facts));
-                            } else {
-                                int sum_prices = compute_price_for_leaves(prices, reached_values_by_var,
-                                                                          covered_leaf_ids, reached_facts);
-                                if (sum_prices != INF) {
-                                    min_price = min(min_price, sum_prices);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                index_to_price_and_reached_facts_merge[merge_index].first =
-                    min(index_to_price_and_reached_facts_merge[merge_index].first, min_price);
-            }
-        }
-    }
-    return index_to_price_and_reached_facts_merge;
-}
-
-vector<pair<int, int>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_compliant_merging_optimized(
+vector<pair<int, int>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_compliant_merging(
             const GlobalState &state,
             const ExplicitStateCPG *prices) const {
     assert(covered_leaf_ids.size() <= 1);
@@ -988,9 +651,9 @@ vector<pair<int, int>> MergeAndShrinkRepresentationMerge::get_decoupled_value_ex
     }
 
     vector<pair<int, int>> index_to_min_price_left =
-            left_child->get_decoupled_value_exact_compliant_merging_optimized(state, prices);
+            left_child->get_decoupled_value_exact_compliant_merging(state, prices);
     vector<pair<int, int>> index_to_min_price_right =
-            right_child->get_decoupled_value_exact_compliant_merging_optimized(state, prices);
+            right_child->get_decoupled_value_exact_compliant_merging(state, prices);
     vector<pair<int, int>> index_to_min_price;
 
     unordered_map<int, int> ms_index_to_min_prices_index;
