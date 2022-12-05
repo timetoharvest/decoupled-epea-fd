@@ -24,7 +24,7 @@ protected:
 public:
     explicit MergeAndShrinkRepresentation(int domain_size);
     virtual ~MergeAndShrinkRepresentation() = 0;
-    
+
     virtual void get_contained_vars(
         std::vector<bool> &contained_vars) const = 0;
     virtual void set_covered_leaf_ids(
@@ -35,6 +35,7 @@ public:
 
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
+    int compute_decoupled_value_exact(const GlobalState &state) const;
     int compute_decoupled_value_exact_icaps23(const GlobalState &state) const;
     int compute_decoupled_value_exact_compliant_merging(const GlobalState &state) const;
     int compute_decoupled_value_explicit(const GlobalState &state) const;
@@ -55,6 +56,9 @@ public:
     virtual int get_value(const std::vector<int> &state) const = 0;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const = 0;
 
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const = 0;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
@@ -91,6 +95,9 @@ public:
     virtual int get_value(const std::vector<int> &state) const override;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
 
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
@@ -128,6 +135,9 @@ public:
     virtual int get_value(const std::vector<int> &state) const override;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
 
+    virtual std::vector<std::pair<int, int>> get_decoupled_value_exact(
+            const GlobalState &state,
+            const ExplicitStateCPG *prices) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;

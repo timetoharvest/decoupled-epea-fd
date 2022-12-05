@@ -128,6 +128,27 @@ static int compute_price_for_leaves(
     return sum_prices;
 }
 
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
+        const GlobalState &state) const {
+    cout << "exact decoupled lookup not yet implemented" << endl;
+    utils::exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
+    assert(g_factoring);
+    const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
+    vector<pair<int, int>> hval_to_min_price = get_decoupled_value_exact(state, prices);
+
+    int min_h_and_price = INF;
+    for (const auto &[h, price] : hval_to_min_price) {
+//        cout << "h value: " << h << endl;
+        if (h == INF || h == PRUNED_STATE) {
+            continue;
+        }
+//        cout << "price:   " << price << endl;
+        assert(price != INF);
+        min_h_and_price = min(min_h_and_price, h + price);
+    }
+    return min_h_and_price;
+}
+
 int MergeAndShrinkRepresentation::compute_decoupled_value_exact_icaps23(
         const GlobalState &state) const {
     assert(g_factoring);
@@ -376,6 +397,49 @@ int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state,
     return lookup_table[value];
 }
 
+vector<pair<int, int>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact(
+        const GlobalState &state,
+        const ExplicitStateCPG *prices) const {
+    assert(covered_leaf_ids.size() <= 1);
+    vector<pair<int, int>> index_to_min_price;
+
+    if (covered_leaf_ids.empty()) {
+        // var_id has to be a center variable
+        assert(g_belongs_to_factor[var_id] == LeafFactorID::CENTER);
+        int index = lookup_table[state[var_id]];
+        if (index != PRUNED_STATE) {
+            index_to_min_price.emplace_back(make_pair(index, 0));
+        }
+    } else {
+        // it has to be a 1-var leaf
+        assert(g_leaves[g_belongs_to_factor[var_id]].size() == 1);
+        unordered_map<int, int> ms_index_to_min_prices_index;
+        LeafFactorID leaf = covered_leaf_ids[0];
+        int num_leaf_states = prices->get_number_states(leaf);
+        for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
+            if (prices->has_leaf_state(id, leaf)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, leaf);
+                int leaf_index = lookup_table[l_state[var_id]];
+                if (leaf_index != PRUNED_STATE){
+                    int price = prices->get_cost_of_state(id, leaf);
+                    auto min_prices_it = ms_index_to_min_prices_index.find(leaf_index);
+                    if (min_prices_it != ms_index_to_min_prices_index.end()){
+                        int i = min_prices_it->second;
+                        index_to_min_price[i].second = min(index_to_min_price[i].second, price);
+                    } else {
+                        ms_index_to_min_prices_index[leaf_index] = index_to_min_price.size();
+                        index_to_min_price.emplace_back(make_pair(leaf_index, price));
+                    }
+                }
+                if (--num_leaf_states == 0){
+                    break;
+                }
+            }
+        }
+    }
+    return index_to_min_price;
+}
+
 unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_icaps23(
     const ExplicitStateCPG *,
     const vector<vector<int>> &reached_values_by_var) const {
@@ -572,6 +636,66 @@ int MergeAndShrinkRepresentationMerge::get_value(
     if (state1 == PRUNED_STATE || state2 == PRUNED_STATE)
         return PRUNED_STATE;
     return lookup_table[state1][state2];
+}
+
+vector<pair<int, int>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact(
+        const GlobalState &state,
+        const ExplicitStateCPG *prices) const {
+    assert(covered_leaf_ids.size() <= 1);
+
+    if (!covered_leaf_ids.empty()){
+        // leaf is completely covered below this node, lookup all reached indexes and
+        // corresponding minimum price
+        unordered_map<int, int> ms_index_to_min_prices_index;
+        LeafFactorID leaf = covered_leaf_ids[0];
+        vector<pair<int, int>> index_to_min_price;
+        int num_leaf_states = prices->get_number_states(leaf);
+        for (LeafStateHash id(0); id < g_state_registry->size(leaf); ++id){
+            if (prices->has_leaf_state(id, leaf)){
+                LeafState l_state = g_state_registry->lookup_leaf_state(id, leaf);
+                int leaf_index = get_value(state, l_state);
+                if (leaf_index != PRUNED_STATE){
+                    int price = prices->get_cost_of_state(id, leaf);
+                    auto min_prices_it = ms_index_to_min_prices_index.find(leaf_index);
+                    if (min_prices_it != ms_index_to_min_prices_index.end()){
+                        int i = min_prices_it->second;
+                        index_to_min_price[i].second = min(index_to_min_price[i].second, price);
+                    } else {
+                        ms_index_to_min_prices_index[leaf_index] = index_to_min_price.size();
+                        index_to_min_price.emplace_back(make_pair(leaf_index, price));
+                    }
+                }
+                if (--num_leaf_states == 0){
+                    break;
+                }
+            }
+        }
+        return index_to_min_price;
+    }
+
+    vector<pair<int, int>> index_to_min_price_left =
+            left_child->get_decoupled_value_exact(state, prices);
+    vector<pair<int, int>> index_to_min_price_right =
+            right_child->get_decoupled_value_exact(state, prices);
+    vector<pair<int, int>> index_to_min_price;
+
+    unordered_map<int, int> ms_index_to_min_prices_index;
+    for (const auto &[left_index, left_price]: index_to_min_price_left) {
+        for (const auto &[right_index, right_price]: index_to_min_price_right) {
+            int merge_index = lookup_table[left_index][right_index];
+            if (merge_index != PRUNED_STATE) {
+                auto min_prices_it = ms_index_to_min_prices_index.find(merge_index);
+                if (min_prices_it != ms_index_to_min_prices_index.end()){
+                    int i = min_prices_it->second;
+                    index_to_min_price[i].second = min(index_to_min_price[i].second, left_price + right_price);
+                } else {
+                    ms_index_to_min_prices_index[merge_index] = index_to_min_price.size();
+                    index_to_min_price.emplace_back(make_pair(merge_index, left_price + right_price));
+                }
+            }
+        }
+    }
+    return index_to_min_price;
 }
 
 unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_icaps23(
