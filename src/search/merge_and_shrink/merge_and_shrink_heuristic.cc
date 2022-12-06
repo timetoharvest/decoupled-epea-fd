@@ -124,6 +124,7 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         // otherwise not being initialized. It should definitely go into a separate function, though, and not use
         // this static flag.
         if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT ||
+            decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE ||
             decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
@@ -148,7 +149,9 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         int cost;
         if (g_factoring) {
             if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-                cost = mas_representation->compute_decoupled_value_exact(ancestor_state);
+                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, true);
+            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE) {
+                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, false);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23) {
                 cost = mas_representation->compute_decoupled_value_exact_icaps23(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
