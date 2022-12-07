@@ -713,10 +713,12 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
                     int price = prices->get_cost_of_state(id, leaf);
                     for (const auto &[index, summed_prices] : index_to_min_price) {
                         assert(index != PRUNED_STATE);
-                        if (!result.count(index)) {
-                            result[index] = 0;
+                        auto it = result.find(index);
+                        if (it == result.end()) {
+                            result[index] = price + summed_prices;
+                        } else {
+                            it->second = min(it->second, price + summed_prices);
                         }
-                        result[index] = min(result[index], price + summed_prices);
                     }
                     if (--num_leaf_states == 0){
                         break;
