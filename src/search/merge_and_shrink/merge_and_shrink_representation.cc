@@ -648,6 +648,8 @@ int MergeAndShrinkRepresentationMerge::get_value(
 
 void MergeAndShrinkRepresentationMerge::clear_cache() const {
     cache.clear();
+    left_child->clear_cache();
+    right_child->clear_cache();
 }
 
 unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_merge(
