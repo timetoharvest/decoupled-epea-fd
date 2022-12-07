@@ -196,11 +196,11 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_exact_icaps23(
     return min_h_and_price;
 }
 
-int MergeAndShrinkRepresentation::compute_decoupled_value_exact_compliant_merging(
+int MergeAndShrinkRepresentation::compute_decoupled_value_exact_strongly_compliant_merging(
         const GlobalState &state) const {
     assert(g_factoring);
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
-    unordered_map<int, int> hval_to_min_price = get_decoupled_value_exact_compliant_merging(state, prices);
+    unordered_map<int, int> hval_to_min_price = get_decoupled_value_exact_strongly_compliant_merging(state, prices);
 
     int min_h_and_price = INF;
     for (const auto &[h, price] : hval_to_min_price) {
@@ -475,7 +475,7 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
     return index_to_price_and_reached_leaf_facts;
 }
 
-unordered_map<int, int> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_compliant_merging(
+unordered_map<int, int> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact_strongly_compliant_merging(
         const GlobalState &state,
         const ExplicitStateCPG *prices) const {
     assert(covered_leaf_ids.size() <= 1);
@@ -785,7 +785,7 @@ unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepr
     return index_to_price_and_reached_facts_merge;
 }
 
-unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_compliant_merging(
+unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_strongly_compliant_merging(
             const GlobalState &state,
             const ExplicitStateCPG *prices) const {
     assert(covered_leaf_ids.size() <= 1);
@@ -818,9 +818,9 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
     }
 
     unordered_map<int, int> index_to_min_price_left =
-            left_child->get_decoupled_value_exact_compliant_merging(state, prices);
+            left_child->get_decoupled_value_exact_strongly_compliant_merging(state, prices);
     unordered_map<int, int> index_to_min_price_right =
-            right_child->get_decoupled_value_exact_compliant_merging(state, prices);
+            right_child->get_decoupled_value_exact_strongly_compliant_merging(state, prices);
     unordered_map<int, int> index_to_min_price;
 
     for (const auto &[left_index, left_price]: index_to_min_price_left) {

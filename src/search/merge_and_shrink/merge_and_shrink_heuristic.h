@@ -12,8 +12,8 @@ class MergeAndShrinkRepresentation;
 enum class DECOUPLED_LOOKUP {
     EXACT_ICAPS23, // TODO remove this eventually
     EXACT,
-    EXACT_NOCACHE, // TODO might be a way to enable/disable caching entirely
-    EXACT_COMPLIANT_MERGING,
+    EXACT_NOCACHE,
+    EXACT_STRONGLY_COMPLIANT_MERGING,
     EXPLICIT
 };
 class MergeAndShrinkHeuristic : public Heuristic {

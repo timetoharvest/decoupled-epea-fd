@@ -40,7 +40,7 @@ public:
     int compute_decoupled_value_exact(
         const GlobalState &state, bool use_cache) const;
     int compute_decoupled_value_exact_icaps23(const GlobalState &state) const;
-    int compute_decoupled_value_exact_compliant_merging(const GlobalState &state) const;
+    int compute_decoupled_value_exact_strongly_compliant_merging(const GlobalState &state) const;
     int compute_decoupled_value_explicit(const GlobalState &state) const;
 
     int get_domain_size() const;
@@ -68,7 +68,7 @@ public:
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const = 0;
-    virtual std::unordered_map<int, int> get_decoupled_value_exact_compliant_merging(
+    virtual std::unordered_map<int, int> get_decoupled_value_exact_strongly_compliant_merging(
         const GlobalState &state,
         const ExplicitStateCPG *prices) const = 0;
 
@@ -110,7 +110,7 @@ public:
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    virtual std::unordered_map<int, int> get_decoupled_value_exact_compliant_merging(
+    virtual std::unordered_map<int, int> get_decoupled_value_exact_strongly_compliant_merging(
         const GlobalState &state,
         const ExplicitStateCPG *prices) const override;
 
@@ -159,7 +159,7 @@ public:
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
         const std::vector<std::vector<int>> &reached_values_by_var) const override;
-    virtual std::unordered_map<int, int> get_decoupled_value_exact_compliant_merging(
+    virtual std::unordered_map<int, int> get_decoupled_value_exact_strongly_compliant_merging(
         const GlobalState &state,
         const ExplicitStateCPG *prices) const override;
 

@@ -125,7 +125,7 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         // this static flag.
         if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT ||
             decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE ||
-            decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
+            decoupled_lookup == DECOUPLED_LOOKUP::EXACT_STRONGLY_COMPLIANT_MERGING) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
@@ -154,8 +154,8 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 cost = mas_representation->compute_decoupled_value_exact(ancestor_state, false);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23) {
                 cost = mas_representation->compute_decoupled_value_exact_icaps23(ancestor_state);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_COMPLIANT_MERGING) {
-                cost = mas_representation->compute_decoupled_value_exact_compliant_merging(ancestor_state);
+            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_STRONGLY_COMPLIANT_MERGING) {
+                cost = mas_representation->compute_decoupled_value_exact_strongly_compliant_merging(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT) {
                 cost = mas_representation->compute_decoupled_value_explicit(ancestor_state);
             } else {
@@ -267,7 +267,7 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
     decoupled_lookup_names.emplace_back("exact_icaps23");
     decoupled_lookup_names.emplace_back("exact");
     decoupled_lookup_names.emplace_back("exact_nocache");
-    decoupled_lookup_names.emplace_back("exact_compliant_merging");
+    decoupled_lookup_names.emplace_back("exact_strongly_compliant_merging");
     decoupled_lookup_names.emplace_back("explicit");
     vector<string> decoupled_lookup_docs;
     decoupled_lookup_docs.emplace_back(
@@ -279,7 +279,7 @@ static shared_ptr<Heuristic> _parse(options::OptionParser &parser) {
             "same as EXACT, but without caching");
     decoupled_lookup_docs.emplace_back(
             "track full product of partial leaf states until leaf is fully "
-            "covered by M&S representation - only for merge strategies compliant "
+            "covered by M&S representation - only for merge strategies strongly compliant "
             "with factoring; optimized implementation");
     decoupled_lookup_docs.emplace_back(
             "simply calls the standard M&S lookup for every member state");
