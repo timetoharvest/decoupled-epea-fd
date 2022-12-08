@@ -161,7 +161,7 @@ for dec_name in decoupling.keys():
         # f'{REVISION}-{dec_name}-lmcut',
     ]
     algos.extend([f"{REVISION}-{config.nick}" for config in CONFIGS if config.nick.startswith(dec_name)])
-    algos = sorted(algos)
+    algos = sorted(algos, key=lambda x : x[41:])
     f = Filter(dec_name, algos)
     report_name=f'{exp.name}-abs-{dec_name}'
     report_file=Path(exp.eval_dir) / f'{report_name}.html'
