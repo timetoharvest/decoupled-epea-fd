@@ -33,8 +33,6 @@ public:
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars) = 0;
 
-    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const = 0;
-
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
     int compute_decoupled_value_exact(
@@ -92,8 +90,6 @@ public:
     virtual void set_covered_leaf_ids(
         const std::vector<bool> &contained_vars, std::vector<bool> &covered_vars) override;
 
-    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
-
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
         const std::vector<int> &abstraction_mapping) override;
@@ -135,8 +131,6 @@ public:
     virtual void set_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars) override;
-
-    virtual std::vector<std::vector<std::vector<int>>> get_leaf_state_ids() const override;
 
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(
