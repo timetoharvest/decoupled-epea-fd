@@ -20,7 +20,6 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["AUTOSCALE_BENCHMARKS_OPT"]
 REVISION = "f67ad904f2cf64cc6b9153bc4394152b2e1376ff"
-BASE_REVISION = "fd640d3059ccc79b5e93553d46cc0b0c5ed50e00"
 REVISIONS = [REVISION]
 TIME_LIMIT=900
 
