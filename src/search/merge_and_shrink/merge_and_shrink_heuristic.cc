@@ -123,17 +123,22 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         // this might need to be done in the first call to compute_heuristic due to dependencies to data structures
         // otherwise not being initialized. It should definitely go into a separate function, though, and not use
         // this static flag.
-        if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT ||
-            decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE ||
+        if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE ||
             decoupled_lookup == DECOUPLED_LOOKUP::EXACT_STRONGLY_COMPLIANT_MERGING) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
                 mas_representation->get_contained_vars(contained_vars);
-                // flip bits so that contained_vars now contains all variables
-                // not contained in M&S representation.
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
                 mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node);
+            }
+        } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
+            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
+                // Compute variables contained in M&S representation.
+                vector<bool> contained_vars(g_variable_domain.size(), false);
+                mas_representation->get_contained_vars(contained_vars);
+                vector<bool> vars_up_to_node(g_variable_domain.size(), false);
+                mas_representation->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, vars_up_to_node);
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23 || decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT){
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {

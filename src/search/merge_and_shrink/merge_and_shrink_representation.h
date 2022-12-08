@@ -32,6 +32,9 @@ public:
     virtual void set_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars) = 0;
+    virtual void set_covered_leaf_ids_and_cache_idx_variables(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars) = 0;
 
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
@@ -89,6 +92,9 @@ public:
         std::vector<bool> &contained_vars) const override;
     virtual void set_covered_leaf_ids(
         const std::vector<bool> &contained_vars, std::vector<bool> &covered_vars) override;
+    virtual void set_covered_leaf_ids_and_cache_idx_variables(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars) override;
 
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -120,6 +126,7 @@ class MergeAndShrinkRepresentationMerge : public MergeAndShrinkRepresentation {
     std::unique_ptr<MergeAndShrinkRepresentation> right_child;
     std::vector<std::vector<int>> lookup_table;
     mutable utils::HashMap<std::vector<int>, std::unordered_map<int, int>> cache;
+    std::vector<int> cache_idx_variables;
 public:
     MergeAndShrinkRepresentationMerge(
         std::unique_ptr<MergeAndShrinkRepresentation> left_child,
@@ -131,6 +138,9 @@ public:
     virtual void set_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars) override;
+    virtual void set_covered_leaf_ids_and_cache_idx_variables(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars) override;
 
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(

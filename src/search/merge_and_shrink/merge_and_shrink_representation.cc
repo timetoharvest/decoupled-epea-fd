@@ -345,6 +345,20 @@ static bool is_leaf_covered(
     return leaf_overlaps_with_representation;
 }
 
+static bool is_leaf_partly_covered(
+        const vector<int> &leaf_factor,
+        const vector<bool> &contained_vars,
+        const vector<bool> &covered_vars) {
+    for (int var : leaf_factor) {
+        // a variable of leaf_factor that is contained in the MSRepresentation
+        // has been seen, i.e. is in covered_leaves
+        if (contained_vars[var] && covered_vars[var]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
     const vector<bool> &contained_vars, vector<bool> &covered_vars) {
     LeafFactorID leaf_id = g_belongs_to_factor[var_id];
@@ -354,7 +368,21 @@ void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
             g_leaves[leaf_id], contained_vars, covered_vars);
         if (leaf_covered) {
             assert(g_leaves[leaf_id].size() == 1);
-//            cout << "covered leaf id at leaf node: " << leaf_id << ", leaf vars: " << g_leaves[leaf_id] << endl;
+            covered_leaf_ids.push_back(leaf_id);
+            covered_vars[var_id] = false;
+        }
+    }
+}
+
+void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids_and_cache_idx_variables(
+        const vector<bool> &contained_vars, vector<bool> &covered_vars) {
+    LeafFactorID leaf_id = g_belongs_to_factor[var_id];
+    if (leaf_id != LeafFactorID::CENTER) {
+        covered_vars[var_id] = true;
+        bool leaf_covered = is_leaf_covered(
+                g_leaves[leaf_id], contained_vars, covered_vars);
+        if (leaf_covered) {
+            assert(g_leaves[leaf_id].size() == 1);
             covered_leaf_ids.push_back(leaf_id);
             covered_vars[var_id] = false;
         }
@@ -581,6 +609,34 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
     }
 }
 
+void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids_and_cache_idx_variables(
+        const std::vector<bool> &contained_vars, std::vector<bool> &covered_vars) {
+    vector<bool> covered_vars_left(g_variable_domain.size(), false);
+    vector<bool> covered_vars_right(g_variable_domain.size(), false);
+    left_child->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, covered_vars_left);
+    right_child->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, covered_vars_right);
+    for (size_t var = 0; var < g_variable_domain.size(); ++var){
+        covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
+    }
+    for (const auto &leaf : g_leaves) {
+        if (is_leaf_covered(leaf, contained_vars, covered_vars)) {
+            covered_leaf_ids.push_back(g_belongs_to_factor[leaf[0]]);
+            // Reset all leaf variables so that we only once record a leaf as covered.
+            for (int var : leaf) {
+                cache_idx_variables.push_back(var);
+                covered_vars[var] = false;
+            }
+        } else if (is_leaf_partly_covered(leaf, contained_vars, covered_vars)) {
+            for (int var: leaf) {
+                if (contained_vars[var] && covered_vars[var]) {
+                    // var is part of this MS representation and covered below this node
+                    cache_idx_variables.push_back(var);
+                }
+            }
+        }
+    }
+}
+
 void MergeAndShrinkRepresentationMerge::set_distances(
     const Distances &distances) {
     assert(distances.are_goal_distances_computed());
@@ -720,11 +776,11 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
     }
 
     if (use_cache && !covered_leaf_ids.empty()) {
+        assert(!cache_idx_variables.empty());
         vector<int> partial_state;
-        for (LeafFactorID leaf : covered_leaf_ids) {
-            for (int var : g_leaves[leaf]) {
-                partial_state.push_back(state[var]);
-            }
+        partial_state.reserve(cache_idx_variables.size());
+        for (int var : cache_idx_variables) {
+            partial_state.push_back(state[var]);
         }
         auto it = cache.find(partial_state);
         if (it == cache.end()) {
