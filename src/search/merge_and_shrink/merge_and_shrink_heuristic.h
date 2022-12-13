@@ -13,12 +13,11 @@ enum class DECOUPLED_LOOKUP {
     EXACT_ICAPS23, // TODO remove this eventually
     EXACT,
     EXACT_NOCACHE,
-    EXACT_STRONGLY_COMPLIANT_MERGING,
+    EXACT_STRONGLY_COMPLIANT_MERGING, // TODO this can probably be removed if EXACT turns out to give the same performance
     EXPLICIT
 };
 class MergeAndShrinkHeuristic : public Heuristic {
     DECOUPLED_LOOKUP decoupled_lookup;
-    bool use_cache;
 
     // The final merge-and-shrink representations, storing goal distances.
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;

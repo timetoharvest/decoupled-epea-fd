@@ -36,7 +36,9 @@ MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
     extract_factors(fts);
     log << "Done initializing merge-and-shrink heuristic." << endl << endl;
     if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT){
-        use_cache = true;
+        for (auto &mas_representation : mas_representations){
+            mas_representation->enable_cache();
+        }
     }
 }
 
@@ -136,14 +138,26 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node, false);
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-            for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
+            int max_nesting_all = 0;
+            for (unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 // Compute variables contained in M&S representation.
                 vector<bool> contained_vars(g_variable_domain.size(), false);
                 mas_representation->get_contained_vars(contained_vars);
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
 
                 mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node, true);
+                contained_vars = vector<bool>(g_variable_domain.size(), false);
+                int max_nesting = mas_representation->get_maximum_leaf_nesting(contained_vars);
+                assert(max_nesting >= 0 && max_nesting <= static_cast<int>(g_leaves.size() - 1));
+                max_nesting_all = max(max_nesting_all, max_nesting);
+                if (max_nesting == 0){
+                    mas_representation->disable_cache();
+                    cout << "MS representation is strongly compliant with the factoring, disabling cache." << endl;
+                } else {
+                    cout << "Maximum nesting of leaves (non-compliance): " << max_nesting << endl;
+                }
             }
+            cout << "Maximum nesting of all leaves (non-compliance): " << max_nesting_all << endl;
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23 || decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT){
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
                 vector<bool> contained_vars(g_variable_domain.size(), false);
@@ -157,10 +171,9 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
     for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation : mas_representations) {
         int cost;
         if (g_factoring) {
-            if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, use_cache);
-            } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE) {
-                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, false);
+            if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT ||
+                decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE) {
+                cost = mas_representation->compute_decoupled_value_exact(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23) {
                 cost = mas_representation->compute_decoupled_value_exact_icaps23(ancestor_state);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_STRONGLY_COMPLIANT_MERGING) {

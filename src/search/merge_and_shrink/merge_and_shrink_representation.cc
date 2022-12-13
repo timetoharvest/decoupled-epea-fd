@@ -129,18 +129,16 @@ static int compute_price_for_leaves(
 }
 
 int MergeAndShrinkRepresentation::compute_decoupled_value_exact(
-        const GlobalState &state, bool use_cache) const {
+        const GlobalState &state) const {
     assert(g_factoring);
     const ExplicitStateCPG *prices = dynamic_cast<const ExplicitStateCPG*>(CPGStorage::storage->get_cpg(state));
     vector<int> center_state(g_variable_domain.size(), -1);
     for (int var : g_center) {
         center_state[var] = state[var];
     }
-    unordered_map<int, int> hval_to_min_price =
-        get_decoupled_value_exact(use_cache, prices, center_state);
-    if (use_cache) {
-        clear_cache();
-    }
+    unordered_map<int, int> hval_to_min_price = get_decoupled_value_exact(prices, center_state);
+
+    clear_cache();
 
     int min_h_and_price = INF;
     for (const auto &[h, price] : hval_to_min_price) {
@@ -376,6 +374,11 @@ void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
     }
 }
 
+int MergeAndShrinkRepresentationLeaf::get_maximum_leaf_nesting(vector<bool> &contained_vars) const {
+    contained_vars[var_id] = true;
+    return 0;
+}
+
 void MergeAndShrinkRepresentationLeaf::set_distances(
     const Distances &distances) {
     assert(distances.are_goal_distances_computed());
@@ -419,11 +422,16 @@ int MergeAndShrinkRepresentationLeaf::get_value(const GlobalState &state,
     return lookup_table[value];
 }
 
+void MergeAndShrinkRepresentationLeaf::enable_cache() {
+}
+
+void MergeAndShrinkRepresentationLeaf::disable_cache() {
+}
+
 void MergeAndShrinkRepresentationLeaf::clear_cache() const {
 }
 
 unordered_map<int, int> MergeAndShrinkRepresentationLeaf::get_decoupled_value_exact(
-        bool,
         const ExplicitStateCPG *prices,
         vector<int> &state) const {
     assert(exactly_covered_leaf_ids.size() <= 1);
@@ -555,7 +563,8 @@ MergeAndShrinkRepresentationMerge::MergeAndShrinkRepresentationMerge(
       left_child(move(left_child_)),
       right_child(move(right_child_)),
       lookup_table(left_child->get_domain_size(),
-                   vector<int>(right_child->get_domain_size())) {
+                   vector<int>(right_child->get_domain_size())),
+      use_cache(false) {
     int counter = 0;
     for (vector<int> &row : lookup_table) {
         for (int &entry : row) {
@@ -602,6 +611,31 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
             }
         }
     }
+}
+
+int MergeAndShrinkRepresentationMerge::get_maximum_leaf_nesting(vector<bool> &contained_vars) const {
+    vector<bool> contained_vars_left(g_variable_domain.size(), false);
+    int max_nesting_left = left_child->get_maximum_leaf_nesting(contained_vars_left);
+    vector<bool> contained_vars_right(g_variable_domain.size(), false);
+    int max_nesting_right = right_child->get_maximum_leaf_nesting(contained_vars_right);
+
+    for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
+        contained_vars[var] = contained_vars_left[var] || contained_vars_right[var];
+    }
+
+    int max_nesting = 0;
+    if (!exactly_covered_leaf_ids.empty()) {
+        set<LeafFactorID> partly_covered_leaves;
+        for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
+            if (contained_vars[var] && g_belongs_to_factor[var] != LeafFactorID::CENTER){
+                partly_covered_leaves.insert(g_belongs_to_factor[var]);
+            }
+        }
+        max_nesting = static_cast<int>(partly_covered_leaves.size() - exactly_covered_leaf_ids.size());
+        max_nesting = max(max_nesting, static_cast<int>(exactly_covered_leaf_ids.size() - 1));
+    }
+
+    return max(max(max_nesting_left, max_nesting_right), max_nesting);
 }
 
 void MergeAndShrinkRepresentationMerge::set_distances(
@@ -658,21 +692,34 @@ int MergeAndShrinkRepresentationMerge::get_value(
     return lookup_table[state1][state2];
 }
 
+void MergeAndShrinkRepresentationMerge::enable_cache() {
+    left_child->enable_cache();
+    right_child->enable_cache();
+    use_cache = true;
+}
+
+void MergeAndShrinkRepresentationMerge::disable_cache() {
+    left_child->disable_cache();
+    right_child->disable_cache();
+    use_cache = false;
+}
+
 void MergeAndShrinkRepresentationMerge::clear_cache() const {
-    cache.clear();
-    left_child->clear_cache();
-    right_child->clear_cache();
+    if (use_cache) {
+        cache.clear();
+        left_child->clear_cache();
+        right_child->clear_cache();
+    }
 }
 
 unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_merge(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         vector<int> &state) const {
 
     unordered_map<int, int> index_to_min_price_left =
-            left_child->get_decoupled_value_exact(use_cache, prices, state);
+            left_child->get_decoupled_value_exact(prices, state);
     unordered_map<int, int> index_to_min_price_right =
-            right_child->get_decoupled_value_exact(use_cache, prices, state);
+            right_child->get_decoupled_value_exact(prices, state);
     unordered_map<int, int> result;
 
     for (const auto &[left_index, left_price] : index_to_min_price_left) {
@@ -692,14 +739,13 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
 }
 
 unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         int i,
         vector<int> &state) const {
 
     if (i == static_cast<int>(exactly_covered_leaf_ids.size())){
         // variables of all leaves exactly covered in this node are assigned a value in state => do lookup
-        return get_decoupled_value_exact_merge(use_cache, prices, state);
+        return get_decoupled_value_exact_merge(prices, state);
     }
 
     unordered_map<int, int> result;
@@ -712,7 +758,7 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
                 state[var] = l_state[var];
             }
             unordered_map<int, int> index_to_min_price =
-                    get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(use_cache, prices, i + 1, state);
+                    get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(prices, i + 1, state);
             int price = prices->get_cost_of_state(id, leaf);
             for (const auto &[index, summed_prices] : index_to_min_price) {
                 assert(index != PRUNED_STATE);
@@ -732,7 +778,6 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
 }
 
 unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact(
-    bool use_cache,
     const ExplicitStateCPG *prices,
     vector<int> &state) const {
 
@@ -760,16 +805,16 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
         // these leaves.
         if (cache_result){
             cache[partial_cache_state] = get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
-                    use_cache, prices, 0, state);
+                    prices, 0, state);
             return cache[partial_cache_state];
         } else {
             return get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
-                    use_cache, prices, 0, state);
+                    prices, 0, state);
         }
     }
 
     // no leaf is exactly covered in this node, proceed with standard tree traversal
-    return get_decoupled_value_exact_merge(use_cache, prices, state);
+    return get_decoupled_value_exact_merge(prices, state);
 }
 
 unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_icaps23(

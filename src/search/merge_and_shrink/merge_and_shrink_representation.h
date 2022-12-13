@@ -33,11 +33,11 @@ public:
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) = 0;
+    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const = 0;
 
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
-    int compute_decoupled_value_exact(
-        const GlobalState &state, bool use_cache) const;
+    int compute_decoupled_value_exact(const GlobalState &state) const;
     int compute_decoupled_value_exact_icaps23(const GlobalState &state) const;
     int compute_decoupled_value_exact_strongly_compliant_merging(const GlobalState &state) const;
     int compute_decoupled_value_explicit(const GlobalState &state) const;
@@ -58,9 +58,11 @@ public:
     virtual int get_value(const std::vector<int> &state) const = 0;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const = 0;
 
+    virtual void enable_cache() = 0;
+    virtual void disable_cache() = 0;
     virtual void clear_cache() const = 0;
+
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         std::vector<int> &state) const = 0;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
@@ -79,7 +81,6 @@ public:
 
 class MergeAndShrinkRepresentationLeaf : public MergeAndShrinkRepresentation {
     const int var_id;
-
     std::vector<int> lookup_table;
 public:
     MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
@@ -91,6 +92,7 @@ public:
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) override;
+    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const override;
 
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -99,9 +101,11 @@ public:
     virtual int get_value(const std::vector<int> &state) const override;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
 
+    virtual void enable_cache() override;
+    virtual void disable_cache() override;
     virtual void clear_cache() const override;
+
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         std::vector<int> &state) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
@@ -120,6 +124,7 @@ class MergeAndShrinkRepresentationMerge : public MergeAndShrinkRepresentation {
     std::unique_ptr<MergeAndShrinkRepresentation> left_child;
     std::unique_ptr<MergeAndShrinkRepresentation> right_child;
     std::vector<std::vector<int>> lookup_table;
+    bool use_cache;
     mutable utils::HashMap<std::vector<int>, std::unordered_map<int, int>> cache;
     std::vector<int> cache_idx_variables;
 public:
@@ -134,6 +139,7 @@ public:
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) override;
+    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const override;
 
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -142,18 +148,18 @@ public:
     virtual int get_value(const std::vector<int> &state) const override;
     virtual int get_value(const GlobalState &state, const LeafState &l_state) const override;
 
+    virtual void enable_cache() override;
+    virtual void disable_cache() override;
     virtual void clear_cache() const override;
+
     std::unordered_map<int, int> get_decoupled_value_exact_merge(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         std::vector<int> &state) const;
     std::unordered_map<int, int> get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
-            bool use_cache,
             const ExplicitStateCPG *prices,
             int id,
             std::vector<int> &state) const;
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
-        bool use_cache,
         const ExplicitStateCPG *prices,
         std::vector<int> &state) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
