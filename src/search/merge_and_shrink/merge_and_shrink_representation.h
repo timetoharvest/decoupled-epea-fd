@@ -22,7 +22,7 @@ class Distances;
 class MergeAndShrinkRepresentation {
 protected:
     int domain_size;
-    std::vector<LeafFactorID> covered_leaf_ids;
+    std::vector<LeafFactorID> exactly_covered_leaf_ids;
 public:
     explicit MergeAndShrinkRepresentation(int domain_size);
     virtual ~MergeAndShrinkRepresentation() = 0;
@@ -64,7 +64,6 @@ public:
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
         bool use_cache,
         const ExplicitStateCPG *prices,
-        std::vector<bool> &handled_leaves,
         std::vector<int> &state) const = 0;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
@@ -107,7 +106,6 @@ public:
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
         bool use_cache,
         const ExplicitStateCPG *prices,
-        std::vector<bool> &handled_leaves,
         std::vector<int> &state) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
@@ -153,12 +151,15 @@ public:
     std::unordered_map<int, int> get_decoupled_value_exact_merge(
         bool use_cache,
         const ExplicitStateCPG *prices,
-        std::vector<bool> &handled_leaves,
         std::vector<int> &state) const;
+    std::unordered_map<int, int> get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
+            bool use_cache,
+            const ExplicitStateCPG *prices,
+            int id,
+            std::vector<int> &state) const;
     virtual std::unordered_map<int, int> get_decoupled_value_exact(
         bool use_cache,
         const ExplicitStateCPG *prices,
-        std::vector<bool> &handled_leaves,
         std::vector<int> &state) const override;
     virtual std::unordered_map<int, std::pair<int, std::vector<std::vector<std::pair<int, int>>>>> get_decoupled_value_exact_icaps23(
         const ExplicitStateCPG *prices,
