@@ -9,6 +9,7 @@ parser.add_pattern('ms_construction_time', 'Merge-and-shrink algorithm runtime: 
 parser.add_pattern('ms_atomic_construction_time', 'M&S algorithm timer: (.+)s \(after computation of atomic factors\)', required=False, type=float)
 parser.add_pattern('ms_memory_delta', 'Final peak memory increase of merge-and-shrink algorithm: (\d+) KB', required=False, type=int)
 parser.add_pattern('ms_main_loop_max_time', 'Main loop max time in seconds: (\d+)', required=False, type=int)
+parser.add_pattern('ms_max_num_nested_leaves', 'Maximum nesting of all leaves (non-compliance): (\d+)', required=False, type=int)
 
 def check_ms_constructed(content, props):
     ms_construction_time = props.get('ms_construction_time')
