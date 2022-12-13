@@ -176,4 +176,30 @@ for dec_name in decoupling.keys():
     )
     #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
+RUNTIME_PLOT_CONFIG_PAIRS = [
+    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-compliantsbmiasm-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-compliantsbmiasm-exact"],
+    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-linearcggl-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-linearcggl-exact"],
+    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-sccsbmiasm-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-sccsbmiasm-exact"],
+    ["bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-compliantsbmiasm-exact", "f67ad904f2cf64cc6b9153bc4394152b2e1376ff-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-compliantsbmiasm-exactnocache", "f67ad904f2cf64cc6b9153bc4394152b2e1376ff-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+]
+
+PNG_OR_TEX='png'
+for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
+    report_name=f'{exp.name}-plot-searchtime-{c1}-vs-{c2}.{PNG_OR_TEX}'
+    report_file=Path(exp.eval_dir) / f'{report_name}'
+    exp.add_report(
+        ScatterPlotReport(
+            attributes='search_time',
+            filter_algorithm=[c1, c2],
+            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+            # get_category=lambda run1, run2: run1['domain'],
+            format=PNG_OR_TEX,
+            show_missing=False,
+        ),
+        name=report_name,
+        outfile=report_file,
+    )
+
+
 exp.run_steps()
