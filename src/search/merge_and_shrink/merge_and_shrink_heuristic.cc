@@ -35,6 +35,9 @@ MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const options::Options &opts)
     FactoredTransitionSystem fts = algorithm.build_factored_transition_system(task_proxy);
     extract_factors(fts);
     log << "Done initializing merge-and-shrink heuristic." << endl << endl;
+    if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT){
+        use_cache = true;
+    }
 }
 
 void MergeAndShrinkHeuristic::extract_factor(
@@ -130,7 +133,7 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 vector<bool> contained_vars(g_variable_domain.size(), false);
                 mas_representation->get_contained_vars(contained_vars);
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
-                mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node);
+                mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node, false);
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
@@ -138,7 +141,8 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
                 vector<bool> contained_vars(g_variable_domain.size(), false);
                 mas_representation->get_contained_vars(contained_vars);
                 vector<bool> vars_up_to_node(g_variable_domain.size(), false);
-                mas_representation->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, vars_up_to_node);
+
+                mas_representation->set_covered_leaf_ids(contained_vars, vars_up_to_node, true);
             }
         } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23 || decoupled_lookup == DECOUPLED_LOOKUP::EXPLICIT){
             for (const unique_ptr<MergeAndShrinkRepresentation> &mas_representation: mas_representations) {
@@ -154,7 +158,7 @@ int MergeAndShrinkHeuristic::compute_heuristic(const GlobalState &ancestor_state
         int cost;
         if (g_factoring) {
             if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT) {
-                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, true);
+                cost = mas_representation->compute_decoupled_value_exact(ancestor_state, use_cache);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_NOCACHE) {
                 cost = mas_representation->compute_decoupled_value_exact(ancestor_state, false);
             } else if (decoupled_lookup == DECOUPLED_LOOKUP::EXACT_ICAPS23) {

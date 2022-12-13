@@ -18,6 +18,7 @@ enum class DECOUPLED_LOOKUP {
 };
 class MergeAndShrinkHeuristic : public Heuristic {
     DECOUPLED_LOOKUP decoupled_lookup;
+    bool use_cache;
 
     // The final merge-and-shrink representations, storing goal distances.
     std::vector<std::unique_ptr<MergeAndShrinkRepresentation>> mas_representations;

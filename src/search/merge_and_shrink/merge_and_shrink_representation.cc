@@ -359,28 +359,15 @@ static bool is_leaf_partly_covered(
 }
 
 void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
-    const vector<bool> &contained_vars, vector<bool> &covered_vars) {
+        const vector<bool> &contained_vars,
+        vector<bool> &covered_vars,
+        bool) {
     LeafFactorID leaf_id = g_belongs_to_factor[var_id];
     if (leaf_id != LeafFactorID::CENTER) {
         covered_vars[var_id] = true;
         bool leaf_exactly_covered = is_leaf_exactly_covered(
                 g_leaves[leaf_id], contained_vars, covered_vars);
         if (leaf_exactly_covered) {
-            assert(g_leaves[leaf_id].size() == 1);
-            exactly_covered_leaf_ids.push_back(leaf_id);
-            covered_vars[var_id] = false;
-        }
-    }
-}
-
-void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids_and_cache_idx_variables(
-        const vector<bool> &contained_vars, vector<bool> &covered_vars) {
-    LeafFactorID leaf_id = g_belongs_to_factor[var_id];
-    if (leaf_id != LeafFactorID::CENTER) {
-        covered_vars[var_id] = true;
-        bool leaf_covered = is_leaf_exactly_covered(
-                g_leaves[leaf_id], contained_vars, covered_vars);
-        if (leaf_covered) {
             assert(g_leaves[leaf_id].size() == 1);
             assert(exactly_covered_leaf_ids.empty());
             exactly_covered_leaf_ids.push_back(leaf_id);
@@ -585,34 +572,13 @@ void MergeAndShrinkRepresentationMerge::get_contained_vars(
 }
 
 void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
-        const vector<bool> &contained_vars, vector<bool> &covered_vars) {
+        const vector<bool> &contained_vars,
+        vector<bool> &covered_vars,
+        bool store_cache_idx_variables) {
     vector<bool> covered_vars_left(g_variable_domain.size(), false);
     vector<bool> covered_vars_right(g_variable_domain.size(), false);
-    left_child->set_covered_leaf_ids(contained_vars, covered_vars_left);
-    right_child->set_covered_leaf_ids(contained_vars, covered_vars_right);
-    for (size_t var = 0; var < g_variable_domain.size(); ++var){
-        covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
-    }
-    assert(exactly_covered_leaf_ids.empty());
-    for (const auto &leaf : g_leaves) {
-        bool leaf_covered = is_leaf_exactly_covered(leaf, contained_vars, covered_vars);
-        if (leaf_covered) {
-            exactly_covered_leaf_ids.push_back(g_belongs_to_factor[leaf[0]]);
-//            cout << "covered leaf id at merge node: " << exactly_covered_leaf_ids.back() << ", leaf vars: " << leaf << endl;
-            // Reset all leaf variables so that we only once record a leaf as covered.
-            for (int var : leaf) {
-                covered_vars[var] = false;
-            }
-        }
-    }
-}
-
-void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids_and_cache_idx_variables(
-        const std::vector<bool> &contained_vars, std::vector<bool> &covered_vars) {
-    vector<bool> covered_vars_left(g_variable_domain.size(), false);
-    vector<bool> covered_vars_right(g_variable_domain.size(), false);
-    left_child->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, covered_vars_left);
-    right_child->set_covered_leaf_ids_and_cache_idx_variables(contained_vars, covered_vars_right);
+    left_child->set_covered_leaf_ids(contained_vars, covered_vars_left, store_cache_idx_variables);
+    right_child->set_covered_leaf_ids(contained_vars, covered_vars_right, store_cache_idx_variables);
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
     }
@@ -624,12 +590,14 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids_and_cache_idx_varia
             for (int var : leaf) {
                 covered_vars[var] = false;
             }
-        } else if (is_leaf_partly_covered(leaf, contained_vars, covered_vars)) {
-            for (int var: leaf) {
-                if (covered_vars[var]) {
-                    assert(contained_vars[var]);
-                    // var is part of this MS representation and covered below this node
-                    cache_idx_variables.push_back(var);
+        } else if (store_cache_idx_variables){
+            if (is_leaf_partly_covered(leaf, contained_vars, covered_vars)) {
+                for (int var: leaf) {
+                    if (covered_vars[var]) {
+                        assert(contained_vars[var]);
+                        // var is part of this MS representation and covered below this node
+                        cache_idx_variables.push_back(var);
+                    }
                 }
             }
         }
