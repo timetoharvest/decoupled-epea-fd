@@ -86,6 +86,7 @@ exp.add_parser('consistency-parser.py')
 
 exp.add_step('build', exp.build)
 exp.add_step('start', exp.start_runs)
+exp.add_parse_again_step()
 exp.add_fetcher(name='fetch')
 
 attributes=[
@@ -170,11 +171,11 @@ for dec_name in decoupling.keys():
     #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 RUNTIME_PLOT_CONFIG_PAIRS = [
-    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-compliantsbmiasm-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-compliantsbmiasm-exact"],
-    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-linearcggl-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-linearcggl-exact"],
-    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-sccsbmiasm-exactnocache", "bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-sccsbmiasm-exact"],
-    ["bde5cc6f9dae2537d78df91d2c05ac62b3a96941-lpmm-b50k-compliantsbmiasm-exact", "f67ad904f2cf64cc6b9153bc4394152b2e1376ff-lpmm-b50k-compliantsbmiasm-exactcompliant"],
-    ["c89c5e255bf392f88ae1819c8ef1decd3841d822-lpmm-b50k-compliantsbmiasm-exactnocache", "f67ad904f2cf64cc6b9153bc4394152b2e1376ff-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
+    [f"{REVISION}-lpmm-b50k-linearcggl-exactnocache",       f"{REVISION}-lpmm-b50k-linearcggl-exact"],
+    [f"{REVISION}-lpmm-b50k-sbmiasm-exactnocache",          f"{REVISION}-lpmm-b50k-sbmiasm-exact"],
+    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact",        f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
 ]
 
 PNG_OR_TEX='png'
