@@ -265,32 +265,14 @@ int MergeAndShrinkRepresentation::compute_decoupled_value_explicit(
         member_state[var] = state[var];
     }
     int min_h = INF;
-    compute_decoupled_value_explicit_member_states(prices, this, exactly_covered_leaf_ids, member_state, min_h, 0, 0);
+    compute_decoupled_value_explicit_member_states(prices,
+                                                   this,
+                                                   exactly_covered_leaf_ids,
+                                                   member_state,
+                                                   min_h,
+                                                   0,
+                                                   0);
     return min_h;
-}
-
-static void compute_leaf_states(
-    LeafFactorID leaf_id,
-    int pos,
-    vector<int> &leaf_state,
-    const vector<vector<int>> &values_by_var,
-    vector<vector<LeafStateHash>> &leaf_state_ids_by_leaf_id) {
-    const vector<int> &leaf_vars = g_leaves[leaf_id];
-    int var = leaf_vars[pos];
-    for (int value : values_by_var[var]) {
-        leaf_state[pos] = value;
-        if (pos < static_cast<int>(leaf_vars.size()) - 1) {
-            compute_leaf_states(
-                leaf_id,
-                pos + 1,
-                leaf_state,
-                values_by_var,
-                leaf_state_ids_by_leaf_id);
-        } else {
-            LeafStateHash leaf_state_id = g_state_registry->get_leaf_state_hash(leaf_state, leaf_id);
-            leaf_state_ids_by_leaf_id[leaf_id].push_back(leaf_state_id);
-        }
-    }
 }
 
 void MergeAndShrinkRepresentation::store_all_affected_leaf_ids_in_root(const vector<bool> &contained_vars) {
