@@ -106,6 +106,7 @@ attributes=[
 
     # decoupled attributes
     Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean),
+    Attribute("number_leaf_factors", absolute=False),
 
     # general search attributes
     Attribute('reopened_until_last_jump', absolute=False, min_wins=True, function=arithmetic_mean),
@@ -187,7 +188,7 @@ for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
             attributes='search_time',
             filter_algorithm=[c1, c2],
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
-            # get_category=lambda run1, run2: run1['domain'],
+            get_category=lambda run1, run2: run1['domain'],
             format=PNG_OR_TEX,
             show_missing=False,
         ),
