@@ -29,11 +29,14 @@ public:
 
     virtual void get_contained_vars(
         std::vector<bool> &contained_vars) const = 0;
-    virtual void set_covered_leaf_ids(
+    virtual void set_exactly_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) = 0;
-    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const = 0;
+    virtual std::pair<bool, int> check_compliance_and_nesting(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars,
+            std::vector<bool> &covered_leaves) const = 0;
 
     void store_all_affected_leaf_ids_in_root(const std::vector<bool> &contained_vars);
 
@@ -88,11 +91,14 @@ public:
 
     virtual void get_contained_vars(
         std::vector<bool> &contained_vars) const override;
-    virtual void set_covered_leaf_ids(
+    virtual void set_exactly_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) override;
-    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const override;
+    virtual std::pair<bool, int> check_compliance_and_nesting(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars,
+            std::vector<bool> &covered_leaves) const override;
 
     virtual void set_distances(const Distances &) override;
     virtual void apply_abstraction_to_lookup_table(
@@ -135,11 +141,14 @@ public:
 
     virtual void get_contained_vars(
         std::vector<bool> &contained_vars) const override;
-    virtual void set_covered_leaf_ids(
+    virtual void set_exactly_covered_leaf_ids(
         const std::vector<bool> &contained_vars,
         std::vector<bool> &covered_vars,
         bool store_cache_idx_vars) override;
-    virtual int get_maximum_leaf_nesting(std::vector<bool> &contained_vars) const override;
+    virtual std::pair<bool, int> check_compliance_and_nesting(
+            const std::vector<bool> &contained_vars,
+            std::vector<bool> &covered_vars,
+            std::vector<bool> &covered_leaves) const override;
 
     virtual void set_distances(const Distances &distances) override;
     virtual void apply_abstraction_to_lookup_table(

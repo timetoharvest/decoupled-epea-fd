@@ -338,7 +338,7 @@ static bool is_leaf_partly_covered(
     return false;
 }
 
-void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
+void MergeAndShrinkRepresentationLeaf::set_exactly_covered_leaf_ids(
         const vector<bool> &contained_vars,
         vector<bool> &covered_vars,
         bool) {
@@ -356,9 +356,30 @@ void MergeAndShrinkRepresentationLeaf::set_covered_leaf_ids(
     }
 }
 
-int MergeAndShrinkRepresentationLeaf::get_maximum_leaf_nesting(vector<bool> &contained_vars) const {
-    contained_vars[var_id] = true;
-    return 0;
+//inline string get_n_tabs(int n) {
+//    string tabs;
+//    for (int i = 0; i < n; ++i) {
+//        tabs += "\t";
+//    }
+//    return tabs;
+//}
+
+pair<bool, int> MergeAndShrinkRepresentationLeaf::check_compliance_and_nesting(
+        const vector<bool> &,
+        vector<bool> &covered_vars,
+        vector<bool> &covered_leaves) const {
+    covered_vars[var_id] = true;
+    LeafFactorID factor = g_belongs_to_factor[var_id];
+//    cout << get_n_tabs(ntabs) << "leaf node; var " << var_id << ", factor " << factor;
+    if (factor != LeafFactorID::CENTER){
+        covered_leaves[factor] = true;
+//        if (g_leaves[factor].size() == 1){
+//            cout << " singleton";
+//            //return 1;
+//        }
+    }
+//    cout << endl;
+    return make_pair(true, 0);
 }
 
 void MergeAndShrinkRepresentationLeaf::set_distances(
@@ -562,14 +583,14 @@ void MergeAndShrinkRepresentationMerge::get_contained_vars(
     right_child->get_contained_vars(contained_vars);
 }
 
-void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
+void MergeAndShrinkRepresentationMerge::set_exactly_covered_leaf_ids(
         const vector<bool> &contained_vars,
         vector<bool> &covered_vars,
-        bool store_cache_idx_variables) {
+        bool store_cache_idx_vars) {
     vector<bool> covered_vars_left(g_variable_domain.size(), false);
     vector<bool> covered_vars_right(g_variable_domain.size(), false);
-    left_child->set_covered_leaf_ids(contained_vars, covered_vars_left, store_cache_idx_variables);
-    right_child->set_covered_leaf_ids(contained_vars, covered_vars_right, store_cache_idx_variables);
+    left_child->set_exactly_covered_leaf_ids(contained_vars, covered_vars_left, store_cache_idx_vars);
+    right_child->set_exactly_covered_leaf_ids(contained_vars, covered_vars_right, store_cache_idx_vars);
     for (size_t var = 0; var < g_variable_domain.size(); ++var){
         covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
     }
@@ -581,7 +602,7 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
             for (int var : leaf) {
                 covered_vars[var] = false;
             }
-        } else if (store_cache_idx_variables){
+        } else if (store_cache_idx_vars){
             if (is_leaf_partly_covered(leaf, contained_vars, covered_vars)) {
                 for (int var: leaf) {
                     if (covered_vars[var]) {
@@ -595,29 +616,77 @@ void MergeAndShrinkRepresentationMerge::set_covered_leaf_ids(
     }
 }
 
-int MergeAndShrinkRepresentationMerge::get_maximum_leaf_nesting(vector<bool> &contained_vars) const {
-    vector<bool> contained_vars_left(g_variable_domain.size(), false);
-    int max_nesting_left = left_child->get_maximum_leaf_nesting(contained_vars_left);
-    vector<bool> contained_vars_right(g_variable_domain.size(), false);
-    int max_nesting_right = right_child->get_maximum_leaf_nesting(contained_vars_right);
+pair<bool, int> MergeAndShrinkRepresentationMerge::check_compliance_and_nesting(
+        const vector<bool> &contained_vars,
+        vector<bool> &covered_vars,
+        vector<bool> &covered_leaves) const {
 
-    for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
-        contained_vars[var] = contained_vars_left[var] || contained_vars_right[var];
-    }
+    vector<bool> covered_vars_left(g_variable_domain.size(), false);
+    vector<bool> covered_leaves_left(g_leaves.size(), false);
+//    cout << get_n_tabs(ntabs) << "merge node; exactly covered leaves: " << exactly_covered_leaf_ids << endl;
+//    cout << get_n_tabs(ntabs) << "left child:" << endl;
+    auto [is_strongly_compliant_left, max_nesting_left] = left_child->check_compliance_and_nesting(
+            contained_vars,
+            covered_vars_left,
+            covered_leaves_left);
+            //ntabs + 1);
 
-    int max_nesting = 0;
-    if (!exactly_covered_leaf_ids.empty()) {
-        set<LeafFactorID> partly_covered_leaves;
-        for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
-            if (contained_vars[var] && g_belongs_to_factor[var] != LeafFactorID::CENTER){
-                partly_covered_leaves.insert(g_belongs_to_factor[var]);
+//    cout << get_n_tabs(ntabs) << "right child:" << endl;
+    vector<bool> covered_vars_right(g_variable_domain.size(), false);
+    vector<bool> covered_leaves_right(g_leaves.size(), false);
+    auto [is_strongly_compliant_right, max_nesting_right] = right_child->check_compliance_and_nesting(
+            contained_vars,
+            covered_vars_right,
+            covered_leaves_right);
+            //ntabs + 1);
+
+    // compute partially covered leaves
+    vector<bool> pc_leaves_left(g_leaves.size(), false);
+    vector<bool> pc_leaves_right(g_leaves.size(), false);
+    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
+        if (covered_leaves_left[leaf_id]) {
+            for (int var: g_leaves[leaf_id]) {
+                if (contained_vars[var] && !covered_vars_left[var]) {
+                    pc_leaves_left[leaf_id] = true;
+                    break;
+                }
             }
         }
-        max_nesting = static_cast<int>(partly_covered_leaves.size() - exactly_covered_leaf_ids.size());
-        max_nesting = max(max_nesting, static_cast<int>(exactly_covered_leaf_ids.size() - 1));
+        if (covered_leaves_right[leaf_id]) {
+            for (int var: g_leaves[leaf_id]) {
+                if (contained_vars[var] && !covered_vars_right[var]) {
+                    pc_leaves_right[leaf_id] = true;
+                    break;
+                }
+            }
+        }
     }
 
-    return max(max(max_nesting_left, max_nesting_right), max_nesting);
+    int nesting = 0;
+    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
+        if (pc_leaves_left[leaf_id] || pc_leaves_right[leaf_id]){
+            nesting++;
+        }
+    }
+
+    int num_covered_leaves = 0;
+    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
+        if (covered_leaves_left[leaf_id] || covered_leaves_right[leaf_id]) {
+            num_covered_leaves++;
+            covered_leaves[leaf_id] = true;
+        }
+    }
+    bool is_strongly_compliant = is_strongly_compliant_left && is_strongly_compliant_right;
+    if (!exactly_covered_leaf_ids.empty() && num_covered_leaves > 1){
+        is_strongly_compliant = false;
+    }
+
+    for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
+        covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
+    }
+    //cout << get_n_tabs(ntabs) << "nesting: " << nesting << endl;
+
+    return make_pair(is_strongly_compliant, max(max(max_nesting_left, max_nesting_right), nesting));
 }
 
 void MergeAndShrinkRepresentationMerge::set_distances(
