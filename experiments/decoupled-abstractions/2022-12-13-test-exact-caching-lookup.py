@@ -172,12 +172,17 @@ for dec_name in decoupling.keys():
     #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 RUNTIME_PLOT_CONFIG_PAIRS = [
-    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
+#    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
     [f"{REVISION}-lpmm-b50k-linearcggl-exactnocache",       f"{REVISION}-lpmm-b50k-linearcggl-exact"],
     [f"{REVISION}-lpmm-b50k-sbmiasm-exactnocache",          f"{REVISION}-lpmm-b50k-sbmiasm-exact"],
-    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact",        f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
-    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+#    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact",        f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
+#    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
 ]
+
+def filter_zero_nesting(run):
+    if ("ms_max_num_nested_leaves" in run and run["ms_max_num_nested_leaves"] == 0 and "search_time" in run):
+        del run["search_time"]
+    return run
 
 PNG_OR_TEX='png'
 for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
@@ -187,8 +192,9 @@ for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
         ScatterPlotReport(
             attributes='search_time',
             filter_algorithm=[c1, c2],
+            filter=filter_zero_nesting,
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
-            get_category=lambda run1, run2: run1['domain'],
+            get_category=lambda run1, run2: f"{run2['ms_max_num_nested_leaves'] if 'ms_max_num_nested_leaves' in run2 else ''}-{run2['domain']}", #lambda run1, run2: run1['domain'],
             format=PNG_OR_TEX,
             show_missing=False,
         ),
