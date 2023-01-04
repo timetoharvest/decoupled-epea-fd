@@ -17,6 +17,8 @@ def check_ms_strongly_compliant(content, props):
         if line == "MS representation is strongly compliant with the factoring, disabling cache.":
             props["ms_strongly_compliant"] = True
 
+parser.add_function(check_ms_strongly_compliant)
+
 def check_ms_constructed(content, props):
     ms_construction_time = props.get('ms_construction_time')
     abstraction_constructed = False

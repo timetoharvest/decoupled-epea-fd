@@ -20,7 +20,7 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
 BENCHMARKS_DIR = os.environ["AUTOSCALE_BENCHMARKS_OPT"]
 REVISION = "9cb4f5bde63a161fe9e1200ce74332b6e81dc5e8"
-BASE_REVISION = "f67ad904f2cf64cc6b9153bc4394152b2e1376ff"
+BASE_REVISION = "17a0e29662a85a06d24a4a73b370ab973c6ed3a4"
 REVISIONS = [REVISION]
 TIME_LIMIT=900
 
@@ -98,7 +98,7 @@ attributes=[
     Attribute('ms_memory_delta', absolute=False, min_wins=True),
     Attribute('ms_reached_time_limit', absolute=False, min_wins=True),
     Attribute('ms_max_num_nested_leaves', absolute=True, function=sum),
-    Attribute('ms_stronly_compliant', absolute=True, function=sum),
+    Attribute('ms_strongly_compliant', absolute=True, function=sum),
 
     # decoupled attributes
     Attribute('average_member_states', absolute=False, min_wins=True, function=arithmetic_mean),
@@ -113,11 +113,10 @@ attributes.extend(exp.DEFAULT_TABLE_ATTRIBUTES)
 
 exp.add_absolute_report_step(attributes=attributes)
 
-exp.add_fetcher("data/2022-12-07-test-code-cleanup-new-exact-eval/", filter_algorithm=[
-          f"{BASE_REVISION}-lpmm-b50k-linearcggl-exacticaps23",
-          f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-explistate",
-          f"{BASE_REVISION}-lpmm-b50k-linearcggl-explistate",
-          f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant",
+exp.add_fetcher("data/2022-12-13-test-exact-caching-lookup-eval/", filter_algorithm=[
+          f"{BASE_REVISION}-lpmm-b50k-sbmiasm-exactnocache",
+          f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache",
+          f"{BASE_REVISION}-lpmm-b50k-linearcggl-exactnocache",
 ])
 
  
@@ -168,9 +167,9 @@ for dec_name in decoupling.keys():
     #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 RUNTIME_PLOT_CONFIG_PAIRS = [
-#    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
-    [f"{REVISION}-lpmm-b50k-linearcggl-exactnocache",       f"{REVISION}-lpmm-b50k-linearcggl-exact"],
-    [f"{REVISION}-lpmm-b50k-sbmiasm-exactnocache",          f"{REVISION}-lpmm-b50k-sbmiasm-exact"],
+    [f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
+    [f"{BASE_REVISION}-lpmm-b50k-linearcggl-exactnocache",       f"{REVISION}-lpmm-b50k-linearcggl-exact"],
+    [f"{BASE_REVISION}-lpmm-b50k-sbmiasm-exactnocache",          f"{REVISION}-lpmm-b50k-sbmiasm-exact"],
 #    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact",        f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
 #    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
 ]
@@ -188,9 +187,9 @@ for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
         ScatterPlotReport(
             attributes='search_time',
             filter_algorithm=[c1, c2],
-            filter=filter_zero_nesting,
+            #filter=filter_zero_nesting,
             # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
-            get_category=lambda run1, run2: f"{run2['ms_max_num_nested_leaves'] if 'ms_max_num_nested_leaves' in run2 else ''}-{run2['domain']}", #lambda run1, run2: run1['domain'],
+            get_category=lambda run1, run2: f"{str(run2['ms_max_num_nested_leaves']) + run2['domain'] + run2['problem'] if 'ms_max_num_nested_leaves' in run2 and run2['ms_max_num_nested_leaves'] == 1 else ''}", #lambda run1, run2: run1['domain'],
             format=PNG_OR_TEX,
             show_missing=False,
         ),
