@@ -356,29 +356,15 @@ void MergeAndShrinkRepresentationLeaf::set_exactly_covered_leaf_ids(
     }
 }
 
-//inline string get_n_tabs(int n) {
-//    string tabs;
-//    for (int i = 0; i < n; ++i) {
-//        tabs += "\t";
-//    }
-//    return tabs;
-//}
-
 pair<bool, int> MergeAndShrinkRepresentationLeaf::check_compliance_and_nesting(
         const vector<bool> &,
         vector<bool> &covered_vars,
         vector<bool> &covered_leaves) const {
     covered_vars[var_id] = true;
     LeafFactorID factor = g_belongs_to_factor[var_id];
-//    cout << get_n_tabs(ntabs) << "leaf node; var " << var_id << ", factor " << factor;
     if (factor != LeafFactorID::CENTER){
         covered_leaves[factor] = true;
-//        if (g_leaves[factor].size() == 1){
-//            cout << " singleton";
-//            //return 1;
-//        }
     }
-//    cout << endl;
     return make_pair(true, 0);
 }
 
@@ -623,68 +609,54 @@ pair<bool, int> MergeAndShrinkRepresentationMerge::check_compliance_and_nesting(
 
     vector<bool> covered_vars_left(g_variable_domain.size(), false);
     vector<bool> covered_leaves_left(g_leaves.size(), false);
-//    cout << get_n_tabs(ntabs) << "merge node; exactly covered leaves: " << exactly_covered_leaf_ids << endl;
-//    cout << get_n_tabs(ntabs) << "left child:" << endl;
     auto [is_strongly_compliant_left, max_nesting_left] = left_child->check_compliance_and_nesting(
             contained_vars,
             covered_vars_left,
             covered_leaves_left);
-            //ntabs + 1);
 
-//    cout << get_n_tabs(ntabs) << "right child:" << endl;
     vector<bool> covered_vars_right(g_variable_domain.size(), false);
     vector<bool> covered_leaves_right(g_leaves.size(), false);
     auto [is_strongly_compliant_right, max_nesting_right] = right_child->check_compliance_and_nesting(
             contained_vars,
             covered_vars_right,
             covered_leaves_right);
-            //ntabs + 1);
 
-    // compute partially covered leaves
-    vector<bool> pc_leaves_left(g_leaves.size(), false);
-    vector<bool> pc_leaves_right(g_leaves.size(), false);
-    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
-        if (covered_leaves_left[leaf_id]) {
-            for (int var: g_leaves[leaf_id]) {
-                if (contained_vars[var] && !covered_vars_left[var]) {
-                    pc_leaves_left[leaf_id] = true;
-                    break;
-                }
-            }
-        }
-        if (covered_leaves_right[leaf_id]) {
-            for (int var: g_leaves[leaf_id]) {
-                if (contained_vars[var] && !covered_vars_right[var]) {
-                    pc_leaves_right[leaf_id] = true;
-                    break;
-                }
-            }
-        }
-    }
-
+    // count the number of partially covered leaves in left+right child (nestedness)
     int nesting = 0;
-    for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
-        if (pc_leaves_left[leaf_id] || pc_leaves_right[leaf_id]){
-            nesting++;
-        }
-    }
-
     int num_covered_leaves = 0;
     for (LeafFactorID leaf_id(0); leaf_id < g_leaves.size(); ++leaf_id){
-        if (covered_leaves_left[leaf_id] || covered_leaves_right[leaf_id]) {
+        if (covered_leaves_left[leaf_id]) {
             num_covered_leaves++;
             covered_leaves[leaf_id] = true;
+            for (int var: g_leaves[leaf_id]) {
+                if (contained_vars[var] && !covered_vars_left[var]) {
+                    nesting++;
+                    break;
+                }
+            }
+        } else if (covered_leaves_right[leaf_id]) {
+            num_covered_leaves++;
+            covered_leaves[leaf_id] = true;
+            for (int var: g_leaves[leaf_id]) {
+                if (contained_vars[var] && !covered_vars_right[var]) {
+                    nesting++;
+                    break;
+                }
+            }
         }
     }
+
     bool is_strongly_compliant = is_strongly_compliant_left && is_strongly_compliant_right;
     if (!exactly_covered_leaf_ids.empty() && num_covered_leaves > 1){
+        // an MSRepresentation is strongly compliant if for every leaf L there
+        // exists a node n such that L is exactly covered in n and no other leaf
+        // is covered in n
         is_strongly_compliant = false;
     }
 
     for (int var = 0; var < static_cast<int>(g_variable_domain.size()); ++var) {
         covered_vars[var] = covered_vars_left[var] || covered_vars_right[var];
     }
-    //cout << get_n_tabs(ntabs) << "nesting: " << nesting << endl;
 
     return make_pair(is_strongly_compliant, max(max(max_nesting_left, max_nesting_right), nesting));
 }
