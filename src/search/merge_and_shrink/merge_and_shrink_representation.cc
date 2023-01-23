@@ -804,13 +804,12 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
     const ExplicitStateCPG *prices,
     vector<int> &state) const {
 
-    bool cache_result = false;
-    vector<int> partial_cache_state;
-    if (use_cache && !exactly_covered_leaf_ids.empty()){
+    if (use_cache){
         // Check if state has been cached and return cached value if yes.
         // Note that cache_idx_variables can be empty here. In that case, the values of this node do not depend
         // on any variable assignment from a node above. This node might still be visited multiple times, since
         // higher up in the tree we don't know that its values are constant.
+        vector<int> partial_cache_state;
         partial_cache_state.reserve(cache_idx_variables.size());
         for (int var : cache_idx_variables) {
             partial_cache_state.push_back(state[var]);
@@ -819,25 +818,27 @@ unordered_map<int, int> MergeAndShrinkRepresentationMerge::get_decoupled_value_e
         if (it != cache.end()) {
             return it->second;
         }
-        cache_result = true;
-    }
 
-    if (!exactly_covered_leaf_ids.empty()) {
-        // One or more leaves are completely covered below this node, lookup all reached indexes and
-        // corresponding minimum prices by recursively enumerating combinations of reached leaf states across
-        // these leaves.
-        if (cache_result){
+        if (!exactly_covered_leaf_ids.empty()){
             cache[partial_cache_state] = get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
                     prices, 0, state);
             return cache[partial_cache_state];
         } else {
-            return get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
-                    prices, 0, state);
+            cache[partial_cache_state] = get_decoupled_value_exact_merge(prices, state);
+            return cache[partial_cache_state];
         }
     }
 
-    // no leaf is exactly covered in this node, proceed with standard tree traversal
-    return get_decoupled_value_exact_merge(prices, state);
+    if (!exactly_covered_leaf_ids.empty()){
+        // One or more leaves are completely covered below this node, lookup all reached indexes and
+        // corresponding minimum prices by recursively enumerating combinations of reached leaf states across
+        // these leaves.
+        return get_decoupled_value_exact_enumerate_exactly_covered_leaves_recursive(
+                prices, 0, state);
+    } else {
+        // no leaf is exactly covered in this node, proceed with standard tree traversal
+        return get_decoupled_value_exact_merge(prices, state);
+    }
 }
 
 unordered_map<int, pair<int, vector<vector<pair<int, int>>>>> MergeAndShrinkRepresentationMerge::get_decoupled_value_exact_icaps23(
