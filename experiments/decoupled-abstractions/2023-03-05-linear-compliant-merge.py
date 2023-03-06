@@ -171,11 +171,10 @@ for dec_name in decoupling.keys():
         #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 RUNTIME_PLOT_CONFIG_PAIRS = [
-#    [f"{BASE_REVISION}-lpmm-b50k-compliantsbmiasm-exactnocache", f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
-#    [f"{BASE_REVISION}-lpmm-b50k-linearcggl-exactnocache",       f"{REVISION}-lpmm-b50k-linearcggl-exact"],
-    [f"{REVISION}-lpmm-b50k-sbmiasm-exactnocache",          f"{REVISION}-lpmm-b50k-sbmiasm-exact"],
-#    [f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact",        f"{REVISION}-lpmm-b50k-compliantsbmiasm-exactcompliant"],
-    [f"{REVISION}-lpmm-b50k-sbmiasm-exact",                 f"{REVISION}-lpmm-b50k-compliantsbmiasm-exact"],
+    [f"{REVISION}-b50k-linearcg-explicit",          f"{REVISION}-lpmm-b50k-compliantlinearcg-explicit"],
+    [f"{REVISION}-b50k-linearrev-explicit",         f"{REVISION}-lpmm-b50k-compliantlinearrev-explicit"],
+    [f"{REVISION}-lpmm-b50k-linearcg-exact",        f"{REVISION}-lpmm-b50k-compliantlinearcg-exact"],
+    [f"{REVISION}-lpmm-b50k-linearrev-exact",       f"{REVISION}-lpmm-b50k-compliantlinearrev-exact"],
 ]
 
 def filter_zero_nesting(run):
@@ -185,21 +184,22 @@ def filter_zero_nesting(run):
 
 PNG_OR_TEX='png'
 for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
-    report_name=f'{exp.name}-plot-searchtime-{c1}-vs-{c2}.{PNG_OR_TEX}'
-    report_file=Path(exp.eval_dir) / f'{report_name}'
-    exp.add_report(
-        ScatterPlotReport(
-            attributes='search_time',
-            filter_algorithm=[c1, c2],
-            #filter=filter_zero_nesting,
-            # filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
-            get_category=lambda run1, run2: str(run1['ms_strongly_compliant'] if run1["algorithm"] == f"{REVISION}-lpmm-b50k-sbmiasm-exact" else run2["ms_strongly_compliant"]),
-            format=PNG_OR_TEX,
-            show_missing=False,
-        ),
-        name=report_name,
-        outfile=report_file,
-    )
+    for attr in ["search_time", "expansions_until_last_jump"]:
+        report_name=f'{exp.name}-plot-{attr}-{c1}-vs-{c2}.{PNG_OR_TEX}'
+        report_file=Path(exp.eval_dir) / f'{report_name}'
+        exp.add_report(
+            ScatterPlotReport(
+                attributes=attr,
+                filter_algorithm=[c1, c2],
+                #filter=filter_zero_nesting,
+                #filter=[f.collect_non_factorable_tasks,f.filter_interesting_tasks],
+                get_category=lambda run1, run2: str(run1['ms_strongly_compliant']) if "exact" in run1["algorithm"] else "",
+                format=PNG_OR_TEX,
+                show_missing=False,
+            ),
+            name=report_name,
+            outfile=report_file,
+        )
 
 
 exp.run_steps()
