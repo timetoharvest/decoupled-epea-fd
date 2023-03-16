@@ -176,10 +176,10 @@ for dec_name in decoupling.keys():
         #exp.add_step(f'publish-{report_name}', subprocess.call, ['publish', report_file])
 
 RUNTIME_PLOT_CONFIG_PAIRS = [
-    [f"{REVISION}-b50k-linearcg-explicit",          f"{REVISION}-lpmm-b50k-compliantlinearcg-explicit"],
-    [f"{REVISION}-b50k-linearrev-explicit",         f"{REVISION}-lpmm-b50k-compliantlinearrev-explicit"],
-    [f"{REVISION}-lpmm-b50k-linearcg-exact",        f"{REVISION}-lpmm-b50k-compliantlinearcg-exact"],
-    [f"{REVISION}-lpmm-b50k-linearrev-exact",       f"{REVISION}-lpmm-b50k-compliantlinearrev-exact"],
+#    [f"{REVISION}-b50k-linearcg-explicit",          f"{REVISION}-lpmm-b50k-compliantlinearcg-explicit"],
+#    [f"{REVISION}-b50k-linearrand-explicit",         f"{REVISION}-lpmm-b50k-compliantlinearrand-explicit"],
+#    [f"{REVISION}-lpmm-b50k-linearcg-exact",        f"{REVISION}-lpmm-b50k-compliantlinearcg-exact"],
+    [f"{REVISION}-lpmm-b50k-linearrand-exact",       f"{REVISION}-lpmm-b50k-compliantlinearrand-exact"],
 ]
 
 def filter_zero_nesting(run):
@@ -187,9 +187,10 @@ def filter_zero_nesting(run):
         del run["search_time"]
     return run
 
-PNG_OR_TEX='png'
+PNG_OR_TEX='tex'
 for c1, c2 in RUNTIME_PLOT_CONFIG_PAIRS:
-    for attr in ["search_time", "expansions_until_last_jump"]:
+    for attr in ["search_time", #"expansions_until_last_jump", 
+                 "evaluations"]:
         report_name=f'{exp.name}-plot-{attr}-{c1}-vs-{c2}.{PNG_OR_TEX}'
         report_file=Path(exp.eval_dir) / f'{report_name}'
         exp.add_report(
