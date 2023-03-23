@@ -120,6 +120,14 @@ PLOT_CONFIG_PAIRS_BY_ATTRIBUTE = {
     "evaluations" :   [["lpmm-b50k-linearrand-exact",  "lpmm-b50k-compliantlinearrand-exact"]]
 }
 
+def check_compliant(r1, r2):
+    if "linearrand-exact" in r1["algorithm"]:
+        if ("ms_max_num_nested_leaves" in r1 and r1["ms_max_num_nested_leaves"] <= 1):
+            return "compliant"
+        else:
+            return "general"
+    return ""
+
 
 PNG_OR_TEX='tex'
 for attr in PLOT_CONFIG_PAIRS_BY_ATTRIBUTE.keys():
@@ -130,7 +138,7 @@ for attr in PLOT_CONFIG_PAIRS_BY_ATTRIBUTE.keys():
             ScatterPlotReport(
                 attributes=attr,
                 filter_algorithm=[c1, c2],
-                get_category=lambda run1, run2: str(run1['ms_strongly_compliant']) if "linearrand-exact" in run1["algorithm"] else "",
+                get_category=check_compliant,
                 format=PNG_OR_TEX,
                 show_missing=False,
             ),
