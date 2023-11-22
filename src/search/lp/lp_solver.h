@@ -74,6 +74,10 @@ struct LPVariable {
                bool is_integer = false);
 };
 
+void dump_lp(LPObjectiveSense sense,
+             const std::vector<LPVariable> &vars,
+             const std::vector<LPConstraint> &constrs);
+
 #ifdef __GNUG__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
