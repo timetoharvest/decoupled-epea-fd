@@ -1,5 +1,8 @@
 #include "goal_count_heuristic.h"
 
+#include "compliant_paths/cpg_storage.h"
+#include "compliant_paths/compliant_path_graph.h"
+
 #include "state.h"
 #include "globals.h"
 #include "option_parser.h"
@@ -21,10 +24,19 @@ void GoalCountHeuristic::initialize() {
 
 int GoalCountHeuristic::compute_heuristic(const GlobalState &state) {
     int unsatisfied_goal_count = 0;
+    if (g_factoring){
+        const CompliantPathGraph *cpg = CPGStorage::storage->get_cpg(state);
+        for (LeafFactorID leaf(0); leaf < g_leaves.size(); ++leaf) {
+            if (!g_goals_per_factor[leaf].empty() && !cpg->goal_reachable(leaf)) {
+                ++unsatisfied_goal_count;
+            }
+        }
+    }
     for (size_t i = 0; i < g_goal.size(); ++i) {
         int var = g_goal[i].first, value = g_goal[i].second;
-        if (state[var] != value)
+        if (state[var] != value) {
             ++unsatisfied_goal_count;
+        }
     }
     return unsatisfied_goal_count;
 }
