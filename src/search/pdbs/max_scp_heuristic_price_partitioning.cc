@@ -194,37 +194,6 @@ static void generate_abs_leaf_state_constraints(
     }
 }
 
-static void dump_lp(lp::LPObjectiveSense sense, const vector<lp::LPVariable> &vars, const vector<lp::LPConstraint> &constrs) {
-    if (sense == lp::LPObjectiveSense::MAXIMIZE){
-        cout << "Linear Program: maximize objective value" << endl;
-    } else {
-        cout << "Linear Program: minimize objective value" << endl;
-    }
-    cout << vars.size() << " variables" << endl;
-    cout << constrs.size() << " constraints" << endl;
-
-    if (vars.size() > 100 || constrs.size() > 100){
-        cout << "WARNING: not printing LP as it is too big" << endl;
-        return;
-    }
-
-    cout << "variables: " << endl;
-    int i = 0;
-    for (auto &var : vars){
-        cout << "x" << i++ << ": range " << var.lower_bound << " .. " << var.upper_bound << "; objective value " << var.objective_coefficient << (var.is_integer ? ", is integer variable" : "") << endl;
-    }
-
-    cout << endl;
-
-    for (auto &constr : constrs){
-        cout << constr.get_lower_bound() << " < ";
-        for (size_t i = 0; i < constr.get_variables().size(); ++i){
-            cout << constr.get_coefficients()[i] << " * x" << constr.get_variables()[i] << (i < constr.get_variables().size() - 1 ? " + " : "");
-        }
-        cout << " < " << constr.get_upper_bound() << endl;
-    }
-}
-
 int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state) {
     int max_h;
     if (affected_leaves.empty()){
