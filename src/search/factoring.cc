@@ -682,32 +682,14 @@ void Factoring::print_factoring_statistics() const {
 }
 
 bool Factoring::is_factoring_possible() const {
-    // if there exists a variable that is affected by all actions, then
-    // no mobile factoring can exist.
-    vector<size_t> op_count(g_variable_domain.size(), 0);
-    vector<bool> var_not_affected_by_some_op(g_variable_domain.size(), false);
-    size_t num_vars_not_affected_by_some_op = 0;
-    for (size_t i = 0; i < g_operators.size(); ++i){
-        for (const Effect &eff : g_operators[i].get_effects()){
-            if (op_count[eff.var] == i){
-                ++op_count[eff.var];
-            } else if (!var_not_affected_by_some_op[eff.var]) {
-                var_not_affected_by_some_op[eff.var] = true;
-                ++num_vars_not_affected_by_some_op;
-                if (num_vars_not_affected_by_some_op == g_variable_domain.size()){
-                    // no variable is affected by all actions
-                    return true;
-                }
-            }
+    for (const auto &op : g_operators) {
+        if (op.get_effects().size() < g_variable_domain.size()) {
+            // there exists a variable that is not affected by all actions
+            // => we can construct a mobile factoring with at least one leaf
+            return true;
         }
     }
-    for (size_t i = 0; i < op_count.size(); ++i){
-        if (op_count[i] == g_operators.size()){
-            cout << "No mobile factoring possible." << endl;
-            return false;
-        }
-    }
-    return true;
+    return false;
 }
 
 inline bool is_intersection_empty(const vector<int> &x, const vector<int> &y) {
