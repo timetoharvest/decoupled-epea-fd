@@ -404,6 +404,18 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         constraints.push_back(constraint);
     }
 
+    // force LP var to be 1 (var is in center) if no potential leaf that contains var becomes a leaf
+    for (int var = 0; var < g_variable_domain.size(); ++var){
+        if (can_be_leaf_var[var]) {
+            lp::LPConstraint constraint(-infty, -1.0);
+            constraint.insert(c_vars_ids[var], -1.0);
+            for (auto pleaf_id: var_to_p_leaves[var]) {
+                constraint.insert(pleaf_id, -1.0);
+            }
+            constraints.push_back(constraint);
+        }
+    }
+
     if (!check_lp_size(constraints.size(), variables.size()) || !check_timeout()){
         return FactoredVars();
     }
@@ -436,6 +448,22 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
             for (int var : outside_pre_vars){
                 constraint.insert(c_vars_ids[var], -1.0);
             }
+            constraints.push_back(constraint);
+        }
+    }
+
+    // an action schema can only be mobile for a leaf if it actually is a leaf
+    for (const auto &pleaf : potential_leaves){
+        if (strategy == MML &&
+            !pleaf.self_mobile_as.empty() &&
+            min_flexibility == 0.0 &&
+            min_mobility <= 1){
+            continue;
+        }
+        for (size_t as_num = 0; as_num < pleaf.action_schemes.size(); ++as_num) {
+            lp::LPConstraint constraint(-infty, 0.0);
+            constraint.insert(pleaf.id, -1.0);
+            constraint.insert(mob_as_var_ids[pleaf.id][as_num], 1.0);
             constraints.push_back(constraint);
         }
     }
