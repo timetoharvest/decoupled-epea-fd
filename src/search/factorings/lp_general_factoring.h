@@ -13,7 +13,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
         MM_OPT, // maximize mobility
         MM_APPROX,
         MFA, // maximize mobile facts
-        MM // maximize mobility (sum)
+        MM, // maximize mobility (sum)
+        MCL // maximize number of conclulsive leaves
     };
 
     struct PotentialLeaf {
@@ -52,6 +53,17 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
     std::vector<PotentialLeaf> potential_leaves;
 
     FactoredVars get_factoring() override;
+
+    bool is_as_leaf_irrelevant(const ActionSchema &as, const PotentialLeaf &leaf) const;
+
+    bool is_as_leaf_conclusive(const ActionSchema &as, const PotentialLeaf &leaf) const;
+
+    bool has_as_pre_or_eff_on_leaf(const ActionSchema &as, const PotentialLeaf &leaf) const;
+
+    void construct_lp_conclusive(std::vector<lp::LPVariable> &variables,
+                                 std::vector<lp::LPConstraint> &constraints,
+                                 std::vector<bool> &can_be_leaf_var,
+                                 std::vector<std::vector<size_t>> &mob_as_var_ids);
 
     FactoredVars compute_factoring();
 
