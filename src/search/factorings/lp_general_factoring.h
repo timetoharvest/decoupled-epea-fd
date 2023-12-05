@@ -36,9 +36,9 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     int min_mobility;
 
-    float min_flexibility;
+    double min_flexibility;
 
-    float min_fact_flexibility;
+    double min_fact_flexibility;
 
     bool add_cg_sccs_;
 

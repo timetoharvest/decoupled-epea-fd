@@ -824,6 +824,7 @@ void LPGeneralFactoring::compute_leaf_flexibility() {
             }
         }
         pl.as_flexibility = vector<double>(pl.action_schemes.size(), 0.0);
+        pl.max_flexibility = 0.0;
         for (size_t as_num = 0; as_num < pl.action_schemes.size(); ++as_num){
             double as_flex = (double) action_schemas[pl.action_schemes[as_num]].num_actions / num_ops;
             pl.as_flexibility[as_num] = as_flex;
@@ -852,12 +853,10 @@ void LPGeneralFactoring::filter_potential_leaves() {
     }
     cout << "Removed " << erase_leaves.size() << " potential leaves because of minimal flexibility/mobility." << endl;
 
-    potential_leaves.erase(remove_if(potential_leaves.begin(),
-            potential_leaves.end(),
-            [&erase_leaves](const PotentialLeaf &pl){return find(erase_leaves.begin(),
-                    erase_leaves.end(),
-                    pl.id) != erase_leaves.end();}),
-            potential_leaves.end());
+    for (auto it = erase_leaves.rbegin(); it != erase_leaves.rend(); ++it){
+        assert(potential_leaves[*it].id == *it);
+        potential_leaves.erase(potential_leaves.begin() + *it);
+    }
 
     if (!erase_leaves.empty()){
         size_t id = 0;
