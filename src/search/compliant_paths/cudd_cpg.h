@@ -51,17 +51,17 @@ protected:
 
 public:
 
-    CuddCPG<T>(){};
+    CuddCPG() = default;
 
-    CuddCPG<T>(const CuddCPG &cpg);
+    CuddCPG(const CuddCPG &cpg);
 
-    CuddCPG<T>(CuddCPG &&other) = delete;
+    CuddCPG(CuddCPG &&other) = delete;
 
-    CuddCPG<T>& operator=(const CuddCPG<T> &other) = delete;
+    CuddCPG& operator=(const CuddCPG &other) = delete;
 
-    CuddCPG<T>& operator=(CuddCPG<T> &&other);
+    CuddCPG& operator=(CuddCPG &&other);
 
-    virtual ~CuddCPG<T>() = default;
+    virtual ~CuddCPG() = default;
 
 
     virtual void populate_reached_leaf_facts(std::function<void(int, int)> f) const override;

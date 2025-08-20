@@ -4,7 +4,6 @@
 #include "../plugin.h"
 #include "../factoring.h"
 #include "../lp/lp_solver.h"
-#include "../lp/cplex_solver.h"
 #include "../task_utils/causal_graph.h"
 #include "../globals.h"
 #include "../operator.h"
@@ -27,11 +26,7 @@ LPFactoring::LPFactoring(const options::Options &opts) : Factoring(opts),
         memory_limit(opts.get<int>("memory_limit")),
         lp_solver_type(opts.get<lp::LPSolverType>("lpsolver")),
         timer(utils::Timer()) {
-#ifdef USE_CPLEX
-    lp::CPLEXSolver solver;
-#else
     lp::LPSolver solver(lp_solver_type);
-#endif
     infty = solver.get_infinity();
 }
 
@@ -54,10 +49,8 @@ bool LPFactoring::check_timeout() const {
     return true;
 }
 
-vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
-        vector<lp::LPVariable> &variables,
-        vector<lp::LPConstraint> &constraints,
-        bool fail_on_out_of_memory,
+vector<double> LPFactoring::solve_lp(lp::LinearProgram &lp,
+        bool,
         bool solve_lp_relaxation) const {
 
     int time_limit = cplex_time_limit > 0 ? cplex_time_limit : -1;
@@ -67,11 +60,8 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
         time_limit = time_limit > 0 ? min(f_limit, time_limit) : f_limit;
     }
 
-    if (constraints.empty()){
-        cout << "WARNING: no constraints specified. Adding dummy constraint to prevent errors." << endl;
-        lp::LPConstraint dummy(0, 1);
-        dummy.insert(0, 1);
-        constraints.push_back(dummy);
+    if (lp.get_constraints().empty()){
+        cout << "WARNING: no constraints specified." << endl;
     }
 
     if (solve_lp_relaxation && time_limit == -1){
@@ -80,56 +70,24 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
     }
 
 #ifndef NDEBUG
-    dump_lp(sense, variables, constraints);
+    dump_lp(lp);
 #endif
 
 
-#ifdef USE_CPLEX
-    lp::CPLEXSolver solver(time_limit);
-#else
     lp::LPSolver solver(lp_solver_type);
-    if (time_limit != -1){
-        cout << "WARNING: CPLEX not found, ignoring time limit." << endl;
-        time_limit = -1;
-    }
-    fail_on_out_of_memory = !fail_on_out_of_memory; // HACK prevent unused variable error
-#endif
+    solver.set_time_limit(time_limit);
 
     if (solve_lp_relaxation){
-        for (auto &var : variables){
+        for (auto &var : lp.get_variables()){
             var.is_integer = false;
         }
     }
 
-#ifdef USE_CPLEX
-    try {
-#endif
-        solver.load_problem(sense, variables, constraints);
-
-        constraints = vector<lp::LPConstraint>(); // save memory TODO does this really make a difference?
-
-        solver.print_statistics();
-
-        cout << "LP construction time: " << timer << endl;
-
-        timer.reset();
-
-        solver.solve();
-
-#ifdef USE_CPLEX
-    } catch (const IloException &excpt) {
-        string error_message = excpt.getMessage();
-        if (!fail_on_out_of_memory && (error_message == CPLEX_ERROR_MEMORY_1 ||
-                error_message == CPLEX_ERROR_MEMORY_2)) {
-            // TODO refine the check
-            cerr << "Error while factoring planning task: CPLEX out of Memory" << endl;
-            return vector<double>();
-        } else {
-            cerr << "CPLEX error : " << error_message << endl;
-            exit_with(utils::ExitCode::SEARCH_CRITICAL_ERROR);
-        }
-    }
-#endif
+    solver.load_problem(lp);
+    solver.print_statistics();
+    cout << "LP construction time: " << timer << endl;
+    timer.reset();
+    solver.solve();
 
     cout << "LP solving time: " << timer << endl;
 
@@ -137,16 +95,15 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
 
     if (time_limit == -1) {
         if (!solver.has_optimal_solution()){
+            solver.print_failure_analysis();
             cout << "no optimal solution to LP found, factoring failed" << endl;
             return solution;
         }
     } else {
-#ifdef USE_CPLEX
         if (!solver.has_solution()){
             cout << "no solution to LP found, factoring failed" << endl;
             return solution;
         }
-#endif
     }
 
     solution = solver.extract_solution();
@@ -156,29 +113,29 @@ vector<double> LPFactoring::solve_lp(lp::LPObjectiveSense sense,
     return solution;
 }
 
-void LPFactoring::dump_lp(lp::LPObjectiveSense sense, const vector<lp::LPVariable> &vars, const vector<lp::LPConstraint> &constrs) const {
-    if (sense == lp::LPObjectiveSense::MAXIMIZE){
+void LPFactoring::dump_lp(const lp::LinearProgram &lp) const {
+    if (lp.get_sense() == lp::LPObjectiveSense::MAXIMIZE){
         cout << "Linear Program: maximize objective value" << endl;
     } else {
         cout << "Linear Program: minimize objective value" << endl;
     }
-    cout << vars.size() << " variables" << endl;
-    cout << constrs.size() << " constraints" << endl;
+    cout << lp.get_variables().size() << " variables" << endl;
+    cout << lp.get_constraints().size() << " constraints" << endl;
 
-    if (vars.size() > 100 || constrs.size() > 100){
+    if (lp.get_variables().size() > 100 || lp.get_constraints().size() > 100){
         cout << "WARNING: not printing LP as it is too big" << endl;
         return;
     }
 
     cout << "variables: " << endl;
     int i = 0;
-    for (auto &var : vars){
+    for (auto &var : lp.get_variables()){
         cout << "x" << i++ << ": range " << var.lower_bound << " .. " << var.upper_bound << "; objective value " << var.objective_coefficient << (var.is_integer ? ", is integer variable" : "") << endl;
     }
 
     cout << endl;
 
-    for (auto &constr : constrs){
+    for (auto &constr : lp.get_constraints()){
         cout << constr.get_lower_bound() << " < ";
         for (size_t i = 0; i < constr.get_variables().size(); ++i){
              cout << constr.get_coefficients()[i] << " * x" << constr.get_variables()[i] << (i < constr.get_variables().size() - 1 ? " + " : "");

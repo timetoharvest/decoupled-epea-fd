@@ -96,15 +96,6 @@ void save_plan(const vector<OperatorID> &plan,
     ++g_num_previously_generated_plans;
 }
 
-bool peek_magic(istream &in, string magic) {
-    string word;
-    in >> word;
-    bool result = (word == magic);
-    for (int i = word.size() - 1; i >= 0; --i)
-        in.putback(word[i]);
-    return result;
-}
-
 void check_magic(istream &in, string magic) {
     string word;
     in >> word;
@@ -120,7 +111,7 @@ void check_magic(istream &in, string magic) {
     }
 }
 
-void read_and_verify_version(istream &in) {
+static void read_and_verify_version(istream &in) {
     int version;
     check_magic(in, "begin_version");
     in >> version;
@@ -133,13 +124,13 @@ void read_and_verify_version(istream &in) {
     }
 }
 
-void read_metric(istream &in) {
+static void read_metric(istream &in) {
     check_magic(in, "begin_metric");
     in >> g_use_metric;
     check_magic(in, "end_metric");
 }
 
-void read_variables(istream &in) {
+static void read_variables(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i) {
@@ -162,7 +153,7 @@ void read_variables(istream &in) {
     }
 }
 
-void read_mutexes(istream &in) {
+static void read_mutexes(istream &in) {
     g_inconsistent_facts.resize(g_variable_domain.size());
     for (size_t i = 0; i < g_variable_domain.size(); ++i)
         g_inconsistent_facts[i].resize(g_variable_domain[i]);
@@ -212,7 +203,7 @@ void read_mutexes(istream &in) {
     }
 }
 
-void read_goal(istream &in) {
+static void read_goal(istream &in) {
     check_magic(in, "begin_goal");
     int count;
     in >> count;
@@ -228,21 +219,21 @@ void read_goal(istream &in) {
     check_magic(in, "end_goal");
 }
 
-void dump_goal() {
+static void dump_goal() {
     cout << "Goal Conditions:" << endl;
     for (size_t i = 0; i < g_goal.size(); ++i)
         cout << "  " << g_variable_name[g_goal[i].first] << ": "
              << g_goal[i].second << endl;
 }
 
-void read_operators(istream &in) {
+static void read_operators(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)
         g_operators.push_back(Operator(in, false));
 }
 
-void read_axioms(istream &in) {
+static void read_axioms(istream &in) {
     int count;
     in >> count;
     for (int i = 0; i < count; ++i)

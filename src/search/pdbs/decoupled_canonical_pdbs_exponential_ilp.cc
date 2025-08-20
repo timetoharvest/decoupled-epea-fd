@@ -54,8 +54,8 @@ DecoupledCanonicalPDBsExponentialILP::DecoupledCanonicalPDBsExponentialILP(
 void DecoupledCanonicalPDBsExponentialILP::enumerate_abstract_states(
         int pdb_id,
         int pdb_lp_var,
-        vector<lp::LPVariable> &lp_variables,
-        vector<lp::LPConstraint> &constraints,
+        named_vector::NamedVector<lp::LPVariable> &lp_variables,
+        named_vector::NamedVector<lp::LPConstraint> &constraints,
         const vector<utils::HashMap<vector<int>, AbstractLeafStateInfo>> &abstract_leaf_state_info,
         int index,
         vector<int> &abs_state,
@@ -147,8 +147,8 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
         lp::LPSolver solver(lp::LPSolverType::CPLEX); // TODO properly obtain this via command line?
         lp_infty = solver.get_infinity();
 
-        vector<lp::LPVariable> lp_variables;
-        vector<lp::LPConstraint> constraints;
+        named_vector::NamedVector<lp::LPVariable> lp_variables;
+        named_vector::NamedVector<lp::LPConstraint> constraints;
 
         // maps, for each pattern and leaf factor, abstract leaf states to a struct that contains the minimum
         // price of each reached abstract leaf state (minimized over all reached leaf states that are mapped
@@ -274,9 +274,10 @@ int DecoupledCanonicalPDBsExponentialILP::get_value(const GlobalState &state) co
             constraints.push_back(constraint);
         }
 
-        solver.load_problem(lp::LPObjectiveSense::MINIMIZE, lp_variables, constraints);
+        lp::LinearProgram lp(lp::LPObjectiveSense::MINIMIZE, move(lp_variables), move(constraints), solver.get_infinity());
+        solver.load_problem(lp);
 
-        // dump_lp(lp::LPObjectiveSense::MINIMIZE, lp_variables, constraints);
+        // dump_lp(lp);
 
         solver.solve();
 

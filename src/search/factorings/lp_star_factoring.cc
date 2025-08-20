@@ -4,7 +4,6 @@
 #include "../plugin.h"
 #include "../factoring.h"
 #include "../lp/lp_solver.h"
-#include "../lp/cplex_solver.h"
 #include "../task_utils/causal_graph.h"
 #include "../globals.h"
 #include "../operator.h"
@@ -56,9 +55,8 @@ Factoring::FactoredVars LPStarFactoring::get_factoring() {
 }
 
 Factoring::FactoredVars LPStarFactoring::get_mip_factoring() const {
-
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
 
     if (strategy == MIS_MOBILE) {
         vector<bool> mobile_var = get_mobile_vars();
@@ -87,8 +85,8 @@ Factoring::FactoredVars LPStarFactoring::get_mip_factoring() const {
         }
     }
 
-    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-            variables, constraints, true, strategy == MIS_LP_RELAX);
+    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(variables), move(constraints), infty);
+    vector<double> solution = solve_lp(lp, true, strategy == MIS_LP_RELAX);
 
     if (solution.empty()) {
         cout << "ERROR: no solution found by LP solver." << endl;
@@ -111,8 +109,8 @@ Factoring::FactoredVars LPStarFactoring::get_mip_factoring() const {
 
 Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves() const {
 
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
 
     init_action_schemas();
     filter_action_schemas();
@@ -340,8 +338,9 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves() const {
         solution.resize(potential_leaves.size(), 1);
         cout << "No constraints, all candidates become leaf factors." << endl;
     } else {
-        solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-                variables, constraints, false, false);
+        lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE,
+                move(variables), move(constraints), infty);
+        solution = solve_lp(lp, false, false);
 
         if (solution.empty()) {
             cout << "WARNING: no solution found by LP solver." << endl;
@@ -388,8 +387,8 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves() const {
 
 Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular() const {
 
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
 
     FactoredVars mip_factoring = get_mip_factoring();
 
@@ -577,7 +576,8 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular() const {
 
 
     // solve problem
-    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE, variables, constraints);
+    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(variables), move(constraints), infty);
+    vector<double> solution = solve_lp(lp);
 
     if (solution.empty()) {
         cout << "ERROR: no solution found by LP solver." << endl;
@@ -606,8 +606,8 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular() const {
 
 Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular_no_schemes() const {
 
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
 
     FactoredVars mip_factoring = get_mip_factoring();
 
@@ -790,8 +790,9 @@ Factoring::FactoredVars LPStarFactoring::get_max_mobile_leaves_modular_no_scheme
 
 
     // solve problem
-    vector<double> solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-            variables, constraints);
+    lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE,
+            move(variables), move(constraints), infty);
+    vector<double> solution = solve_lp(lp);
 
     if (solution.empty()) {
         cout << "ERROR: no solution found by LP solver." << endl;

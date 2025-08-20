@@ -81,8 +81,8 @@ MaxSCPHeuristicPricePartitioning::MaxSCPHeuristicPricePartitioning(
 }
 
 static void generate_abs_leaf_state_constraints(
-            vector<lp::LPVariable> &lp_vars,
-            vector<lp::LPConstraint> &lp_constrs,
+            named_vector::NamedVector<lp::LPVariable> &lp_vars,
+            named_vector::NamedVector<lp::LPConstraint> &lp_constrs,
             double lp_infty,
             bool is_integer,
             const cost_saturation::CostPartitioningHeuristic::LookupTable &heuristic,
@@ -221,8 +221,8 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
             lp::LPSolver solver(lp::LPSolverType::CPLEX); // TODO properly obtain this via command line
             double lp_infty = solver.get_infinity();
 
-            vector<lp::LPVariable> lp_variables;
-            vector<lp::LPConstraint> constraints;
+            named_vector::NamedVector<lp::LPVariable> lp_variables;
+            named_vector::NamedVector<lp::LPConstraint> constraints;
 
             // 1) for every reached leaf state and every layer (= cp_heuristic.lookup_tables.size()), add an LP variable p^{s^L}_i
             //    that represents the price of that leaf state in this layer. in the base case, p^{s^L}_0 = prices[dstate][s^L].
@@ -457,8 +457,8 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
             }
 
             // solve LP; add center-only h values
-
-            solver.load_problem(lp::LPObjectiveSense::MAXIMIZE, lp_variables, constraints);
+            lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE, move(lp_variables), move(constraints), solver.get_infinity());
+            solver.load_problem(lp);
 
             if (debug) {
                 cout << "variables:" << endl;
@@ -478,7 +478,7 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                 cout << endl;
 
                 cout << "LP:" << endl;
-                dump_lp(lp::LPObjectiveSense::MAXIMIZE, lp_variables, constraints);
+// TODO                dump_lp(lp);
 
                 cout << endl;
 
@@ -497,7 +497,7 @@ int MaxSCPHeuristicPricePartitioning::compute_heuristic(const GlobalState &state
                     cout << "objective value = " << lp_sol << endl;
                     cout << "LP solution:" << endl;
                     vector<double> sol = solver.extract_solution();
-                    for (int i = 0; i < static_cast<int>(lp_variables.size()); ++i){
+                    for (int i = 0; i < static_cast<int>(lp.get_variables().size()); ++i){
                         cout << "\tx" << i << " = " << sol[i] << endl;
                     }
                 }

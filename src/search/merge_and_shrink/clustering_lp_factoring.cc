@@ -104,8 +104,8 @@ vector<double> ClusteringLPFactoring::solve_lp(named_vector::NamedVector<lp::LPV
         constraints.push_back(dummy);
     }
 
-    lp::LPObjectiveSense sense = lp::LPObjectiveSense::MAXIMIZE;
 #ifndef NDEBUG
+    lp::LPObjectiveSense sense = lp::LPObjectiveSense::MAXIMIZE;
     dump_lp(sense, variables, constraints);
 #endif
 

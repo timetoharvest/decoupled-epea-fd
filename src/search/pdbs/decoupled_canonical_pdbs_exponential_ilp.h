@@ -3,6 +3,8 @@
 
 #include "canonical_pdbs.h"
 #include "../leaf_state_id.h"
+
+#include "../algorithms/named_vector.h"
 #include "../utils/hash.h"
 
 #include <limits>
@@ -42,8 +44,8 @@ class DecoupledCanonicalPDBsExponentialILP : public CanonicalPDBs {
 
     void enumerate_abstract_states(int pdb_id,
                                    int pdb_lp_var,
-                                   std::vector<lp::LPVariable> &lp_variables,
-                                   std::vector<lp::LPConstraint> &constraints,
+                                   named_vector::NamedVector<lp::LPVariable> &lp_variables,
+                                   named_vector::NamedVector<lp::LPConstraint> &constraints,
                                    const std::vector<utils::HashMap<std::vector<int>, AbstractLeafStateInfo>> &abstract_leaf_state_prices,
                                    int index,
                                    std::vector<int> &abs_state,

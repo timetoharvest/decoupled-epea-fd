@@ -67,6 +67,10 @@ public:
         return elements.size();
     }
 
+    bool empty() const {
+        return size() == 0;
+    }
+
     typename std::vector<T>::reference back() {
         return elements.back();
     }

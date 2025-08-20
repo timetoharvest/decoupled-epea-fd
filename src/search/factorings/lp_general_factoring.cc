@@ -4,7 +4,6 @@
 #include "../plugin.h"
 #include "../factoring.h"
 #include "../lp/lp_solver.h"
-#include "../lp/cplex_solver.h"
 #include "../task_utils/causal_graph.h"
 #include "../globals.h"
 #include "../operator.h"
@@ -160,8 +159,8 @@ bool LPGeneralFactoring::has_as_pre_or_eff_on_leaf(const ActionSchema &as, const
     return false;
 }
 
-void LPGeneralFactoring::construct_lp_conclusive(vector<lp::LPVariable> &variables,
-                                                 vector<lp::LPConstraint> &constraints,
+void LPGeneralFactoring::construct_lp_conclusive(named_vector::NamedVector<lp::LPVariable> &variables,
+                                                 named_vector::NamedVector<lp::LPConstraint> &constraints,
                                                  vector<bool> &can_be_leaf_var,
                                                  vector<vector<size_t>> &mob_as_var_ids) {
     assert(strategy == STRATEGY::MCL);
@@ -260,8 +259,8 @@ void LPGeneralFactoring::construct_lp_conclusive(vector<lp::LPVariable> &variabl
 
 Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
 
-    vector<lp::LPVariable> variables;
-    vector<lp::LPConstraint> constraints;
+    named_vector::NamedVector<lp::LPVariable> variables;
+    named_vector::NamedVector<lp::LPConstraint> constraints;
 
     vector<vector<unordered_map<size_t, size_t>>> facts_to_mobility;
     vector<vector<size_t>> sum_fact_mobility;
@@ -767,8 +766,9 @@ Factoring::FactoredVars LPGeneralFactoring::compute_factoring() {
         solution.resize(potential_leaves.size(), 1);
         cout << "No constraints, all candidates become leaf factors." << endl;
     } else {
-        solution = solve_lp(lp::LPObjectiveSense::MAXIMIZE,
-                variables, constraints, false, false);
+        lp::LinearProgram lp(lp::LPObjectiveSense::MAXIMIZE,
+                move(variables), move(constraints), infty);
+        solution = solve_lp(lp, false, false);
 
         if (solution.empty()) {
             cout << "WARNING: no solution found by LP solver." << endl;

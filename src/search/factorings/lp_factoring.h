@@ -5,10 +5,10 @@
 
 
 namespace lp {
+class LinearProgram;
+struct LPVariable;
 class LPConstraint;
-enum class LPObjectiveSense;
 enum class LPSolverType;
-class LPVariable;
 }
 
 
@@ -36,13 +36,11 @@ protected:
     // TODO num_variables is currently unused
     bool check_lp_size(size_t num_constraints, size_t num_variables) const;
 
-    std::vector<double> solve_lp(lp::LPObjectiveSense sense,
-            std::vector<lp::LPVariable> &vars,
-            std::vector<lp::LPConstraint> &constrs,
+    std::vector<double> solve_lp(lp::LinearProgram &lp,
             bool fail_on_out_of_memory = true,
             bool solve_lp_relaxation = false) const;
 
-    void dump_lp(lp::LPObjectiveSense sense, const std::vector<lp::LPVariable> &vars, const std::vector<lp::LPConstraint> &constrs) const;
+    void dump_lp(const lp::LinearProgram &lp) const;
 
 public:
 

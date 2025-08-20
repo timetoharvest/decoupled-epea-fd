@@ -3,6 +3,7 @@
 
 #include "lp_factoring.h"
 
+#include "../algorithms/named_vector.h"
 
 namespace lp_general_factoring {
 class LPGeneralFactoring : public lp_factoring::LPFactoring {
@@ -60,8 +61,8 @@ class LPGeneralFactoring : public lp_factoring::LPFactoring {
 
     bool has_as_pre_or_eff_on_leaf(const ActionSchema &as, const PotentialLeaf &leaf) const;
 
-    void construct_lp_conclusive(std::vector<lp::LPVariable> &variables,
-                                 std::vector<lp::LPConstraint> &constraints,
+    void construct_lp_conclusive(named_vector::NamedVector<lp::LPVariable> &variables,
+                                 named_vector::NamedVector<lp::LPConstraint> &constraints,
                                  std::vector<bool> &can_be_leaf_var,
                                  std::vector<std::vector<size_t>> &mob_as_var_ids);
 
