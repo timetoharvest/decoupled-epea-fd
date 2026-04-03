@@ -1029,6 +1029,7 @@ void LPGeneralFactoring::add_cg_sccs() {
 
 
 void LPGeneralFactoring::merge_potential_leaves() {
+    // TODO: try merging on the level of action effect schemas instead of potential leaves
 
     queue<size_t> open;
     for (const PotentialLeaf &p_leaf : potential_leaves) {
