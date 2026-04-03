@@ -1,5 +1,7 @@
 #include "max_cost_partitioning_heuristic.h"
 
+#include <algorithm>
+
 #include "abstraction.h"
 #include "cost_partitioning_heuristic.h"
 #include "utils.h"
