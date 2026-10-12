@@ -11,10 +11,15 @@
 #include "utils/hash.h"
 
 #include <chrono>
+#include <functional>
 #include <set>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+
+extern std::function<void(StateID)> g_on_cpg_replaced;
+
+extern std::function<void(StateID)> g_on_open_node_dominance_closed;
 
 /*
   Overview of classes relevant to storing and working with registered states.

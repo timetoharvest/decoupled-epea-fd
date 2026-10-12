@@ -84,8 +84,10 @@ create_fast_downward_library(
         operator_cost
         operator_factor_info
         operator_id
+        operator_selection_function
         option_parser
         option_parser_util
+        pea_search
         per_state_information
         per_task_information
         plan_manager

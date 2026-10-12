@@ -145,6 +145,11 @@ void SearchNode::close() {
     info.status = SearchNodeInfo::CLOSED;
 }
 
+void SearchNode::reopen_unchanged() {
+    assert(info.status == SearchNodeInfo::CLOSED);
+    info.status = SearchNodeInfo::OPEN;
+}
+
 void SearchNode::mark_as_dead_end() {
     info.status = SearchNodeInfo::DEAD_END;
 }

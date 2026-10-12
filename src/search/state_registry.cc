@@ -15,6 +15,9 @@
 
 using namespace std;
 
+function<void(StateID)> g_on_cpg_replaced;
+function<void(StateID)> g_on_open_node_dominance_closed;
+
 StateRegistry::StateRegistry()
     : dominance_pruning_timer(0.0),
       state_data_pool(g_state_packer->get_num_bins()),
@@ -377,6 +380,9 @@ GlobalState StateRegistry::get_successor_state(const GlobalState &predecessor, c
             if (new_dup_counter > old_dup_counter || replace_old_cpg){
                 // new decoupled state, or new decoupled state dominates an existing one => replace cpg
                 new_cpg->store_new_cpg(s);
+                if (replace_old_cpg && g_on_cpg_replaced) {
+                    g_on_cpg_replaced(s.get_id());
+                }
             }
         }
 

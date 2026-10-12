@@ -52,6 +52,7 @@ public:
     void increase_h(int h);
     void decrease_h(int h); // needed for optimal decoupled search
     void close();
+    void reopen_unchanged();
     void mark_as_dead_end();
 
     void dump() const;

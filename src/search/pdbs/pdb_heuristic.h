@@ -32,6 +32,10 @@ public:
     */
     PDBHeuristic(const options::Options &opts);
     virtual ~PDBHeuristic() override = default;
+
+    const PatternDatabase &get_pattern_database() const {
+        return *pdb;
+    }
 };
 }
 

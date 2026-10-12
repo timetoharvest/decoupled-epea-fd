@@ -10,6 +10,7 @@
 #include "../search_space.h"
 #include "../state.h"
 #include "../state_id.h"
+#include "../state_registry.h"
 #include "symbolic_state_cpg.h"
 
 
@@ -206,6 +207,9 @@ pair<int, bool> CompliantPathGraph::check_dominance(const GlobalState &base_stat
                         SearchNode node = search_space->get_node(s);
                         if (node.is_open()){
                             node.close();
+                            if (g_on_open_node_dominance_closed) {
+                                g_on_open_node_dominance_closed(s.get_id());
+                            }
                         }
                         if (pruning->use_transitivity()){
                             const auto it = find(non_dominated_states[base_state_id_hash].begin(),

@@ -1,0 +1,7 @@
+data/
+.venv/
+__pycache__/
+CLUSTER.md
+SMOKE-TEST.md
+pea-epea-eval-*.log
+pea-epea-eval-*.err
