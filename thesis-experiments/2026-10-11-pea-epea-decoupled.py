@@ -79,8 +79,15 @@ if CATEGORY not in CATEGORIES:
         "set EVAL_CATEGORY to one of " + ", ".join(CATEGORIES)
         + " (one experiment per category, the supervisor's design)")
 
-RUN_HMAX = True
-RUN_LMCUT = True
+DEFAULT_HEURISTICS = ["hmax", "pdb"]
+KNOWN_HEURISTICS = ("blind", "hmax", "lmcut", "pdb")
+HEURISTIC_SET = [h for h in os.environ.get(
+    "EVAL_HEURISTICS", ",".join(DEFAULT_HEURISTICS)).split(",") if h]
+if not HEURISTIC_SET or any(h not in KNOWN_HEURISTICS for h in HEURISTIC_SET):
+    raise SystemExit("EVAL_HEURISTICS must be a comma-separated subset of "
+                     + ", ".join(KNOWN_HEURISTICS))
+HEURISTIC_SUFFIX = "" if HEURISTIC_SET == DEFAULT_HEURISTICS \
+    else "-" + "+".join(HEURISTIC_SET)
 RUN_PEA0 = True
 RUN_FULLCHECK = True
 MIN_LEAVES = 2
@@ -111,11 +118,7 @@ LP_GENERAL_OPTIONS = ("factoring_time_limit=30, memory_limit=4000, "
 PLAIN_PDB = "pdb(pattern=greedy(max_states=1000000))"
 CENTER_PDB = ("pdb(pattern=greedy(max_states=1000000, "
               "pattern_filter=n_leaves_patterns(n=0)))")
-HEURISTICS = {"blind": "blind()", "hmax": "hmax()", "lmcut": "lmcut()"}
-if not RUN_HMAX:
-    del HEURISTICS["hmax"]
-if not RUN_LMCUT:
-    del HEURISTICS["lmcut"]
+HEURISTICS = {h: f"{h}()" for h in HEURISTIC_SET if h != "pdb"}
 
 def decoupling(factoring, arm):
     opts = [f"min_num_leaves={MIN_LEAVES}"]
@@ -144,17 +147,19 @@ def epea_rows(prefix, pdb, dec):
 
 def build_configs(category):
     configs = {}
+    with_pdb = "pdb" in HEURISTIC_SET
     if category == "explicit":
-        heuristics = dict(HEURISTICS, pdb=PLAIN_PDB)
+        heuristics = dict(HEURISTICS, **({"pdb": PLAIN_PDB} if with_pdb else {}))
         for h, hstr in heuristics.items():
             for fam, opts in engine_rows("x", hstr, None).items():
                 configs[f"exp-{fam[2:]}-{h}"] = opts
-        for fam, opts in epea_rows("x", PLAIN_PDB, None).items():
-            configs[f"exp-{fam[2:]}-pdb"] = opts
+        if with_pdb:
+            for fam, opts in epea_rows("x", PLAIN_PDB, None).items():
+                configs[f"exp-{fam[2:]}-pdb"] = opts
         return configs
     arm = category[len("dec-"):]
-    heuristics = dict(HEURISTICS, pdb=(CENTER_PDB if DECOUPLED_PDB_ROWS == "center"
-                                        else PLAIN_PDB))
+    heuristics = dict(HEURISTICS, **({"pdb": CENTER_PDB if DECOUPLED_PDB_ROWS == "center"
+                                      else PLAIN_PDB} if with_pdb else {}))
     for factoring in FACTORINGS:
         if factoring == "fork" and arm == "on" and not FORK_IN_BOTH_ARMS:
             continue
@@ -162,7 +167,7 @@ def build_configs(category):
         for h, hstr in heuristics.items():
             for fam, opts in engine_rows("x", hstr, dec).items():
                 configs[f"dec-{factoring}-{arm}-{fam[2:]}-{h}"] = opts
-        if arm == "off":
+        if arm == "off" and with_pdb:
             for fam, opts in epea_rows("x", CENTER_PDB, dec).items():
                 configs[f"dec-{factoring}-off-{fam[2:]}-pdb"] = opts
     return configs
@@ -175,21 +180,21 @@ TEST_SUITE = ["logistics00:probLOGISTICS-4-0.pddl", "rovers:p03.pddl",
 THIRD = next((f for f in FACTORINGS if f not in ("fork", "ifork")), "ifork")
 TEST_NICKS = {
     "explicit": [
-        "exp-astar-blind", "exp-pea0-blind", "exp-pea-blind",
-        "exp-astar-lmcut", "exp-astar-pdb", "exp-pea0-pdb", "exp-pea-pdb",
-        "exp-epea-pdb", "exp-epeafc-pdb", "exp-pea-hmax"],
+        "exp-astar-hmax", "exp-pea0-hmax", "exp-pea-hmax",
+        "exp-astar-pdb", "exp-pea0-pdb", "exp-pea-pdb",
+        "exp-epea-pdb", "exp-epeafc-pdb"],
     "dec-on": [
-        "dec-ifork-on-astar-blind", "dec-ifork-on-pea0-blind",
-        "dec-ifork-on-pea-blind", "dec-ifork-on-astar-pdb",
-        "dec-ifork-on-pea-pdb", "dec-fork-on-astar-blind",
-        "dec-fork-on-pea-blind", "dec-ifork-on-pea-hmax"],
+        "dec-ifork-on-astar-hmax", "dec-ifork-on-pea0-hmax",
+        "dec-ifork-on-pea-hmax", "dec-ifork-on-astar-pdb",
+        "dec-ifork-on-pea-pdb", "dec-fork-on-astar-hmax",
+        "dec-fork-on-pea-hmax"],
     "dec-off": [
         "dec-ifork-off-astar-pdb", "dec-ifork-off-pea0-pdb",
         "dec-ifork-off-pea-pdb", "dec-ifork-off-epea-pdb",
-        "dec-ifork-off-epeafc-pdb", "dec-fork-off-astar-blind",
-        "dec-fork-off-pea-blind", "dec-fork-off-epea-pdb",
-        f"dec-{THIRD}-off-astar-lmcut", f"dec-{THIRD}-off-epea-pdb",
-        "dec-ifork-off-pea-hmax", "dec-ifork-off-pea0-lmcut"],
+        "dec-ifork-off-epeafc-pdb", "dec-fork-off-astar-hmax",
+        "dec-fork-off-pea-hmax", "dec-fork-off-epea-pdb",
+        f"dec-{THIRD}-off-astar-hmax", f"dec-{THIRD}-off-epea-pdb",
+        "dec-ifork-off-pea-hmax", "dec-ifork-off-pea0-hmax"],
 }
 
 ABSTAINED_EXIT_CODE = 19
@@ -259,9 +264,9 @@ else:
     CONFIGS = {n: c for n, c in CONFIGS.items() if n in TEST_NICKS[CATEGORY]}
     if CATEGORY == "dec-off":
 
-        CONFIGS["dec-abstainprobe-astar-blind"] = [
+        CONFIGS["dec-abstainprobe-astar-hmax"] = [
             "--decoupling", "ifork(min_num_leaves=10)",
-            "--search", "astar(blind())"]
+            "--search", "astar(hmax())"]
 MEMORY_LIMIT = "4G"
 
 N_TASKS = len(suites.build_suite(BENCHMARKS_DIR, SUITE_USED))
@@ -279,6 +284,7 @@ def slurm_time_limit_per_task(n_runs, max_tasks):
 
 FORWARDED = {k: v for k, v in {
     "EVAL_CATEGORY": CATEGORY, "EVAL_FACTORINGS": ",".join(FACTORINGS),
+    "EVAL_HEURISTICS": ",".join(HEURISTIC_SET),
     "EVAL_MERGE_DIRS": os.environ.get("EVAL_MERGE_DIRS"),
     "EVAL_BUILD": BUILD, "EVAL_BUILD_JOBS": BUILD_JOBS,
     "EVAL_DATA_DIR": str(DATA_DIR),
@@ -386,12 +392,14 @@ if REMOTE and RUNS_STAGE and not LOCAL_PROCESSES \
 exp = FastDownwardExperiment(
     path=str(DATA_DIR / (f"{SCRIPT_NAME}-{CATEGORY}"
                          + (FACTORING_SUFFIX if CATEGORY != "explicit" else "")
+                         + HEURISTIC_SUFFIX
                          + ("-pilot" if PILOT else ""))),
     environment=ENVIRONMENT,
     revision_cache=str(DATA_DIR / "revision-cache"))
 
 print(f"category {CATEGORY} ({CATEGORIES[CATEGORY]}), stage {STAGE}"
       + (f", factorings {','.join(FACTORINGS)}" if CATEGORY != "explicit" else "")
+      + f", heuristics {','.join(HEURISTIC_SET)}"
       + ": "
       f"{len(CONFIGS)} configurations x {N_TASKS} tasks = {N_RUNS} runs"
       + (f", Slurm time limit per array task "
