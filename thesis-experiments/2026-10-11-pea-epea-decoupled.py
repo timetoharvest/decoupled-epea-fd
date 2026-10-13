@@ -32,6 +32,7 @@ BENCHMARKS_DIR = os.environ.get(
 REV = os.environ.get("DOWNWARD_REV", "4c77017cd896f416ab0329680374793135e7c26c")
 
 BUILD = os.environ.get("EVAL_BUILD", "release64")
+BUILD_JOBS = os.environ.get("EVAL_BUILD_JOBS", "8")
 DATA_DIR = Path(os.environ.get("EVAL_DATA_DIR", str(DIR / "data")))
 EMAIL = os.environ.get("EVAL_EMAIL")
 PILOT = os.environ.get("EVAL_PILOT") == "1"
@@ -279,7 +280,8 @@ def slurm_time_limit_per_task(n_runs, max_tasks):
 FORWARDED = {k: v for k, v in {
     "EVAL_CATEGORY": CATEGORY, "EVAL_FACTORINGS": ",".join(FACTORINGS),
     "EVAL_MERGE_DIRS": os.environ.get("EVAL_MERGE_DIRS"),
-    "EVAL_BUILD": BUILD, "EVAL_DATA_DIR": str(DATA_DIR),
+    "EVAL_BUILD": BUILD, "EVAL_BUILD_JOBS": BUILD_JOBS,
+    "EVAL_DATA_DIR": str(DATA_DIR),
     "EVAL_REPORT_FORMATS": os.environ.get("EVAL_REPORT_FORMATS"),
     "EVAL_SCATTER_FORMATS": os.environ.get("EVAL_SCATTER_FORMATS"),
     "EVAL_EMAIL": EMAIL, "EVAL_PILOT": "1" if PILOT else None,
@@ -343,17 +345,17 @@ def check_cluster_limits(env):
 
     found = []
     needed = parse_slurm_time(env.time_limit_per_task)
-    out = query(["sinfo", "-h", "-p", env.partition, "-o", "%l"])
-    limits = [parse_slurm_time(line) for line in out.split()]
-    limits = [h for h in limits if h is not None]
-    if out.split():
-        found.append(f"walltime {out.split()[0]}")
-    if limits and needed is not None and needed > min(limits):
-        raise SystemExit(
-            f"the derived time limit per array task, "
-            f"{env.time_limit_per_task}, exceeds the walltime limit of "
-            f"partition {env.partition} ({out.split()[0]}): split the "
-            "category (scope knobs) before submitting")
+    partition = query(["scontrol", "show", "partition", env.partition])
+    match = re.search(r"MaxTime=(\S+)", partition)
+    if match:
+        found.append(f"walltime {match.group(1)}")
+        limit = parse_slurm_time(match.group(1))
+        if limit is not None and needed is not None and needed > limit:
+            raise SystemExit(
+                f"the derived time limit per array task, "
+                f"{env.time_limit_per_task}, exceeds the walltime limit of "
+                f"partition {env.partition} ({match.group(1)}). Split the "
+                "category (scope knobs) before submitting")
     out = query(["scontrol", "show", "config"])
     match = re.search(r"MaxArraySize\s*=\s*(\d+)", out)
     num_tasks = math.ceil(N_RUNS / math.ceil(N_RUNS / env.MAX_TASKS))
@@ -364,13 +366,12 @@ def check_cluster_limits(env):
                 f"{num_tasks} array tasks, but Slurm's MaxArraySize is "
                 f"{match.group(1)} (highest index {int(match.group(1)) - 1}): "
                 "lower MAX_TASKS in bw_cluster_environments.py")
-    out = query(["scontrol", "show", "partition", env.partition])
-    match = re.search(r"MaxMemPerCPU=(\w+)", out)
+    match = re.search(r"MaxMemPerCPU=(\w+)", partition)
     if match:
         found.append(f"MaxMemPerCPU {match.group(1)}")
         if match.group(1).isdigit() and 0 < int(match.group(1)) < 4200:
             print(f"warning: MaxMemPerCPU of partition {env.partition} is "
-                  f"{match.group(1)} MB, below the 4200M requested per run: "
+                  f"{match.group(1)} MB, below the 4200M requested per run. "
                   "Slurm allocates two cores per array task (half the "
                   "throughput, no failure)")
     print(f"cluster limits of partition {env.partition}: "
@@ -404,7 +405,7 @@ print(f"category {CATEGORY} ({CATEGORIES[CATEGORY]}), stage {STAGE}"
 for nick, component_options in sorted(CONFIGS.items()):
     exp.add_algorithm(
         nick, REPO, REV, component_options,
-        build_options=[BUILD],
+        build_options=[BUILD, f"-j{BUILD_JOBS}"],
         driver_options=["--build", BUILD,
                         "--overall-time-limit", TIME_LIMIT,
                         "--overall-memory-limit", MEMORY_LIMIT])

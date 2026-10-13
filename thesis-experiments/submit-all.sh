@@ -10,6 +10,7 @@
 #     ./submit-all.sh dec-on dec-off       # a subset, in this order
 #     EVAL_PILOT=1 ./submit-all.sh         # the three pilots
 set -eu
+[ -z "${SLURM_JOB_ID:-}" ] || { echo "run this on the login node, not inside a Slurm job (type exit first)" >&2; exit 1; }
 cd "$(dirname "$0")"
 command -v uv >/dev/null || { echo "uv is not on the PATH (CLUSTER.md section 5)" >&2; exit 1; }
 command -v validate >/dev/null || { echo "validate (VAL) is not on the PATH: every run would fail (section 5)" >&2; exit 1; }
