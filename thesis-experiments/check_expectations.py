@@ -7,17 +7,17 @@ import sys
 from collections import defaultdict
 
 GOLDEN = {
-    ("exp-astar-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 11853, "evaluations": 13324,
-         "generated": 77203},
-    ("exp-pea0-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 11853, "distinct_expansions": 11852,
+    ("exp-astar-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 4885, "evaluations": 6718,
+         "generated": 32256},
+    ("exp-pea0-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 4885, "distinct_expansions": 4884,
          "alpha_reexpansions": 0, "beta_deferred_edges": 0,
-         "max_open_list_size": 1590},
-    ("exp-pea-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 19860, "distinct_expansions": 11852,
-         "alpha_reexpansions": 8007, "beta_deferred_edges": 13322,
-         "max_open_list_size": 1544},
+         "max_open_list_size": 1881},
+    ("exp-pea-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 8201, "distinct_expansions": 4884,
+         "alpha_reexpansions": 3316, "beta_deferred_edges": 6669,
+         "max_open_list_size": 1337},
     ("exp-astar-pdb", "logistics00", "probLOGISTICS-4-0.pddl"):
         {"cost": 20, "expansions": 21, "evaluations": 140,
          "generated": 166},
@@ -38,17 +38,17 @@ GOLDEN = {
          "alpha_reexpansions": 127, "evaluations": 164, "generated": 399,
          "max_open_list_size": 158, "osf_deferred_operators": 1195,
          "osf_deadend_skips": 171},
-    ("dec-ifork-on-astar-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 1740, "evaluations": 1944,
-         "generated": 12045},
-    ("dec-ifork-on-pea0-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 1740, "distinct_expansions": 1740,
+    ("dec-ifork-on-astar-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 894, "evaluations": 1445,
+         "generated": 6223},
+    ("dec-ifork-on-pea0-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 894, "distinct_expansions": 894,
          "alpha_reexpansions": 0, "beta_deferred_edges": 0,
-         "max_open_list_size": 321},
-    ("dec-ifork-on-pea-blind", "logistics00", "probLOGISTICS-4-0.pddl"):
-        {"cost": 20, "expansions": 3162, "distinct_expansions": 1755,
-         "alpha_reexpansions": 1407, "beta_deferred_edges": 1963,
-         "max_open_list_size": 289},
+         "max_open_list_size": 517},
+    ("dec-ifork-on-pea-hmax", "logistics00", "probLOGISTICS-4-0.pddl"):
+        {"cost": 20, "expansions": 1609, "distinct_expansions": 898,
+         "alpha_reexpansions": 711, "beta_deferred_edges": 1406,
+         "max_open_list_size": 315},
     ("dec-ifork-off-astar-pdb", "woodworking-opt08-strips", "p01.pddl"):
         {"cost": 170, "expansions": 241, "evaluations": 542,
          "generated": 1305},

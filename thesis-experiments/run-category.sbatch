@@ -68,6 +68,8 @@ FACT="${EVAL_FACTORINGS:-fork,ifork,incarcs}"
 if [ "$EVAL_CATEGORY" != explicit ] && [ "$FACT" != fork,ifork,incarcs ]; then
     EXP="$EXP-${FACT//,/+}"
 fi
+HEUR="${EVAL_HEURISTICS:-hmax,pdb}"
+[ "$HEUR" != hmax,pdb ] && EXP="$EXP-${HEUR//,/+}"
 [ "${EVAL_PILOT:-}" = 1 ] && EXP="$EXP-pilot"
 for d in "$EXP" "$EXP-eval"; do
     if [ -e "$d" ]; then
