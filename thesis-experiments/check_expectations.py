@@ -3,6 +3,7 @@
 import glob
 import json
 import os
+import re
 import sys
 from collections import defaultdict
 
@@ -76,6 +77,81 @@ GOLDEN = {
 ENGINE_FAMILIES = {"pea0", "pea", "epea", "epeafc"}
 
 SLURM_MARKER = "output-to-slurm.err"
+SOFT_LINE = re.compile(
+    r"planner finished and wrote [\d.]+ KiB to run\.(log|err) "
+    r"\(soft limit: [\d.]+ KiB\)")
+HARD_LINE = re.compile(
+    r"planner wrote [\d.]+ KiB \(hard limit\) to run\.(log|err) -> "
+    r"abort command")
+NONMOBILE = "ERROR: non-mobile leaf factor"
+DOUBLE_PEAK = "Found multiple occurences of Peak memory"
+TIME_UNITS = {"": 1, "s": 1, "m": 60, "h": 3600}
+EXPLAINED = {
+    "log-soft": "run.log over lab's soft limit, planner finished, data valid",
+    "log-hard": "run.log hit lab's hard limit, lab aborted the planner, "
+                "counts as unsolved",
+    "kill-time": "component killed by the kernel at the hard CPU limit "
+                 "(soft limit plus one second), counts as unsolved",
+    "nonmobile": "upstream factoring refused a leaf without leaf-only "
+                 "actions, uniform over the rows of that factoring, "
+                 "counts as a factoring failure",
+    "double-peak": "Peak memory printed twice (signal during exit), "
+                   "unsolved run, memory attribute dropped by lab",
+}
+
+def parse_limit(text, units):
+    match = re.fullmatch(r"(\d+)([a-z]?)", text.lower())
+    if not match or match.group(2) not in units:
+        return None
+    return int(match.group(1)) * units[match.group(2)]
+
+def overall_time_limit(run):
+    seconds = None
+    opts = run.get("driver_options") or []
+    for i in range(len(opts) - 1):
+        if opts[i] == "--overall-time-limit":
+            seconds = parse_limit(opts[i + 1], TIME_UNITS)
+    return seconds
+
+def file_lines(entry, name):
+    return [line.strip() for line in entry[len(name) + 1:].splitlines()
+            if line.strip()]
+
+def explain(run, errors):
+    outcomes = []
+    driver_lines = []
+    run_lines = []
+    for entry in errors:
+        if entry.startswith("driver.err:"):
+            driver_lines.extend(file_lines(entry, "driver.err:"))
+        elif entry.startswith("run.err:"):
+            run_lines.extend(file_lines(entry, "run.err:"))
+        else:
+            outcomes.append(entry)
+    soft = [line for line in driver_lines if SOFT_LINE.search(line)]
+    hard = [line for line in driver_lines if HARD_LINE.search(line)]
+    other = [line for line in driver_lines
+             if line not in soft and line not in hard]
+    if other:
+        return None
+    if not outcomes and not run_lines and soft and not hard:
+        return "log-soft"
+    if outcomes == ["exitcode--15"] and hard and not run_lines:
+        return "log-hard"
+    if outcomes == ["sigkill"] and not driver_lines and not run_lines:
+        seconds = overall_time_limit(run)
+        wall = run.get("planner_wall_clock_time")
+        if seconds and wall is not None and wall >= seconds - 1:
+            return "kill-time"
+        return None
+    if outcomes == ["search-critical-error"] and not driver_lines \
+            and run_lines and run_lines[0].startswith(NONMOBILE):
+        return "nonmobile"
+    if len(outcomes) == 1 and outcomes[0].startswith(DOUBLE_PEAK) \
+            and not driver_lines and not run_lines \
+            and run.get("coverage") != 1:
+        return "double-peak"
+    return None
 
 def family_of(nick):
     parts = nick.split("-")
@@ -112,19 +188,86 @@ def main():
     fullcheck_skipped = 0
 
     marked = 0
+    explained = defaultdict(list)
     for run in runs:
         errors = run.get("unexplained_errors") or []
         if SLURM_MARKER in errors:
             marked = marked + 1
             errors = [e for e in errors if e != SLURM_MARKER]
-        if errors:
+        if not errors:
+            continue
+        kind = explain(run, errors)
+        if kind is None:
             failures.append(
                 f"H1 unexplained error: {run['algorithm']} "
                 f"{run['domain']}:{run['problem']} -> {errors}")
+        else:
+            explained[kind].append(run)
     if marked:
         notes.append(
             f"H1 {marked} run(s) carry lab's marker {SLURM_MARKER}. A chain "
             "job wrote to slurm.err. Read that file. Runs are clean.")
+    for kind, group in sorted(explained.items()):
+        domains = defaultdict(int)
+        for run in group:
+            domains[run["domain"]] = domains[run["domain"]] + 1
+        note = (f"H1 {kind}: {len(group)} run(s), {EXPLAINED[kind]}: "
+                f"{dict(sorted(domains.items()))}")
+        if kind == "kill-time":
+            walls = [run["planner_wall_clock_time"] for run in group]
+            note = note + (f", wall-clock {min(walls):.0f} to "
+                           f"{max(walls):.0f} s")
+        notes.append(note)
+        if kind in ("log-hard", "double-peak"):
+            for run in sorted(group, key=lambda r: (
+                    r["algorithm"], r["domain"], r["problem"]))[:30]:
+                notes.append(f"   {run['algorithm']} "
+                             f"{run['domain']}:{run['problem']}")
+    refused = defaultdict(set)
+    rows = defaultdict(set)
+    for run in runs:
+        fam, key = family_of(run["algorithm"])
+        if key is None or key[0] != "dec":
+            continue
+        slot = (key[1], run["domain"], run["problem"])
+        rows[slot].add(run["algorithm"])
+        if run in explained["nonmobile"]:
+            refused[slot].add(run["algorithm"])
+    for slot, names in sorted(refused.items()):
+        if names != rows[slot]:
+            failures.append(
+                f"H1 non-mobile leaf refusal not uniform for {slot[0]} on "
+                f"{slot[1]}:{slot[2]}: {len(names)} of {len(rows[slot])} "
+                "rows")
+    if refused:
+        tasks = sorted({(s[1], s[2]) for s in refused})
+        notes.append(
+            f"H1 nonmobile tasks ({len(tasks)}): "
+            + ", ".join(f"{d}:{p}" for d, p in tasks[:20]))
+
+    solved_by = defaultdict(set)
+    for run in runs:
+        if run.get("coverage") == 1:
+            solved_by[(run["domain"], run["problem"])].add(run["algorithm"])
+    no_plan = defaultdict(set)
+    for run in runs:
+        if run.get("error") != "search-unsolved-incomplete":
+            continue
+        task = (run["domain"], run["problem"])
+        no_plan[task].add(run["algorithm"])
+        if solved_by[task]:
+            failures.append(
+                f"H10 no plan reported on a solved task: {run['algorithm']} "
+                f"{task[0]}:{task[1]} (solved by "
+                f"{', '.join(sorted(solved_by[task])[:3])})")
+    if no_plan:
+        per_domain = defaultdict(int)
+        for task in no_plan:
+            per_domain[task[0]] = per_domain[task[0]] + 1
+        notes.append(
+            f"S5 no plan (search exhausted or initial dead end) on "
+            f"{len(no_plan)} task(s), {sum(len(v) for v in no_plan.values())} "
+            f"run(s), tasks per domain: {dict(sorted(per_domain.items()))}")
 
     costs = defaultdict(set)
     for run in runs:
