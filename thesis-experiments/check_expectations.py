@@ -205,6 +205,8 @@ def main():
     open_inversions = defaultdict(list)
     h6_pairs = 0
     h6_inversions = []
+    s7_pairs = 0
+    s7_inversions = []
     fullcheck_skipped = 0
 
     marked = 0
@@ -293,6 +295,30 @@ def main():
             f"S5 no plan (unsolvable, exhausted or initial dead end) on "
             f"{len(no_plan)} task(s), {sum(len(v) for v in no_plan.values())} "
             f"run(s), tasks per domain: {dict(sorted(per_domain.items()))}")
+
+    encodings = defaultdict(lambda: defaultdict(set))
+    for run in runs:
+        if run.get("translator_variables") is None:
+            continue
+        code = (run.get("translator_variables"), run.get("translator_operators"),
+                run.get("translator_facts"))
+        encodings[(run["domain"], run["problem"])][code].add(
+            (run["algorithm"], run.get("coverage") == 1))
+    mixed = 0
+    for task, variants in sorted(encodings.items()):
+        if len(variants) < 2:
+            continue
+        mixed = mixed + 1
+        solved_variants = [c for c, members in variants.items()
+                           if any(solved for _, solved in members)]
+        if solved_variants:
+            failures.append(
+                f"H11 translator encodings differ on the solved task "
+                f"{task[0]}:{task[1]}: {len(variants)} encodings")
+    if mixed:
+        notes.append(
+            f"S6 translator encodings differ between rows on {mixed} task(s) "
+            "(a failure only when one of them is solved, see H11)")
 
     costs = defaultdict(set)
     for run in runs:
@@ -387,6 +413,16 @@ def main():
                         h6_inversions.append(
                             f"{key} {task} {attr} epea {epea.get(attr)} > "
                             f"pea {pea.get(attr)}")
+        else:
+            epea = fams.get("epea")
+            if epea and epeafc and epea.get("coverage") == 1 \
+                    and epeafc.get("coverage") == 1:
+                s7_pairs = s7_pairs + 1
+                for attr in ("generated", "evaluations"):
+                    if epea.get(attr, 0) > epeafc.get(attr, 0):
+                        s7_inversions.append(
+                            f"{key} {task} {attr} epea {epea.get(attr)} > "
+                            f"epeafc {epeafc.get(attr)}")
 
     golden_hit = 0
     index = {(r["algorithm"], r["domain"], r["problem"]): r for r in runs}
@@ -448,6 +484,14 @@ def main():
             f"{len(h6_inversions)} of {h6_pairs} task(s) (observation, not a "
             "failure)")
         for inversion in h6_inversions[:10]:
+            notes.append("   " + inversion)
+
+    if s7_pairs:
+        notes.append(
+            f"S7 decoupled: epea generated or evaluations above epeafc on "
+            f"{len(s7_inversions)} of {s7_pairs} task(s) (observation, the "
+            "pruning order may differ)")
+        for inversion in s7_inversions[:10]:
             notes.append("   " + inversion)
 
     if not open_pairs:

@@ -37,6 +37,7 @@ DATA_DIR = Path(os.environ.get("EVAL_DATA_DIR", str(DIR / "data")))
 EMAIL = os.environ.get("EVAL_EMAIL")
 PILOT = os.environ.get("EVAL_PILOT") == "1"
 KEEP_RUNS = os.environ.get("EVAL_KEEP_RUNS") == "1"
+os.environ.setdefault("PYTHONHASHSEED", "0")
 ONLY_TASKS = [t for t in os.environ.get("EVAL_ONLY_TASKS", "").split(",") if t]
 ONLY_ROWS = [r for r in os.environ.get("EVAL_ONLY_ROWS", "").split(",") if r]
 RERUN = bool(ONLY_TASKS or ONLY_ROWS)
@@ -272,7 +273,8 @@ class AbstainFilter:
         return (run["domain"], run["problem"]) not in self.excluded_tasks
 
 CONFIGS = build_configs(CATEGORY)
-SMOKE = (not REMOTE) or PILOT
+FULL = os.environ.get("EVAL_FULL") == "1"
+SMOKE = ((not REMOTE) or PILOT) and not FULL
 TIME_LIMIT = "30m" if REMOTE else "1m"
 if not SMOKE:
     SUITE_USED = SUITE
@@ -320,6 +322,7 @@ FORWARDED = {k: v for k, v in {
     "EVAL_KEEP_RUNS": "1" if KEEP_RUNS else None, "EVAL_STAGE": STAGE,
     "EVAL_ONLY_TASKS": ",".join(ONLY_TASKS), "EVAL_ONLY_ROWS": ",".join(ONLY_ROWS),
     "EVAL_STDOUT_LIMITS": os.environ.get("EVAL_STDOUT_LIMITS"),
+    "PYTHONHASHSEED": os.environ["PYTHONHASHSEED"],
     "EVAL_LP_SOLVER_OK": os.environ.get("EVAL_LP_SOLVER_OK"),
     "DOWNWARD_REPO": REPO, "DOWNWARD_BENCHMARKS": BENCHMARKS_DIR,
     "DOWNWARD_REV": REV,
@@ -504,11 +507,36 @@ if RUNS_STAGE:
 
         exp.add_step("compress-and-delete-runs-dir", compress_and_delete_runs)
 
+def shifted_geometric_mean(shift):
+    def aggregate(values):
+        values = [v for v in values if v is not None]
+        if not values:
+            return None
+        return math.exp(sum(math.log(v + shift) for v in values)
+                        / len(values)) - shift
+    aggregate.__name__ = "shifted geometric mean"
+    return aggregate
+
+COUNT_MEAN = shifted_geometric_mean(1)
+TIME_MEAN = shifted_geometric_mean(0.01)
+COUNT_ATTRS = ("expansions", "evaluations", "generated",
+               "expansions_until_last_jump")
+TIME_ATTRS = ("search_time", "total_time", "planner_time")
+SOLVED_ONLY_ATTRS = COUNT_ATTRS + TIME_ATTRS + (
+    "memory", "planner_memory", "distinct_expansions", "alpha_reexpansions",
+    "beta_deferred_edges", "max_open_list_size", "osf_deferred_operators",
+    "osf_deadend_skips")
+
+def solved_counters(run):
+    if run.get("coverage") == 1:
+        return True
+    return {k: v for k, v in run.items() if k not in SOLVED_ONLY_ATTRS}
+
 ENGINE_ATTRIBUTES = [
-    Attribute("distinct_expansions", min_wins=True, function=geometric_mean),
+    Attribute("distinct_expansions", min_wins=True, function=COUNT_MEAN),
     Attribute("alpha_reexpansions", min_wins=True, function=arithmetic_mean),
     Attribute("beta_deferred_edges", min_wins=True, function=arithmetic_mean),
-    Attribute("max_open_list_size", min_wins=True, function=geometric_mean),
+    Attribute("max_open_list_size", min_wins=True, function=COUNT_MEAN),
     Attribute("osf_deferred_operators", min_wins=True,
               function=arithmetic_mean),
     Attribute("osf_deadend_skips", min_wins=True, function=arithmetic_mean),
@@ -521,7 +549,14 @@ DECOUPLED_ATTRIBUTES = [
     Attribute("pdb_affected_leaf_factors", absolute=True, min_wins=True),
 ]
 
-STOCK_ATTRIBUTES = [a for a in common_setup.ATTRIBUTES
+def stock_attribute(name):
+    if name in COUNT_ATTRS + ("memory", "planner_memory"):
+        return Attribute(name, min_wins=True, function=COUNT_MEAN)
+    if name in TIME_ATTRS:
+        return Attribute(name, min_wins=True, function=TIME_MEAN)
+    return name
+
+STOCK_ATTRIBUTES = [stock_attribute(a) for a in common_setup.ATTRIBUTES
                     if a not in ("search_out_of_memory", "search_out_of_time")]
 ATTRIBUTES = (STOCK_ATTRIBUTES + ENGINE_ATTRIBUTES
               + (DECOUPLED_ATTRIBUTES if CATEGORY != "explicit" else [])
@@ -538,7 +573,7 @@ STOCK_ATTRS = ["coverage", "cost", "total_time", "search_time", "memory",
 ENGINE_ATTRS = STOCK_ATTRS + ["distinct_expansions", "alpha_reexpansions",
                               "beta_deferred_edges", "max_open_list_size"]
 OSF_ATTRS = ENGINE_ATTRS + ["osf_deferred_operators", "osf_deadend_skips"]
-SCATTER_ATTRS = ["total_time", "memory", "expansions", "evaluations",
+SCATTER_ATTRS = ["search_time", "memory", "expansions", "evaluations",
                  "generated"]
 SCATTER_ENGINE_ATTRS = ["max_open_list_size", "distinct_expansions",
                         "alpha_reexpansions"]
@@ -661,16 +696,18 @@ def attributes_named(names):
 
 def add_reports():
     for fmt in TABLE_FORMATS:
-        exp.add_report(AbsoluteReport(attributes=ATTRIBUTES, format=fmt),
+        exp.add_report(AbsoluteReport(attributes=ATTRIBUTES, format=fmt,
+                                      filter=[solved_counters]),
                        outfile=f"{report_name('all')}.{fmt}")
 
         for name, families, attrs in (("engine", ENGINE_FAMILIES, ENGINE_ATTRS),
-                                      ("osf", OSF_FAMILIES, OSF_ATTRS)):
+                                      ("osf", {"epea"}, OSF_ATTRS)):
             algos = sorted(n for n in CONFIGS if family_of(n) in families)
             if algos:
                 exp.add_report(
                     AbsoluteReport(attributes=attributes_named(attrs),
-                                   format=fmt, filter_algorithm=algos),
+                                   format=fmt, filter_algorithm=algos,
+                                   filter=[solved_counters]),
                     outfile=f"{report_name(name)}.{fmt}")
         if CATEGORY != "explicit":
             for factoring in FACTORINGS:
@@ -682,23 +719,39 @@ def add_reports():
                 exp.add_report(
                     AbsoluteReport(attributes=ATTRIBUTES, format=fmt,
                                    filter_algorithm=algos,
-                                   filter=[f.collect, f.filter]),
+                                   filter=[f.collect, f.filter,
+                                           solved_counters]),
                     outfile=f"{report_name(factoring)}.{fmt}")
+                engine_algos = [a for a in algos
+                                if family_of(a) in ENGINE_FAMILIES]
+                if engine_algos:
+                    g = AbstainFilter(algos)
+                    exp.add_report(
+                        AbsoluteReport(attributes=attributes_named(ENGINE_ATTRS),
+                                       format=fmt,
+                                       filter_algorithm=engine_algos,
+                                       filter=[g.collect, g.filter,
+                                               solved_counters]),
+                        outfile=f"{report_name(factoring, 'engine')}.{fmt}")
         for (fx, fy), algorithm_pairs in PAIRS_BY_KIND.items():
             exp.add_report(
                 ComparativeReport(algorithm_pairs,
                                   attributes=pair_attributes(fx, fy),
-                                  format=fmt),
+                                  format=fmt, filter=[solved_counters]),
                 outfile=f"{report_name('compare', f'{fx}-vs-{fy}')}.{fmt}")
     for (fx, fy), algorithm_pairs in PAIRS_BY_KIND.items():
         attrs = SCATTER_ATTRS + (SCATTER_ENGINE_ATTRS
                                  if {fx, fy} <= ENGINE_FAMILIES else [])
+        if "pea0" in (fx, fy):
+            attrs = [a for a in attrs if a != "alpha_reexpansions"]
         for x, y in algorithm_pairs:
             for attribute in attrs:
                 for fmt in SCATTER_FORMATS:
                     exp.add_report(
                         ScatterPlotReport(attributes=[attribute],
                                           filter_algorithm=[x, y],
+                                          filter=[solved_counters],
+                                          show_missing=False,
                                           scale="log", format=fmt),
                         outfile=f"{report_name('scatter', attribute, x, y)}"
                                 f".{fmt}")
