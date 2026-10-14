@@ -98,9 +98,14 @@ EXPLAINED = {
                  "left out of the per-factoring tables like an abstained "
                  "task",
     "double-peak": "Peak memory printed twice, the time limit signal came "
-                   "while the planner was exiting and lab recorded the "
-                   "signal's exit code, unsolved run, the true outcome "
-                   "(memory limit or exhausted search) is in run.log",
+                   "while the planner was already exiting after an abnormal "
+                   "end without search statistics and lab recorded the "
+                   "signal's exit code, unsolved run, the true end (memory "
+                   "limit expected) is the tail of run.log",
+    "double-peak-noplan": "Peak memory printed twice, the time limit signal "
+                          "came while the planner was exiting after a "
+                          "finished search without a plan, counted as a "
+                          "no-plan exit by H10 and S5",
 }
 NO_PLAN = ("search-unsolved-incomplete", "search-unsolvable",
            "translate-unsolvable")
@@ -155,10 +160,18 @@ def explain(run, errors):
         return "nonmobile"
     if len(outcomes) == 1 and outcomes[0].startswith(DOUBLE_PEAK) \
             and not driver_lines and not run_lines \
-            and run.get("coverage") != 1 and "total_time" in run \
+            and run.get("coverage") != 1 \
             and run.get("error") == "search-out-of-time":
+        if "total_time" in run:
+            return "double-peak-noplan"
         return "double-peak"
     return None
+
+def masked_no_plan(run):
+    errors = run.get("unexplained_errors") or []
+    return run.get("coverage") != 1 and "total_time" in run \
+        and run.get("error") == "search-out-of-time" \
+        and any(e.startswith(DOUBLE_PEAK) for e in errors)
 
 def family_of(nick):
     parts = nick.split("-")
@@ -228,7 +241,7 @@ def main():
                            f"{len(group) - in_search}, in the search "
                            f"{in_search}")
         notes.append(note)
-        if kind in ("log-hard", "double-peak"):
+        if kind in ("log-hard", "double-peak", "double-peak-noplan"):
             for run in sorted(group, key=lambda r: (
                     r["algorithm"], r["domain"], r["problem"]))[:30]:
                 notes.append(f"   {run['algorithm']} "
@@ -263,7 +276,7 @@ def main():
             solved_by[(run["domain"], run["problem"])].add(run["algorithm"])
     no_plan = defaultdict(set)
     for run in runs:
-        if run.get("error") not in NO_PLAN:
+        if run.get("error") not in NO_PLAN and not masked_no_plan(run):
             continue
         task = (run["domain"], run["problem"])
         no_plan[task].add(run["algorithm"])
