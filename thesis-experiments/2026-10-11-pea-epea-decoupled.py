@@ -37,6 +37,17 @@ DATA_DIR = Path(os.environ.get("EVAL_DATA_DIR", str(DIR / "data")))
 EMAIL = os.environ.get("EVAL_EMAIL")
 PILOT = os.environ.get("EVAL_PILOT") == "1"
 KEEP_RUNS = os.environ.get("EVAL_KEEP_RUNS") == "1"
+ONLY_TASKS = [t for t in os.environ.get("EVAL_ONLY_TASKS", "").split(",") if t]
+ONLY_ROWS = [r for r in os.environ.get("EVAL_ONLY_ROWS", "").split(",") if r]
+RERUN = bool(ONLY_TASKS or ONLY_ROWS)
+STDOUT_LIMITS = None
+if os.environ.get("EVAL_STDOUT_LIMITS"):
+    parts = os.environ["EVAL_STDOUT_LIMITS"].split(",")
+    if len(parts) != 2 or not all(x.isdigit() for x in parts) \
+            or int(parts[0]) > int(parts[1]):
+        raise SystemExit("EVAL_STDOUT_LIMITS must be soft,hard in KiB with "
+                         "soft <= hard, for example 51200,204800")
+    STDOUT_LIMITS = (int(parts[0]), int(parts[1]))
 
 LOCAL_PROCESSES = min(int(os.environ.get("EVAL_LOCAL_PROCESSES", "0") or 0),
                       os.cpu_count() or 1)
@@ -239,6 +250,13 @@ def get_abstain_parser():
     parser.add_function(fix_abstained, file="driver.log")
     return parser
 
+NONMOBILE = "ERROR: non-mobile leaf factor"
+
+def factoring_refused(run):
+    if run.get("error") == "search-decoupled-abstained":
+        return True
+    return any(NONMOBILE in e for e in run.get("unexplained_errors") or [])
+
 class AbstainFilter:
 
     def __init__(self, algos):
@@ -246,8 +264,7 @@ class AbstainFilter:
         self.excluded_tasks = set()
 
     def collect(self, run):
-        if run["algorithm"] in self.algos \
-                and run.get("error") == "search-decoupled-abstained":
+        if run["algorithm"] in self.algos and factoring_refused(run):
             self.excluded_tasks.add((run["domain"], run["problem"]))
         return True
 
@@ -268,6 +285,15 @@ else:
             "--decoupling", "ifork(min_num_leaves=10)",
             "--search", "astar(hmax())"]
 MEMORY_LIMIT = "4G"
+if ONLY_TASKS:
+    SUITE_USED = ONLY_TASKS
+if ONLY_ROWS:
+    unknown = [r for r in ONLY_ROWS if r not in CONFIGS]
+    if unknown:
+        raise SystemExit(
+            f"EVAL_ONLY_ROWS: unknown row(s) {', '.join(unknown)} for "
+            f"category {CATEGORY}, known rows are {', '.join(sorted(CONFIGS))}")
+    CONFIGS = {n: c for n, c in CONFIGS.items() if n in ONLY_ROWS}
 
 N_TASKS = len(suites.build_suite(BENCHMARKS_DIR, SUITE_USED))
 N_RUNS = len(CONFIGS) * N_TASKS
@@ -292,6 +318,8 @@ FORWARDED = {k: v for k, v in {
     "EVAL_SCATTER_FORMATS": os.environ.get("EVAL_SCATTER_FORMATS"),
     "EVAL_EMAIL": EMAIL, "EVAL_PILOT": "1" if PILOT else None,
     "EVAL_KEEP_RUNS": "1" if KEEP_RUNS else None, "EVAL_STAGE": STAGE,
+    "EVAL_ONLY_TASKS": ",".join(ONLY_TASKS), "EVAL_ONLY_ROWS": ",".join(ONLY_ROWS),
+    "EVAL_STDOUT_LIMITS": os.environ.get("EVAL_STDOUT_LIMITS"),
     "EVAL_LP_SOLVER_OK": os.environ.get("EVAL_LP_SOLVER_OK"),
     "DOWNWARD_REPO": REPO, "DOWNWARD_BENCHMARKS": BENCHMARKS_DIR,
     "DOWNWARD_REV": REV,
@@ -389,11 +417,22 @@ if REMOTE and RUNS_STAGE and not LOCAL_PROCESSES \
         and not os.environ.get("SLURM_JOB_ID"):
     check_cluster_limits(ENVIRONMENT)
 
-exp = FastDownwardExperiment(
+class Experiment(FastDownwardExperiment):
+
+    def _add_runs(self):
+        super()._add_runs()
+        if STDOUT_LIMITS:
+            for run in self.runs:
+                kwargs = run.commands["planner"][1]
+                kwargs["soft_stdout_limit"] = STDOUT_LIMITS[0]
+                kwargs["hard_stdout_limit"] = STDOUT_LIMITS[1]
+
+exp = Experiment(
     path=str(DATA_DIR / (f"{SCRIPT_NAME}-{CATEGORY}"
                          + (FACTORING_SUFFIX if CATEGORY != "explicit" else "")
                          + HEURISTIC_SUFFIX
-                         + ("-pilot" if PILOT else ""))),
+                         + ("-pilot" if PILOT else "")
+                         + ("-rerun" if RERUN else ""))),
     environment=ENVIRONMENT,
     revision_cache=str(DATA_DIR / "revision-cache"))
 
@@ -402,6 +441,9 @@ print(f"category {CATEGORY} ({CATEGORIES[CATEGORY]}), stage {STAGE}"
       + f", heuristics {','.join(HEURISTIC_SET)}"
       + ": "
       f"{len(CONFIGS)} configurations x {N_TASKS} tasks = {N_RUNS} runs"
+      + (" (rerun subset)" if RERUN else "")
+      + (f", log limits {STDOUT_LIMITS[0]}/{STDOUT_LIMITS[1]} KiB"
+         if STDOUT_LIMITS else "")
       + (f", Slurm time limit per array task "
          f"{ENVIRONMENT.time_limit_per_task}"
          + (" (cluster pilot)" if PILOT else "")

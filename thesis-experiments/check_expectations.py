@@ -88,16 +88,22 @@ DOUBLE_PEAK = "Found multiple occurences of Peak memory"
 TIME_UNITS = {"": 1, "s": 1, "m": 60, "h": 3600}
 EXPLAINED = {
     "log-soft": "run.log over lab's soft limit, planner finished, data valid",
-    "log-hard": "run.log hit lab's hard limit, lab aborted the planner, "
-                "counts as unsolved",
+    "log-hard": "run.log hit lab's hard limit, lab stopped the driver and "
+                "the search ran on unobserved, no result recorded, counts "
+                "as unsolved",
     "kill-time": "component killed by the kernel at the hard CPU limit "
                  "(soft limit plus one second), counts as unsolved",
     "nonmobile": "upstream factoring refused a leaf without leaf-only "
                  "actions, uniform over the rows of that factoring, "
-                 "counts as a factoring failure",
-    "double-peak": "Peak memory printed twice (signal during exit), "
-                   "unsolved run, memory attribute dropped by lab",
+                 "left out of the per-factoring tables like an abstained "
+                 "task",
+    "double-peak": "Peak memory printed twice, the time limit signal came "
+                   "while the planner was exiting and lab recorded the "
+                   "signal's exit code, unsolved run, the true outcome "
+                   "(memory limit or exhausted search) is in run.log",
 }
+NO_PLAN = ("search-unsolved-incomplete", "search-unsolvable",
+           "translate-unsolvable")
 
 def parse_limit(text, units):
     match = re.fullmatch(r"(\d+)([a-z]?)", text.lower())
@@ -149,7 +155,8 @@ def explain(run, errors):
         return "nonmobile"
     if len(outcomes) == 1 and outcomes[0].startswith(DOUBLE_PEAK) \
             and not driver_lines and not run_lines \
-            and run.get("coverage") != 1:
+            and run.get("coverage") != 1 and "total_time" in run \
+            and run.get("error") == "search-out-of-time":
         return "double-peak"
     return None
 
@@ -215,8 +222,11 @@ def main():
                 f"{dict(sorted(domains.items()))}")
         if kind == "kill-time":
             walls = [run["planner_wall_clock_time"] for run in group]
+            in_search = sum("translator_time_done" in run for run in group)
             note = note + (f", wall-clock {min(walls):.0f} to "
-                           f"{max(walls):.0f} s")
+                           f"{max(walls):.0f} s, killed in the translator "
+                           f"{len(group) - in_search}, in the search "
+                           f"{in_search}")
         notes.append(note)
         if kind in ("log-hard", "double-peak"):
             for run in sorted(group, key=lambda r: (
@@ -228,6 +238,8 @@ def main():
     for run in runs:
         fam, key = family_of(run["algorithm"])
         if key is None or key[0] != "dec":
+            continue
+        if str(run.get("error", "")).startswith("translate-"):
             continue
         slot = (key[1], run["domain"], run["problem"])
         rows[slot].add(run["algorithm"])
@@ -251,7 +263,7 @@ def main():
             solved_by[(run["domain"], run["problem"])].add(run["algorithm"])
     no_plan = defaultdict(set)
     for run in runs:
-        if run.get("error") != "search-unsolved-incomplete":
+        if run.get("error") not in NO_PLAN:
             continue
         task = (run["domain"], run["problem"])
         no_plan[task].add(run["algorithm"])
@@ -265,7 +277,7 @@ def main():
         for task in no_plan:
             per_domain[task[0]] = per_domain[task[0]] + 1
         notes.append(
-            f"S5 no plan (search exhausted or initial dead end) on "
+            f"S5 no plan (unsolvable, exhausted or initial dead end) on "
             f"{len(no_plan)} task(s), {sum(len(v) for v in no_plan.values())} "
             f"run(s), tasks per domain: {dict(sorted(per_domain.items()))}")
 
